@@ -23,7 +23,6 @@ permissions:
 contents: write
 issues: write
 
-```
 steps:
   - name: Checkout Repository
     uses: actions/checkout@v4
@@ -223,4 +222,3 @@ steps:
           Write-Host "Status: No version change detected." -ForegroundColor Blue
       }
       Write-Host "================================" -ForegroundColor Green
-``` 
