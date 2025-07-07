@@ -10,6 +10,30 @@ jobs:
         os: [ubuntu-latest, windows-latest, macOS-latest]
     steps:
     - uses: actions/checkout@v4
-    - name: Test
+
+    - name: Setup PowerShell Environment
       shell: pwsh
-      run: ./build.ps1 -Task Test -Bootstrap
+      run: |
+        # Remove any existing Pester modules to avoid conflicts
+        Get-Module Pester -ListAvailable | Remove-Module -Force -ErrorAction SilentlyContinue
+
+        # Ensure we're using a clean PowerShell session
+        if (Get-Module Pester) {
+          Remove-Module Pester -Force
+        }
+
+        Write-Host "PowerShell Version: $($PSVersionTable.PSVersion)"
+        Write-Host "Available Pester versions:"
+        Get-Module Pester -ListAvailable | Select-Object Name, Version, Path
+
+    - name: Run Tests
+      shell: pwsh
+      run: |
+        try {
+          # Start fresh PowerShell process to avoid assembly conflicts
+          pwsh -NoProfile -Command "& { ./build.ps1 -Task Test -Bootstrap }"
+        }
+        catch {
+          Write-Error "Build failed: $($_.Exception.Message)"
+          exit 1
+        }
