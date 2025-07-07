@@ -1,6 +1,9 @@
 # Project Files #
 cov.xml
 coverage.xml
+Output/
+scratch/
+testResults.xml
 
 ### VisualStudioCode ###
 .vscode/*

@@ -1,21 +1,61 @@
-# Contributing
+# How to contribute
 
-Thanks for your interest in contributing to the **DLLPickle** module!
+Contributions to DLLPickle are highly encouraged and desired.
+Below are some guidelines that will help make the process as smooth as possible.
 
-Whether it's a bug report, new feature, correction, or additional documentation, your feedback and contributions are appreciated.
+## Getting Started
 
-Please read through this document before submitting any issues or pull requests to ensure all the necessary information is provided to effectively respond to your bug report or contribution.
+- Make sure you have a [GitHub account](https://github.com/signup/free)
+- Submit a new issue, assuming one does not already exist.
+  - Clearly describe the issue including steps to reproduce when it is a bug.
+  - Make sure you fill in the earliest version that you know has the issue.
+- Fork the repository on GitHub
 
-Please note there is a code of conduct, please follow it in all your interactions with the project.
+## Suggesting Enhancements
 
-## Contributing via Pull Requests
+I want to know what you think is missing from DLLPickle and how it can be made better.
 
-Please use the `development` branch as your target when submitting a pull request. If you have questions about how to do that, I would be more than happy to walk you through the steps over in the [discussions](https://github.com/SamErde/DLLPickle/discussions)!
+- When submitting an issue for an enhancement, please be as clear as possible about why you think the enhancement is needed and what the benefit of it would be.
 
-## Code of Conduct
+## Making Changes
 
-This project has a [Code of Conduct](CODE_OF_CONDUCT.md).
+- From your fork of the repository, create a topic branch where work on your change will take place.
+- To quickly create a topic branch based on master; `git checkout -b my_contribution master`.
+  Please avoid working directly on the `master` branch.
+- Make commits of logical units.
+- Check for unnecessary whitespace with `git diff --check` before committing.
+- Please follow the prevailing code conventions in the repository.
+  Differences in style make the code harder to understand for everyone.
+- Make sure your commit messages are in the proper format.
 
-## Licensing
+```powershell
+    Add more cowbell to Get-Something.ps1
 
-See the [LICENSE](LICENSE) file for our project's licensing.
+    The functionality of Get-Something would be greatly improved if there was a little
+    more 'pizzazz' added to it. I propose a cowbell. Adding more cowbell has been
+    shown in studies to both increase one's mojo, and cement one's status
+    as a rock legend.
+```
+
+- Make sure you have added all the necessary Pester tests for your changes.
+- Run _all_ Pester tests in the module to assure nothing else was accidentally broken.
+
+## Documentation
+
+I am infallible and as such my documenation needs no corectoin. 😉
+In the highly unlikely event that that is _not_ the case, commits to update or add documentation are highly appreciated.
+
+## Submitting Changes
+
+- Push your changes to a topic branch in your fork of the repository.
+- Submit a pull request to the main repository.
+- Once the pull request has been reviewed and accepted, it will be merged with the master branch.
+- Celebrate
+
+## Additional Resources
+
+- [General GitHub documentation](https://help.github.com/)
+- [GitHub forking documentation](https://guides.github.com/activities/forking/)
+- [GitHub pull request documentation](https://help.github.com/send-pull-requests/)
+- [GitHub Flow guide](https://guides.github.com/introduction/flow/)
+- [GitHub's guide to contributing to open source projects](https://guides.github.com/activities/contributing-to-open-source/)
