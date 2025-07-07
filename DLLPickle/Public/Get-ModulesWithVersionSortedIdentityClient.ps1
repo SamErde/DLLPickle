@@ -1,4 +1,21 @@
 function Get-ModulesWithVersionSortedIdentityClient {
+    <#
+    .SYNOPSIS
+    Short description
+
+    .DESCRIPTION
+    Long description
+
+    .PARAMETER Name
+    Parameter description
+
+    .EXAMPLE
+    Get-ModulesWithVersionSortedIdentityClient -Name 'Az.Accounts','ExchangeOnlineManagement'
+    This will return a list of modules ordered by the version of 'Microsoft.Identity.Client.dll'
+
+    .NOTES
+    General notes
+    #>
     [CmdletBinding()]
     param(
         # A list of module names to evaluate for proper import order.

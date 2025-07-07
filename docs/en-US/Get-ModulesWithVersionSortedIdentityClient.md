@@ -8,7 +8,7 @@ schema: 2.0.0
 # Get-ModulesWithVersionSortedIdentityClient
 
 ## SYNOPSIS
-{{ Fill in the Synopsis }}
+Short description
 
 ## SYNTAX
 
@@ -18,22 +18,20 @@ Get-ModulesWithVersionSortedIdentityClient [[-Name] <String[]>] [-ProgressAction
 ```
 
 ## DESCRIPTION
-{{ Fill in the Description }}
+Long description
 
 ## EXAMPLES
 
-### Example 1
-```powershell
-PS C:\> {{ Add example code here }}
+### EXAMPLE 1
 ```
-
-{{ Add example description here }}
+Get-ModulesWithVersionSortedIdentityClient -Name 'Az.Accounts','ExchangeOnlineManagement'
+This will return a list of modules ordered by the version of 'Microsoft.Identity.Client.dll'
+```
 
 ## PARAMETERS
 
 ### -Name
-Enter a list of names to evaluate.
-Wildcards are allowed.
+Parameter description
 
 ```yaml
 Type: String[]
@@ -41,7 +39,7 @@ Parameter Sets: (All)
 Aliases:
 
 Required: False
-Position: 0
+Position: 1
 Default value: None
 Accept pipeline input: True (ByPropertyName)
 Accept wildcard characters: False
@@ -67,11 +65,9 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 
 ## INPUTS
 
-### System.String[]
-
 ## OUTPUTS
 
-### System.Object
 ## NOTES
+General notes
 
 ## RELATED LINKS

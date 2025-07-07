@@ -151,7 +151,35 @@ jobs:
           Write-Host "Updating version file with: $LatestVersion"
           Set-Content -Path "last-known-version.txt" -Value $LatestVersion
 
-      - name: Commit Version File
+      - name: Update README Version
+        if: steps.compare.outputs.is-new-version == 'true'
+        shell: pwsh
+        run: |
+          $LatestVersion = "${{ steps.get-package.outputs.latest-version }}"
+          $ReadmePath = "README.md"
+
+          Write-Host "Updating README.md with version: $LatestVersion"
+
+          if (Test-Path $ReadmePath)
+          {
+              # Read the current README content
+              $Content = Get-Content -Path $ReadmePath -Raw
+
+              # Replace the version placeholder with the latest version
+              $Pattern = '(<!--Version-->)([^<]*)(<!--/Version-->)'
+              $Replacement = "`$1$LatestVersion`$3"
+              $UpdatedContent = $Content -replace $Pattern, $Replacement
+
+              # Write the updated content back to the file
+              Set-Content -Path $ReadmePath -Value $UpdatedContent -NoNewline
+              Write-Host "README.md updated successfully"
+          }
+          else
+          {
+              Write-Warning "README.md file not found"
+          }
+
+      - name: Commit Version Updates
         if: steps.compare.outputs.is-new-version == 'true'
         shell: pwsh
         env:
@@ -159,13 +187,13 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add last-known-version.txt
+          git add last-known-version.txt README.md
 
           # Check if there are changes to commit
           $Status = git status --porcelain
           if ($Status)
           {
-              git commit -m "Update tracked version to ${{ steps.get-package.outputs.latest-version }}"
+              git commit -m "📦chore: update tracked version to ${{ steps.get-package.outputs.latest-version }}"
               git push origin HEAD:${{ github.ref_name }}
           }
           else
