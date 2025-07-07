@@ -1,210 +1,226 @@
 # GitHub Workflow to monitor Microsoft.Identity.Client releases
+
 # This workflow checks for new releases of Microsoft.Identity.Client.dll
+
 # and creates an issue when a new version is detected
 
 name: Monitor Microsoft.Identity.Client Releases
 
 on:
-  schedule:
-    # Run daily at 9:00 AM UTC
-    - cron: '0 9 * * *'
-  workflow_dispatch: # Allow manual triggering
+schedule:
+# Run daily at 9:00 AM UTC
+- cron: ‘0 9 * * *’
+workflow_dispatch: # Allow manual triggering
 
 env:
-  MONITORED_REPO: 'AzureAD/microsoft-authentication-library-for-dotnet'
-  PACKAGE_NAME: 'Microsoft.Identity.Client'
+MONITORED_REPO: ‘AzureAD/microsoft-authentication-library-for-dotnet’
+PACKAGE_NAME: ‘Microsoft.Identity.Client’
 
 jobs:
-  Check-Version:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      issues: write
+Check-Version:
+runs-on: ubuntu-latest
+permissions:
+contents: write
+issues: write
 
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+```
+steps:
+  - name: Checkout Repository
+    uses: actions/checkout@v4
 
-      - name: Setup PowerShell
-        shell: pwsh
-        run: |
-          Write-Host "PowerShell version: $($PSVersionTable.PSVersion)"
+  - name: Setup PowerShell
+    shell: pwsh
+    run: |
+      Write-Host "PowerShell version: $($PSVersionTable.PSVersion)"
 
-      - name: Get Latest Release Information
-        id: get-release
-        shell: pwsh
-        run: |
-          try 
-          {
-              # Get the latest release from the MSAL repository
-              $ApiUrl = "https://api.github.com/repos/$env:MONITORED_REPO/releases/latest"
-              Write-Host "Fetching release information from: $ApiUrl"
-              
-              $Response = Invoke-RestMethod -Uri $ApiUrl -Headers @{
-                  'User-Agent' = 'GitHub-Actions-Version-Monitor'
-                  'Accept' = 'application/vnd.github.v3+json'
-              }
-              
-              $LatestVersion = $Response.tag_name
-              $ReleaseUrl = $Response.html_url
-              $PublishedDate = $Response.published_at
-              $ReleaseNotes = $Response.body
-              
-              Write-Host "Latest version found: $LatestVersion"
-              Write-Host "Published date: $PublishedDate"
-              
-              # Output variables for next steps
-              Write-Output "latest-version=$LatestVersion" >> $env:GITHUB_OUTPUT
-              Write-Output "release-url=$ReleaseUrl" >> $env:GITHUB_OUTPUT
-              Write-Output "published-date=$PublishedDate" >> $env:GITHUB_OUTPUT
-              
-              # Escape release notes for GitHub output
-              $EscapedNotes = $ReleaseNotes -replace "`n", "%0A" -replace "`r", "%0D"
-              Write-Output "release-notes=$EscapedNotes" >> $env:GITHUB_OUTPUT
-          }
-          catch 
-          {
-              Write-Error "Failed to fetch release information: $($_.Exception.Message)"
-              exit 1
-          }
-
-      - name: Check Previous Version
-        id: check-previous
-        shell: pwsh
-        run: |
-          $VersionFile = "last-known-version.txt"
+  - name: Get Latest Release Information
+    id: get-release
+    shell: pwsh
+    run: |
+      try 
+      {
+          # Get the latest release from the MSAL repository
+          $ApiUrl = "https://api.github.com/repos/$env:MONITORED_REPO/releases/latest"
+          Write-Host "Fetching release information from: $ApiUrl"
           
-          if (Test-Path $VersionFile) 
-          {
-              $PreviousVersion = Get-Content $VersionFile -Raw
-              $PreviousVersion = $PreviousVersion.Trim()
-              Write-Host "Previous version: $PreviousVersion"
-              Write-Output "previous-version=$PreviousVersion" >> $env:GITHUB_OUTPUT
-              Write-Output "has-previous=true" >> $env:GITHUB_OUTPUT
-          }
-          else 
-          {
-              Write-Host "No previous version file found"
-              Write-Output "has-previous=false" >> $env:GITHUB_OUTPUT
-              Write-Output "previous-version=" >> $env:GITHUB_OUTPUT
-          }
-
-      - name: Compare Versions
-        id: compare
-        shell: pwsh
-        run: |
-          $LatestVersion = "${{ steps.get-release.outputs.latest-version }}"
-          $PreviousVersion = "${{ steps.check-previous.outputs.previous-version }}"
-          $HasPrevious = "${{ steps.check-previous.outputs.has-previous }}" -eq "true"
-          
-          Write-Host "Comparing versions:"
-          Write-Host "  Latest: $LatestVersion"
-          Write-Host "  Previous: $PreviousVersion"
-          
-          $IsNewVersion = $false
-          
-          if (-not $HasPrevious) 
-          {
-              Write-Host "No previous version recorded - treating as new"
-              $IsNewVersion = $true
-          }
-          elseif ($LatestVersion -ne $PreviousVersion) 
-          {
-              Write-Host "Version has changed - new version detected"
-              $IsNewVersion = $true
-          }
-          else 
-          {
-              Write-Host "No version change detected"
+          $Response = Invoke-RestMethod -Uri $ApiUrl -Headers @{
+              'User-Agent' = 'GitHub-Actions-Version-Monitor'
+              'Accept' = 'application/vnd.github.v3+json'
           }
           
-          Write-Output "is-new-version=$IsNewVersion" >> $env:GITHUB_OUTPUT
+          $LatestVersion = $Response.tag_name
+          $ReleaseUrl = $Response.html_url
+          $PublishedDate = $Response.published_at
+          $ReleaseNotes = $Response.body
+          
+          Write-Host "Latest version found: $LatestVersion"
+          Write-Host "Published date: $PublishedDate"
+          
+          # Output variables for next steps
+          Write-Output "latest-version=$LatestVersion" >> $env:GITHUB_OUTPUT
+          Write-Output "release-url=$ReleaseUrl" >> $env:GITHUB_OUTPUT
+          Write-Output "published-date=$PublishedDate" >> $env:GITHUB_OUTPUT
+          
+          # Escape release notes for GitHub output
+          $EscapedNotes = $ReleaseNotes -replace "`n", "%0A" -replace "`r", "%0D"
+          Write-Output "release-notes=$EscapedNotes" >> $env:GITHUB_OUTPUT
+      }
+      catch 
+      {
+          Write-Error "Failed to fetch release information: $($_.Exception.Message)"
+          exit 1
+      }
 
-      - name: Update Version File
-        if: steps.compare.outputs.is-new-version == 'true'
-        shell: pwsh
-        run: |
-          $LatestVersion = "${{ steps.get-release.outputs.latest-version }}"
-          Write-Host "Updating version file with: $LatestVersion"
-          Set-Content -Path "last-known-version.txt" -Value $LatestVersion
+  - name: Check Previous Version
+    id: check-previous
+    shell: pwsh
+    run: |
+      $VersionFile = "last-known-version.txt"
+      
+      if (Test-Path $VersionFile) 
+      {
+          $PreviousVersion = Get-Content $VersionFile -Raw
+          $PreviousVersion = $PreviousVersion.Trim()
+          Write-Host "Previous version: $PreviousVersion"
+          Write-Output "previous-version=$PreviousVersion" >> $env:GITHUB_OUTPUT
+          Write-Output "has-previous=true" >> $env:GITHUB_OUTPUT
+      }
+      else 
+      {
+          Write-Host "No previous version file found"
+          Write-Output "has-previous=false" >> $env:GITHUB_OUTPUT
+          Write-Output "previous-version=" >> $env:GITHUB_OUTPUT
+      }
 
-      - name: Commit Version File
-        if: steps.compare.outputs.is-new-version == 'true'
-        shell: pwsh
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add last-known-version.txt
+  - name: Compare Versions
+    id: compare
+    shell: pwsh
+    run: |
+      $LatestVersion = "${{ steps.get-release.outputs.latest-version }}"
+      $PreviousVersion = "${{ steps.check-previous.outputs.previous-version }}"
+      $HasPrevious = "${{ steps.check-previous.outputs.has-previous }}" -eq "true"
+      
+      Write-Host "Comparing versions:"
+      Write-Host "  Latest: $LatestVersion"
+      Write-Host "  Previous: $PreviousVersion"
+      
+      $IsNewVersion = $false
+      
+      if (-not $HasPrevious) 
+      {
+          Write-Host "No previous version recorded - treating as new"
+          $IsNewVersion = $true
+      }
+      elseif ($LatestVersion -ne $PreviousVersion) 
+      {
+          Write-Host "Version has changed - new version detected"
+          $IsNewVersion = $true
+      }
+      else 
+      {
+          Write-Host "No version change detected"
+      }
+      
+      Write-Output "is-new-version=$IsNewVersion" >> $env:GITHUB_OUTPUT
+
+  - name: Update Version File
+    if: steps.compare.outputs.is-new-version == 'true'
+    shell: pwsh
+    run: |
+      $LatestVersion = "${{ steps.get-release.outputs.latest-version }}"
+      Write-Host "Updating version file with: $LatestVersion"
+      Set-Content -Path "last-known-version.txt" -Value $LatestVersion
+
+  - name: Commit Version File
+    if: steps.compare.outputs.is-new-version == 'true'
+    shell: pwsh
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    run: |
+      git config --local user.email "action@github.com"
+      git config --local user.name "GitHub Action"
+      git add last-known-version.txt
+      
+      # Check if there are changes to commit
+      $Status = git status --porcelain
+      if ($Status) 
+      {
           git commit -m "Update tracked version to ${{ steps.get-release.outputs.latest-version }}"
-          git push
+          git push origin HEAD:${{ github.ref_name }}
+      }
+      else 
+      {
+          Write-Host "No changes to commit"
+      }
 
-      - name: Create Issue for New Version
-        if: steps.compare.outputs.is-new-version == 'true'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const latestVersion = '${{ steps.get-release.outputs.latest-version }}';
-            const releaseUrl = '${{ steps.get-release.outputs.release-url }}';
-            const publishedDate = '${{ steps.get-release.outputs.published-date }}';
-            const previousVersion = '${{ steps.check-previous.outputs.previous-version }}';
-            const releaseNotes = `${{ steps.get-release.outputs.release-notes }}`.replace(/%0A/g, '\n').replace(/%0D/g, '\r');
-            
-            const issueTitle = `New Microsoft.Identity.Client Release: ${latestVersion}`;
-            
-            let issueBody = `## 🚀 New Release Detected\n\n`;
-            issueBody += `**Package:** Microsoft.Identity.Client\n`;
-            issueBody += `**New Version:** ${latestVersion}\n`;
-            if (previousVersion) {
-              issueBody += `**Previous Version:** ${previousVersion}\n`;
-            }
-            issueBody += `**Published Date:** ${publishedDate}\n`;
-            issueBody += `**Release URL:** ${releaseUrl}\n\n`;
-            
-            issueBody += `### 📦 NuGet Package\n`;
-            issueBody += `\`\`\`powershell\n`;
-            issueBody += `Install-Package Microsoft.Identity.Client -Version ${latestVersion}\n`;
-            issueBody += `\`\`\`\n\n`;
-            
-            if (releaseNotes && releaseNotes.trim()) {
-              issueBody += `### 📝 Release Notes\n\n`;
-              issueBody += releaseNotes;
-              issueBody += `\n\n`;
-            }
-            
-            issueBody += `### 🔗 Useful Links\n`;
-            issueBody += `- [Release Page](${releaseUrl})\n`;
-            issueBody += `- [NuGet Package](https://www.nuget.org/packages/Microsoft.Identity.Client/)\n`;
-            issueBody += `- [Repository](https://github.com/AzureAD/microsoft-authentication-library-for-dotnet)\n`;
-            issueBody += `- [Documentation](https://learn.microsoft.com/en-us/entra/msal/dotnet/)\n\n`;
-            
-            issueBody += `---\n`;
-            issueBody += `*This issue was automatically created by the version monitoring workflow.*`;
-            
-            await github.rest.issues.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              title: issueTitle,
-              body: issueBody,
-              labels: ['dependency-update', 'microsoft-identity', 'automated']
-            });
+  - name: Create Issue for New Version
+    if: steps.compare.outputs.is-new-version == 'true'
+    uses: actions/github-script@v7
+    with:
+      script: |
+        const latestVersion = '${{ steps.get-release.outputs.latest-version }}';
+        const releaseUrl = '${{ steps.get-release.outputs.release-url }}';
+        const publishedDate = '${{ steps.get-release.outputs.published-date }}';
+        const previousVersion = '${{ steps.check-previous.outputs.previous-version }}';
+        const releaseNotes = `${{ steps.get-release.outputs.release-notes }}`.replace(/%0A/g, '\n').replace(/%0D/g, '\r');
+        
+        const issueTitle = `New Microsoft.Identity.Client Release: ${latestVersion}`;
+        
+        let issueBody = `## 🚀 New Release Detected\n\n`;
+        issueBody += `**Package:** Microsoft.Identity.Client\n`;
+        issueBody += `**New Version:** ${latestVersion}\n`;
+        if (previousVersion) {
+          issueBody += `**Previous Version:** ${previousVersion}\n`;
+        }
+        issueBody += `**Published Date:** ${publishedDate}\n`;
+        issueBody += `**Release URL:** ${releaseUrl}\n\n`;
+        
+        issueBody += `### 📦 NuGet Package\n`;
+        issueBody += `\`\`\`powershell\n`;
+        issueBody += `Install-Package Microsoft.Identity.Client -Version ${latestVersion}\n`;
+        issueBody += `\`\`\`\n\n`;
+        
+        if (releaseNotes && releaseNotes.trim()) {
+          issueBody += `### 📝 Release Notes\n\n`;
+          issueBody += releaseNotes;
+          issueBody += `\n\n`;
+        }
+        
+        issueBody += `### 🔗 Useful Links\n`;
+        issueBody += `- [Release Page](${releaseUrl})\n`;
+        issueBody += `- [NuGet Package](https://www.nuget.org/packages/Microsoft.Identity.Client/)\n`;
+        issueBody += `- [Repository](https://github.com/AzureAD/microsoft-authentication-library-for-dotnet)\n`;
+        issueBody += `- [Documentation](https://learn.microsoft.com/en-us/entra/msal/dotnet/)\n\n`;
+        
+        issueBody += `---\n`;
+        issueBody += `*This issue was automatically created by the version monitoring workflow.*`;
+        
+        await github.rest.issues.create({
+          owner: context.repo.owner,
+          repo: context.repo.repo,
+          title: issueTitle,
+          body: issueBody,
+          labels: ['dependency-update', 'microsoft-identity', 'automated']
+        });
 
-      - name: Report Status
-        shell: pwsh
-        run: |
-          $LatestVersion = "${{ steps.get-release.outputs.latest-version }}"
-          $IsNewVersion = "${{ steps.compare.outputs.is-new-version }}" -eq "true"
-          
-          Write-Host "=== Version Monitor Report ===" -ForegroundColor Green
-          Write-Host "Repository: $env:MONITORED_REPO" -ForegroundColor Cyan
-          Write-Host "Package: $env:PACKAGE_NAME" -ForegroundColor Cyan
-          Write-Host "Latest Version: $LatestVersion" -ForegroundColor Yellow
-          
-          if ($IsNewVersion) 
-          {
-              Write-Host "Status: New version detected! Issue created." -ForegroundColor Green
-          }
-          else 
-          {
-              Write-Host "Status: No version change detected." -ForegroundColor Blue
-          }
-          Write-Host "================================" -ForegroundColor Green
+  - name: Report Status
+    shell: pwsh
+    run: |
+      $LatestVersion = "${{ steps.get-release.outputs.latest-version }}"
+      $IsNewVersion = "${{ steps.compare.outputs.is-new-version }}" -eq "true"
+      
+      Write-Host "=== Version Monitor Report ===" -ForegroundColor Green
+      Write-Host "Repository: $env:MONITORED_REPO" -ForegroundColor Cyan
+      Write-Host "Package: $env:PACKAGE_NAME" -ForegroundColor Cyan
+      Write-Host "Latest Version: $LatestVersion" -ForegroundColor Yellow
+      
+      if ($IsNewVersion) 
+      {
+          Write-Host "Status: New version detected! Issue created." -ForegroundColor Green
+      }
+      else 
+      {
+          Write-Host "Status: No version change detected." -ForegroundColor Blue
+      }
+      Write-Host "================================" -ForegroundColor Green
+``` 
