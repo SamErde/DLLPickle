@@ -166,8 +166,8 @@ jobs:
               $Content = Get-Content -Path $ReadmePath -Raw
 
               # Replace the version placeholder with the latest version
-              $Pattern = '(<!--Version-->)([^<]*)(<!--/Version-->)'
-              $Replacement = "`$1$LatestVersion`$3"
+              $Pattern = '<!--Version-->[^<]*<!--/Version-->'
+              $Replacement = "<!--Version-->$LatestVersion<!--/Version-->"
               $UpdatedContent = $Content -replace $Pattern, $Replacement
 
               # Write the updated content back to the file
