@@ -9,7 +9,7 @@ function Get-ModuleImportCandidate {
 
     When importing modules, PSModulePath is the primary factor in determining which module version is loaded,
     and the order of the paths in PSModulePath is important. The CurrentUser paths generally appear first in PSModulePath,
-    followed by the AllUsers scope paths. The function takes into account the following rules:
+    followed by the AllUsers scope paths. The function takes into account the following standard PowerShell behaviors:
 
     Location takes precedence over version:
     - A lower version in a higher-priority location will be loaded before a higher version in a lower-priority location.
@@ -49,9 +49,10 @@ function Get-ModuleImportCandidate {
 
     begin {
         # Get PSModulePath entries in order (defaults to the 'Process' environment variable target which includes users and computer values, in that order).
+        # Filter out empty entries and resolve the full path to account for symbolic links or variables.
         $PSModulePathEntries = $env:PSModulePath -split [System.IO.Path]::PathSeparator |
-            # Filter out empty entries and resolve the full path to account for symbolic links or variables.
-            Where-Object { $_ } | ForEach-Object { [System.IO.Path]::GetFullPath($_) }
+            Where-Object { $_ } | ForEach-Object { [System.IO.Path]::GetFullPath($_) } |
+                Select-Object -Unique
     } # end begin block
 
     process {
