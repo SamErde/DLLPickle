@@ -6,7 +6,7 @@ A PowerShell module that helps you get un-stuck from dependency version conflict
 
 ## Example
 
-Several Microsoft modules include the file **Microsoft.Identity.Client.dll** as a built-in dependency. The latest version of that file (<!--Version-->4.76.1-preview<!--/Version-->) is actively maintained in the **AzureAD/microsoft-authentication-library-for-dotnet** repository. However, the following modules all update this package on different schedules, resulting in version conflicts that break authentication flows whenever you try to use multiple modules in one session:
+Several Microsoft modules include the file **Microsoft.Identity.Client.dll** as a built-in dependency. The latest version of that file (<!--Version-->4.77.0<!--/Version-->) is actively maintained in the **AzureAD/microsoft-authentication-library-for-dotnet** repository. However, the following modules all update this package on different schedules, resulting in version conflicts that break authentication flows whenever you try to use multiple modules in one session:
 
 - Az.Accounts
 - ExchangeOnlineManagement
