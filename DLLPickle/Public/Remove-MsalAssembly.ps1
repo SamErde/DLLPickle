@@ -7,6 +7,11 @@
         Unloads the MSAL AssemblyLoadContext and triggers garbage collection
         to free memory. Requires PowerShell 7.0 or higher.
 
+    .EXAMPLE
+        Remove-MsalAssembly
+
+        Unloads the MSAL assembly from memory.
+
     .NOTES
         Unloading may not happen immediately. The GC will unload when all
         references to types from the assembly are released.

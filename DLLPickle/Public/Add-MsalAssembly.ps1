@@ -4,11 +4,16 @@ $script:MsalLoadContext = $null
 function Add-MsalAssembly {
     <#
     .SYNOPSIS
-        Loads the MSAL assembly into a custom AssemblyLoadContext.
+    Loads the MSAL assembly into a custom AssemblyLoadContext.
 
     .DESCRIPTION
-        Loads Microsoft.Identity.Client.dll into an isolated load context
-        that can be unloaded later. Requires PowerShell 7.0 or higher.
+    Loads Microsoft.Identity.Client.dll into an isolated load context
+    that can be unloaded later. Requires PowerShell 7.0 or higher.
+
+    .EXAMPLE
+    Add-MsalAssembly
+
+    Loads the MSAL assembly into a custom AssemblyLoadContext.
     #>
     [CmdletBinding()]
     param()
@@ -23,7 +28,7 @@ function Add-MsalAssembly {
     }
 
     try {
-        $MsalDllPath = Join-Path $PSScriptRoot 'lib\Microsoft.Identity.Client.dll'
+        $MsalDllPath = Join-Path $PSScriptRoot '..\lib\Microsoft.Identity.Client.dll'
 
         if (-not (Test-Path $MsalDllPath)) {
             throw "MSAL DLL not found at: $MsalDllPath"

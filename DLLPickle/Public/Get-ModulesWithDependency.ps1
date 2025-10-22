@@ -8,11 +8,13 @@ function Get-ModulesWithDependency {
         specific file.
 
     .EXAMPLE
-        PS C:\> Get-ModulesWithDependency -FileName 'Microsoft.Identity.Client.dll' | Format-Table Name,Version,@{N='FileName';E={($_.DependencyPath.Split('\'))[-1]}},DependencyVersion
+        Get-ModulesWithDependency -FileName 'Microsoft.Identity.Client.dll' | Format-Table Name,Version,@{N='FileName';E={($_.DependencyPath.Split('\'))[-1]}},DependencyVersion
+
         This will format the output to show the module name, version, file name, and dependency version in a table.
 
     .EXAMPLE
-        PS C:\> Get-ModulesWithDependency -FileName 'Microsoft.Identity.Client.dll'
+        Get-ModulesWithDependency -FileName 'Microsoft.Identity.Client.dll'
+
         This will return an array of PSResourceInfo objects for modules with the specified dependency.
 
     .OUTPUTS
