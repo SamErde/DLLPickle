@@ -72,7 +72,7 @@ jobs:
           Expand-Archive -Path $NupkgPath -DestinationPath $ExtractPath -Force
 
           # Copy DLLs to your module's lib folder
-          $LibPath = Join-Path $env:GITHUB_WORKSPACE "lib"
+          $LibPath = Join-Path $env:GITHUB_WORKSPACE "DLLPickle/lib"
           New-Item -ItemType Directory -Path $LibPath -Force | Out-Null
 
           # Copy .NET Standard 2.0 DLLs (or your target framework)
