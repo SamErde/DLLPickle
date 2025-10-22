@@ -1,0 +1,135 @@
+name: MSAL Dependency Updater
+
+on:
+  schedule:
+    # Check daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch: # Allow manual triggering
+
+permissions:
+  contents: write
+
+jobs:
+  check-and-update-msal:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for MSAL updates
+        id: check_msal
+        shell: pwsh
+        run: |
+          # Get current MSAL version from your module
+          $CurrentVersionFile = Join-Path -Path $env:GITHUB_WORKSPACE -ChildPath "lib\MSAL_VERSION.txt"
+          if (Test-Path $CurrentVersionFile) {
+              $CurrentVersion = Get-Content $CurrentVersionFile -Raw
+              $CurrentVersion = $CurrentVersion.Trim()
+          } else {
+              $CurrentVersion = "0.0.0"
+          }
+
+          Write-Host "Current MSAL version: $CurrentVersion"
+
+          # Check latest version from NuGet
+          $PackageName = "Microsoft.Identity.Client"
+          $NuGetUrl = "https://api.nuget.org/v3-registration5-semver1/$($PackageName.ToLower())/index.json"
+          $Response = Invoke-RestMethod -Uri $NuGetUrl
+          $LatestVersion = $Response.items[-1].items[-1].catalogEntry.version
+
+          Write-Host "Latest MSAL version: $LatestVersion"
+
+          if ([version]$LatestVersion -gt [version]$CurrentVersion) {
+              Write-Host "Update available!"
+              "update_available=true" >> $env:GITHUB_OUTPUT
+              "latest_version=$LatestVersion" >> $env:GITHUB_OUTPUT
+              "current_version=$CurrentVersion" >> $env:GITHUB_OUTPUT
+          } else {
+              Write-Host "Already up to date"
+              "update_available=false" >> $env:GITHUB_OUTPUT
+          }
+
+      - name: Download and extract MSAL
+        if: steps.check_msal.outputs.update_available == 'true'
+        shell: pwsh
+        run: |
+          $LatestVersion = "${{ steps.check_msal.outputs.latest_version }}"
+          $PackageName = "Microsoft.Identity.Client"
+          $DownloadUrl = "https://www.nuget.org/api/v2/package/$PackageName/$LatestVersion"
+
+          # Create temp directory
+          $TempDir = Join-Path $env:TEMP "msal_update"
+          New-Item -ItemType Directory -Path $TempDir -Force | Out-Null
+
+          # Download package
+          $NupkgPath = Join-Path $TempDir "$PackageName.$LatestVersion.nupkg"
+          Invoke-WebRequest -Uri $DownloadUrl -OutFile $NupkgPath
+
+          # Extract (nupkg is just a zip)
+          $ExtractPath = Join-Path $TempDir "extracted"
+          Expand-Archive -Path $NupkgPath -DestinationPath $ExtractPath -Force
+
+          # Copy DLLs to your module's lib folder
+          $LibPath = Join-Path $env:GITHUB_WORKSPACE "lib"
+          New-Item -ItemType Directory -Path $LibPath -Force | Out-Null
+
+          # Copy .NET Standard 2.0 DLLs (or your target framework)
+          $SourceDlls = Join-Path $ExtractPath "lib\netstandard2.0\*.dll"
+          Copy-Item -Path $SourceDlls -Destination $LibPath -Force
+
+          # Save version info
+          $LatestVersion | Set-Content -Path (Join-Path -Path $LibPath -ChildPath "MSAL_VERSION.txt") -NoNewline
+
+          Write-Host "MSAL $LatestVersion extracted successfully"
+
+      - name: Update module manifest
+        id: update_module_manifest
+        if: steps.check_msal.outputs.update_available == 'true'
+        shell: pwsh
+        run: |
+          $ManifestPath = Join-Path -Path $env:GITHUB_WORKSPACE -ChildPath "DLLPickle/DLLpickle.psd1"
+
+          # Read current manifest
+          $Manifest = Import-PowerShellDataFile -Path $ManifestPath
+          $CurrentModuleVersion = [version]$Manifest.ModuleVersion
+
+          # Increment patch version
+          $NewModuleVersion = "{0}.{1}.{2}" -f $CurrentModuleVersion.Major, $CurrentModuleVersion.Minor, ($CurrentModuleVersion.Build + 1)
+
+          # Update manifest
+          Update-ModuleManifest -Path $ManifestPath -ModuleVersion $NewModuleVersion
+
+          Write-Host "Updated module version to $NewModuleVersion"
+          "new_module_version=$NewModuleVersion" >> $env:GITHUB_OUTPUT
+
+      - name: Commit and push changes
+        if: steps.check_msal.outputs.update_available == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add DLLPickle/lib/* DLLPickle/DLLPickle.psd1
+          git commit -m "Update MSAL to version ${{ steps.check_msal.outputs.latest_version }}"
+          git push
+
+      - name: Create GitHub Release
+        if: steps.check_msal.outputs.update_available == 'true'
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ steps.job.outputs.new_module_version }}
+          release_name: Release v${{ steps.job.outputs.new_module_version }}
+          body: |
+            Updated MSAL dependency from ${{ steps.check_msal.outputs.current_version }} to ${{ steps.check_msal.outputs.latest_version }}
+          draft: false
+          prerelease: false
+
+#      - name: Publish to PowerShell Gallery
+#        if: steps.check_msal.outputs.update_available == 'true'
+#        shell: pwsh
+#        run: |
+#          Publish-Module -Path . -NuGetApiKey ${{ secrets.PSGALLERY_API_KEY }}
+#          Write-Host "Module published to PowerShell Gallery"
