@@ -19,77 +19,194 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Check for MSAL updates
-        id: check_msal
+      - name: Check for package updates
+        id: check_packages
         shell: pwsh
         run: |
-          # Get current MSAL version from your module
-          $CurrentVersionFile = Join-Path -Path $env:GITHUB_WORKSPACE -ChildPath "lib\MSAL_VERSION.txt"
-          if (Test-Path $CurrentVersionFile) {
-              $CurrentVersion = Get-Content $CurrentVersionFile -Raw
-              $CurrentVersion = $CurrentVersion.Trim()
-          } else {
-              $CurrentVersion = "0.0.0"
+          # Define packages to check
+          $Packages = @(
+              @{
+                  Name = "Microsoft.Identity.Client"
+                  VersionFile = "MSAL_VERSION.txt"
+              },
+              @{
+                  Name = "Microsoft.Identity.Client.Extensions.Msal"
+                  VersionFile = "MSAL_Extensions_VERSION.txt"
+              },
+              @{
+                  Name = "Microsoft.Identity.Client.NativeInterop"
+                  VersionFile = "MSAL_NativeInterop_VERSION.txt"
+              }
+              @{
+                  Name = "Microsoft.Identity.Client.Broker"
+                  VersionFile = "MSAL_Broker_VERSION.txt"
+              },
+              @{
+                  Name = "Microsoft.Identity.Abstractions"
+                  VersionFile = "MSAL_Abstractions_VERSION.txt"
+              }
+          )
+
+          # Set initial defaults.
+          $LibPath = Join-Path -Path $env:GITHUB_WORKSPACE -ChildPath "DLLPickle\lib"
+          $UpdatesAvailable = $false
+          $UpdateSummary = @()
+
+          # Check each package version for updates.
+          foreach ($Package in $Packages) {
+              Write-Host "`n=== Checking $($Package.Name) ===" -ForegroundColor Cyan
+
+              # Get the current version in the module repository.
+              $CurrentVersionFile = Join-Path -Path $LibPath -ChildPath $Package.VersionFile
+              if (Test-Path $CurrentVersionFile) {
+                  $CurrentVersion = (Get-Content $CurrentVersionFile -Raw).Trim()
+              } else {
+                  $CurrentVersion = "0.0.0"
+              }
+              Write-Host "Current version: $CurrentVersion"
+
+              # Check the latest version from NuGet.
+              $NuGetUrl = "https://api.nuget.org/v3-registration5-semver1/$($Package.Name.ToLower())/index.json"
+              try {
+                  $Response = Invoke-RestMethod -Uri $NuGetUrl -ErrorAction Stop
+                  $LatestVersion = $Response.items[-1].upper
+                  Write-Host "Latest version: $LatestVersion"
+
+                  if ([version]$LatestVersion -gt [version]$CurrentVersion) {
+                      Write-Host "✓ Update available!" -ForegroundColor Green
+                      $UpdatesAvailable = $true
+                      $UpdateSummary += "$($Package.Name): $CurrentVersion → $LatestVersion"
+                  } else {
+                      Write-Host "Already up to date" -ForegroundColor Gray
+                  }
+              } catch {
+                  Write-Warning "Failed to check $($Package.Name): $_"
+              }
           }
 
-          Write-Host "Current MSAL version: $CurrentVersion"
-
-          # Check latest version from NuGet
-          $PackageName = "Microsoft.Identity.Client"
-          $NuGetUrl = "https://api.nuget.org/v3-registration5-semver1/$($PackageName.ToLower())/index.json"
-          $Response = Invoke-RestMethod -Uri $NuGetUrl
-          $LatestVersion = $Response.items[-1].upper
-          Write-Host "Latest MSAL version: $LatestVersion"
-
-          if ([version]$LatestVersion -gt [version]$CurrentVersion) {
-              Write-Host "Update available!"
-              "update_available=true" >> $env:GITHUB_OUTPUT
-              "latest_version=$LatestVersion" >> $env:GITHUB_OUTPUT
-              "current_version=$CurrentVersion" >> $env:GITHUB_OUTPUT
+          if ($UpdatesAvailable) {
+              "updates_available=true" >> $env:GITHUB_OUTPUT
+              $SummaryText = $UpdateSummary -join "; "
+              "update_summary=$SummaryText" >> $env:GITHUB_OUTPUT
           } else {
-              Write-Host "Already up to date"
-              "update_available=false" >> $env:GITHUB_OUTPUT
+              "updates_available=false" >> $env:GITHUB_OUTPUT
           }
 
-      - name: Download and extract MSAL
-        if: steps.check_msal.outputs.update_available == 'true'
+      - name: Download and extract packages
+        if: steps.check_packages.outputs.updates_available == 'true'
         shell: pwsh
         run: |
-          $LatestVersion = "${{ steps.check_msal.outputs.latest_version }}"
-          $PackageName = "Microsoft.Identity.Client"
-          $DownloadUrl = "https://www.nuget.org/api/v2/package/$PackageName/$LatestVersion"
+          # Define packages to update
+          $Packages = @(
+              @{
+                  Name = "Microsoft.Identity.Client"
+                  VersionFile = "MSAL_VERSION.txt"
+              },
+              @{
+                  Name = "Microsoft.Identity.Client.Extensions.Msal"
+                  VersionFile = "MSAL_Extensions_VERSION.txt"
+              },
+              @{
+                  Name = "Microsoft.Identity.Client.NativeInterop"
+                  VersionFile = "MSAL_NativeInterop_VERSION.txt"
+              }
+              @{
+                  Name = "Microsoft.Identity.Client.Broker"
+                  VersionFile = "MSAL_Broker_VERSION.txt"
+              },
+              @{
+                  Name = "Microsoft.Identity.Abstractions"
+                  VersionFile = "MSAL_Abstractions_VERSION.txt"
+              }
+          )
+
+          $LibPath = Join-Path -Path $env:GITHUB_WORKSPACE -ChildPath "DLLPickle\lib"
+          New-Item -ItemType Directory -Path $LibPath -Force | Out-Null
 
           # Create temp directory
           $TempDir = Join-Path $env:TEMP "msal_update"
+          if (Test-Path $TempDir) {
+              Remove-Item $TempDir -Recurse -Force
+          }
           New-Item -ItemType Directory -Path $TempDir -Force | Out-Null
 
-          # Download package
-          $NupkgPath = Join-Path $TempDir "$PackageName.$LatestVersion.nupkg"
-          Invoke-WebRequest -Uri $DownloadUrl -OutFile $NupkgPath
+          foreach ($Package in $Packages) {
+              Write-Host "`n=== Processing $($Package.Name) ===" -ForegroundColor Cyan
 
-          # Extract (nupkg is just a zip)
-          $ExtractPath = Join-Path $TempDir "extracted"
-          Expand-Archive -Path $NupkgPath -DestinationPath $ExtractPath -Force
+              # Get current version
+              $CurrentVersionFile = Join-Path -Path $LibPath -ChildPath $Package.VersionFile
+              if (Test-Path $CurrentVersionFile) {
+                  $CurrentVersion = (Get-Content $CurrentVersionFile -Raw).Trim()
+              } else {
+                  $CurrentVersion = "0.0.0"
+              }
 
-          # Copy DLLs to your module's lib folder
-          $LibPath = Join-Path $env:GITHUB_WORKSPACE "DLLPickle/lib"
-          New-Item -ItemType Directory -Path $LibPath -Force | Out-Null
+              # Get latest version
+              $NuGetUrl = "https://api.nuget.org/v3-registration5-semver1/$($Package.Name.ToLower())/index.json"
+              try {
+                  $Response = Invoke-RestMethod -Uri $NuGetUrl -ErrorAction Stop
+                  $LatestVersion = $Response.items[-1].upper
 
-          # Copy .NET Standard 2.0 DLLs (or your target framework)
-          $SourceDlls = Join-Path $ExtractPath "lib\netstandard2.0\*.dll"
-          Copy-Item -Path $SourceDlls -Destination $LibPath -Force
+                  if ([version]$LatestVersion -gt [version]$CurrentVersion) {
+                      Write-Host "Downloading version $LatestVersion..."
 
-          # Save version info
-          $LatestVersion | Set-Content -Path (Join-Path -Path $LibPath -ChildPath "MSAL_VERSION.txt") -NoNewline
+                      # Download package
+                      $DownloadUrl = "https://www.nuget.org/api/v2/package/$($Package.Name)/$LatestVersion"
+                      $NupkgPath = Join-Path $TempDir "$($Package.Name).$LatestVersion.nupkg"
+                      Invoke-WebRequest -Uri $DownloadUrl -OutFile $NupkgPath -ErrorAction Stop
 
-          Write-Host "MSAL $LatestVersion extracted successfully"
+                      # Extract (nupkg is just a zip)
+                      $ExtractPath = Join-Path $TempDir "$($Package.Name)_extracted"
+                      Expand-Archive -Path $NupkgPath -DestinationPath $ExtractPath -Force
+
+                      # Try multiple framework paths in order of preference
+                      $FrameworkPaths = @(
+                          "lib\netstandard2.0\*.dll",
+                          "lib\netstandard2.1\*.dll",
+                          "lib\net6.0\*.dll",
+                          "lib\net472\*.dll",
+                          "runtimes\win\lib\netstandard2.0\*.dll",
+                          "runtimes\win\lib\net6.0\*.dll"
+                      )
+
+                      $DllsCopied = $false
+                      foreach ($FwPath in $FrameworkPaths) {
+                          $SourceDlls = Join-Path $ExtractPath $FwPath
+                          $DllFiles = Get-Item $SourceDlls -ErrorAction SilentlyContinue
+                          if ($DllFiles) {
+                              Write-Host "Copying DLLs from $FwPath..."
+                              Copy-Item -Path $SourceDlls -Destination $LibPath -Force
+                              $DllsCopied = $true
+                              break
+                          }
+                      }
+
+                      if (-not $DllsCopied) {
+                          Write-Warning "No compatible DLLs found for $($Package.Name)"
+                      } else {
+                          # Save version info
+                          $LatestVersion | Set-Content -Path (Join-Path -Path $LibPath -ChildPath $Package.VersionFile) -NoNewline
+                          Write-Host "✓ $($Package.Name) $LatestVersion extracted successfully" -ForegroundColor Green
+                      }
+                  } else {
+                      Write-Host "Already up to date" -ForegroundColor Gray
+                  }
+              } catch {
+                  Write-Warning "Failed to process $($Package.Name): $_"
+              }
+          }
+
+          # Cleanup temp directory
+          if (Test-Path $TempDir) {
+              Remove-Item $TempDir -Recurse -Force
+          }
 
       - name: Update module manifest
         id: update_module_manifest
-        if: steps.check_msal.outputs.update_available == 'true'
+        if: steps.check_packages.outputs.updates_available == 'true'
         shell: pwsh
         run: |
-          $ManifestPath = Join-Path -Path $env:GITHUB_WORKSPACE -ChildPath "DLLPickle/DLLpickle.psd1"
+          $ManifestPath = Join-Path -Path $env:GITHUB_WORKSPACE -ChildPath "DLLPickle\DLLPickle.psd1"
 
           # Read current manifest
           $Manifest = Import-PowerShellDataFile -Path $ManifestPath
@@ -105,29 +222,32 @@ jobs:
           "new_module_version=$NewModuleVersion" >> $env:GITHUB_OUTPUT
 
       - name: Commit and push changes
-        if: steps.check_msal.outputs.update_available == 'true'
+        if: steps.check_packages.outputs.updates_available == 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add DLLPickle/lib/* DLLPickle/DLLPickle.psd1
-          git commit -m "Update MSAL to version ${{ steps.check_msal.outputs.latest_version }}"
+          git commit -m "Update MSAL packages: ${{ steps.check_packages.outputs.update_summary }}"
           git push
 
       - name: Create GitHub Release
-        if: steps.check_msal.outputs.update_available == 'true'
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        if: steps.check_packages.outputs.updates_available == 'true'
+        uses: softprops/action-gh-release@v1
         with:
-          tag_name: v${{ steps.job.outputs.new_module_version }}
-          release_name: Release v${{ steps.job.outputs.new_module_version }}
+          tag_name: v${{ steps.update_module_manifest.outputs.new_module_version }}
+          name: Release v${{ steps.update_module_manifest.outputs.new_module_version }}
           body: |
-            Updated MSAL dependency from ${{ steps.check_msal.outputs.current_version }} to ${{ steps.check_msal.outputs.latest_version }}
+            ## MSAL Package Updates
+
+            ${{ steps.check_packages.outputs.update_summary }}
+
+            This release includes updated MSAL dependencies to ensure compatibility and security.
           draft: false
           prerelease: false
+          token: ${{ secrets.GITHUB_TOKEN }}
 
 #      - name: Publish to PowerShell Gallery
-#        if: steps.check_msal.outputs.update_available == 'true'
+#        if: steps.check_packages.outputs.updates_available == 'true'
 #        shell: pwsh
 #        run: |
 #          Publish-Module -Path . -NuGetApiKey ${{ secrets.PSGALLERY_API_KEY }}
