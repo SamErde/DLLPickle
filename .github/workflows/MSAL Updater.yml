@@ -38,8 +38,7 @@ jobs:
           $PackageName = "Microsoft.Identity.Client"
           $NuGetUrl = "https://api.nuget.org/v3-registration5-semver1/$($PackageName.ToLower())/index.json"
           $Response = Invoke-RestMethod -Uri $NuGetUrl
-          $LatestVersion = $Response.items[-1].items[-1].catalogEntry.version
-
+          $LatestVersion = $Response.items[-1].upper
           Write-Host "Latest MSAL version: $LatestVersion"
 
           if ([version]$LatestVersion -gt [version]$CurrentVersion) {
