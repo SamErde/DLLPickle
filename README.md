@@ -14,4 +14,3 @@ Several Microsoft modules include the file **Microsoft.Identity.Client.dll** as 
 - MicrosoftTeams
 
 [![NuGet](https://img.shields.io/nuget/v/microsoft.identity.client.svg?style=flat-square&label=nuget&colorB=00b200)](https://www.nuget.org/packages/Microsoft.Identity.Client/)
-[![GitHub](https://img.shields.io/github/v/microsoft.identity.client.svg?style=flat-square&label=github&colorB=00b200)](https://github.com/AzureAD/microsoft-authentication-library-for-dotnet)
