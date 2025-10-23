@@ -1,6 +1,3 @@
-# Initialize module-scope variable
-$script:MsalLoadContext = $null
-
 # Dot-source public/private functions.
 $Public  = @(Get-ChildItem -Path (Join-Path -Path $PSScriptRoot -ChildPath 'Public/*.ps1')  -Recurse -ErrorAction Stop)
 $Private = @(Get-ChildItem -Path (Join-Path -Path $PSScriptRoot -ChildPath 'Private/*.ps1') -Recurse -ErrorAction Stop)
@@ -12,16 +9,19 @@ foreach ($Import in @($Public + $Private)) {
     }
 }
 
+# Export public functions for the user.
 Export-ModuleMember -Function $Public.Basename
 
 # Load the assembly on module import. In PowerShell 7+, use Assembly Load Context (ALC) to avoid conflicts.
 try {
     if ($PSVersionTable.PSVersion.Major -ge 7) {
-        Write-Verbose 'PS7+ detected. Using AssemblyLoadContext' -Verbose
+        Write-Verbose 'PS7+ detected. Using AssemblyLoadContext'
+        # Initialize module-scope variable
+        $script:MsalLoadContext = $null
         $script:MsalLoadContext = Add-MsalAssembly  -ModuleRoot $PSScriptRoot
-        Write-Verbose "MsalLoadContext: $($script:MsalLoadContext)" -Verbose
+        Write-Verbose "MsalLoadContext: $($script:MsalLoadContext)"
     } else {
-        Write-Verbose 'PS 5.1 Detected. Using Add-Type' -Verbose
+        Write-Verbose 'PS 5.1 Detected. Using Add-Type'
         $MsalDllPath = Join-Path $PSScriptRoot 'lib\Microsoft.Identity.Client.dll'
         Add-Type -Path $MsalDllPath
     }
@@ -30,16 +30,19 @@ try {
 }
 
 # Unload the assembly on module removal (ALC requires PS 7 or higher).
-$MyInvocation.MyCommand.ScriptBlock.Module.OnRemove = {
-    if ($PSVersionTable.PSVersion.Major -ge 7) {
-        # Access the module's script scope variable directly
-        if ($null -ne $script:MsalLoadContext) {
+if ($PSVersionTable.PSVersion.Major -ge 7) {
+    # The OnRemove script block will form a closure, capturing the current
+    # value of $script:MsalLoadContext. This ensures that the AssemblyLoadContext
+    # object is available when the module is removed.
+    $capturedContext = $script:MsalLoadContext
+    $MyInvocation.MyCommand.ScriptBlock.Module.OnRemove = {
+        if ($null -ne $capturedContext) {
             try {
-                $ContextName = $script:MsalLoadContext.Name
-                $script:MsalLoadContext.Unload()
-                $script:MsalLoadContext = $null
+                $ContextName = $capturedContext.Name
+                $capturedContext.Unload()
+                $capturedContext = $null # Release the reference held by the closure
 
-                # Force garbage collection
+                # Force garbage collection to promptly unload the DLLs.
                 [System.GC]::Collect()
                 [System.GC]::WaitForPendingFinalizers()
                 [System.GC]::Collect()
