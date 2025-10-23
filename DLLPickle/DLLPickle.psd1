@@ -69,9 +69,10 @@ FormatsToProcess = 'DLLPickle.Format.ps1xml'
 # NestedModules = @()
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
-FunctionsToExport = 'Get-ModuleImportCandidate', 'Get-ModuleImportOrder', 
-               'Get-ModulesWithDependency', 
-               'Get-ModulesWithVersionSortedIdentityClient'
+FunctionsToExport = 'Get-ModuleImportCandidate', 'Get-ModuleImportOrder',
+                    'Get-ModulesWithDependency',
+                    'Get-ModulesWithVersionSortedIdentityClient',
+                    'Add-MsalAssembly', 'Remove-MsalAssembly'
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
 CmdletsToExport = @()
@@ -122,13 +123,12 @@ PrivateData = @{
 
     } # End of PSData hashtable
 
- } # End of PrivateData hashtable
+} # End of PrivateData hashtable
 
 # HelpInfo URI of this module
 HelpInfoURI = 'https://day3bits.com/DLLPickle'
 
 # Default prefix for commands exported from this module. Override the default prefix using Import-Module -Prefix.
-# DefaultCommandPrefix = ''
+# DefaultCommandPrefix = 'DP'
 
 }
-
