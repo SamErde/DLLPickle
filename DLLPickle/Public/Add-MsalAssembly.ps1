@@ -1,53 +1,51 @@
-﻿# Global variable to store the load context
-$script:MsalLoadContext = $null
-
-function Add-MsalAssembly {
+﻿function Add-MsalAssembly {
     <#
     .SYNOPSIS
-    Loads the MSAL assembly into a custom AssemblyLoadContext.
+        Loads the MSAL assembly into a custom AssemblyLoadContext.
 
     .DESCRIPTION
-    Loads Microsoft.Identity.Client.dll into an isolated load context
-    that can be unloaded later. Requires PowerShell 7.0 or higher.
+        Loads Microsoft.Identity.Client.dll into an isolated load context
+        that can be unloaded later. Requires PowerShell 7.0 or higher.
+
+    .PARAMETER ModuleRoot
+        The root path of the module containing the 'lib' folder with the MSAL DLLs.
 
     .EXAMPLE
-    Add-MsalAssembly
+        Add-MsalAssembly -ModuleRoot $PSScriptRoot
 
-    Loads the MSAL assembly into a custom AssemblyLoadContext.
+        Loads the MSAL assembly into a custom AssemblyLoadContext.
     #>
     [CmdletBinding()]
-    param()
+    param(
+        [string]$ModuleRoot = (Join-Path -Path $PSScriptRoot -ChildPath '..')
+    )
 
     if ($PSVersionTable.PSVersion.Major -lt 7) {
-        throw "AssemblyLoadContext requires PowerShell 7.0 or higher. Current version: $($PSVersionTable.PSVersion)"
-    }
-
-    if ($null -ne $script:MsalLoadContext) {
-        Write-Warning 'MSAL assembly is already loaded.'
-        return
+        throw 'AssemblyLoadContext requires PowerShell 7.0 or higher.'
     }
 
     try {
-        $MsalDllPath = Join-Path $PSScriptRoot '..\lib\Microsoft.Identity.Client.dll'
+        $LibPath = Join-Path $ModuleRoot 'lib'
 
-        if (-not (Test-Path $MsalDllPath)) {
-            throw "MSAL DLL not found at: $MsalDllPath"
+        if (-not (Test-Path $LibPath)) {
+            throw "Lib folder not found at: $LibPath"
         }
 
         # Create a collectible AssemblyLoadContext
-        $script:MsalLoadContext = [System.Runtime.Loader.AssemblyLoadContext]::new('MsalContext', $true)
+        $LoadContext = [System.Runtime.Loader.AssemblyLoadContext]::new('MsalContext', $true)
 
-        # Load the assembly into the custom context
-        $Assembly = $script:MsalLoadContext.LoadFromAssemblyPath($MsalDllPath)
+        # Load ALL MSAL-related DLLs
+        $AllDlls = Get-ChildItem -Path (Join-Path $LibPath '*.dll')
+        foreach ($Dll in $AllDlls) {
+            Write-Verbose "Loading: $($Dll.Name)"
+            $null = $LoadContext.LoadFromAssemblyPath($Dll.FullName)
+        }
 
-        Write-Verbose "Loaded MSAL assembly: $($Assembly.FullName)"
-        Write-Verbose "Assembly location: $($Assembly.Location)"
+        Write-Verbose "Loaded $($AllDlls.Count) MSAL assemblies into AssemblyLoadContext"
 
-        # Make types available in the current scope by returning the assembly
-        return $Assembly
+        return $LoadContext
     } catch {
-        Write-Error "Failed to load MSAL assembly: $_"
-        $script:MsalLoadContext = $null
+        Write-Error "Failed to load MSAL assemblies: $_"
         throw
     }
 }
