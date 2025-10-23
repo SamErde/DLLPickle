@@ -4,8 +4,7 @@
         Unloads the MSAL assembly from memory.
 
     .DESCRIPTION
-        Unloads the MSAL AssemblyLoadContext and triggers garbage collection
-        to free memory. Requires PowerShell 7.0 or higher.
+        Unloads the MSAL AssemblyLoadContext and triggers garbage collection to free memory. Requires PowerShell 7.0 or higher.
 
     .EXAMPLE
         Remove-MsalAssembly
@@ -13,8 +12,7 @@
         Unloads the MSAL assembly from memory.
 
     .NOTES
-        Unloading may not happen immediately. The GC will unload when all
-        references to types from the assembly are released.
+        Unloading may not happen immediately. The GC will unload when all references to types from the assembly are released.
     #>
     [CmdletBinding()]
     param()
@@ -29,16 +27,10 @@
     }
 
     try {
-        # Get the context name before unloading
         $ContextName = $script:MsalLoadContext.Name
-
-        # Unload the context
         $script:MsalLoadContext.Unload()
-
-        # Clear the reference
         $script:MsalLoadContext = $null
 
-        # Force garbage collection to actually unload the assembly
         [System.GC]::Collect()
         [System.GC]::WaitForPendingFinalizers()
         [System.GC]::Collect()
