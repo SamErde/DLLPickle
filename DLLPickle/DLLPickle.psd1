@@ -98,7 +98,7 @@ PrivateData = @{
     PSData = @{
 
         # Tags applied to this module. These help with module discovery in online galleries.
-        Tags = 'DLL','MSAL','PowerShell','Windows','Linux','macOS','Microsoft Graph','Azure','SharePoint','Teams','Microsoft 365','Exchange Online'
+        Tags = 'MSAL','PowerShell','Windows','Linux','macOS','Microsoft-Graph','Azure','SharePoint','Teams','Microsoft-365','Exchange-Online'
 
         # A URL to the license for this module.
         LicenseUri = 'https://github.com/SamErde/DLLPickle/blob/main/LICENSE'
@@ -132,4 +132,5 @@ HelpInfoURI = 'https://day3bits.com/DLLPickle'
 # DefaultCommandPrefix = ''
 
 }
+
 
