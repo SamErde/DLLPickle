@@ -26,7 +26,12 @@
       "shell": {
         // "executable": "powershell.exe",
         "executable": "pwsh.exe",
-        "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command"]
+        "args": [
+          "-NoProfile",
+          "-ExecutionPolicy",
+          "Bypass",
+          "-Command"
+        ]
       }
     }
   },
@@ -34,7 +39,10 @@
     "options": {
       "shell": {
         "executable": "/usr/bin/pwsh",
-        "args": ["-NoProfile", "-Command"]
+        "args": [
+          "-NoProfile",
+          "-Command"
+        ]
       }
     }
   },
@@ -42,7 +50,10 @@
     "options": {
       "shell": {
         "executable": "/usr/local/bin/pwsh",
-        "args": ["-NoProfile", "-Command"]
+        "args": [
+          "-NoProfile",
+          "-Command"
+        ]
       }
     }
   },

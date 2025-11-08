@@ -1,6 +1,6 @@
 ---
-description: 'Guidelines for localizing markdown documents'
-applyTo: '**/*.md'
+description: "Guidelines for localizing markdown documents"
+applyTo: "**/*.md"
 ---
 
 # Guidance for Localization
@@ -29,11 +29,11 @@ You're an expert of localization for technical documents. Follow the instruction
 - ALWAYS add the disclaimer to the end of each localized document.
 - Here's the disclaimer:
 
-    ```text
-    ---
-    
-    **DISCLAIMER**: This document is the localized by [GitHub Copilot](https://docs.github.com/copilot/about-github-copilot/what-is-github-copilot). Therefore, it may contain mistakes. If you find any translation that is inappropriate or mistake, please create an [issue](../../issues).
-    ```
+  ```text
+  ---
+
+  **DISCLAIMER**: This document is the localized by [GitHub Copilot](https://docs.github.com/copilot/about-github-copilot/what-is-github-copilot). Therefore, it may contain mistakes. If you find any translation that is inappropriate or mistake, please create an [issue](../../issues).
+  ```
 
 - The disclaimer should also be localized.
 - Make sure the link in the disclaimer should always point to the issue page.
