@@ -1,17 +1,17 @@
-[cmdletbinding(DefaultParameterSetName = 'Task')]
+[CmdletBinding(DefaultParameterSetName = 'Task')]
 param(
     # Build task(s) to execute
-    [parameter(ParameterSetName = 'task', position = 0)]
+    [Parameter(ParameterSetName = 'Task', Position = 0)]
     [ArgumentCompleter( {
         param($Command, $Parameter, $WordToComplete, $CommandAst, $FakeBoundParams)
-        $psakeFile = './psakeFile.ps1'
+    $PsakeFile = './psakeFile.ps1'
         switch ($Parameter) {
             'Task' {
                 if ([string]::IsNullOrEmpty($WordToComplete)) {
-                    Get-PSakeScriptTasks -buildFile $psakeFile | Select-Object -ExpandProperty Name
+                    Get-PSakeScriptTasks -buildFile $PsakeFile | Select-Object -ExpandProperty Name
                 }
                 else {
-                    Get-PSakeScriptTasks -buildFile $psakeFile |
+                    Get-PSakeScriptTasks -buildFile $PsakeFile |
                         Where-Object { $_.Name -match $WordToComplete } |
                         Select-Object -ExpandProperty Name
                 }
@@ -26,7 +26,7 @@ param(
     [switch]$Bootstrap,
 
     # List available build tasks
-    [parameter(ParameterSetName = 'Help')]
+    [Parameter(ParameterSetName = 'Help')]
     [switch]$Help,
 
     # Optional properties to pass to psake
@@ -54,12 +54,12 @@ if ($Bootstrap.IsPresent) {
 }
 
 # Execute psake task(s)
-$psakeFile = './psakeFile.ps1'
+$PsakeFile = './psakeFile.ps1'
 if ($PSCmdlet.ParameterSetName -eq 'Help') {
-    Get-PSakeScriptTasks -buildFile $psakeFile |
+    Get-PSakeScriptTasks -buildFile $PsakeFile |
         Format-Table -Property Name, Description, Alias, DependsOn
 } else {
     Set-BuildEnvironment -Force
-    Invoke-psake -buildFile $psakeFile -taskList $Task -nologo -properties $Properties -parameters $Parameters
+    Invoke-psake -buildFile $PsakeFile -taskList $Task -nologo -properties $Properties -parameters $Parameters
     exit ([int](-not $psake.build_success))
 }

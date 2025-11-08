@@ -1,36 +1,36 @@
 BeforeAll {
 
-    Set-StrictMode -Version latest
+    Set-StrictMode -Version Latest
 
     # Make sure MetaFixers.psm1 is loaded - it contains Get-TextFilesList
     Import-Module -Name (Join-Path -Path $PSScriptRoot -ChildPath 'MetaFixers.psm1') -Verbose:$false -Force
 
-    $projectRoot = $ENV:BHProjectPath
-    if (-not $projectRoot) {
-        $projectRoot = $PSScriptRoot
+    $ProjectRoot = $ENV:BHProjectPath
+    if (-not $ProjectRoot) {
+        $ProjectRoot = $PSScriptRoot
     }
 
-    $allTextFiles      = Get-TextFilesList $projectRoot
-    $unicodeFilesCount = 0
-    $totalTabsCount    = 0
-    foreach ($textFile in $allTextFiles) {
-        if (Test-FileUnicode $textFile) {
-            $unicodeFilesCount++
+    $AllTextFiles      = Get-TextFilesList $ProjectRoot
+    $UnicodeFilesCount = 0
+    $TotalTabsCount    = 0
+    foreach ($TextFile in $AllTextFiles) {
+        if (Test-FileUnicode $TextFile) {
+            $UnicodeFilesCount++
             Write-Warning (
-                "File $($textFile.FullName) contains 0x00 bytes." +
+                "File $($TextFile.FullName) contains 0x00 bytes." +
                 " It probably uses Unicode/UTF-16 and needs to be converted to UTF-8." +
                 " Use Fixer 'Get-UnicodeFilesList `$pwd | ConvertTo-UTF8'."
             )
         }
-        $unicodeFilesCount | Should -Be 0
+        $UnicodeFilesCount | Should -Be 0
 
-        $fileName = $textFile.FullName
-        (Get-Content $fileName -Raw) | Select-String "`t" | Foreach-Object {
+        $FileName = $TextFile.FullName
+        (Get-Content $FileName -Raw) | Select-String "`t" | ForEach-Object {
             Write-Warning (
-                "There are tabs in $fileName." +
+                "There are tabs in $FileName." +
                 " Use Fixer 'Get-TextFilesList `$pwd | ConvertTo-SpaceIndentation'."
             )
-            $totalTabsCount++
+            $TotalTabsCount++
         }
     }
 }
@@ -38,13 +38,13 @@ BeforeAll {
 Describe 'Text files formatting' {
     Context 'File encoding' {
         It "No text file uses Unicode/UTF-16 encoding" {
-            $unicodeFilesCount | Should -Be 0
+            $UnicodeFilesCount | Should -Be 0
         }
     }
 
     Context 'Indentations' {
         It "No text file use tabs for indentations" {
-            $totalTabsCount | Should -Be 0
+            $TotalTabsCount | Should -Be 0
         }
     }
 }

@@ -34,13 +34,13 @@ if ($PSVersionTable.PSVersion.Major -ge 7) {
     # The OnRemove script block will form a closure, capturing the current
     # value of $script:MsalLoadContext. This ensures that the AssemblyLoadContext
     # object is available when the module is removed.
-    $capturedContext = $script:MsalLoadContext
+    $CapturedContext = $script:MsalLoadContext
     $MyInvocation.MyCommand.ScriptBlock.Module.OnRemove = {
-        if ($null -ne $capturedContext) {
+        if ($null -ne $CapturedContext) {
             try {
-                $ContextName = $capturedContext.Name
-                $capturedContext.Unload()
-                Remove-Variable capturedContext -ErrorAction SilentlyContinue
+                $ContextName = $CapturedContext.Name
+                $CapturedContext.Unload()
+                Remove-Variable CapturedContext -ErrorAction SilentlyContinue
 
                 # Force garbage collection to promptly unload the DLLs.
                 [System.GC]::Collect()

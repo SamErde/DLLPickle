@@ -4,10 +4,10 @@
     This module helps fix problems, found by Meta.Tests.ps1
 #>
 
-$ErrorActionPreference = 'stop'
-Set-StrictMode -Version latest
+$ErrorActionPreference = 'Stop'
+Set-StrictMode -Version Latest
 
-function ConvertTo-UTF8() {
+function ConvertTo-Utf8() {
     [CmdletBinding()]
     [OutputType([void])]
     param(
@@ -16,8 +16,8 @@ function ConvertTo-UTF8() {
     )
 
     process {
-        $content = Get-Content -Raw -Encoding Unicode -Path $FileInfo.FullName
-        [System.IO.File]::WriteAllText($FileInfo.FullName, $content, [System.Text.Encoding]::UTF8)
+        $Content = Get-Content -Raw -Encoding Unicode -Path $FileInfo.FullName
+        [System.IO.File]::WriteAllText($FileInfo.FullName, $Content, [System.Text.Encoding]::UTF8)
     }
 }
 
@@ -30,8 +30,8 @@ function ConvertTo-SpaceIndentation() {
     )
 
     process {
-        $content = (Get-Content -Raw -Path $FileInfo.FullName) -replace "`t", '    '
-        [IO.File]::WriteAllText($FileInfo.FullName, $content)
+        $Content = (Get-Content -Raw -Path $FileInfo.FullName) -replace "`t", '    '
+        [IO.File]::WriteAllText($FileInfo.FullName, $Content)
     }
 }
 
@@ -44,12 +44,12 @@ function Get-TextFilesList {
     )
 
     begin {
-        $txtFileExtentions = @('.gitignore', '.gitattributes', '.ps1', '.psm1', '.psd1', '.json', '.xml', '.cmd', '.mof')
+        $TxtFileExtensions = @('.gitignore', '.gitattributes', '.ps1', '.psm1', '.psd1', '.json', '.xml', '.cmd', '.mof')
     }
 
     process {
         Get-ChildItem -Path $Root -File -Recurse |
-            Where-Object { $_.Extension -in $txtFileExtentions }
+            Where-Object { $_.Extension -in $TxtFileExtensions }
     }
 }
 
@@ -62,9 +62,9 @@ function Test-FileUnicode {
     )
 
     process {
-        $bytes     = [IO.File]::ReadAllBytes($FileInfo.FullName)
-        $zeroBytes = @($bytes -eq 0)
-        return [bool]$zeroBytes.Length
+        $Bytes     = [IO.File]::ReadAllBytes($FileInfo.FullName)
+        $ZeroBytes = @($Bytes -eq 0)
+        return [bool]$ZeroBytes.Length
     }
 }
 
@@ -76,5 +76,5 @@ function Get-UnicodeFilesList() {
         [string]$Root
     )
 
-    $root | Get-TextFilesList | Where-Object { Test-FileUnicode $_ }
+    $Root | Get-TextFilesList | Where-Object { Test-FileUnicode $_ }
 }

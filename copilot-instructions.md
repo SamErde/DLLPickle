@@ -1,4 +1,5 @@
 # PowerShell Coding Standards
+
 - Always use approved PowerShell verbs for function names (get, set, new, start, remove, update, etc.)
 - Use Pascal case for all function names, variables, and parameters
 - Follow OTBS (One True Brace Style) formatting
@@ -8,16 +9,19 @@
 - Always include comment-based help for functions
 
 # General Coding Guidelines
+
 - Always add meaningful comments for complex logic
 - Prefer explicit error handling over silent failures
 - Include unit tests for all new functions
 
 # Response Preferences
+
 - Include brief explanations of why a particular approach is recommended
 - When suggesting refactoring, explain the benefits
 - Provide both the solution and alternative approaches when applicable
 
 # Security Guidelines
+
 - Never hardcode credentials or API keys
 - Always validate input parameters
 - Implement proper authentication and authorization checks
@@ -32,6 +36,7 @@ Follow the GitMoji specifications at <https://conventional-emoji-commits.site/fu
 commit messages. Tailor commit messages for PowerShell development, using the provided types and scopes.
 
 ## PowerShell-Specific Types:
+
 - feat: ✨ New cmdlet, function, or module feature
 - fix: 🐛 Bug fix in PowerShell code
 - docs: 📚 Help documentation, comment-based help
@@ -47,6 +52,7 @@ commit messages. Tailor commit messages for PowerShell development, using the pr
 - security: 🔒 Security-related changes, input validation, authentication
 
 ## PowerShell Scopes:
+
 - module: Module-level changes
 - cmdlet: Specific cmdlet modifications
 - function: Function updates
@@ -55,6 +61,7 @@ commit messages. Tailor commit messages for PowerShell development, using the pr
 - tests: Test-related changes
 
 ## Examples:
+
 ✨ feat(cmdlet): add Get-UserProfile with parameter validation
 🐛 fix(function): resolve Invoke-ApiCall error handling
 📚 docs(help): update comment-based help for Set-Configuration
