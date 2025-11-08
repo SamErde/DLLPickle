@@ -85,11 +85,11 @@ AliasesToExport = @()
 
 # List of all files packaged with this module
 FileList = @(
-    'Microsoft.Identity.Abstractions.dll',
-    'Microsoft.Identity.Client.dll',
-    'Microsoft.Identity.Client.Broker.dll',
-    'Microsoft.Identity.Client.Extensions.Msal.dll',
-    'Microsoft.Identity.Client.NativeInterop.dll'
+    'lib/Microsoft.Identity.Abstractions.dll',
+    'lib/Microsoft.Identity.Client.dll',
+    'lib/Microsoft.Identity.Client.Broker.dll',
+    'lib/Microsoft.Identity.Client.Extensions.Msal.dll',
+    'lib/Microsoft.Identity.Client.NativeInterop.dll'
 )
 
 # Private data to pass to the module specified in RootModule/ModuleToProcess. This may also contain a PSData hashtable with additional module metadata used by PowerShell.
@@ -132,3 +132,4 @@ HelpInfoURI = 'https://day3bits.com/DLLPickle'
 # DefaultCommandPrefix = ''
 
 }
+
