@@ -13,4 +13,5 @@ Several Microsoft modules include the file **Microsoft.Identity.Client.dll** as 
 - Microsoft.Graph.Authentication
 - MicrosoftTeams
 
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/13786296d31742c793f79d81efa32de4)](https://app.codacy.com/gh/SamErde/DLLPickle?utm_source=github.com&utm_medium=referral&utm_content=SamErde/DLLPickle&utm_campaign=Badge_Grade)
 [![NuGet](https://img.shields.io/nuget/v/microsoft.identity.client.svg?style=flat-square&label=nuget&colorB=00b200)](https://www.nuget.org/packages/Microsoft.Identity.Client/)
