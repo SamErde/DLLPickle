@@ -13,7 +13,7 @@ Loads the MSAL assembly into a custom AssemblyLoadContext.
 ## SYNTAX
 
 ```
-Add-MsalAssembly [-ProgressAction <ActionPreference>] [<CommonParameters>]
+Add-MsalAssembly [[-ModuleRoot] <String>] [-ProgressAction <ActionPreference>] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -31,6 +31,21 @@ PS C:\> {{ Add example code here }}
 {{ Add example description here }}
 
 ## PARAMETERS
+
+### -ModuleRoot
+The root path of the module containing the 'lib' folder with the MSAL DLLs.
+
+```yaml
+Type: String
+Parameter Sets: (All)
+Aliases:
+
+Required: False
+Position: 1
+Default value: None
+Accept pipeline input: False
+Accept wildcard characters: False
+```
 
 ### -ProgressAction
 {{ Fill ProgressAction Description }}
