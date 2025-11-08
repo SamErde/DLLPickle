@@ -1,5 +1,5 @@
 # Dot-source public/private functions.
-$Public  = @(Get-ChildItem -Path (Join-Path -Path $PSScriptRoot -ChildPath 'Public/*.ps1')  -Recurse -ErrorAction Stop)
+$Public = @(Get-ChildItem -Path (Join-Path -Path $PSScriptRoot -ChildPath 'Public/*.ps1') -Recurse -ErrorAction Stop)
 $Private = @(Get-ChildItem -Path (Join-Path -Path $PSScriptRoot -ChildPath 'Private/*.ps1') -Recurse -ErrorAction Stop)
 foreach ($Import in @($Public + $Private)) {
     try {
@@ -18,7 +18,7 @@ try {
         Write-Verbose 'PS7+ detected. Using AssemblyLoadContext'
         # Initialize module-scope variable
         $script:MsalLoadContext = $null
-        $script:MsalLoadContext = Add-MsalAssembly  -ModuleRoot $PSScriptRoot
+        $script:MsalLoadContext = Add-MsalAssembly -ModuleRoot $PSScriptRoot
         Write-Verbose "MsalLoadContext: $($script:MsalLoadContext)"
     } else {
         Write-Verbose 'PS 5.1 Detected. Using Add-Type'
@@ -29,7 +29,7 @@ try {
     Write-Error "Failed to load MSAL assembly: $_"
 }
 
-# Unload the assembly on module removal (ALC requires PS 7 or higher).
+# Unload the assembly on module removal (ALC requires PS 7 or higher). May not work yet.
 if ($PSVersionTable.PSVersion.Major -ge 7) {
     # The OnRemove script block will form a closure, capturing the current
     # value of $script:MsalLoadContext. This ensures that the AssemblyLoadContext
@@ -40,7 +40,7 @@ if ($PSVersionTable.PSVersion.Major -ge 7) {
             try {
                 $ContextName = $capturedContext.Name
                 $capturedContext.Unload()
-                $capturedContext = $null # Release the reference held by the closure
+                Remove-Variable capturedContext -ErrorAction SilentlyContinue
 
                 # Force garbage collection to promptly unload the DLLs.
                 [System.GC]::Collect()
