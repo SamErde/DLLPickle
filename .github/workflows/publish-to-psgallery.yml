@@ -1,0 +1,151 @@
+name: Publish to PowerShell Gallery
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+#    inputs:
+#      dry_run:
+#        description: 'Run in dry-run mode (do not actually publish)'
+#        required: false
+#        type: boolean
+#        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Publish Module to PowerShell Gallery
+    runs-on: ubuntu-latest
+    environment:
+      name: psgallery
+      url: https://www.powershellgallery.com/packages/DLLPickle
+
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@f4a75cfd619ee5ce8d5b864b0d183aff3c69b55a # v2.13.1
+        with:
+          egress-policy: audit
+
+      - name: Checkout code
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+
+      - name: Setup PowerShell Environment
+        shell: pwsh
+        run: |
+          Write-Host "PowerShell Version: $($PSVersionTable.PSVersion)"
+          Write-Host "Platform: $($PSVersionTable.Platform)"
+
+      - name: Validate Module Manifest
+        shell: pwsh
+        run: |
+          $manifestPath = './DLLPickle/DLLPickle.psd1'
+          Write-Host "Validating module manifest: $manifestPath"
+          $manifest = Test-ModuleManifest -Path $manifestPath -ErrorAction Stop
+
+          # Check if this is a prerelease
+          $manifestContent = Get-Content $manifestPath -Raw
+          if ($manifestContent -match "Prerelease\s*=\s*'([^']+)'") {
+            $prerelease = $Matches[1]
+            Write-Host "Prerelease tag: $prerelease"
+            Write-Host "Full version will be: $($manifest.Version)-$prerelease"
+          } else {
+            Write-Host "This is a stable release"
+          }
+
+      - name: Install Dependencies
+        shell: pwsh
+        run: |
+          Write-Host "Installing required modules..."
+          Install-Module -Name PowerShellGet -Force -Scope CurrentUser -AllowClobber
+          Import-Module PowerShellGet
+
+      - name: Publish Module to PowerShell Gallery
+        shell: pwsh
+        env:
+          PSGALLERY_API_KEY: ${{ secrets.PSGALLERY_API_KEY }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          # Verify API key is present
+          if ([string]::IsNullOrWhiteSpace($env:PSGALLERY_API_KEY)) {
+            Write-Error "PSGALLERY_API_KEY secret is not set. Please configure it in the repository settings."
+            exit 1
+          }
+
+          $modulePath = './DLLPickle'
+          $manifestPath = Join-Path $modulePath 'DLLPickle.psd1'
+
+          # Get module information
+          $manifest = Test-ModuleManifest -Path $manifestPath
+          $version = $manifest.Version
+
+          Write-Host "Preparing to publish module: $($manifest.Name)"
+          Write-Host "Version: $version"
+
+          # Prepare publish parameters
+          $publishParams = @{
+            Path        = $modulePath
+            NuGetApiKey = $env:PSGALLERY_API_KEY
+            Repository  = 'PSGallery'
+            Verbose     = $true
+            Force       = $true
+          }
+
+          Write-Host "Publishing module to PowerShell Gallery..." -ForegroundColor Green
+          try {
+            Publish-Module @publishParams
+            Write-Host ""
+            Write-Host "✓ Module published successfully!" -ForegroundColor Green
+            Write-Host "View at: https://www.powershellgallery.com/packages/$($manifest.Name)/$version"
+          }
+          catch {
+            Write-Error "Failed to publish module: $_"
+            Write-Host "Error details: $($_.Exception.Message)"
+            exit 1
+          }
+
+#      - name: Verify Publication
+#        shell: pwsh
+#        run: |
+#          Write-Host "Waiting 30 seconds for PowerShell Gallery to update..."
+#          Start-Sleep -Seconds 30
+#
+#          Write-Host "Verifying module is available in PowerShell Gallery..."
+#
+#          $moduleName = 'DLLPickle'
+#          $maxAttempts = 5
+#          $attempt = 1
+#          $found = $false
+#
+#          while ($attempt -le $maxAttempts -and -not $found) {
+#            Write-Host "Attempt $attempt of $maxAttempts..."
+#
+#            try {
+#              $module = Find-Module -Name $moduleName -ErrorAction Stop
+#              if ($module) {
+#                Write-Host "✓ Module found in PowerShell Gallery!" -ForegroundColor Green
+#                Write-Host "  Name: $($module.Name)"
+#                Write-Host "  Version: $($module.Version)"
+#                Write-Host "  Published: $($module.PublishedDate)"
+#                $found = $true
+#              }
+#            }
+#            catch {
+#              Write-Host "Module not yet visible in gallery, waiting..."
+#              if ($attempt -lt $maxAttempts) {
+#                Start-Sleep -Seconds 15
+#              }
+#            }
+#
+#            $attempt++
+#          }
+#
+#          if (-not $found) {
+#            $msg = "Module was not found in PowerShell Gallery after "
+#            $msg += "$maxAttempts attempts. This may be a temporary delay."
+#            Write-Warning $msg
+#            $url = "https://www.powershellgallery.com/packages/$moduleName"
+#            Write-Host "Check manually at: $url"
+#          }
