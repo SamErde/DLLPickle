@@ -89,7 +89,7 @@ jobs:
             Path        = $modulePath
             NuGetApiKey = $env:PSGALLERY_API_KEY
             Repository  = 'PSGallery'
-            Verbose     = $true
+            Verbose     = $false
             Force       = $true
           }
 
@@ -105,47 +105,3 @@ jobs:
             Write-Host "Error details: $($_.Exception.Message)"
             exit 1
           }
-
-#      - name: Verify Publication
-#        shell: pwsh
-#        run: |
-#          Write-Host "Waiting 30 seconds for PowerShell Gallery to update..."
-#          Start-Sleep -Seconds 30
-#
-#          Write-Host "Verifying module is available in PowerShell Gallery..."
-#
-#          $moduleName = 'DLLPickle'
-#          $maxAttempts = 5
-#          $attempt = 1
-#          $found = $false
-#
-#          while ($attempt -le $maxAttempts -and -not $found) {
-#            Write-Host "Attempt $attempt of $maxAttempts..."
-#
-#            try {
-#              $module = Find-Module -Name $moduleName -ErrorAction Stop
-#              if ($module) {
-#                Write-Host "✓ Module found in PowerShell Gallery!" -ForegroundColor Green
-#                Write-Host "  Name: $($module.Name)"
-#                Write-Host "  Version: $($module.Version)"
-#                Write-Host "  Published: $($module.PublishedDate)"
-#                $found = $true
-#              }
-#            }
-#            catch {
-#              Write-Host "Module not yet visible in gallery, waiting..."
-#              if ($attempt -lt $maxAttempts) {
-#                Start-Sleep -Seconds 15
-#              }
-#            }
-#
-#            $attempt++
-#          }
-#
-#          if (-not $found) {
-#            $msg = "Module was not found in PowerShell Gallery after "
-#            $msg += "$maxAttempts attempts. This may be a temporary delay."
-#            Write-Warning $msg
-#            $url = "https://www.powershellgallery.com/packages/$moduleName"
-#            Write-Host "Check manually at: $url"
-#          }
