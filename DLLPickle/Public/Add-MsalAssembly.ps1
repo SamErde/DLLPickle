@@ -17,11 +17,16 @@
     #>
     [CmdletBinding()]
     param(
-        [string]$ModuleRoot = (Join-Path -Path $PSScriptRoot -ChildPath '..')
+        [string]$ModuleRoot
     )
 
     if ($PSVersionTable.PSVersion.Major -lt 7) {
-        throw 'AssemblyLoadContext requires PowerShell 7.0 or higher.'
+        Write-Error 'AssemblyLoadContext requires PowerShell 7.0 or higher.'
+        return
+    }
+
+    if (-not $ModuleRoot) {
+        $ModuleRoot = (Join-Path -Path $PSScriptRoot -ChildPath '..')
     }
 
     try {
@@ -31,18 +36,19 @@
             throw "Lib folder not found at: $LibPath"
         }
 
-        # Create a collectible AssemblyLoadContext
-        $LoadContext = [System.Runtime.Loader.AssemblyLoadContext]::new('MsalContext', $true)
-
-        # Load ALL MSAL-related DLLs
-        $AllDlls = Get-ChildItem -Path (Join-Path $LibPath '*.dll')
-        foreach ($Dll in $AllDlls) {
-            Write-Verbose "Loading: $($Dll.Name)"
-            $null = $LoadContext.LoadFromAssemblyPath($Dll.FullName)
+        # Reuse existing AssemblyLoadContext if available and alive
+        if ($script:MsalLoadContext -and ($script:MsalLoadContext.IsAlive -eq $true)) {
+            Write-Verbose "Reusing existing MSAL AssemblyLoadContext"
+            return $script:MsalLoadContext
         }
+
+        # Create a collectible AssemblyLoadContext
+        $script:MsalLoadContext = [System.Runtime.Loader.AssemblyLoadContext]::new('MsalContext', $true)
+        $LoadContext = $script:MsalLoadContext
 
         Write-Verbose "Loaded $($AllDlls.Count) MSAL assemblies into AssemblyLoadContext"
 
+        $script:MsalLoadContext = $LoadContext
         return $LoadContext
     } catch {
         Write-Error "Failed to load MSAL assemblies: $_"
