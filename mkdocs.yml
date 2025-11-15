@@ -14,7 +14,7 @@ repo_url: "https://github.com/SamErde/DLLPickle"
 repo_name: "SamErde/DLLPickle"
 # edit_uri: edit/main/docs/
 # edit_uri_template:
-site_description: "A PowerShell module that helps you get un-stuck from version conflicts (aka DLL pickle) that occur when using modules that depend on multiple versions of the same dependencies such as the Microsoft Authentication Library (MSAL). # meta tag to the generated HTML header
+site_description: "A PowerShell module that helps you get un-stuck from version conflicts (aka DLL pickle) that occur when using modules that depend on multiple versions of the same dependencies such as the Microsoft Authentication Library (MSAL)." # meta tag to the generated HTML header
 site_author: "Sam Erde" # meta tag to the generated HTML header
 copyright: "(c) 2025 Sam Erde"
 # remote_branch:
