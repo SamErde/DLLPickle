@@ -237,7 +237,7 @@ jobs:
 
       - name: Create GitHub Release
         if: steps.check_packages.outputs.updates_available == 'true'
-        uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # v1
+        uses: softprops/action-gh-release@5be0e66d93ac7ed76da52eca8bb058f665c3a5fe # v2.4.2
         with:
           tag_name: v${{ steps.update_module_manifest.outputs.new_module_version }}
           name: Release v${{ steps.update_module_manifest.outputs.new_module_version }}
