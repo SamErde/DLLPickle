@@ -9,7 +9,7 @@ A PowerShell module that helps you get un-stuck from dependency version conflict
 [![PowerShell Gallery Version](https://img.shields.io/powershellgallery/v/DLLPickle?include_prereleases)](https://powershellgallery.com/packages/DLLPickle)
 <!-- badges-end -->
 
-![A stressed pickle trying to explain the problem in their code to a rubber duck.](/Assets/dllpickle.png)
+![A stressed pickle trying to explain the problem in their code to a rubber duck.](/assets/dllpickle.png)
 
 ## Description
 
