@@ -2,7 +2,7 @@
 # This workflow checks for new releases of Microsoft.Identity.Client package on NuGet
 # and creates an issue when a new version is detected
 
-name: Monitor Microsoft.Identity.Client NuGet Releases
+name: Monitor MSAL Releases
 
 on:
   schedule:
@@ -39,7 +39,7 @@ jobs:
           Write-Host "PowerShell version: $($PSVersionTable.PSVersion)"
 
       - name: Get Latest NuGet Package Information
-        id: get-package
+        id: Get-Package
         shell: pwsh
         run: |
           try

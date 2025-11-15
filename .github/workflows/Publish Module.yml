@@ -1,4 +1,4 @@
-name: Publish to PowerShell Gallery
+name: Publish Module to PowerShell Gallery
 
 on:
   release:
@@ -40,7 +40,7 @@ jobs:
       - name: Validate Module Manifest
         shell: pwsh
         run: |
-          $manifestPath = './DLLPickle/DLLPickle.psd1'
+          $manifestPath = './src/DLLPickle/DLLPickle.psd1'
           Write-Host "Validating module manifest: $manifestPath"
           $manifest = Test-ModuleManifest -Path $manifestPath -ErrorAction Stop
 
@@ -74,7 +74,7 @@ jobs:
             exit 1
           }
 
-          $modulePath = './DLLPickle'
+          $modulePath = './src/DLLPickle'
           $manifestPath = Join-Path $modulePath 'DLLPickle.psd1'
 
           # Get module information
