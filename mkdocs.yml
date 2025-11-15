@@ -5,35 +5,96 @@
 # https://mkdocs.readthedocs.io/en/0.15.2/user-guide/styling-your-docs/
 # https://example-mkdocs-basic.readthedocs.io/en/latest/
 # https://github.com/mkdocs/mkdocs/blob/master/mkdocs.yml
+# https://squidfunk.github.io/mkdocs-material/creating-your-site/
 # mkdocs.yml
 
-site_name: DLLPickle
-# site_url:
-# repo_url:
-# repo_name:
+site_name: "DLLPickle PowerShell Module"
+site_url: "https://day3bits.com/DLLPickle"
+repo_url: "https://github.com/SamErde/DLLPickle"
+repo_name: "SamErde/DLLPickle"
 # edit_uri: edit/main/docs/
 # edit_uri_template:
-site_description: A PowerShell module that helps you get un-stuck from version conflicts (aka DLL pickle) that occur when using modules that depend on multiple versions of the same dependencies such as the Microsoft Authentication Librart (MSAL). # meta tag to the generated HTML header
-site_author: Sam Erde # meta tag to the generated HTML header
-# copyright:
+site_description: "A PowerShell module that helps you get un-stuck from version conflicts (aka DLL pickle) that occur when using modules that depend on multiple versions of the same dependencies such as the Microsoft Authentication Library (MSAL). # meta tag to the generated HTML header
+site_author: "Sam Erde" # meta tag to the generated HTML header
+copyright: "(c) 2025 Sam Erde"
 # remote_branch:
 # remote_name:
-# docs_dir: docs
+docs_dir: "docs"
 # site_dir:
 # extra_css:
 # extra_javascript:
-# extra_templates:
-# extra:
-theme: readthedocs
-# theme:
-#     name: readthedocs
-#     locale: en
-    # custom_dir: my_theme_customizations/
-    # static_templates:
-    #     - sitemap.html
-    # include_sidebar: true
+
+markdown_extensions:
+  - smarty
+  - admonition
+  - toc:
+      permalink: true
+  - pymdownx.blocks.caption
+  - pymdownx.blocks.details
+  - pymdownx.blocks.tab
+  - pymdownx.highlight:
+      use_pygments: true
+      anchor_linenums: true
+  - pymdownx.keys
+  - pymdownx.inlinehilite
+  - pymdownx.smartsymbols
+  - pymdownx.snippets
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          # Use a plain string for format (avoid python YAML tags)
+          format: "pymdownx.superfences.fence_code_format"
+
+theme:
+  name: material
+  highlightjs: true
+  hljs_languages:
+    - yaml
+    - powershell
+  palette:
+    # Palette toggle for automatic mode
+    - media: "(prefers-color-scheme)"
+      toggle:
+        icon: material/brightness-auto
+        name: Switch to light mode
+
+    # Palette toggle for light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+
+    # Palette toggle for dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to system preference
+
+  language: en
+  # custom_dir: overrides
+  features:
+    #- navigation.tabs
+    #- navigation.tabs.sticky
+    - navigation.path
+    - navigation.instant
+    - navigation.instant.prefetch
+    - navigation.tracking
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - toc.follow
+    - toc.integrate
+
+  # favicon:
+  # icon:
+  #   repo:
+  # font:
+  #   text: Work Sans
+  # logo:
+
 nav:
   - Home: index.md
   - Change Log: CHANGELOG.md
-  # - Functions:
-  #   - Function1: functions/function1.md
