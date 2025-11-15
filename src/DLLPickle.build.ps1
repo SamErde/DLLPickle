@@ -32,9 +32,9 @@
         Module dependencies are installed at a previous step in the pipeline.
         If your manifest has module dependencies include all required modules in your CI/CD bootstrap file:
             AWS - install_modules.ps1
-            Azure - actions_bootstrap.ps1
-            GitHub Actions - actions_bootstrap.ps1
-            AppVeyor  - actions_bootstrap.ps1
+            Azure - Actions_Bootstrap.ps1
+            GitHub Actions - Actions_Bootstrap.ps1
+            AppVeyor  - Actions_Bootstrap.ps1
 #>
 
 #Include: Settings
@@ -622,4 +622,3 @@ Add-BuildTask Archive {
 
     Write-Build Green '        ...Archive Complete!'
 } #Archive
-

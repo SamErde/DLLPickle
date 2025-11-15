@@ -36,10 +36,10 @@ jobs:
     #   run: Get-Module -ListAvailable; (Get-Variable).GetEnumerator() | Sort-Object Name | Out-String; (Get-ChildItem env:*).GetEnumerator() | Sort-Object Name | Out-String
     - name: Bootstrap
       shell: pwsh
-      run: ./actions_bootstrap.ps1
+      run: ./Actions_Bootstrap.ps1
     - name: Test and Build
       shell: pwsh
-      run: Invoke-Build -File .\src\DLLPickle.build.ps1
+      run: Invoke-Build -File .\src\DLLPickle.Build.ps1
     - name: Upload pester results
       uses: actions/upload-artifact@v4
       with:
@@ -52,4 +52,3 @@ jobs:
         name: zip-archive
         path: .\src\Archive
         if-no-files-found: warn
-
