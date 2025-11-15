@@ -22,29 +22,19 @@ Several Microsoft modules include the file **Microsoft.Identity.Client.dll** as 
 
 [![NuGet](https://img.shields.io/nuget/v/microsoft.identity.client.svg?style=flat-square&label=nuget&colorB=00b200)](https://www.nuget.org/packages/Microsoft.Identity.Client/)
 
-## Synopsis
-
-<!-- Enter a synopsis -->
-
-## Description
-
-<!-- Enter a description -->
-
-## Why
-
-<!-- Short reason you created the project -->
-
 ## Getting Started
 
 ### Prerequisites
 
-<!-- list any prerequisites -->
+Any of the following PowerShell editions:
+
+- PowerShell on Linux, macOS, or Windows
+- Windows PowerShell 5.1
 
 ### Installation
 
 ```powershell
-# how to install DLLPickle
-
+Install-PSResource -Name DLLPickle
 ```
 
 ### Quick start
