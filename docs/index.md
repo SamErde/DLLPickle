@@ -9,9 +9,9 @@ A PowerShell module that helps you get un-stuck from dependency version conflict
 [![PowerShell Gallery Version](https://img.shields.io/powershellgallery/v/DLLPickle?include_prereleases)](https://powershellgallery.com/packages/DLLPickle)
 <!-- badges-end -->
 
-![A stressed pickle trying to explain the problem in their code to a rubber duck.](Assets/dllpickle.png)
+![A stressed pickle trying to explain the problem in their code to a rubber duck.](/Assets/dllpickle.png)
 
-## Example
+## Description
 
 Several Microsoft modules include the file **Microsoft.Identity.Client.dll** as a built-in dependency. The latest version of that file (<!--Version-->4.79.1<!--/Version-->) is actively maintained in the **AzureAD/microsoft-authentication-library-for-dotnet** repository. However, the following modules all update this package on different schedules, resulting in version conflicts that break authentication flows whenever you try to use multiple modules in one session:
 
