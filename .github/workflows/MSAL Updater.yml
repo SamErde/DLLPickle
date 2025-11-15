@@ -53,7 +53,7 @@ jobs:
           )
 
           # Set initial defaults.
-          $LibPath = Join-Path -Path $env:GITHUB_WORKSPACE -ChildPath "DLLPickle\lib"
+          $LibPath = Join-Path -Path $env:GITHUB_WORKSPACE -ChildPath "DLLPickle\Assembly"
           $UpdatesAvailable = $false
           $UpdateSummary = @()
 
@@ -125,7 +125,7 @@ jobs:
               }
           )
 
-          $LibPath = Join-Path -Path $env:GITHUB_WORKSPACE -ChildPath "DLLPickle\lib"
+          $LibPath = Join-Path -Path $env:GITHUB_WORKSPACE -ChildPath "DLLPickle\Assembly"
           New-Item -ItemType Directory -Path $LibPath -Force | Out-Null
 
           # Create temp directory
@@ -231,7 +231,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add DLLPickle/lib/* DLLPickle/DLLPickle.psd1
+          git add DLLPickle/Assembly/* DLLPickle/DLLPickle.psd1
           git commit -m "Update MSAL packages: ${{ steps.check_packages.outputs.update_summary }}"
           git push
 

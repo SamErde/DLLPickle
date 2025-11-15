@@ -22,7 +22,7 @@ try {
         Write-Verbose "MsalLoadContext: $($script:MsalLoadContext)"
     } else {
         Write-Verbose 'PS 5.1 Detected. Using Add-Type'
-        $MsalDllPath = Join-Path $PSScriptRoot 'lib\Microsoft.Identity.Client.dll'
+        $MsalDllPath = Join-Path $PSScriptRoot 'Assembly\Microsoft.Identity.Client.dll'
         Add-Type -Path $MsalDllPath
     }
 } catch {

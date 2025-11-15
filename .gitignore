@@ -1,8 +1,10 @@
 # Project Files #
+Archive
+Artifacts
 cov.xml
 coverage.xml
 Output/
-scratch/
+Scratch/
 testResults.xml
 
 ### VisualStudioCode ###
@@ -16,6 +18,11 @@ testResults.xml
 ### OS ###
 Thumbs.db
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 
 ### Codacy ###
 .codacy/*

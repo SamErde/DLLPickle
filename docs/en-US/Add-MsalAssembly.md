@@ -33,7 +33,7 @@ PS C:\> {{ Add example code here }}
 ## PARAMETERS
 
 ### -ModuleRoot
-The root path of the module containing the 'lib' folder with the MSAL DLLs.
+The root path of the module containing the 'Assembly' folder with the MSAL DLLs.
 
 ```yaml
 Type: String

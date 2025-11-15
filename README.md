@@ -9,7 +9,7 @@ A PowerShell module that helps you get un-stuck from dependency version conflict
 [![PowerShell Gallery Version](https://img.shields.io/powershellgallery/v/DLLPickle?include_prereleases)](https://powershellgallery.com/packages/DLLPickle)
 <!-- badges-end -->
 
-![A stressed pickle trying to explain the problem in their code to a rubber duck.](assets/dllpickle.png)
+![A stressed pickle trying to explain the problem in their code to a rubber duck.](Assets/dllpickle.png)
 
 ## Example
 
@@ -21,4 +21,3 @@ Several Microsoft modules include the file **Microsoft.Identity.Client.dll** as 
 - MicrosoftTeams
 
 [![NuGet](https://img.shields.io/nuget/v/microsoft.identity.client.svg?style=flat-square&label=nuget&colorB=00b200)](https://www.nuget.org/packages/Microsoft.Identity.Client/)
-

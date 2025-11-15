@@ -1,5 +1,5 @@
 name: CI
-on: 
+on:
   pull_request:
   workflow_dispatch:
 permissions:
@@ -41,7 +41,7 @@ jobs:
       run: |
         try {
           # Start fresh PowerShell process to avoid assembly conflicts
-          pwsh -NoProfile -Command "& { ./build.ps1 -Task Test -Bootstrap }"
+          pwsh -NoProfile -Command "& { ./Build.ps1 -Task Test -Bootstrap }"
         }
         catch {
           Write-Error "Build failed: $($_.Exception.Message)"

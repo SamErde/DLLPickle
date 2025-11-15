@@ -26,5 +26,5 @@
       ]
     }
   },
-  "postCreateCommand": "pwsh -c './build.ps1 -Task Init -Bootstrap'"
+  "postCreateCommand": "pwsh -c './Build.ps1 -Task Init -Bootstrap'"
 }

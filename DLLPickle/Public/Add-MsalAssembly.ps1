@@ -8,7 +8,7 @@
         that can be unloaded later. Requires PowerShell 7.0 or higher.
 
     .PARAMETER ModuleRoot
-        The root path of the module containing the 'lib' folder with the MSAL DLLs.
+        The root path of the module containing the 'Assembly' folder with the MSAL DLLs.
 
     .EXAMPLE
         Add-MsalAssembly -ModuleRoot $PSScriptRoot
@@ -30,10 +30,10 @@
     }
 
     try {
-        $LibPath = Join-Path $ModuleRoot 'lib'
+        $LibPath = Join-Path $ModuleRoot 'Assembly'
 
         if (-not (Test-Path $LibPath)) {
-            throw "Lib folder not found at: $LibPath"
+            throw "Assembly folder not found at: $LibPath"
         }
 
         # Reuse existing AssemblyLoadContext if available and alive
