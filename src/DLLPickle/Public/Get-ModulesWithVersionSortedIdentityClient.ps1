@@ -1,13 +1,13 @@
 function Get-ModulesWithVersionSortedIdentityClient {
     <#
     .SYNOPSIS
-    Short description
+    Get a list of modules with the MSAL, and which versions each have packaged.
 
     .DESCRIPTION
-    Long description
+    Get a list of modules with the MSAL, and which versions each have packaged.
 
     .PARAMETER Name
-    Parameter description
+    Name of the module.
 
     .EXAMPLE
     Get-ModulesWithVersionSortedIdentityClient -Name 'Az.Accounts','ExchangeOnlineManagement'
