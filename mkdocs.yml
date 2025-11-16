@@ -97,4 +97,4 @@ theme:
 
 nav:
   - Home: index.md
-  - Change Log: CHANGELOG.md
+  - Change Log: https://raw.githubusercontent.com/SamErde/DLLPickle/main/CHANGELOG.md
