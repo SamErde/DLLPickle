@@ -40,7 +40,7 @@ function Get-ModulesWithVersionSortedIdentityClient {
         foreach ($Module in $ModuleInfo) {
             $DllVersion = Get-ChildItem -Path $Module.ModuleBase -File -Include 'Microsoft.Identity.Client.dll' -Recurse -Force |
                 Sort-Object -Property { $_.VersionInfo.FileVersion } -Descending |
-                    Select-Object -First 1 -Property @{Name = 'DLLVersion'; Expression = { [version]($_.VersionInfo.FileVersion) } }
+                Select-Object -First 1 -Property @{Name = 'DLLVersion'; Expression = { [version]($_.VersionInfo.FileVersion) } }
 
             if (-not $DllVersion) {
                 Write-Verbose "No 'Microsoft.Identity.Client.dll' found in $($Module.ModuleBase)."
