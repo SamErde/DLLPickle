@@ -83,7 +83,7 @@ jobs:
       - name: Deploy to Staging
         run: |
           unzip dist.zip
-          echo "Deploying ${{ needs.build.outputs.artifact_path }} to staging..."
+          echo "Deploying ${{ needs.Build.outputs.artifact_path }} to staging..."
           # Add actual deployment commands here
 ```
 

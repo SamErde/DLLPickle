@@ -7,14 +7,14 @@
 # https://github.com/actions/upload-artifact#where-does-the-upload-go
 name: Build Module (Windows)
 on:
-  #pull_request:
-  #  paths-ignore:
-  #    - '**.md'
-  #    - 'docs/**'
-  #push:
-  #  paths-ignore:
-  #    - '**.md'
-  #    - 'docs/**'
+  pull_request:
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+  push:
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
   workflow_dispatch:
 
 jobs:

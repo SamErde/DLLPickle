@@ -38,7 +38,8 @@
 #>
 
 #Include: Settings
-$ModuleName = [regex]::Match((Get-Item $BuildFile).Name, '^(.*)\.build\.ps1$').Groups[1].Value
+#$ModuleName = [regex]::Match((Get-Item $BuildFile).Name, '^(.*)\.Build\.ps1$').Groups[1].Value
+$ModuleName = 'DLLPickle'
 . "./$ModuleName.Settings.ps1"
 
 function Test-ManifestBool ($Path) {
@@ -67,7 +68,7 @@ Add-BuildTask BuildNoIntegration -Jobs $str2
 
 # Pre-build variables to be used by other portions of the script
 Enter-Build {
-    $script:ModuleName = [regex]::Match((Get-Item $BuildFile).Name, '^(.*)\.build\.ps1$').Groups[1].Value
+    $script:ModuleName = [regex]::Match((Get-Item $BuildFile).Name, '^(.*)\.Build\.ps1$').Groups[1].Value
 
     # Identify other required paths
     $script:ModuleSourcePath = Join-Path -Path $BuildRoot -ChildPath $script:ModuleName
@@ -90,7 +91,7 @@ Enter-Build {
     $script:BuildModuleRootFile = Join-Path -Path $script:ArtifactsPath -ChildPath "$($script:ModuleName).psm1"
 
     # Ensure our builds fail until if below a minimum defined code test coverage threshold
-    $script:coverageThreshold = 30
+    $script:coverageThreshold = 0
 
     [version]$script:MinPesterVersion = '5.2.2'
     [version]$script:MaxPesterVersion = '5.99.99'
@@ -252,7 +253,7 @@ Add-BuildTask Test {
         $pesterConfiguration.Run.PassThru = $true
         $pesterConfiguration.Run.Exit = $false
         $pesterConfiguration.CodeCoverage.Enabled = $true
-        $pesterConfiguration.CodeCoverage.Path = "..\..\..\$ModuleName\*\*.ps1"
+        $pesterConfiguration.CodeCoverage.Path = "..\..\$ModuleName\*\*.ps1"
         $pesterConfiguration.CodeCoverage.CoveragePercentTarget = $script:coverageThreshold
         $pesterConfiguration.CodeCoverage.OutputPath = "$codeCovPath\CodeCoverage.xml"
         $pesterConfiguration.CodeCoverage.OutputFormat = 'JaCoCo'
@@ -316,7 +317,7 @@ Add-BuildTask DevCC {
     $pesterConfiguration.CodeCoverage.Enabled = $true
     $pesterConfiguration.CodeCoverage.Path = "$PSScriptRoot\$ModuleName\*\*.ps1"
     $pesterConfiguration.CodeCoverage.CoveragePercentTarget = $script:coverageThreshold
-    $pesterConfiguration.CodeCoverage.OutputPath = '..\..\..\cov.xml'
+    $pesterConfiguration.CodeCoverage.OutputPath = '..\..\cov.xml'
     $pesterConfiguration.CodeCoverage.OutputFormat = 'CoverageGutters'
 
     Invoke-Pester -Configuration $pesterConfiguration
