@@ -17,7 +17,7 @@ mkdocs:
 
 python:
   install:
-    - requirements: Docs/requirements.txt
+    - requirements: docs/requirements.txt
 
 # # Build PDF & ePub
 formats: all
