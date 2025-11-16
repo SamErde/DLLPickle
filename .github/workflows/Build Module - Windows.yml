@@ -17,6 +17,9 @@ on:
       - 'docs/**'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   test:
     name: Run Tests
@@ -24,8 +27,13 @@ jobs:
     strategy:
       fail-fast: false
     steps:
+    - name: Harden the runner (Audit all outbound calls)
+      uses: step-security/harden-runner@95d9a5deda9de15063e7595e9719c11c38c90ae2 # v2.13.2
+      with:
+        egress-policy: audit
+
     - name: Check out repository
-      uses: actions/checkout@v5
+      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
     - name: Display the path
       shell: pwsh
       run: echo ${env:PATH}
@@ -43,13 +51,13 @@ jobs:
       shell: pwsh
       run: Invoke-Build -File ./src/DLLPickle.Build.ps1
     - name: Upload pester results
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
       with:
         name: pester-results
         path: ./src/Artifacts/TestOutput
         if-no-files-found: warn
     - name: Upload zip module archive build
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
       with:
         name: zip-archive
         path: .\src\Archive
