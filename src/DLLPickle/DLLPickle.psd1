@@ -8,7 +8,7 @@
     RootModule        = 'DLLPickle.psm1'
 
     # Version number of this module.
-    ModuleVersion     = '0.2.2'
+    ModuleVersion     = '0.2.3'
 
     # Supported PSEditions
     # CompatiblePSEditions = @()
@@ -26,7 +26,7 @@
     Copyright         = '(c) Sam Erde. All rights reserved.'
 
     # Description of the functionality provided by this module
-    Description       = 'A PowerShell module that helps you get un-stuck from version conflicts (aka DLL pickle) that occur when using modules that depend on multiple versions of the same dependencies such as the Microsoft Authentication Librart (MSAL).'
+    Description       = 'A PowerShell module that helps you get un-stuck from version conflicts that occur when using modules that depend on different versions of the same dependencies (such as the Microsoft Authentication Library (MSAL)).'
 
     # Minimum version of the PowerShell engine required by this module
     # PowerShellVersion = ''
@@ -93,13 +93,7 @@
     # ModuleList = @()
 
     # List of all files packaged with this module
-    FileList          = @(
-        'Assembly/Microsoft.Identity.Abstractions.dll',
-        'Assembly/Microsoft.Identity.Client.dll',
-        'Assembly/Microsoft.Identity.Client.Broker.dll',
-        'Assembly/Microsoft.Identity.Client.Extensions.Msal.dll',
-        'Assembly/Microsoft.Identity.Client.NativeInterop.dll'
-    )
+    # FileList          = @()
 
     # Private data to pass to the module specified in RootModule/ModuleToProcess. This may also contain a PSData hashtable with additional module metadata used by PowerShell.
     PrivateData       = @{
@@ -141,4 +135,3 @@
     # DefaultCommandPrefix = ''
 
 }
-
