@@ -30,7 +30,7 @@ This works because of the "first one wins" rule and because the MSAL is designed
 
 DLL Pickle handles this for you by automatically releasing a new version of DLL Pickle whenever a new release of the MSAL is found. As long as you keep the DLL Pickle module up to date and load it first in your PowerShell profile (or manually load it first in your session), then all other PowerShell modules should be able to use this new MSAL that is loaded by DLL Pickle.
 
-For more information about how this works, [read here](https://raw.githubusercontent.com/SamErde/DLLPickle/main/docs/deepdive.md).
+For more information about how this works, [read here](https://raw.githubusercontent.com/SamErde/DLLPickle/main/docs/Deep-Dive.md).
 
 ## Getting Started
 
@@ -44,7 +44,7 @@ Any of the following PowerShell editions:
 ### Installation
 
 ```powershell
-Install-PSResource -Name DLLPickle
+Install-PSResource -Name DLLPickle -Prerelease
 ```
 
 ### Using DLL Pickle
