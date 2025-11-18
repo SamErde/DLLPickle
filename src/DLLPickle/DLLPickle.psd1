@@ -12,7 +12,7 @@
 RootModule = 'DLLPickle.psm1'
 
 # Version number of this module.
-ModuleVersion = '0.2.7'
+ModuleVersion = '0.3.0'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -54,10 +54,10 @@ Description = 'A PowerShell module that helps you get un-stuck from version conf
 # RequiredModules = @()
 
 # Assemblies that must be loaded prior to importing this module
-RequiredAssemblies = 'Assembly/Microsoft.Identity.Abstractions.dll', 
-               'Assembly/Microsoft.Identity.Client.Broker.dll', 
-               'Assembly/Microsoft.Identity.Client.dll', 
-               'Assembly/Microsoft.Identity.Client.Extensions.Msal.dll', 
+RequiredAssemblies = 'Assembly/Microsoft.Identity.Abstractions.dll',
+               'Assembly/Microsoft.Identity.Client.Broker.dll',
+               'Assembly/Microsoft.Identity.Client.dll',
+               'Assembly/Microsoft.Identity.Client.Extensions.Msal.dll',
                'Assembly/Microsoft.Identity.Client.NativeInterop.dll'
 
 # Script files (.ps1) that are run in the caller's environment prior to importing this module.
@@ -73,7 +73,7 @@ FormatsToProcess = 'DLLPickle.Format.ps1xml'
 # NestedModules = @()
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
-FunctionsToExport = 'Find-MSIdentityAssembly', 'Get-ModulesWithDependency', 
+FunctionsToExport = 'Find-MSIdentityAssembly', 'Get-ModulesWithDependency',
                'Get-ModulesWithVersionSortedIdentityClient'
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
@@ -134,4 +134,3 @@ HelpInfoURI = 'https://day3bits.com/DLLPickle'
 # DefaultCommandPrefix = ''
 
 }
-
