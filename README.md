@@ -13,7 +13,7 @@ A PowerShell module that helps you get un-stuck from dependency version conflict
 
 ## Description
 
-Numerous PowerShell modules include a dependency on the Microsoft Authentication Library (MSAL) for authenticating to Microsoft's online services. The latest version of the MSAL (<!--Version-->4.79.2<!--/Version-->) is actively maintained in **[AzureAD/microsoft-authentication-library-for-dotnet](https://github.com/AzureAD/microsoft-authentication-library-for-dotnet)**. However, modules that depend on the MSAL libraries (such as **Microsoft.Identity.Client.dll**) all update their releases with different versions of MSAL on different schedules. This results in version conflicts that break authentication flows whenever you try to use multiple modules in one session. Examples of modules that can be affected by this include:
+Numerous PowerShell modules include a dependency on the Microsoft Authentication Library (MSAL) for authenticating to Microsoft's online services. The latest version of the MSAL is actively maintained in **[AzureAD/microsoft-authentication-library-for-dotnet](https://github.com/AzureAD/microsoft-authentication-library-for-dotnet)**. However, modules that depend on the MSAL libraries (such as **Microsoft.Identity.Client.dll**) all update their releases with different versions of MSAL on different schedules. This results in version conflicts that break authentication flows whenever you try to use multiple modules in one session. Examples of modules that can be affected by this include:
 
 - Az.Accounts
 - ExchangeOnlineManagement
@@ -50,7 +50,3 @@ Install-PSResource -Name DLLPickle -Prerelease
 The easiest way to benefit from DLL Pickle is to import the module in your PowerShell profile before any other module or assembly is loaded. Just add the line `Import-Module DLLPickle` to your profile, save it, and start a new instance of PowerShell.
 
 Alternatively, if you are starting work in a new PowerShell session in which you know you will be authenticating to multiple online services, you can run `Import-Module DLLPickle` at the beginning of your session and then proceed with the rest of your modules.
-
-## Tracked Libraries
-
-MSAL Latest Version: [![NuGet](https://img.shields.io/nuget/v/microsoft.identity.client.svg?style=flat-square&label=nuget&colorB=00b200)](https://www.nuget.org/packages/Microsoft.Identity.Client/)
