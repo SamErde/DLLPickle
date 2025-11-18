@@ -30,7 +30,7 @@ jobs:
         run: |
           # Set initial defaults.
           $LibPath = Join-Path -Path $env:GITHUB_WORKSPACE -ChildPath "src/DLLPickle/Assembly"
-          $JsonPath = Join-Path -Path $LibPath -ChildPath "MSAL_PackageTracking.json"
+          $JsonPath = Join-Path -Path $LibPath -ChildPath "Packages.json"
 
           # Read package tracking JSON
           if (-not (Test-Path $JsonPath)) {
@@ -84,7 +84,7 @@ jobs:
           New-Item -ItemType Directory -Path $LibPath -Force | Out-Null
 
           # Read package tracking JSON
-          $JsonPath = Join-Path -Path $LibPath -ChildPath "MSAL_PackageTracking.json"
+          $JsonPath = Join-Path -Path $LibPath -ChildPath "Packages.json"
           if (-not (Test-Path $JsonPath)) {
               Write-Error "Package tracking JSON not found at $JsonPath"
               exit 1
@@ -198,7 +198,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add src/DLLPickle/Assembly/*.dll src/DLLPickle/Assembly/MSAL_PackageTracking.json src/DLLPickle/DLLPickle.psd1
+          git add src/DLLPickle/Assembly/*.dll src/DLLPickle/Assembly/Packages.json src/DLLPickle/DLLPickle.psd1
           git commit -m "Update MSAL packages: ${{ steps.check_packages.outputs.update_summary }}"
           git push
 

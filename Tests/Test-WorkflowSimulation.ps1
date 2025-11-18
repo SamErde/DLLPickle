@@ -11,7 +11,7 @@ if ($PSScriptRoot) {
 }
 
 $LibPath = Join-Path -Path $RepoRoot -ChildPath "src/DLLPickle/Assembly"
-$JsonPath = Join-Path -Path $LibPath -ChildPath "MSAL_PackageTracking.json"
+$JsonPath = Join-Path -Path $LibPath -ChildPath "Packages.json"
 
 Write-Host "=== Simulating Update MSAL Packages Workflow ===" -ForegroundColor Cyan
 Write-Host ""
@@ -35,15 +35,15 @@ $UpdateSummary = @()
 # Check each package version for updates
 foreach ($Package in $PackageTracking.packages) {
     Write-Host "Checking $($Package.name)..." -NoNewline
-    
+
     $CurrentVersion = $Package.version
-    
+
     # Check the latest version from NuGet
     $NuGetUrl = "https://api.nuget.org/v3-registration5-semver1/$($Package.name.ToLower())/index.json"
     try {
         $Response = Invoke-RestMethod -Uri $NuGetUrl -ErrorAction Stop
         $LatestVersion = $Response.items[-1].upper
-        
+
         if ([version]$LatestVersion -gt [version]$CurrentVersion) {
             Write-Host " ✓ Update available: $CurrentVersion → $LatestVersion" -ForegroundColor Green
             $UpdatesAvailable = $true
@@ -77,13 +77,13 @@ if ($UpdatesAvailable) {
     foreach ($Summary in $UpdateSummary) {
         Write-Host "  - $Summary" -ForegroundColor Gray
     }
-    
+
     # Simulate updating the JSON
     Write-Host ""
     Write-Host "Simulating JSON update..." -NoNewline
     $SimulatedTracking = $PackageTracking | ConvertTo-Json -Depth 10
     Write-Host " ✓ Success" -ForegroundColor Green
-    
+
 } else {
     Write-Host "No packages to download (all up to date)" -ForegroundColor Gray
 }
@@ -98,15 +98,15 @@ Write-Host "------------------------------" -ForegroundColor Gray
 try {
     # Re-read and verify JSON
     $VerifyTracking = Get-Content $JsonPath -Raw | ConvertFrom-Json
-    
+
     if ($null -eq $VerifyTracking.packages) {
         throw "JSON missing 'packages' property"
     }
-    
+
     if ($VerifyTracking.packages.Count -ne 5) {
         throw "Expected 5 packages, found $($VerifyTracking.packages.Count)"
     }
-    
+
     # Verify each package has required properties
     foreach ($Package in $VerifyTracking.packages) {
         if ([string]::IsNullOrWhiteSpace($Package.name)) {
@@ -116,11 +116,11 @@ try {
             throw "Package '$($Package.name)' missing 'version' property"
         }
     }
-    
+
     Write-Host "✓ JSON structure is valid" -ForegroundColor Green
     Write-Host "  - 5 packages found" -ForegroundColor Gray
     Write-Host "  - All packages have name and version" -ForegroundColor Gray
-    
+
 } catch {
     Write-Error "JSON integrity check failed: $_"
     exit 1
@@ -143,7 +143,7 @@ Write-Host ""
 Write-Host "The workflow would:" -ForegroundColor Cyan
 if ($UpdatesAvailable) {
     Write-Host "  1. Download and extract updated packages" -ForegroundColor Gray
-    Write-Host "  2. Update MSAL_PackageTracking.json with new versions" -ForegroundColor Gray
+    Write-Host "  2. Update Packages.json with new versions" -ForegroundColor Gray
     Write-Host "  3. Copy DLL files to Assembly directory" -ForegroundColor Gray
     Write-Host "  4. Increment module version" -ForegroundColor Gray
     Write-Host "  5. Commit and push changes" -ForegroundColor Gray

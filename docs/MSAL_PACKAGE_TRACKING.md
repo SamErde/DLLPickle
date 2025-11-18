@@ -16,7 +16,7 @@ The MSAL package tracking system has been migrated from individual text files to
 - Manual mapping of package names to version files
 
 ### After (New System)
-- Single JSON file: `MSAL_PackageTracking.json`
+- Single JSON file: `Packages.json`
 - Centralized package configuration
 - No code duplication
 - Easy to add new packages
@@ -40,7 +40,7 @@ The MSAL package tracking system has been migrated from individual text files to
 ```
 
 ## Location
-`src/DLLPickle/Assembly/MSAL_PackageTracking.json`
+`src/DLLPickle/Assembly/Packages.json`
 
 ## Workflow Changes
 The `.github/workflows/Update MSAL Packages.yml` workflow now:
@@ -52,7 +52,7 @@ The `.github/workflows/Update MSAL Packages.yml` workflow now:
 
 ## Adding New Packages
 To add a new MSAL package to track:
-1. Add a new entry to the `packages` array in `MSAL_PackageTracking.json`:
+1. Add a new entry to the `packages` array in `Packages.json`:
    ```json
    {
      "name": "New.Package.Name",

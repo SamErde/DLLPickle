@@ -13,7 +13,7 @@ if ($PSScriptRoot) {
 }
 
 $LibPath = Join-Path -Path $RepoRoot -ChildPath "src/DLLPickle/Assembly"
-$JsonPath = Join-Path -Path $LibPath -ChildPath "MSAL_PackageTracking.json"
+$JsonPath = Join-Path -Path $LibPath -ChildPath "Packages.json"
 
 Write-Host "=== Testing MSAL Package Tracking JSON ===" -ForegroundColor Cyan
 Write-Host "Repository Root: $RepoRoot"
@@ -86,7 +86,7 @@ try {
     $Response = Invoke-RestMethod -Uri $NuGetUrl -ErrorAction Stop
     $LatestVersion = $Response.items[-1].upper
     Write-Host "  Latest version available: $LatestVersion" -ForegroundColor Gray
-    
+
     if ([version]$LatestVersion -gt [version]$TestPackage.version) {
         Write-Host "  ℹ Update available: $($TestPackage.version) → $LatestVersion" -ForegroundColor Yellow
     } else {
