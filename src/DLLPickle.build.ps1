@@ -328,9 +328,9 @@ Add-BuildTask DevCC {
 Add-BuildTask CreateHelpStart {
     Write-Build White '      Performing all help related actions.'
 
-    Write-Build Gray '           Importing platyPS v0.12.0 ...'
-    Import-Module platyPS -ErrorAction Stop  #-RequiredVersion 0.12.0
-    Write-Build Gray '           ...platyPS imported successfully.'
+    Write-Build Gray '           Importing Microsoft.PowerShell.PlatyPS ...'
+    Import-Module Microsoft.PowerShell.PlatyPS -ErrorAction Stop
+    Write-Build Gray '           ...Microsoft.PowerShell.PlatyPS imported successfully.'
 } #CreateHelpStart
 
 # Synopsis: Build markdown help files for module and fail if help information is missing
@@ -338,22 +338,23 @@ Add-BuildTask CreateMarkdownHelp -After CreateHelpStart {
     $ModulePage = "$script:ArtifactsPath\docs\$($ModuleName).md"
 
     $markdownParams = @{
-        Module         = $ModuleName
+        #Module         = $ModuleName
         OutputFolder   = "$script:ArtifactsPath\docs\"
         Force          = $true
         WithModulePage = $true
         Locale         = 'en-US'
-        FwLink         = "NA"
+        #FwLink         = "NA"
         HelpVersion    = $script:ModuleVersion
     }
 
     Write-Build Gray '           Generating markdown files...'
-    $null = New-MarkdownHelp @markdownParams
+    $null = New-MarkdownCommandHelp @markdownParams
     Write-Build Gray '           ...Markdown generation completed.'
 
     Write-Build Gray '           Replacing markdown elements...'
     Write-Build DarkGray '             Replace multi-line EXAMPLES'
     $OutputDir = "$script:ArtifactsPath\docs\"
+    <#
     $OutputDir | Get-ChildItem -File | ForEach-Object {
         # fix formatting in multiline examples
         $content = Get-Content $_.FullName -Raw
@@ -362,7 +363,9 @@ Add-BuildTask CreateMarkdownHelp -After CreateHelpStart {
             Set-Content -Path $_.FullName -Value $newContent -Force
         }
     }
+    #>
     Write-Build DarkGray '             Replace each missing element we need for a proper generic module page .md file'
+    <#
     $ModulePageFileContent = Get-Content -Raw $ModulePage
     $ModulePageFileContent = $ModulePageFileContent -replace '{{Manually Enter Description Here}}', $script:ModuleDescription
     $script:FunctionsToExport | ForEach-Object {
@@ -371,16 +374,18 @@ Add-BuildTask CreateMarkdownHelp -After CreateHelpStart {
         $ReplacementText = (Get-Help -Detailed $_).Synopsis
         $ModulePageFileContent = $ModulePageFileContent -replace $TextToReplace, $ReplacementText
     }
+    #>
     Write-Build DarkGray '             Evaluating if running 7.4.0 or higher...'
     # https://github.com/PowerShell/platyPS/issues/595
     if ($PSVersionTable.PSVersion -ge [version]'7.4.0') {
         Write-Build DarkGray '                Performing Markdown repair'
         # dot source markdown repair
-        . $BuildRoot\MarkdownRepair.ps1
-        $OutputDir | Get-ChildItem -File | ForEach-Object {
-            Repair-PlatyPSMarkdown -Path $_.FullName
-        }
+        #. $BuildRoot\MarkdownRepair.ps1
+        #$OutputDir | Get-ChildItem -File | ForEach-Object {
+            #Repair-PlatyPSMarkdown -Path $_.FullName
+        #}
     }
+    <#
     Write-Build DarkGray '             Add blank line after headers.'
     $OutputDir | Get-ChildItem -File | ForEach-Object {
         $content = Get-Content $_.FullName -Raw
@@ -391,6 +396,7 @@ Add-BuildTask CreateMarkdownHelp -After CreateHelpStart {
             Set-Content -Path $_.FullName -Value $newContent -Force
         }
     }
+    #>
     # *NOTE: it is not possible to adjust fenced code block at this location as conversion to MAML does not support language tags.
 
     $ModulePageFileContent | Out-File $ModulePage -Force -Encoding:utf8
@@ -436,7 +442,7 @@ Add-BuildTask CreateMarkdownHelp -After CreateHelpStart {
 # Synopsis: Build the external xml help file from markdown help files with PlatyPS
 Add-BuildTask CreateExternalHelp -After CreateMarkdownHelp {
     Write-Build Gray '           Creating external xml help file...'
-    $null = New-ExternalHelp "$script:ArtifactsPath\docs" -OutputPath "$script:ArtifactsPath\en-US\" -Force
+    #$null = New-ExternalHelp "$script:ArtifactsPath\docs" -OutputPath "$script:ArtifactsPath\en-US\" -Force
     Write-Build Gray '           ...External xml help file created!'
 } #CreateExternalHelp
 
