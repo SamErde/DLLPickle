@@ -38,12 +38,12 @@
     {
       "name": "Microsoft.IdentityModel.Logging",
       "description": "Includes Event Source based logging support.",
-      "version": "0.0.0"
+      "version": "8.14.0"
     },
     {
       "name": "Microsoft.IdentityModel.Tokens",
       "description": "Includes types that provide support for SecurityTokens, Cryptographic operations: Signing, Verifying Signatures, Encryption.",
-      "version": "0.0.0"
+      "version": "8.14.0"
     },
     {
       "name": "System.IdentityModel.Tokens.Jwt",
