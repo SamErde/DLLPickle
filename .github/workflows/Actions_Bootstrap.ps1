@@ -27,7 +27,7 @@ $ModulesToInstall = New-Object System.Collections.Generic.List[object]
 # https://github.com/PowerShell/platyPS
 # older version used due to: https://github.com/PowerShell/platyPS/issues/457
 [void]$ModulesToInstall.Add(([PSCustomObject]@{
-            ModuleName    = 'platyPS'
+            ModuleName    = 'Microsoft.PowerShell.PlatyPS'
             #ModuleVersion = '0.12.0'
         }))
 
