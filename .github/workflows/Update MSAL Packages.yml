@@ -28,50 +28,29 @@ jobs:
         id: check_packages
         shell: pwsh
         run: |
-          # Define packages to check
-          $Packages = @(
-              @{
-                  Name = "Microsoft.Identity.Client"
-                  VersionFile = "MSAL_VERSION.txt"
-              },
-              @{
-                  Name = "Microsoft.Identity.Client.Extensions.Msal"
-                  VersionFile = "MSAL_Extensions_VERSION.txt"
-              },
-              @{
-                  Name = "Microsoft.Identity.Client.NativeInterop"
-                  VersionFile = "MSAL_NativeInterop_VERSION.txt"
-              }
-              @{
-                  Name = "Microsoft.Identity.Client.Broker"
-                  VersionFile = "MSAL_Broker_VERSION.txt"
-              },
-              @{
-                  Name = "Microsoft.Identity.Abstractions"
-                  VersionFile = "MSAL_Abstractions_VERSION.txt"
-              }
-          )
-
           # Set initial defaults.
           $LibPath = Join-Path -Path $env:GITHUB_WORKSPACE -ChildPath "src/DLLPickle/Assembly"
+          $JsonPath = Join-Path -Path $LibPath -ChildPath "MSAL_PackageTracking.json"
+          
+          # Read package tracking JSON
+          if (-not (Test-Path $JsonPath)) {
+              Write-Error "Package tracking JSON not found at $JsonPath"
+              exit 1
+          }
+          
+          $PackageTracking = Get-Content $JsonPath -Raw | ConvertFrom-Json
           $UpdatesAvailable = $false
           $UpdateSummary = @()
 
           # Check each package version for updates.
-          foreach ($Package in $Packages) {
-              Write-Host "`n=== Checking $($Package.Name) ===" -ForegroundColor Cyan
-
-              # Get the current version in the module repository.
-              $CurrentVersionFile = Join-Path -Path $LibPath -ChildPath $Package.VersionFile
-              if (Test-Path $CurrentVersionFile) {
-                  $CurrentVersion = (Get-Content $CurrentVersionFile -Raw).Trim()
-              } else {
-                  $CurrentVersion = "0.0.0"
-              }
+          foreach ($Package in $PackageTracking.packages) {
+              Write-Host "`n=== Checking $($Package.name) ===" -ForegroundColor Cyan
+              
+              $CurrentVersion = $Package.version
               Write-Host "Current version: $CurrentVersion"
 
               # Check the latest version from NuGet.
-              $NuGetUrl = "https://api.nuget.org/v3-registration5-semver1/$($Package.Name.ToLower())/index.json"
+              $NuGetUrl = "https://api.nuget.org/v3-registration5-semver1/$($Package.name.ToLower())/index.json"
               try {
                   $Response = Invoke-RestMethod -Uri $NuGetUrl -ErrorAction Stop
                   $LatestVersion = $Response.items[-1].upper
@@ -80,12 +59,12 @@ jobs:
                   if ([version]$LatestVersion -gt [version]$CurrentVersion) {
                       Write-Host "✓ Update available!" -ForegroundColor Green
                       $UpdatesAvailable = $true
-                      $UpdateSummary += "$($Package.Name): $CurrentVersion → $LatestVersion"
+                      $UpdateSummary += "$($Package.name): $CurrentVersion → $LatestVersion"
                   } else {
                       Write-Host "Already up to date" -ForegroundColor Gray
                   }
               } catch {
-                  Write-Warning "Failed to check $($Package.Name): $_"
+                  Write-Warning "Failed to check $($Package.name): $_"
               }
           }
 
@@ -101,32 +80,18 @@ jobs:
         if: steps.check_packages.outputs.updates_available == 'true'
         shell: pwsh
         run: |
-          # Define packages to update
-          $Packages = @(
-              @{
-                  Name = "Microsoft.Identity.Client"
-                  VersionFile = "MSAL_VERSION.txt"
-              },
-              @{
-                  Name = "Microsoft.Identity.Client.Extensions.Msal"
-                  VersionFile = "MSAL_Extensions_VERSION.txt"
-              },
-              @{
-                  Name = "Microsoft.Identity.Client.NativeInterop"
-                  VersionFile = "MSAL_NativeInterop_VERSION.txt"
-              }
-              @{
-                  Name = "Microsoft.Identity.Client.Broker"
-                  VersionFile = "MSAL_Broker_VERSION.txt"
-              },
-              @{
-                  Name = "Microsoft.Identity.Abstractions"
-                  VersionFile = "MSAL_Abstractions_VERSION.txt"
-              }
-          )
-
           $LibPath = Join-Path -Path $env:GITHUB_WORKSPACE -ChildPath "src/DLLPickle/Assembly"
           New-Item -ItemType Directory -Path $LibPath -Force | Out-Null
+          
+          # Read package tracking JSON
+          $JsonPath = Join-Path -Path $LibPath -ChildPath "MSAL_PackageTracking.json"
+          if (-not (Test-Path $JsonPath)) {
+              Write-Error "Package tracking JSON not found at $JsonPath"
+              exit 1
+          }
+          
+          $PackageTracking = Get-Content $JsonPath -Raw | ConvertFrom-Json
+          $UpdatedPackages = $false
 
           # Create temp directory
           $TempDir = Join-Path $env:TEMP "msal_update"
@@ -135,19 +100,14 @@ jobs:
           }
           New-Item -ItemType Directory -Path $TempDir -Force | Out-Null
 
-          foreach ($Package in $Packages) {
-              Write-Host "`n=== Processing $($Package.Name) ===" -ForegroundColor Cyan
+          foreach ($Package in $PackageTracking.packages) {
+              Write-Host "`n=== Processing $($Package.name) ===" -ForegroundColor Cyan
 
-              # Get current version
-              $CurrentVersionFile = Join-Path -Path $LibPath -ChildPath $Package.VersionFile
-              if (Test-Path $CurrentVersionFile) {
-                  $CurrentVersion = (Get-Content $CurrentVersionFile -Raw).Trim()
-              } else {
-                  $CurrentVersion = "0.0.0"
-              }
+              $CurrentVersion = $Package.version
+              Write-Host "Current version: $CurrentVersion"
 
               # Get latest version
-              $NuGetUrl = "https://api.nuget.org/v3-registration5-semver1/$($Package.Name.ToLower())/index.json"
+              $NuGetUrl = "https://api.nuget.org/v3-registration5-semver1/$($Package.name.ToLower())/index.json"
               try {
                   $Response = Invoke-RestMethod -Uri $NuGetUrl -ErrorAction Stop
                   $LatestVersion = $Response.items[-1].upper
@@ -156,12 +116,12 @@ jobs:
                       Write-Host "Downloading version $LatestVersion..."
 
                       # Download package
-                      $DownloadUrl = "https://www.nuget.org/api/v2/package/$($Package.Name)/$LatestVersion"
-                      $NupkgPath = Join-Path $TempDir "$($Package.Name).$LatestVersion.nupkg"
+                      $DownloadUrl = "https://www.nuget.org/api/v2/package/$($Package.name)/$LatestVersion"
+                      $NupkgPath = Join-Path $TempDir "$($Package.name).$LatestVersion.nupkg"
                       Invoke-WebRequest -Uri $DownloadUrl -OutFile $NupkgPath -ErrorAction Stop
 
                       # Extract (nupkg is just a zip)
-                      $ExtractPath = Join-Path $TempDir "$($Package.Name)_extracted"
+                      $ExtractPath = Join-Path $TempDir "$($Package.name)_extracted"
                       Expand-Archive -Path $NupkgPath -DestinationPath $ExtractPath -Force
 
                       # Try multiple framework paths in order of preference
@@ -187,18 +147,25 @@ jobs:
                       }
 
                       if (-not $DllsCopied) {
-                          Write-Warning "No compatible DLLs found for $($Package.Name)"
+                          Write-Warning "No compatible DLLs found for $($Package.name)"
                       } else {
-                          # Save version info
-                          $LatestVersion | Set-Content -Path (Join-Path -Path $LibPath -ChildPath $Package.VersionFile) -NoNewline
-                          Write-Host "✓ $($Package.Name) $LatestVersion extracted successfully" -ForegroundColor Green
+                          # Update version in JSON tracking
+                          $Package.version = $LatestVersion
+                          $UpdatedPackages = $true
+                          Write-Host "✓ $($Package.name) $LatestVersion extracted successfully" -ForegroundColor Green
                       }
                   } else {
                       Write-Host "Already up to date" -ForegroundColor Gray
                   }
               } catch {
-                  Write-Warning "Failed to process $($Package.Name): $_"
+                  Write-Warning "Failed to process $($Package.name): $_"
               }
+          }
+
+          # Save updated JSON if any packages were updated
+          if ($UpdatedPackages) {
+              $PackageTracking | ConvertTo-Json -Depth 10 | Set-Content -Path $JsonPath -NoNewline
+              Write-Host "`n✓ Updated package tracking JSON" -ForegroundColor Green
           }
 
           # Cleanup temp directory
@@ -231,7 +198,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add DLLPickle/Assembly/* DLLPickle/DLLPickle.psd1
+          git add src/DLLPickle/Assembly/*.dll src/DLLPickle/Assembly/MSAL_PackageTracking.json src/DLLPickle/DLLPickle.psd1
           git commit -m "Update MSAL packages: ${{ steps.check_packages.outputs.update_summary }}"
           git push
 
