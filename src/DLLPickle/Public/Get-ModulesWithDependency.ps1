@@ -4,8 +4,7 @@ function Get-ModulesWithDependency {
         Finds installed PowerShell modules that have a common file dependency.
 
     .DESCRIPTION
-        This function queries installed PowerShell resources to identify all modules that have a common dependency on a
-        specific file.
+        This function queries installed PowerShell resources to identify all modules that have a common dependency on a specific file.
 
     .EXAMPLE
         Get-ModulesWithDependency -FileName 'Microsoft.Identity.Client.dll' | Format-Table Name,Version,@{N='FileName';E={($_.DependencyPath.Split('\'))[-1]}},DependencyVersion
