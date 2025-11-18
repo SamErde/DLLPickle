@@ -1,4 +1,4 @@
-name: Update MSAL Packages
+name: Update Monitored Packages
 
 on:
   schedule:
@@ -31,13 +31,13 @@ jobs:
           # Set initial defaults.
           $LibPath = Join-Path -Path $env:GITHUB_WORKSPACE -ChildPath "src/DLLPickle/Assembly"
           $JsonPath = Join-Path -Path $LibPath -ChildPath "MSAL_PackageTracking.json"
-          
+
           # Read package tracking JSON
           if (-not (Test-Path $JsonPath)) {
               Write-Error "Package tracking JSON not found at $JsonPath"
               exit 1
           }
-          
+
           $PackageTracking = Get-Content $JsonPath -Raw | ConvertFrom-Json
           $UpdatesAvailable = $false
           $UpdateSummary = @()
@@ -45,7 +45,7 @@ jobs:
           # Check each package version for updates.
           foreach ($Package in $PackageTracking.packages) {
               Write-Host "`n=== Checking $($Package.name) ===" -ForegroundColor Cyan
-              
+
               $CurrentVersion = $Package.version
               Write-Host "Current version: $CurrentVersion"
 
@@ -82,14 +82,14 @@ jobs:
         run: |
           $LibPath = Join-Path -Path $env:GITHUB_WORKSPACE -ChildPath "src/DLLPickle/Assembly"
           New-Item -ItemType Directory -Path $LibPath -Force | Out-Null
-          
+
           # Read package tracking JSON
           $JsonPath = Join-Path -Path $LibPath -ChildPath "MSAL_PackageTracking.json"
           if (-not (Test-Path $JsonPath)) {
               Write-Error "Package tracking JSON not found at $JsonPath"
               exit 1
           }
-          
+
           $PackageTracking = Get-Content $JsonPath -Raw | ConvertFrom-Json
           $UpdatedPackages = $false
 
