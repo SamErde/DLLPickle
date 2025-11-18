@@ -19,6 +19,15 @@
     {
       "name": "Microsoft.Identity.Abstractions",
       "version": "9.5.0"
+    },
+    {
+      "name": "Microsoft.IdentityModel.Abstractions.dll"
+    },
+    {
+      "name": "Microsoft.IdentityModel.JsonWebTokens.dll"
+    },
+    {
+      "name": "System.IdentityModel.Tokens.Jwt.dll"
     }
   ]
 }
