@@ -50,3 +50,34 @@ Install-PSResource -Name DLLPickle -Prerelease
 The easiest way to benefit from DLL Pickle is to import the module in your PowerShell profile before any other module or assembly is loaded. Just add the line `Import-Module DLLPickle` to your profile, save it, and start a new instance of PowerShell.
 
 Alternatively, if you are starting work in a new PowerShell session in which you know you will be authenticating to multiple online services, you can run `Import-Module DLLPickle` at the beginning of your session and then proceed with the rest of your modules.
+
+## Additional Information
+
+### Versioning
+
+This project follows the semantic versioning model. It also packages numerous dependencies that follow their own versioning. To maintain clarity, this project will follow SemVer standards and the following logic for version changes:
+
+#### Major Versions: 2.x.x.x
+
+The major version will only change if there is a breaking change in the DLL Pickle project.
+
+#### Minor Versions: X.1.X.X
+
+The minor version will change if any of the following occur:
+
+- New features are added to the project
+- New tracked assemblies are added to the project
+
+#### Build Versions: X.X.1.X
+
+The build version will change if any of the following occur:
+
+- Minor refactoring for performance, error handling, or logging
+- A new version of any packaged assembly is automatically updated within the project
+
+#### Revision Versions: x.x.x.1234
+
+The revision segment of the version may change if any of the following occur:
+
+- Minor fixes for typos or formatting
+- Changes to documentation
