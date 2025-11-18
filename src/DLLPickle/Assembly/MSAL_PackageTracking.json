@@ -23,20 +23,23 @@
     {
       "name": "Microsoft.Identity.Abstractions",
       "description": "Interface for higher level API for confidential client applications.",
-      "version": "9.5.0"
+      "version": "0.0.0"
     },
     {
       "name": "Microsoft.IdentityModel.Abstractions",
       "description": "A package containing thin abstractions for Microsoft.IdentityModel.",
-      "version": "8.14.0"
+      "version": "0.0.0"
     },
     {
       "name": "Microsoft.IdentityModel.JsonWebTokens",
-      "description": "Includes types that provide support for creating, serializing and validating JSON Web Tokens."
+      "description": "Includes types that provide support for creating, serializing and validating JSON Web Tokens.",
+      "version": "0.0.0"
+
     },
     {
       "name": "System.IdentityModel.Tokens.Jwt",
-      "description": "Includes types that provide support for creating, serializing and validating JSON Web Tokens. As of IdentityModel 7x, this is a legacy tool that should be replaced with Microsoft.IdentityModel.JsonWebTokens."
+      "description": "Includes types that provide support for creating, serializing and validating JSON Web Tokens. As of IdentityModel 7x, this is a legacy tool that should be replaced with Microsoft.IdentityModel.JsonWebTokens.",
+      "version": "0.0.0"
     }
   ]
 }
