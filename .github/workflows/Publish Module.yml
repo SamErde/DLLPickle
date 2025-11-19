@@ -156,7 +156,7 @@ jobs:
           }
 
           Start-Sleep -Seconds 30  # Allow PSGallery indexing
-          $published = Find-Module -Name $env:MODULE_NAME -RequiredVersion $env:MODULE_VERSION -ErrorAction SilentlyContinue
+          $published = Find-Module -Name $env:MODULE_NAME -RequiredVersion $env:MODULE_VERSION -AllowPrerelease -ErrorAction SilentlyContinue
           if (-not $published) { Write-Warning "Module published but not yet visible in gallery search." }
 
       - name: Save Published Module as Artifact
