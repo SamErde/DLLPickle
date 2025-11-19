@@ -4,12 +4,10 @@ on:
   release:
     types: [published]
   workflow_dispatch:
-#    inputs:
-#      dry_run:
-#        description: 'Run in dry-run mode (do not actually publish)'
-#        required: false
-#        type: boolean
-#        default: true
+
+concurrency:
+  group: publish-psgallery
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -21,6 +19,10 @@ jobs:
     environment:
       name: psgallery
       url: https://www.powershellgallery.com/packages/DLLPickle
+    env:
+      MODULE_DIR: ./src/DLLPickle
+      MANIFEST: ./src/DLLPickle/DLLPickle.psd1
+      ARTIFACT_DIR: ./artifacts
 
     steps:
       - name: Harden the runner (Audit all outbound calls)
@@ -36,72 +38,182 @@ jobs:
         run: |
           Write-Host "PowerShell Version: $($PSVersionTable.PSVersion)"
           Write-Host "Platform: $($PSVersionTable.Platform)"
+          Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
 
-      - name: Validate Module Manifest
+      - name: Validate & Extract Manifest
+        id: manifest
         shell: pwsh
         run: |
-          $manifestPath = './src/DLLPickle/DLLPickle.psd1'
+          $manifestPath = $env:MANIFEST
           Write-Host "Validating module manifest: $manifestPath"
           $manifest = Test-ModuleManifest -Path $manifestPath -ErrorAction Stop
 
-          # Check if this is a prerelease
           $manifestContent = Get-Content $manifestPath -Raw
+          $isPrerelease = $false # Set default as not prerelease
           if ($manifestContent -match "Prerelease\s*=\s*'([^']+)'") {
             $prerelease = $Matches[1]
+            $isPrerelease = $true
+            $fullVersion = "$( $manifest.Version )-$prerelease"
             Write-Host "Prerelease tag: $prerelease"
-            Write-Host "Full version will be: $($manifest.Version)-$prerelease"
           } else {
-            Write-Host "This is a stable release"
+            $fullVersion = $manifest.Version.ToString()
+            Write-Host "Stable release detected"
           }
+          Write-Host "Full version resolved: $fullVersion"
+
+          # Duplicate version guard
+          Write-Host "Checking if version $fullVersion is already published..."
+          try {
+            $existing = Find-Module -Name DLLPickle -RequiredVersion $fullVersion -ErrorAction SilentlyContinue
+            if ($existing) {
+              Write-Error "Version $fullVersion is already published to PowerShell Gallery. Please update the module version."
+              exit 1
+            }
+            Write-Host "Version $fullVersion is not yet published. Proceeding..."
+          } catch {
+            Write-Host "Version check encountered an exception but will proceed: $($_.Exception.Message)"
+          }
+
+          $releaseTag = ''
+          $releaseVersion = ''
+          if ($env:GITHUB_EVENT_NAME -eq 'release') {
+            $releaseTag = $env:GITHUB_REF -replace 'refs/tags/', ''
+            $releaseVersion = $releaseTag -replace '^v', ''
+            Write-Host "Release tag: $releaseTag"
+            Write-Host "Release version (normalized): $releaseVersion"
+          }
+
+          $tagVersion = $releaseVersion # normalized tag version
+          $moduleVersion = $fullVersion
+          $versions = @($releaseVersion, $tagVersion, $moduleVersion) | Where-Object { $_ } | Select-Object -Unique
+          if ($versions.Count -gt 1) {
+            Write-Warning "Mismatch detected among release version, tag version, and module version: ReleaseVersion='$releaseVersion' TagVersion='$tagVersion' ModuleVersion='$moduleVersion'"
+          } else {
+            if ($releaseVersion) { Write-Host "✓ Release, tag, and module versions align: $moduleVersion" }
+          }
+
+          # Emit outputs
+          echo "name=$($manifest.Name)" >> $env:GITHUB_OUTPUT
+          echo "baseVersion=$($manifest.Version)" >> $env:GITHUB_OUTPUT
+          echo "fullVersion=$fullVersion" >> $env:GITHUB_OUTPUT
+          echo "isPrerelease=$isPrerelease" >> $env:GITHUB_OUTPUT
+          echo "releaseTag=$releaseTag" >> $env:GITHUB_OUTPUT
+          echo "releaseVersion=$releaseVersion" >> $env:GITHUB_OUTPUT
 
       - name: Install Dependencies
         shell: pwsh
         run: |
-          Write-Host "Installing required modules..."
-          Install-Module -Name PowerShellGet -Force -Scope CurrentUser -AllowClobber
-          Import-Module PowerShellGet
+          Write-Host "Checking PowerShellGet version..."
+          $psGetVersion = (Get-Module -Name PowerShellGet -ListAvailable | Sort-Object Version -Descending | Select-Object -First 1).Version
+          Write-Host "Current PowerShellGet version: $psGetVersion"
+
+          # Only install if version is less than 2.2.5
+          if (-not $psGetVersion -or $psGetVersion -lt [version]'2.2.5') {
+            Write-Host "Updating PowerShellGet to latest version..."
+            Install-Module -Name PowerShellGet -MinimumVersion 2.2.5 -Force -Scope CurrentUser -AllowClobber
+          } else {
+            Write-Host "PowerShellGet version is sufficient"
+          }
+          Import-Module PowerShellGet -MinimumVersion 2.2.5
 
       - name: Publish Module to PowerShell Gallery
         shell: pwsh
         env:
           PSGALLERY_API_KEY: ${{ secrets.PSGALLERY_API_KEY }}
+          MODULE_NAME: ${{ steps.manifest.outputs.name }}
+          MODULE_VERSION: ${{ steps.manifest.outputs.fullVersion }}
         run: |
           $ErrorActionPreference = 'Stop'
+          if ([string]::IsNullOrWhiteSpace($env:PSGALLERY_API_KEY)) { Write-Error "PSGALLERY_API_KEY secret is not set."; exit 1 }
 
-          # Verify API key is present
-          if ([string]::IsNullOrWhiteSpace($env:PSGALLERY_API_KEY)) {
-            Write-Error "PSGALLERY_API_KEY secret is not set. Please configure it in the repository settings."
-            exit 1
-          }
+          Write-Host "Preparing to publish module: $env:MODULE_NAME"
+          Write-Host "Version (full): $env:MODULE_VERSION"
 
-          $modulePath = './src/DLLPickle'
-          $manifestPath = Join-Path $modulePath 'DLLPickle.psd1'
+          Set-PSRepository -Name PSGallery -InstallationPolicy Trusted -ErrorAction SilentlyContinue
 
-          # Get module information
-          $manifest = Test-ModuleManifest -Path $manifestPath
-          $version = $manifest.Version
-
-          Write-Host "Preparing to publish module: $($manifest.Name)"
-          Write-Host "Version: $version"
-
-          # Prepare publish parameters
           $publishParams = @{
-            Path        = $modulePath
+            Path        = $env:MODULE_DIR
             NuGetApiKey = $env:PSGALLERY_API_KEY
             Repository  = 'PSGallery'
-            Verbose     = $false
+            Verbose     = $true
             Force       = $true
           }
 
           Write-Host "Publishing module to PowerShell Gallery..." -ForegroundColor Green
-          try {
-            Publish-Module @publishParams
-            Write-Host ""
-            Write-Host "✓ Module published successfully!" -ForegroundColor Green
-            Write-Host "View at: https://www.powershellgallery.com/packages/$($manifest.Name)/$version"
+          $maxRetries = 3; $retryCount = 0; $publishSuccess = $false
+          while (-not $publishSuccess -and $retryCount -lt $maxRetries) {
+            try {
+              if ($retryCount -gt 0) { Write-Host "Retry attempt $retryCount of $maxRetries..."; -Seconds (5 * $retryCount) }
+              Publish-Module @publishParams
+              $publishSuccess = $true
+              Write-Host "\n✓ Module published successfully!" -ForegroundColor Green
+              Write-Host "View at: https://www.powershellgallery.com/packages/$env:MODULE_NAME/$env:MODULE_VERSION"
+            } catch {
+              $retryCount++
+              if ($retryCount -ge $maxRetries) { Write-Error "Failed to publish module after $maxRetries attempts: $_"; Write-Host "Error details: $($_.Exception.Message)"; exit 1 }
+              Write-Warning "Publish attempt failed: $($_.Exception.Message)"
+            }
           }
-          catch {
-            Write-Error "Failed to publish module: $_"
-            Write-Host "Error details: $($_.Exception.Message)"
-            exit 1
+
+          Start-Sleep -Seconds 30  # Allow PSGallery indexing
+          $published = Find-Module -Name $env:MODULE_NAME -RequiredVersion $env:MODULE_VERSION -ErrorAction SilentlyContinue
+          if (-not $published) { Write-Warning "Module published but not yet visible in gallery search." }
+
+      - name: Save Published Module as Artifact
+        if: success()
+        shell: pwsh
+        run: |
+          $artifactPath = $env:ARTIFACT_DIR
+          New-Item -Path $artifactPath -ItemType Directory -Force | Out-Null
+          Copy-Item -Path $env:MODULE_DIR -Destination "$artifactPath/DLLPickle" -Recurse -Force
+
+          $publishInfo = @{
+            ModuleName    = '${{ steps.manifest.outputs.name }}'
+            Version       = '${{ steps.manifest.outputs.fullVersion }}'
+            BaseVersion   = '${{ steps.manifest.outputs.baseVersion }}'
+            IsPrerelease  = '${{ steps.manifest.outputs.isPrerelease }}'
+            ReleaseTag    = '${{ steps.manifest.outputs.releaseTag }}'
+            ReleaseVersion= '${{ steps.manifest.outputs.releaseVersion }}'
+            PublishedDate = (Get-Date).ToString('o')
+            GitHubRef     = $env:GITHUB_REF
+            GitHubSha     = $env:GITHUB_SHA
+            GitHubRunId   = $env:GITHUB_RUN_ID
+            Actor         = $env:GITHUB_ACTOR
+            EventName     = $env:GITHUB_EVENT_NAME
           }
+          $publishInfo | ConvertTo-Json -Depth 10 | Set-Content "$artifactPath/publish-info.json"
+
+          # File hash stamping for audit/compliance
+          $hashes = Get-ChildItem "$artifactPath/DLLPickle" -Recurse -File | ForEach-Object {
+            $h = Get-FileHash -Path $_.FullName -Algorithm SHA256
+            [PSCustomObject]@{ Path = $_.FullName.Replace($artifactPath,'').TrimStart('/'); Algorithm = $h.Algorithm; Hash = $h.Hash }
+          }
+          $hashes | ConvertTo-Json -Depth 5 | Set-Content "$artifactPath/file-hashes.json"
+          Write-Host "Artifacts and file hashes prepared for upload"
+
+      - name: Upload Module Artifact
+        if: success()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: published-module-${{ github.run_number }}
+          path: ${{ env.ARTIFACT_DIR }}/
+          retention-days: 90
+
+      - name: Publish Summary
+        if: success()
+        shell: pwsh
+        run: |
+          $summary = @"
+          ## Publish Summary
+          Module: ${{ steps.manifest.outputs.name }}
+          Version: ${{ steps.manifest.outputs.fullVersion }} (Base: ${{ steps.manifest.outputs.baseVersion }})
+          Prerelease: ${{ steps.manifest.outputs.isPrerelease }}
+          Release Tag: ${{ steps.manifest.outputs.releaseTag }}
+          Release Version: ${{ steps.manifest.outputs.releaseVersion }}
+          Run ID: $env:GITHUB_RUN_ID
+          Commit: $env:GITHUB_SHA
+          Actor: $env:GITHUB_ACTOR
+          Event: $env:GITHUB_EVENT_NAME
+          Artifact: published-module-${{ github.run_number }}
+          "@
+          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value $summary
