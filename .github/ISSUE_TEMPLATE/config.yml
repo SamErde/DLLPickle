@@ -1,4 +1,4 @@
-blank_issues_enabled: false
+blank_issues_enabled: true
 
 contact_links:
   - name: Questions & Discussions 💬
@@ -10,6 +10,3 @@ contact_links:
   - name: ReadTheDocs 📖 (Alternate/Backup Documentation Site)
     url: https://dllpickle.readthedocs.io/en/latest/
     about: ReadTheDocs for the DLLPickle project.
-#  - name: Basic FAQs ❓
-#    url: https://github.com/SamErde/DLLPickle/wiki/FAQs
-#    about: Answers to the Basic Frequently Asked Questions
