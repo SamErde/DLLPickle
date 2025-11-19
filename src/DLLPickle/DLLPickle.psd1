@@ -30,7 +30,7 @@ CompanyName = 'Day 3 Bits'
 Copyright = '(c) Sam Erde. All rights reserved.'
 
 # Description of the functionality provided by this module
-Description = 'A PowerShell module that helps you get un-stuck from version conflicts that occur when using modules that depend on different versions of the same dependencies (such as the Microsoft Authentication Library (MSAL)).'
+Description = 'A PowerShell module that helps you get un-stuck from version conflicts that occur when using modules that depend on different versions of the same dependency (such as the Microsoft Authentication Library (MSAL)).'
 
 # Minimum version of the PowerShell engine required by this module
 # PowerShellVersion = ''
@@ -54,11 +54,12 @@ Description = 'A PowerShell module that helps you get un-stuck from version conf
 # RequiredModules = @()
 
 # Assemblies that must be loaded prior to importing this module
-RequiredAssemblies = 'Assembly/Microsoft.Identity.Abstractions.dll', 
-               'Assembly/Microsoft.Identity.Client.Broker.dll', 
-               'Assembly/Microsoft.Identity.Client.dll', 
-               'Assembly/Microsoft.Identity.Client.Extensions.Msal.dll', 
-               'Assembly/Microsoft.Identity.Client.NativeInterop.dll'
+RequiredAssemblies = @('Assembly/Microsoft.Identity.Abstractions.dll',
+    'Assembly/Microsoft.Identity.Client.Broker.dll',
+    'Assembly/Microsoft.Identity.Client.dll',
+    'Assembly/Microsoft.Identity.Client.Extensions.Msal.dll',
+    'Assembly/Microsoft.Identity.Client.NativeInterop.dll'
+)
 
 # Script files (.ps1) that are run in the caller's environment prior to importing this module.
 # ScriptsToProcess = @()
@@ -73,8 +74,10 @@ FormatsToProcess = 'DLLPickle.Format.ps1xml'
 # NestedModules = @()
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
-FunctionsToExport = 'Find-MSIdentityAssembly', 'Get-ModulesWithDependency', 
-               'Get-ModulesWithVersionSortedIdentityClient'
+FunctionsToExport = @('Find-MSIdentityAssembly',
+    'Get-ModulesWithDependency',
+    'Get-ModulesWithVersionSortedIdentityClient'
+)
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
 CmdletsToExport = @()
@@ -134,4 +137,3 @@ HelpInfoURI = 'https://day3bits.com/DLLPickle'
 # DefaultCommandPrefix = ''
 
 }
-
