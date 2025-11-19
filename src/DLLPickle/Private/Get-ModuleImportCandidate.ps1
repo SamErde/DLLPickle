@@ -52,7 +52,7 @@ function Get-ModuleImportCandidate {
         # Filter out empty entries and resolve the full path to account for symbolic links or variables.
         $PSModulePathEntries = $env:PSModulePath -split [System.IO.Path]::PathSeparator |
             Where-Object { $_ } | ForEach-Object { [System.IO.Path]::GetFullPath($_) } |
-                Select-Object -Unique
+            Select-Object -Unique
     } # end begin block
 
     process {
