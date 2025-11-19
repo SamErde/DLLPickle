@@ -1,4 +1,4 @@
-# DLL Pickle
+# 🥒 DLL Pickle
 
 A PowerShell module that helps you get un-stuck from dependency version conflicts that often occur when trying to connect to multiple Microsoft services.
 
@@ -11,7 +11,7 @@ A PowerShell module that helps you get un-stuck from dependency version conflict
 
 <img src="https://raw.githubusercontent.com/SamErde/DLLPickle/main/assets/dllpickle.png" alt="A stressed pickle trying to explain the problem in their code to a rubber duck." width="400" />
 
-## Description
+## 📝 Description
 
 Numerous PowerShell modules include a dependency on the Microsoft Authentication Library (MSAL) for authenticating to Microsoft's online services. The latest version of the MSAL is actively maintained in **[AzureAD/microsoft-authentication-library-for-dotnet](https://github.com/AzureAD/microsoft-authentication-library-for-dotnet)**. However, modules that depend on the MSAL libraries (such as **Microsoft.Identity.Client.dll**) all update their releases with different versions of MSAL on different schedules. This results in version conflicts that break authentication flows whenever you try to use multiple modules in one session. Examples of modules that can be affected by this include:
 
@@ -30,54 +30,52 @@ This works because of the "first one wins" rule and because the MSAL is designed
 
 DLL Pickle handles this for you by automatically releasing a new version of DLL Pickle whenever a new release of the MSAL is found. As long as you keep the DLL Pickle module up to date and load it first in your PowerShell profile (or manually load it first in your session), then all other PowerShell modules should be able to use this new MSAL that is loaded by DLL Pickle.
 
-## Getting Started
+## 🧑‍💻 Getting Started
 
-### Prerequisites
+### 📋 Prerequisites
 
 Any of the following PowerShell editions:
 
 - PowerShell on Linux, macOS, or Windows
 - Windows PowerShell 5.1
 
-### Installation
+### 📦 Installation
 
 ```powershell
 Install-PSResource -Name DLLPickle -Prerelease
 ```
 
-### Using DLL Pickle
+### 🥒 Using DLL Pickle
 
 The easiest way to benefit from DLL Pickle is to import the module in your PowerShell profile before any other module or assembly is loaded. Just add the line `Import-Module DLLPickle` to your profile, save it, and start a new instance of PowerShell.
 
 Alternatively, if you are starting work in a new PowerShell session in which you know you will be authenticating to multiple online services, you can run `Import-Module DLLPickle` at the beginning of your session and then proceed with the rest of your modules.
 
-## Additional Information
+## 📝 Additional Information
 
-### Versioning
+### 🏷️ Versioning
 
 This project follows the semantic versioning model. It also packages numerous dependencies that follow their own versioning. To maintain clarity, this project will follow SemVer standards and the following logic for version changes:
 
-#### Major Versions: 2.x.x.x
+#### 🏷️ Major Versions: 2.x.x.x
 
 The major version will only change if there is a breaking change in the DLL Pickle project.
 
-#### Minor Versions: X.1.X.X
+#### 🏷️ Minor Versions: X.1.X.X
 
 The minor version will change if any of the following occur:
 
 - New features are added to the project
 - New tracked assemblies are added to the project
 
-#### Build Versions: X.X.1.X
+#### 🏷️ Build Versions: X.X.1.X
 
 The build version will change if any of the following occur:
 
 - Minor refactoring for performance, error handling, or logging
 - A new version of any packaged assembly is automatically updated within the project
 
-#### Revision Versions: x.x.x.1234
-
-The revision segment of the version may change if any of the following occur:
+#### 🏷️ The revision segment of the version may change if any of the following occur:
 
 - Minor fixes for typos or formatting
 - Changes to documentation
