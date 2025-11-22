@@ -14,3 +14,4 @@
   - import a specific version
   - verify MD5 hash with original source
 - Add option to preload other common assemblies
+- Add an option to inspect and preload the newest version of relevant assemblies only from the ones that are already included with installed modules on the current system.
