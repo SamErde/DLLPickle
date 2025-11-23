@@ -8,8 +8,8 @@
 # 4. Creates a GitHub release if none exists (with tag v{version})
 #
 # Triggers:
-# - When a GitHub release is published
-# - Manual workflow dispatch
+# - Manual workflow dispatch (for ad-hoc publishes)
+# - When a GitHub release is published (to re-publish if needed)
 name: Publish Module to PowerShell Gallery
 
 on:
@@ -244,7 +244,7 @@ jobs:
           
           try {
             # Use GitHub CLI to check if release exists
-            $releaseJson = gh release view $releaseTag --json tagName,name 2>&1
+            $null = gh release view $releaseTag --json tagName 2>$null
             if ($LASTEXITCODE -eq 0) {
               Write-Host "✓ Release $releaseTag already exists"
               echo "exists=true" >> $env:GITHUB_OUTPUT
@@ -281,9 +281,9 @@ jobs:
           
           ### 📦 Installation
           
-          ``````powershell
+          ```powershell
           Install-Module -Name $env:MODULE_NAME -RequiredVersion $env:MODULE_VERSION
-          ``````
+          ```
           
           ### 📋 Module Information
           - **Module Name:** $env:MODULE_NAME
