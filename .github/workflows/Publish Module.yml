@@ -241,8 +241,8 @@ jobs:
           $releaseTag = "v$env:MODULE_VERSION"
           Write-Host "Checking for existing GitHub release with tag: $releaseTag"
           
-          # Use GitHub CLI to check if release exists - suppress stderr for cleaner output
-          $output = gh release view $releaseTag --json tagName 2>&1
+          # Use GitHub CLI to check if release exists - capture output and check exit code
+          $null = gh release view $releaseTag --json tagName 2>&1
           if ($LASTEXITCODE -eq 0) {
             Write-Host "✓ Release $releaseTag already exists"
             echo "exists=true" >> $env:GITHUB_OUTPUT
