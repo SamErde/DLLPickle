@@ -1,3 +1,15 @@
+# This workflow publishes the PowerShell module to the PowerShell Gallery
+# and creates a GitHub release if one doesn't already exist for the module version.
+#
+# Workflow steps:
+# 1. Validates the module manifest and extracts version information
+# 2. Publishes the module to PowerShell Gallery
+# 3. Checks if a GitHub release exists for the module version
+# 4. Creates a GitHub release if none exists (with tag v{version})
+#
+# Triggers:
+# - When a GitHub release is published
+# - Manual workflow dispatch
 name: Publish Module to PowerShell Gallery
 
 on:
