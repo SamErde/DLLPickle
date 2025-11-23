@@ -1,10 +1,8 @@
 <#
 .SYNOPSIS
     Inventory installed PowerShell modules for DLLs, detect conflicts and redundancies, export CSV/JSON/HTML.
-
 .DESCRIPTION
-    Scans installed modules (newest per scope) for DLLs via fast directory scanning and optional deep content inspection.
-    Exports results and builds an HTML report from an external template with Mustache-style placeholders.
+    See function Get-ModuleDllInventory for details.
 #>
 
 function Get-ModuleDllInventory {
@@ -12,124 +10,140 @@ function Get-ModuleDllInventory {
     param(
         [ValidateSet('CurrentUser', 'AllUsers', 'Both')]
         [string] $Scope = 'Both',
-
         [switch] $DeepInspection,
-
         [string] $ExportCsv,
-
         [string] $ExportJson,
-
         [string] $ExportHtml,
-
         [string] $TemplatePath = $null,
-
         [switch] $Parallel,
-
         [int] $ThrottleLimit = 0,
-
         [switch] $PassThru
     )
 
     begin {
-        # Determine default template path (script directory)
+        # -----------------------------------
+        # Setup Defaults and Helper Functions
+        # -----------------------------------
+        # Locate the path to the report templates.
         if ($null -eq $TemplatePath) {
-            try {
-                if ($PSCommandPath) {
-                    $ScriptDir = Split-Path -Parent $PSCommandPath
-                } elseif ($PSScriptRoot) {
-                    $ScriptDir = $PSScriptRoot
-                } else {
-                    $ScriptDir = (Get-Location).ProviderPath
-                }
-            } catch {
-                $ScriptDir = (Get-Location).ProviderPath
-            }
-            $TemplatePath = Join-Path -Path $ScriptDir -ChildPath 'templates\ModuleDLLInventory.Template.html'
+            $TemplatePath = [System.IO.Path]::Join( (Split-Path $PSScriptRoot -Parent), 'Templates', 'ModuleDllInventory.Template.html' )
+            Write-Verbose "TemplatePath: $TemplatePath"
         }
 
-        # Automatic throttle: min(processorCount, 8) if ThrottleLimit not provided or <= 0
+        # Throttle default: use the number of processors, but cap parallel threads at 8.
         $AutoThrottle = [math]::Min([Environment]::ProcessorCount, 8)
-        if ($ThrottleLimit -le 0) { $EffectiveThrottle = $AutoThrottle } else { $EffectiveThrottle = $ThrottleLimit }
+        if ($ThrottleLimit -le 0) {
+            $EffectiveThrottle = $AutoThrottle
+            Write-Verbose "AutoThrottle: $AutoThrottle"
+        } else {
+            $EffectiveThrottle = $ThrottleLimit
+            Write-Verbose "ThrottleLimit: $ThrottleLimit"
+        }
+        Write-Verbose "EffectiveThrottle: $EffectiveThrottle"
 
-        # Helper: HTML encode
         function Convert-ForHtml {
-            param([string] $Text)
-            if ($null -eq $Text) { return '' }
+            # Helper: HTML encode text.
+            param(
+                [string] $Text
+            )
+            if ($null -eq $Text) {
+                return ''
+            }
             return [System.Net.WebUtility]::HtmlEncode($Text)
         }
 
-        # Helper: resolve relative path (returns provider path) or $null
-        function Resolve-IfRelative {
-            param([string] $Candidate, [string] $BaseDirectory)
+        function Resolve-PathIfRelative {
+            # Helper: Resolve relative or absolute path to provider path or $null.
+            [CmdletBinding()]
+            param(
+                [string] $Candidate,
+                [string] $BaseDirectory
+            )
             if ($null -eq $Candidate) { return $null }
             try {
                 if ([System.IO.Path]::IsPathRooted($Candidate)) {
-                    return (Resolve-Path -LiteralPath $Candidate -ErrorAction SilentlyContinue).ProviderPath
+                    $ResolvedPath = Resolve-Path -LiteralPath $Candidate -ErrorAction SilentlyContinue
+                    return if ($null -ne $ResolvedPath) { $ResolvedPath.ProviderPath } else { $null }
                 } else {
                     $Joined = Join-Path -Path $BaseDirectory -ChildPath $Candidate
-                    return (Resolve-Path -LiteralPath $Joined -ErrorAction SilentlyContinue).ProviderPath
+                    $ResolvedPath = Resolve-Path -LiteralPath $Joined -ErrorAction SilentlyContinue
+                    return if ($null -ne $ResolvedPath) { $ResolvedPath.ProviderPath } else { $null }
                 }
             } catch {
+                Write-Warning "Failed to resolve the relative path.`nCandidate: '$Candidate'`nBaseDirectory: '$BaseDirectory'"
                 return $null
             }
         }
 
-        # Helper: get ProductVersion or FileVersion for a file
         function Get-LibraryVersionInfo {
+            # Helper: Read file version info (prefer ProductVersion and fail back to FileVersion).
             param([string] $Path)
             if ($null -eq $Path) { return $null }
             try {
-                $Item = Get-Item -LiteralPath $Path -ErrorAction Stop
-                $Version = $Item.VersionInfo.ProductVersion
-                if ($null -eq $Version) { $Version = $Item.VersionInfo.FileVersion }
+                $FileInfo = Get-Item -LiteralPath $Path -ErrorAction Stop
+                $Version = $FileInfo.VersionInfo.ProductVersion
+                if ($null -eq $Version) { $Version = $FileInfo.VersionInfo.FileVersion }
                 return $Version
             } catch {
+                Write-Warning "No file version information found in ProductVersion or FileVersion for '$Path'."
                 return $null
             }
         }
 
-        # Helper: import psd1 manifest safely
-        function Get-ManifestData {
-            param([string] $ManifestPath)
-            if (-not (Test-Path -LiteralPath $ManifestPath -PathType Leaf)) { return $null }
+        function Import-ManifestData {
+            # Helper: Safely import module manifest data (.psd1).
+            param(
+                [string] $ManifestPath
+            )
+            if (-not (Test-Path -LiteralPath $ManifestPath -PathType Leaf)) {
+                Write-Warning "Could not find a manifest at '$ManifestPath'. $_"
+                return $null
+            }
             try {
                 return Import-PowerShellDataFile -Path $ManifestPath -ErrorAction Stop
             } catch {
+                Write-Warning "Could not import the manifest at '$ManifestPath'."
                 return $null
             }
         }
 
-        # Helper: find DLL-like references inside text content
         function Get-DllReferencesFromContent {
-            param([string] $Content)
+            # Helper: Find dll-like references inside the contents of text (e.g., module manifest files).
+            param(
+                [string] $Content
+            )
             $Found = [System.Collections.Generic.HashSet[string]]::new()
-            if ($null -eq $Content) { return $Found }
+            if ($null -eq $Content) {
+                return $Found
+            }
 
             $Patterns = @(
                 '(?i)["''](?<path>[^"''<>:]*?\.dll)["'']',
                 '(?i)Add-Type\s+[^;]*?-Path\s+["'']?(?<path>[^"''\s;]+\.dll)["'']?',
                 '(?i)Add-Type\s+[^;]*?-LiteralPath\s+["'']?(?<path>[^"''\s;]+\.dll)["'']?',
                 '(?i)using\s+assembly\s+["'']?(?<path>[^"''\s;]+\.dll)["'']?',
+                '(?i)Assembly\.LoadFrom\(\s*["'']?(?<path>[^"''\s\)]+\.dll)["'']?\s*\)',
+                '(?i)Assembly\.LoadFile\(\s*["'']?(?<path>[^"''\s\)]+\.dll)["'']?\s*\)',
                 '(?i)LoadFrom\(\s*["'']?(?<path>[^"''\s\)]+\.dll)["'']?\s*\)',
                 '(?i)LoadFile\(\s*["'']?(?<path>[^"''\s\)]+\.dll)["'']?\s*\)'
             )
 
             foreach ($Pattern in $Patterns) {
-                $MatchResults = [regex]::Matches($Content, $Pattern)
-                foreach ($M in $MatchResults) {
-                    $Raw = $M.Groups['path'].Value
-                    if ($Raw) { [void]$Found.Add($Raw) }
+                $Matches = [regex]::Matches($Content, $Pattern)
+                foreach ($Match in $Matches) {
+                    $Value = $Match.Groups['path'].Value
+                    if ($Value) { [void]$Found.Add($Value) }
                 }
             }
 
             $BareMatches = [regex]::Matches($Content, '(?i)([A-Za-z0-9_\-\.\\\/:]+?\.dll)')
-            foreach ($B in $BareMatches) { [void]$Found.Add($B.Value) }
+            foreach ($BareMatch in $BareMatches) { [void]$Found.Add($BareMatch.Value) }
 
             return $Found
         }
 
-        # Single-module folder scanner (fast + optional deep)
-        function Measure-ModuleFOlder {
+        function Measure-ModuleFolder {
+            # Helper: scan a single module folder for DLL references
             param(
                 [string] $ModuleFolder,
                 [string] $ModuleName,
@@ -138,174 +152,171 @@ function Get-ModuleDllInventory {
                 [switch] $DoDeep
             )
 
-            $Records = [System.Collections.Generic.List[object]]::new()
+            $LocalRecords = [System.Collections.Generic.List[object]]::new()
 
+            # Scan for DLL files in module folder
             try { $DllFiles = Get-ChildItem -LiteralPath $ModuleFolder -Recurse -Filter '*.dll' -File -ErrorAction SilentlyContinue } catch { $DllFiles = @() }
             foreach ($File in $DllFiles) {
                 $VersionRaw = Get-LibraryVersionInfo -Path $File.FullName
-                $Records.Add([pscustomobject]@{
-                        LibraryName       = $File.Name
-                        LibraryFullPath   = $File.FullName
-                        LibraryVersionRaw = $VersionRaw
-                        ModuleName        = $ModuleName
-                        ModuleVersion     = $ModuleVersion
-                        ModuleScope       = $ModuleScope
-                        ModulePath        = $ModuleFolder
-                        ReferenceType     = 'FileScan'
-                        DiscoveredBy      = 'Directory'
-                    })
+                $LocalRecords.Add([pscustomobject]@{
+                    LibraryName       = $File.Name
+                    LibraryFullPath   = $File.FullName
+                    LibraryVersionRaw = $VersionRaw
+                    ModuleName        = $ModuleName
+                    ModuleVersion     = $ModuleVersion
+                    ModuleScope       = $ModuleScope
+                    ModulePath        = $ModuleFolder
+                    ReferenceType     = 'FileScan'
+                    DiscoveredBy      = 'Directory'
+                })
             }
 
-            # Manifest (.psd1)
+            # Scan manifest for RequiredAssemblies and NestedModules
             try { $Psd1 = Get-ChildItem -LiteralPath $ModuleFolder -Filter '*.psd1' -File -ErrorAction SilentlyContinue | Select-Object -First 1 } catch { $Psd1 = $null }
             if ($null -ne $Psd1) {
-                $Manifest = Get-ManifestData -ManifestPath $Psd1.FullName
+                $Manifest = Import-ManifestData -ManifestPath $Psd1.FullName
                 if ($null -ne $Manifest) {
+                    # RequiredAssemblies
                     if ($Manifest.ContainsKey('RequiredAssemblies') -and $Manifest.RequiredAssemblies) {
-                        foreach ($Req in $Manifest.RequiredAssemblies) {
-                            if ($null -eq $Req) { continue }
-                            if ($Req -is [string] -and $Req.EndsWith('.dll', [System.StringComparison]::OrdinalIgnoreCase)) {
-                                $Resolved = Resolve-IfRelative -Candidate $Req -BaseDirectory $ModuleFolder
+                        foreach ($RequiredAssembly in $Manifest.RequiredAssemblies) {
+                            if ($null -eq $RequiredAssembly) { continue }
+                            if ($RequiredAssembly -is [string] -and $RequiredAssembly.EndsWith('.dll', [System.StringComparison]::OrdinalIgnoreCase)) {
+                                $Resolved = Resolve-PathIfRelative -Candidate $RequiredAssembly -BaseDirectory $ModuleFolder
                                 $VersionRaw = Get-LibraryVersionInfo -Path $Resolved
-                                $Records.Add([pscustomobject]@{
-                                        LibraryName       = [System.IO.Path]::GetFileName($Resolved -or $Req)
-                                        LibraryFullPath   = $Resolved
-                                        LibraryVersionRaw = $VersionRaw
-                                        ModuleName        = $ModuleName
-                                        ModuleVersion     = $ModuleVersion
-                                        ModuleScope       = $ModuleScope
-                                        ModulePath        = $ModuleFolder
-                                        ReferenceType     = 'RequiredAssembly'
-                                        DiscoveredBy      = 'Manifest'
-                                    })
+                                $LocalRecords.Add([pscustomobject]@{
+                                    LibraryName       = [System.IO.Path]::GetFileName($Resolved -or $RequiredAssembly)
+                                    LibraryFullPath   = $Resolved
+                                    LibraryVersionRaw = $VersionRaw
+                                    ModuleName        = $ModuleName
+                                    ModuleVersion     = $ModuleVersion
+                                    ModuleScope       = $ModuleScope
+                                    ModulePath        = $ModuleFolder
+                                    ReferenceType     = 'RequiredAssembly'
+                                    DiscoveredBy      = 'Manifest'
+                                })
                             }
                         }
                     }
 
+                    # NestedModules
                     if ($Manifest.ContainsKey('NestedModules') -and $Manifest.NestedModules) {
                         foreach ($Nested in $Manifest.NestedModules) {
                             $PathCandidate = $null
                             if ($Nested -is [string]) { $PathCandidate = $Nested }
                             elseif ($Nested -is [hashtable] -and $Nested.ContainsKey('Module')) { $PathCandidate = $Nested.Module }
                             if ($PathCandidate -and $PathCandidate -is [string] -and $PathCandidate.EndsWith('.dll', [System.StringComparison]::OrdinalIgnoreCase)) {
-                                $Resolved = Resolve-IfRelative -Candidate $PathCandidate -BaseDirectory $ModuleFolder
+                                $Resolved = Resolve-PathIfRelative -Candidate $PathCandidate -BaseDirectory $ModuleFolder
                                 $VersionRaw = Get-LibraryVersionInfo -Path $Resolved
-                                $Records.Add([pscustomobject]@{
-                                        LibraryName       = [System.IO.Path]::GetFileName($Resolved -or $PathCandidate)
-                                        LibraryFullPath   = $Resolved
-                                        LibraryVersionRaw = $VersionRaw
-                                        ModuleName        = $ModuleName
-                                        ModuleVersion     = $ModuleVersion
-                                        ModuleScope       = $ModuleScope
-                                        ModulePath        = $ModuleFolder
-                                        ReferenceType     = 'NestedModule'
-                                        DiscoveredBy      = 'Manifest'
-                                    })
+                                $LocalRecords.Add([pscustomobject]@{
+                                    LibraryName       = [System.IO.Path]::GetFileName($Resolved -or $PathCandidate)
+                                    LibraryFullPath   = $Resolved
+                                    LibraryVersionRaw = $VersionRaw
+                                    ModuleName        = $ModuleName
+                                    ModuleVersion     = $ModuleVersion
+                                    ModuleScope       = $ModuleScope
+                                    ModulePath        = $ModuleFolder
+                                    ReferenceType     = 'NestedModule'
+                                    DiscoveredBy      = 'Manifest'
+                                })
                             }
                         }
                     }
                 }
             }
 
-            if ($DoDeep.IsPresent) {
-                $FilePatterns = @('*.ps1', '*.psm1', '*.cs', '*.ps1xml', '*.psd1')
-                try { $CodeFiles = Get-ChildItem -LiteralPath $ModuleFolder -Recurse -Include $FilePatterns -File -ErrorAction SilentlyContinue } catch { $CodeFiles = @() }
-                foreach ($Cf in $CodeFiles) {
-                    try { $Content = Get-Content -LiteralPath $Cf.FullName -Raw -ErrorAction Stop } catch { continue }
-                    $Refs = Get-DllReferencesFromContent -Content $Content
-                    foreach ($Ref in $Refs) {
-                        $Resolved = Resolve-IfRelative -Candidate $Ref -BaseDirectory $Cf.DirectoryName
+            # Deep content scanning if requested
+            if ($DoDeep) {
+                try { $CodeFiles = Get-ChildItem -LiteralPath $ModuleFolder -Recurse -Include '*.ps1', '*.psm1', '*.cs', '*.ps1xml', '*.psd1' -File -ErrorAction SilentlyContinue } catch { $CodeFiles = @() }
+                foreach ($CodeFile in $CodeFiles) {
+                    try { $Content = Get-Content -LiteralPath $CodeFile.FullName -Raw -ErrorAction Stop } catch { continue }
+                    $References = Get-DllReferencesFromContent -Content $Content
+                    foreach ($Reference in $References) {
+                        $Resolved = Resolve-PathIfRelative -Candidate $Reference -BaseDirectory $CodeFile.DirectoryName
                         $VersionRaw = Get-LibraryVersionInfo -Path $Resolved
-                        $Lower = $Content.ToLower()
-                        $RefType = 'DeepScan'
-                        if ($Lower -match 'add-type') { $RefType = 'Add-Type' }
-                        elseif ($Lower -match 'using\s+assembly') { $RefType = 'UsingAssembly' }
-                        elseif ($Lower -match 'loadfrom' -or $Lower -match 'loadfile' -or $Lower -match 'assembly\.load') { $RefType = 'ReflectionLoad' }
+                        $ContentLower = $Content.ToLower()
+                        $ReferenceType = 'DeepScan'
+                        if ($ContentLower -match 'add-type') { $ReferenceType = 'Add-Type' } elseif ($ContentLower -match 'using\s+assembly') { $ReferenceType = 'UsingAssembly' } elseif ($ContentLower -match 'loadfrom' -or $ContentLower -match 'loadfile' -or $ContentLower -match 'assembly\.load') { $ReferenceType = 'ReflectionLoad' }
 
-                        $Records.Add([pscustomobject]@{
-                                LibraryName       = [System.IO.Path]::GetFileName($Resolved -or $Ref)
-                                LibraryFullPath   = $Resolved
-                                LibraryVersionRaw = $VersionRaw
-                                ModuleName        = $ModuleName
-                                ModuleVersion     = $ModuleVersion
-                                ModuleScope       = $ModuleScope
-                                ModulePath        = $ModuleFolder
-                                ReferenceType     = $RefType
-                                DiscoveredBy      = 'DeepContent'
-                            })
+                        $LocalRecords.Add([pscustomobject]@{
+                            LibraryName       = [System.IO.Path]::GetFileName($Resolved -or $Reference)
+                            LibraryFullPath   = $Resolved
+                            LibraryVersionRaw = $VersionRaw
+                            ModuleName        = $ModuleName
+                            ModuleVersion     = $ModuleVersion
+                            ModuleScope       = $ModuleScope
+                            ModulePath        = $ModuleFolder
+                            ReferenceType     = $ReferenceType
+                            DiscoveredBy      = 'DeepContent'
+                        })
                     }
                 }
             }
 
-            return $Records
+            return $LocalRecords
         }
 
-        # Get installed module folders (providers then filesystem)
-        function Get-InstalledModuleFolders {
-            param([string] $ScopeSelection)
+        function Get-ScopeFromPath {
+            # Helper: Decide actual module scope based on path.
+            param(
+                # The path to check module scope.
+                [Parameter()]
+                [ValidateNotNullOrEmpty]
+                [string] $Path
+            )
 
-            # Helper: normalize path and decide scope by location
-            function Get-ScopeFromPath {
-                param([string] $Path)
-                if ($null -eq $Path) { return $null }
-
-                try {
-                    $Full = [System.IO.Path]::GetFullPath($Path)
-                } catch {
-                    return $null
-                }
-
-                # Normalize for comparison
-                $FullLower = $Full.ToLowerInvariant()
-
-                $ProgramFiles = ("$env:ProgramFiles" -as [string]) -replace '\\$', ''
-                $ProgramFilesX86 = ("$env:ProgramFiles(x86)" -as [string]) -replace '\\$', ''
-                $ProgramData = ($env:ProgramData -as [string]) -replace '\\$', ''
-                $WinDir = ($env:windir -as [string]) -replace '\\$', ''
-
-                # Make safe-lower versions
-                if ($null -ne $ProgramFiles) { $ProgramFiles = $ProgramFiles.ToLowerInvariant() }
-                if ($null -ne $ProgramFilesX86) { $ProgramFilesX86 = $ProgramFilesX86.ToLowerInvariant() }
-                if ($null -ne $ProgramData) { $ProgramData = $ProgramData.ToLowerInvariant() }
-                if ($null -ne $WinDir) { $WinDir = $WinDir.ToLowerInvariant() }
-
-                # If path is inside any system-wide folder -> AllUsers
-                if ($null -ne $ProgramFiles -and $FullLower.StartsWith($ProgramFiles)) { return 'AllUsers' }
-                if ($null -ne $ProgramFilesX86 -and $FullLower.StartsWith($ProgramFilesX86)) { return 'AllUsers' }
-                if ($null -ne $ProgramData -and $FullLower.StartsWith($ProgramData)) { return 'AllUsers' }
-                if ($null -ne $WinDir -and $FullLower.StartsWith($WinDir)) { return 'AllUsers' }
-
-                # Otherwise, treat as CurrentUser
-                return 'CurrentUser'
+            try {
+                $FullPath = [System.IO.Path]::GetFullPath($Path)
+            } catch {
+                return $null
             }
+            $FullLower = $FullPath.ToLowerInvariant()
+
+            $ProgramFiles = (($env:ProgramFiles -as [string]) -replace '\\$', '').ToLowerInvariant()
+            $ProgramFilesX86 = (("$env:ProgramFiles(x86)" -as [string]) -replace '\\$', '').ToLowerInvariant()
+            $ProgramData = (("$env:ProgramData" -as [string]) -replace '\\$', '').ToLowerInvariant()
+            $WinDir = (($env:windir -as [string]) -replace '\\$', '').ToLowerInvariant()
+
+            # Would this be cleaner as a switch statement?
+            if ($null -ne $ProgramFiles -and $FullLower.StartsWith($ProgramFiles)) { return 'AllUsers' }
+            if ($null -ne $ProgramFilesX86 -and $FullLower.StartsWith($ProgramFilesX86)) { return 'AllUsers' }
+            if ($null -ne $ProgramData -and $FullLower.StartsWith($ProgramData)) { return 'AllUsers' }
+            if ($null -ne $WinDir -and $FullLower.StartsWith($WinDir)) { return 'AllUsers' }
+            # If none of the above comparisons match, return 'CurrentUser.'
+            return 'CurrentUser'
+        }
+
+        function Get-InstalledModuleFolders {
+            # Discover Installed module folders from providers and file system
+            param(
+                [string] $ScopeSelection
+            )
 
             $Folders = [System.Collections.Generic.List[object]]::new()
-            $SeenPaths = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+            $Seen = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
 
-            # 1) Provider: Get-InstalledModule (PowerShellGet)
+            # Provider: Get-InstalledModule
             if (Get-Command -Name Get-InstalledModule -ErrorAction SilentlyContinue) {
                 try {
                     $Installed = Get-InstalledModule -ErrorAction SilentlyContinue
-                    foreach ($I in $Installed) {
+                    foreach ($InstalledModule in $Installed) {
                         $Base = $null
-                        try { $Base = $I.InstalledLocation } catch {}
-                        if ($null -eq $Base -and $I.ModuleBase) { $Base = $I.ModuleBase }
-
+                        try { $Base = $InstalledModule.InstalledLocation } catch {}
+                        if ($null -eq $Base -and $InstalledModule.ModuleBase) { $Base = $InstalledModule.ModuleBase }
                         if ($null -ne $Base) {
-                            $ActualScope = Get-ScopeFromPath -Path $Base
-                            if ($null -eq $ActualScope) { $ActualScope = $ScopeSelection }
-
-                            # Respect caller intent: add only if caller asked for this scope (or asked for Both)
-                            if ($ScopeSelection -in @($ActualScope, 'Both')) {
-                                $Full = (Resolve-Path -LiteralPath $Base -ErrorAction SilentlyContinue).ProviderPath
-                                if ($null -ne $Full -and $SeenPaths.Add($Full)) {
-                                    $Folders.Add([pscustomobject]@{
-                                            ModuleName    = $I.Name
-                                            ModuleVersion = $I.Version.ToString()
-                                            ModulePath    = $Full
-                                            Source        = 'Get-InstalledModule'
-                                            Scope         = $ActualScope
-                                        })
+                            $Resolved = (Resolve-Path -LiteralPath $Base -ErrorAction SilentlyContinue)
+                            $ProviderPath = if ($null -ne $Resolved) { $Resolved.ProviderPath } else { $null }
+                            if ($null -ne $ProviderPath) {
+                                $ActualScope = Get-ScopeFromPath -Path $ProviderPath
+                                if ($ScopeSelection -in @($ActualScope, 'Both')) {
+                                    if ($Seen.Add($ProviderPath)) {
+                                        $Folders.Add([pscustomobject]@{
+                                                ModuleName    = $InstalledModule.Name
+                                                ModuleVersion = ($InstalledModule.Version -as [string])
+                                                ModulePath    = $ProviderPath
+                                                Source        = 'Get-InstalledModule'
+                                                Scope         = $ActualScope
+                                            })
+                                    }
                                 }
                             }
                         }
@@ -313,27 +324,28 @@ function Get-ModuleDllInventory {
                 } catch {}
             }
 
-            # 2) Provider: Get-InstalledPSResource (PowerShellGet v3 / PowerShellGet.Core)
+            # Provider: Get-InstalledPSResource
             if (Get-Command -Name Get-InstalledPSResource -ErrorAction SilentlyContinue) {
                 try {
                     $Resources = Get-InstalledPSResource -ErrorAction SilentlyContinue
-                    foreach ($R in $Resources) {
+                    foreach ($Resource in $Resources) {
                         $Base = $null
-                        try { $Base = $R.Destination } catch {}
+                        try { $Base = $Resource.Destination } catch {}
                         if ($null -ne $Base) {
-                            $ActualScope = Get-ScopeFromPath -Path $Base
-                            if ($null -eq $ActualScope) { $ActualScope = $ScopeSelection }
-
-                            if ($ScopeSelection -in @($ActualScope, 'Both')) {
-                                $Full = (Resolve-Path -LiteralPath $Base -ErrorAction SilentlyContinue).ProviderPath
-                                if ($null -ne $Full -and $SeenPaths.Add($Full)) {
-                                    $Folders.Add([pscustomobject]@{
-                                            ModuleName    = $R.Name
-                                            ModuleVersion = $R.Version.ToString()
-                                            ModulePath    = $Full
-                                            Source        = 'Get-InstalledPSResource'
-                                            Scope         = $ActualScope
-                                        })
+                            $Resolved = (Resolve-Path -LiteralPath $Base -ErrorAction SilentlyContinue)
+                            $ProviderPath = if ($null -ne $Resolved) { $Resolved.ProviderPath } else { $null }
+                            if ($null -ne $ProviderPath) {
+                                $ActualScope = Get-ScopeFromPath -Path $ProviderPath
+                                if ($ScopeSelection -in @($ActualScope, 'Both')) {
+                                    if ($Seen.Add($ProviderPath)) {
+                                        $Folders.Add([pscustomobject]@{
+                                                ModuleName    = $Resource.Name
+                                                ModuleVersion = ($Resource.Version -as [string])
+                                                ModulePath    = $ProviderPath
+                                                Source        = 'Get-InstalledPSResource'
+                                                Scope         = $ActualScope
+                                            })
+                                    }
                                 }
                             }
                         }
@@ -341,30 +353,34 @@ function Get-ModuleDllInventory {
                 } catch {}
             }
 
-            # 3) Filesystem scan of conventional module install locations
+            # Filesystem conventional module locations
             $ModuleDirs = [System.Collections.Generic.List[string]]::new()
             if ($ScopeSelection -in @('CurrentUser', 'Both')) {
-                $ModuleDirs.Add("$env:USERPROFILE\Documents\WindowsPowerShell\Modules")
                 $ModuleDirs.Add("$env:USERPROFILE\Documents\PowerShell\Modules")
+                $ModuleDirs.Add("$env:USERPROFILE\Documents\WindowsPowerShell\Modules")
             }
             if ($ScopeSelection -in @('AllUsers', 'Both')) {
-                $ModuleDirs.Add("$env:ProgramFiles\WindowsPowerShell\Modules")
                 $ModuleDirs.Add("$env:ProgramFiles\PowerShell\Modules")
+                $ModuleDirs.Add("$env:ProgramFiles\WindowsPowerShell\Modules")
                 if ($env:ProgramFiles -ne "$env:ProgramFiles(x86)") { $ModuleDirs.Add("$env:ProgramFiles(x86)\WindowsPowerShell\Modules") }
             }
 
-            foreach ($BasePath in ($ModuleDirs | Where-Object { $_ -and (Test-Path $_) } | Select-Object -Unique)) {
-                try { $Child = Get-ChildItem -LiteralPath $BasePath -Directory -ErrorAction SilentlyContinue } catch { $Child = @() }
-                foreach ($C in $Child) {
-                    try { $VersionFolders = Get-ChildItem -LiteralPath $C.FullName -Directory -ErrorAction SilentlyContinue } catch { $VersionFolders = @() }
+            $ModuleDirs = $ModuleDirs | Where-Object { $_ -and (Test-Path -LiteralPath $_) } | Select-Object -Unique
+            Write-Verbose -Message ("Retrieving directories in the path '{0}'" -f ($ModuleDirs -join "', '"))
+
+            foreach ($BasePath in $ModuleDirs) {
+                try { $TopChild = Get-ChildItem -LiteralPath $BasePath -Directory -ErrorAction SilentlyContinue } catch { $TopChild = @() }
+                foreach ($Top in $TopChild) {
+                    # If module folder contains version subfolders, pick newest version folder
+                    try { $VersionFolders = Get-ChildItem -LiteralPath $Top.FullName -Directory -ErrorAction SilentlyContinue } catch { $VersionFolders = @() }
                     if ($VersionFolders.Count -gt 0) {
                         $Newest = $VersionFolders | Sort-Object LastWriteTime -Descending | Select-Object -First 1
                         $Full = (Resolve-Path -LiteralPath $Newest.FullName -ErrorAction SilentlyContinue).ProviderPath
-                        if ($null -ne $Full -and $SeenPaths.Add($Full)) {
+                        if ($null -ne $Full -and $Seen.Add($Full)) {
                             $ActualScope = Get-ScopeFromPath -Path $Full
                             if ($ScopeSelection -in @($ActualScope, 'Both')) {
                                 $Folders.Add([pscustomobject]@{
-                                        ModuleName    = $C.Name
+                                        ModuleName    = $Top.Name
                                         ModuleVersion = ($Newest.BaseName -as [string])
                                         ModulePath    = $Full
                                         Source        = 'FileSystemScan'
@@ -373,12 +389,12 @@ function Get-ModuleDllInventory {
                             }
                         }
                     } else {
-                        $Full = (Resolve-Path -LiteralPath $C.FullName -ErrorAction SilentlyContinue).ProviderPath
-                        if ($null -ne $Full -and $SeenPaths.Add($Full)) {
+                        $Full = (Resolve-Path -LiteralPath $Top.FullName -ErrorAction SilentlyContinue).ProviderPath
+                        if ($null -ne $Full -and $Seen.Add($Full)) {
                             $ActualScope = Get-ScopeFromPath -Path $Full
                             if ($ScopeSelection -in @($ActualScope, 'Both')) {
                                 $Folders.Add([pscustomobject]@{
-                                        ModuleName    = $C.Name
+                                        ModuleName    = $Top.Name
                                         ModuleVersion = ''
                                         ModulePath    = $Full
                                         Source        = 'FileSystemScan'
@@ -389,32 +405,48 @@ function Get-ModuleDllInventory {
                     }
                 }
             }
+
             return $Folders
         }
 
+        # ------------------------
         # Collect folders for requested scopes
+        # ------------------------
         $AllModuleFolders = [System.Collections.Generic.List[object]]::new()
         if ($Scope -in @('CurrentUser', 'Both')) {
             $Folders = Get-InstalledModuleFolders -ScopeSelection 'CurrentUser'
-            foreach ($F in $Folders) { $AllModuleFolders.Add($F) }
+            foreach ($Folder in $Folders) { $AllModuleFolders.Add($Folder) }
         }
         if ($Scope -in @('AllUsers', 'Both')) {
             $Folders = Get-InstalledModuleFolders -ScopeSelection 'AllUsers'
-            foreach ($F in $Folders) { $AllModuleFolders.Add($F) }
+            foreach ($Folder in $Folders) { $AllModuleFolders.Add($Folder) }
         }
 
-        # Deduplicate: newest version per module per scope
+        Write-Verbose -Message ("All paths to search: '{0}'" -f (($AllModuleFolders | ForEach-Object { $_.ModulePath } | Select-Object -Unique) -join "', '"))
+
+        # ------------------------
+        # Deduplicate newest version per module per scope
+        # ------------------------
         $ByModule = $AllModuleFolders | Group-Object -Property ModuleName, Scope
 
         $SelectedModuleFolders = [System.Collections.Generic.List[object]]::new()
         foreach ($GroupKey in $ByModule) {
-            $IfMatches = $AllModuleFolders | Where-Object { $_.ModuleName -eq $GroupKey.Name -and $_.Scope -eq $GroupKey.Scope }
-            if ($IfMatches.Count -eq 1) { $SelectedModuleFolders.Add($IfMatches[0]) }
-            else {
+            # GroupKey.Name looks like: "ModuleName, Scope"
+            # Build filter from group's Values collection (Values holds ModuleName and Scope)
+            $Vals = $GroupKey.Values
+            $ModuleNameKey = $Vals[0]
+            $ScopeKey = $Vals[1]
+
+            $IfMatches = $AllModuleFolders | Where-Object { $_.ModuleName -eq $ModuleNameKey -and $_.Scope -eq $ScopeKey }
+
+            if ($IfMatches.Count -eq 1) {
+                $SelectedModuleFolders.Add($IfMatches[0])
+            } else {
+                # Try parse semver-ish version, else pick newest by folder write time
                 $Parsed = $IfMatches | ForEach-Object {
-                    $v = $null
-                    try { $v = [version]::Parse($_.ModuleVersion) } catch { $v = $null }
-                    [pscustomobject]@{ Entry = $_; ParsedVersion = $v }
+                    $ParsedVersion = $null
+                    try { $ParsedVersion = [version]::Parse($_.ModuleVersion) } catch { $ParsedVersion = $null }
+                    [pscustomobject]@{ Entry = $_; ParsedVersion = $ParsedVersion }
                 }
                 $WithParsed = $Parsed | Where-Object { $null -ne $_.ParsedVersion }
                 if ($WithParsed.Count -gt 0) {
@@ -432,11 +464,14 @@ function Get-ModuleDllInventory {
     }
 
     process {
+        # ------------------------
+        # Scanning (parallel or serial)
+        # ------------------------
         if ($UseParallel) {
             try {
                 $ParallelResults = $SelectedModuleFolders | ForEach-Object -Parallel {
                     param($ModuleDescriptor, $DeepFlag)
-                    # Recreate minimal scanning in the parallel runspace
+
                     $ModuleFolder = $ModuleDescriptor.ModulePath
                     $ModuleName = $ModuleDescriptor.ModuleName
                     $ModuleVersion = $ModuleDescriptor.ModuleVersion
@@ -462,19 +497,18 @@ function Get-ModuleDllInventory {
                         }
                     }
 
-                    # Manifests
+                    # Manifest scanning
                     try { $Psd1 = Get-ChildItem -LiteralPath $ModuleFolder -Filter '*.psd1' -File -ErrorAction SilentlyContinue | Select-Object -First 1 } catch { $Psd1 = $null }
                     if ($null -ne $Psd1) {
                         try { $Manifest = Import-PowerShellDataFile -Path $Psd1.FullName -ErrorAction Stop } catch { $Manifest = $null }
                         if ($null -ne $Manifest) {
                             if ($Manifest.ContainsKey('RequiredAssemblies') -and $Manifest.RequiredAssemblies) {
-                                foreach ($Req in $Manifest.RequiredAssemblies) {
-                                    if ($null -eq $Req) { continue }
-                                    if ($Req -is [string] -and $Req.EndsWith('.dll', [System.StringComparison]::OrdinalIgnoreCase)) {
+                                foreach ($RequiredAssembly in $Manifest.RequiredAssemblies) {
+                                    if ($null -eq $RequiredAssembly) { continue }
+                                    if ($RequiredAssembly -is [string] -and $RequiredAssembly.EndsWith('.dll', [System.StringComparison]::OrdinalIgnoreCase)) {
                                         $Resolved = $null
                                         try {
-                                            if ([System.IO.Path]::IsPathRooted($Req)) { $Resolved = (Resolve-Path -LiteralPath $Req -ErrorAction SilentlyContinue).ProviderPath }
-                                            else { $Resolved = (Resolve-Path -LiteralPath (Join-Path -Path $ModuleFolder -ChildPath $Req) -ErrorAction SilentlyContinue).ProviderPath }
+                                            if ([System.IO.Path]::IsPathRooted($RequiredAssembly)) { $Resolved = (Resolve-Path -LiteralPath $RequiredAssembly -ErrorAction SilentlyContinue).ProviderPath } else { $Resolved = (Resolve-Path -LiteralPath (Join-Path -Path $ModuleFolder -ChildPath $RequiredAssembly) -ErrorAction SilentlyContinue).ProviderPath }
                                         } catch {}
                                         $VersionRaw = $null
                                         if ($null -ne $Resolved) {
@@ -482,7 +516,7 @@ function Get-ModuleDllInventory {
                                             if ($null -eq $VersionRaw) { try { $VersionRaw = (Get-Item -LiteralPath $Resolved -ErrorAction SilentlyContinue).VersionInfo.FileVersion } catch {} }
                                         }
                                         $LocalRecords += [pscustomobject]@{
-                                            LibraryName       = [System.IO.Path]::GetFileName($Resolved -or $Req)
+                                            LibraryName       = [System.IO.Path]::GetFileName($Resolved -or $RequiredAssembly)
                                             LibraryFullPath   = $Resolved
                                             LibraryVersionRaw = $VersionRaw
                                             ModuleName        = $ModuleName
@@ -529,12 +563,12 @@ function Get-ModuleDllInventory {
                         }
                     }
 
-                    # DeepContent (regex)
+                    # Deep content scanning
                     if ($using:DeepInspection.IsPresent) {
                         try { $CodeFiles = Get-ChildItem -LiteralPath $ModuleFolder -Recurse -Include '*.ps1', '*.psm1', '*.cs', '*.ps1xml', '*.psd1' -File -ErrorAction SilentlyContinue } catch { $CodeFiles = @() }
-                        foreach ($Cf in $CodeFiles) {
-                            try { $Content = Get-Content -LiteralPath $Cf.FullName -Raw -ErrorAction Stop } catch { continue }
-                            $Refs = @()
+                        foreach ($CodeFile in $CodeFiles) {
+                            try { $Content = Get-Content -LiteralPath $CodeFile.FullName -Raw -ErrorAction Stop } catch { continue }
+                            $References = @()
                             $Patterns = @(
                                 '(?i)["''](?<path>[^"''<>:]*?\.dll)["'']',
                                 '(?i)Add-Type\s+[^;]*?-Path\s+["'']?(?<path>[^"''\s;]+\.dll)["'']?',
@@ -543,39 +577,36 @@ function Get-ModuleDllInventory {
                                 '(?i)LoadFrom\(\s*["'']?(?<path>[^"''\s\)]+\.dll)["'']?\s*\)',
                                 '(?i)LoadFile\(\s*["'']?(?<path>[^"''\s\)]+\.dll)["'']?\s*\)'
                             )
-                            foreach ($P in $Patterns) {
-                                $M = [regex]::Matches($Content, $P)
-                                foreach ($m in $M) { if ($m.Groups['path'].Value) { $Refs += $m.Groups['path'].Value } }
+                            foreach ($Pattern in $Patterns) {
+                                $Matches = [regex]::Matches($Content, $Pattern)
+                                foreach ($Match in $Matches) { if ($Match.Groups['path'].Value) { $References += $Match.Groups['path'].Value } }
                             }
-                            $Bare = [regex]::Matches($Content, '(?i)([A-Za-z0-9_\-\.\\\/:]+?\.dll)')
-                            foreach ($b in $Bare) { $Refs += $b.Value }
-                            $Refs = $Refs | Select-Object -Unique
-                            foreach ($Ref in $Refs) {
+                            $BareMatches = [regex]::Matches($Content, '(?i)([A-Za-z0-9_\-\.\\\/:]+?\.dll)')
+                            foreach ($BareMatch in $BareMatches) { $References += $BareMatch.Value }
+                            $References = $References | Select-Object -Unique
+                            foreach ($Reference in $References) {
                                 $Resolved = $null
                                 try {
-                                    if ([System.IO.Path]::IsPathRooted($Ref)) { $Resolved = (Resolve-Path -LiteralPath $Ref -ErrorAction SilentlyContinue).ProviderPath }
-                                    else { $Resolved = (Resolve-Path -LiteralPath (Join-Path -Path $Cf.DirectoryName -ChildPath $Ref) -ErrorAction SilentlyContinue).ProviderPath }
+                                    if ([System.IO.Path]::IsPathRooted($Reference)) { $Resolved = (Resolve-Path -LiteralPath $Reference -ErrorAction SilentlyContinue).ProviderPath } else { $Resolved = (Resolve-Path -LiteralPath (Join-Path -Path $CodeFile.DirectoryName -ChildPath $Reference) -ErrorAction SilentlyContinue).ProviderPath }
                                 } catch {}
                                 $VersionRaw = $null
                                 if ($null -ne $Resolved) {
                                     try { $VersionRaw = (Get-Item -LiteralPath $Resolved -ErrorAction SilentlyContinue).VersionInfo.ProductVersion } catch {}
                                     if ($null -eq $VersionRaw) { try { $VersionRaw = (Get-Item -LiteralPath $Resolved -ErrorAction SilentlyContinue).VersionInfo.FileVersion } catch {} }
                                 }
-                                $Lower = $Content.ToLower()
-                                $RefType = 'DeepScan'
-                                if ($Lower -match 'add-type') { $RefType = 'Add-Type' }
-                                elseif ($Lower -match 'using\s+assembly') { $RefType = 'UsingAssembly' }
-                                elseif ($Lower -match 'loadfrom' -or $Lower -match 'loadfile' -or $Lower -match 'assembly\.load') { $RefType = 'ReflectionLoad' }
+                                $ContentLower = $Content.ToLower()
+                                $ReferenceType = 'DeepScan'
+                                if ($ContentLower -match 'add-type') { $ReferenceType = 'Add-Type' } elseif ($ContentLower -match 'using\s+assembly') { $ReferenceType = 'UsingAssembly' } elseif ($ContentLower -match 'loadfrom' -or $ContentLower -match 'loadfile' -or $ContentLower -match 'assembly\.load') { $ReferenceType = 'ReflectionLoad' }
 
                                 $LocalRecords += [pscustomobject]@{
-                                    LibraryName       = [System.IO.Path]::GetFileName($Resolved -or $Ref)
+                                    LibraryName       = [System.IO.Path]::GetFileName($Resolved -or $Reference)
                                     LibraryFullPath   = $Resolved
                                     LibraryVersionRaw = $VersionRaw
                                     ModuleName        = $ModuleName
                                     ModuleVersion     = $ModuleVersion
                                     ModuleScope       = $ModuleScope
                                     ModulePath        = $ModuleFolder
-                                    ReferenceType     = $RefType
+                                    ReferenceType     = $ReferenceType
                                     DiscoveredBy      = 'DeepContent'
                                 }
                             }
@@ -585,7 +616,7 @@ function Get-ModuleDllInventory {
                     return $LocalRecords
                 } -ArgumentList $DeepInspection -ThrottleLimit $EffectiveThrottle
             } catch {
-                Write-Verbose "Parallel scan error: $($_.Exception.Message); falling back to serial."
+                Write-Verbose -Message ('Parallel scan error: {0}; falling back to serial.' -f $_.Exception.Message)
                 $UseParallel = $false
             }
 
@@ -596,7 +627,7 @@ function Get-ModuleDllInventory {
 
         if (-not $UseParallel) {
             foreach ($ModuleDescriptor in $SelectedModuleFolders) {
-                $Results = Measure-ModuleFOlder -ModuleFolder $ModuleDescriptor.ModulePath -ModuleName $ModuleDescriptor.ModuleName -ModuleVersion $ModuleDescriptor.ModuleVersion -ModuleScope $ModuleDescriptor.Scope -DoDeep:$DeepInspection
+                $Results = Measure-ModuleFolder -ModuleFolder $ModuleDescriptor.ModulePath -ModuleName $ModuleDescriptor.ModuleName -ModuleVersion $ModuleDescriptor.ModuleVersion -ModuleScope $ModuleDescriptor.Scope -DoDeep:$DeepInspection
                 foreach ($Rec in $Results) { $InventoryRecords.Add($Rec) }
             }
         }
@@ -611,23 +642,23 @@ function Get-ModuleDllInventory {
         $ConflictList = [System.Collections.Generic.List[object]]::new()
         $RedundancyList = [System.Collections.Generic.List[object]]::new()
 
-        foreach ($G in $Groups) {
-            $DistinctVersions = $G.Group | Select-Object -Property LibraryVersionRaw -Unique
+        foreach ($Group in $Groups) {
+            $DistinctVersions = $Group.Group | Select-Object -Property LibraryVersionRaw -Unique
             $VersionCount = ($DistinctVersions | Where-Object { $null -ne $_.LibraryVersionRaw }).Count
             if ($VersionCount -gt 1) {
-                $Entries = $G.Group | Select-Object ModuleName, ModuleVersion, ModuleScope, ModulePath, LibraryName, LibraryVersionRaw, LibraryFullPath, ReferenceType, DiscoveredBy
+                $Entries = $Group.Group | Select-Object ModuleName, ModuleVersion, ModuleScope, ModulePath, LibraryName, LibraryVersionRaw, LibraryFullPath, ReferenceType, DiscoveredBy
                 $ConflictList.Add([pscustomobject]@{
-                        LibraryName = $G.Name
+                        LibraryName = $Group.Name
                         Type        = 'Conflict'
                         Instances   = $Entries
                     })
             } else {
-                $NonNullVersion = ($G.Group | Where-Object { $null -ne $_.LibraryVersionRaw } | Select-Object -First 1).LibraryVersionRaw
+                $NonNullVersion = ($Group.Group | Where-Object { $null -ne $_.LibraryVersionRaw } | Select-Object -First 1).LibraryVersionRaw
                 if ($null -ne $NonNullVersion) {
-                    $ModulesWithSame = $G.Group | Where-Object { $_.LibraryVersionRaw -eq $NonNullVersion } | Select-Object ModuleName, ModuleVersion, ModuleScope, ModulePath, LibraryFullPath, ReferenceType, DiscoveredBy
+                    $ModulesWithSame = $Group.Group | Where-Object { $_.LibraryVersionRaw -eq $NonNullVersion } | Select-Object ModuleName, ModuleVersion, ModuleScope, ModulePath, LibraryFullPath, ReferenceType, DiscoveredBy
                     if (($ModulesWithSame | Measure-Object).Count -gt 1) {
                         $RedundancyList.Add([pscustomobject]@{
-                                LibraryName = $G.Name
+                                LibraryName = $Group.Name
                                 Type        = 'Redundancy'
                                 Version     = $NonNullVersion
                                 Instances   = $ModulesWithSame
@@ -648,20 +679,36 @@ function Get-ModuleDllInventory {
             Inventory      = $Normalized
         }
 
-        # Console grouped list (Option A) - show full module list
-        $GroupSummary = $Normalized |
-            Group-Object -Property LibraryName, LibraryVersionRaw |
-                ForEach-Object {
-                    $Modules = ($_.Group | Select-Object -Property ModuleName -Unique | ForEach-Object { $_.ModuleName }) -join ', '
-                    $Version = ($_.Name.Split(',')[1].Trim() -replace '^LibraryVersionRaw=', '') -replace '^\s*', ''
-                    $Obj = [pscustomobject]@{
-                        LibraryName    = $_.Name.Split(',')[0].Trim()
-                        LibraryVersion = $Version
-                        Modules        = $Modules
-                    }
-                    $Obj.PSObject.TypeNames.Insert(0, 'ModuleDll.Inventory.Group')
-                    $Obj
-                }
+        # Console grouped list (Option A) - show full module list (robust version)
+        try {
+            $GroupSummary = $Normalized |
+                Group-Object -Property LibraryName, LibraryVersionRaw |
+                    ForEach-Object {
+                        if (-not $_.Group -or $_.Group.Count -eq 0) {
+                            return
+                        }
+
+                        $Representative = $_.Group | Select-Object -First 1
+                        $LibName = $Representative.LibraryName
+                        $LibVersion = $Representative.LibraryVersionRaw
+
+                        # Build module list (unique names, comma-separated)
+                        $Modules = ($_.Group |
+                                Select-Object -ExpandProperty ModuleName -Unique) -join ', '
+
+                            $Obj = [pscustomobject]@{
+                                LibraryName    = $LibName
+                                LibraryVersion = $LibVersion
+                                Modules        = $Modules
+                            }
+
+                            # Add custom typename so the ps1xml formatting applies cleanly
+                            $Obj.PSObject.TypeNames.Insert(0, 'ModuleDll.Inventory.Group')
+                            $Obj
+                        }
+        } catch {
+            Write-Warning "A non-fatal display error occurred: $($_.Exception.Message)"
+        }
 
         Write-Host ''
         Write-Host 'Module DLL Inventory (grouped)' -ForegroundColor Cyan
@@ -671,20 +718,16 @@ function Get-ModuleDllInventory {
         if ($ExportCsv) {
             try {
                 $Normalized | Export-Csv -Path $ExportCsv -NoTypeInformation -Encoding UTF8
-                Write-Verbose "Exported CSV to $ExportCsv"
-            } catch {
-                Write-Warning "Failed to export CSV: $($_.Exception.Message)"
-            }
+                Write-Verbose -Message ('Exported CSV to {0}' -f $ExportCsv)
+            } catch { Write-Warning -Message ('Failed to export CSV: {0}' -f $_.Exception.Message) }
         }
 
         # Export JSON
         if ($ExportJson) {
             try {
                 $Report | ConvertTo-Json -Depth 8 | Set-Content -Path $ExportJson -Encoding UTF8
-                Write-Verbose "Exported JSON to $ExportJson"
-            } catch {
-                Write-Warning "Failed to export JSON: $($_.Exception.Message)"
-            }
+                Write-Verbose -Message ('Exported JSON to {0}' -f $ExportJson)
+            } catch { Write-Warning -Message ('Failed to export JSON: {0}' -f $_.Exception.Message) }
         }
 
         # Export HTML with external template
@@ -696,10 +739,10 @@ function Get-ModuleDllInventory {
                 # Build Conflict HTML fragment
                 $ConflictHtml = ''
                 if ($Report.Conflicts.Count -gt 0) {
-                    foreach ($C in $Report.Conflicts) {
-                        $ConflictHtml += "<div class='panel'><h3>" + (Convert-ForHtml $C.LibraryName) + "</h3><table class='table'><thead><tr><th>Module</th><th>ModuleVer</th><th>DllVer</th><th>Scope</th><th>ModulePath</th><th>DllPath</th><th>Ref</th></tr></thead><tbody>"
-                        foreach ($I in $C.Instances) {
-                            $ConflictHtml += '<tr><td>' + (Convert-ForHtml $I.ModuleName) + '</td><td>' + (Convert-ForHtml $I.ModuleVersion) + '</td><td>' + (Convert-ForHtml $I.LibraryVersionRaw) + '</td><td>' + (Convert-ForHtml $I.ModuleScope) + "</td><td><code class='code'>" + (Convert-ForHtml $I.ModulePath) + "</code></td><td><code class='code'>" + (Convert-ForHtml $I.LibraryFullPath) + '</code></td><td>' + (Convert-ForHtml $I.ReferenceType) + '</td></tr>'
+                    foreach ($Conflict in $Report.Conflicts) {
+                        $ConflictHtml += "<div class='panel'><h3>" + (Convert-ForHtml $Conflict.LibraryName) + "</h3><table class='table'><thead><tr><th>Module</th><th>ModuleVer</th><th>DllVer</th><th>Scope</th><th>ModulePath</th><th>DllPath</th><th>Ref</th></tr></thead><tbody>"
+                        foreach ($Instance in $Conflict.Instances) {
+                            $ConflictHtml += '<tr><td>' + (Convert-ForHtml ($Instance.ModuleName -as [string])) + '</td><td>' + (Convert-ForHtml $Instance.ModuleVersion) + '</td><td>' + (Convert-ForHtml $Instance.LibraryVersionRaw) + '</td><td>' + (Convert-ForHtml $Instance.ModuleScope) + "</td><td><code class='code'>" + (Convert-ForHtml $Instance.ModulePath) + "</code></td><td><code class='code'>" + (Convert-ForHtml $Instance.LibraryFullPath) + '</code></td><td>' + (Convert-ForHtml $Instance.ReferenceType) + '</td></tr>'
                         }
                         $ConflictHtml += '</tbody></table></div>'
                     }
@@ -710,10 +753,10 @@ function Get-ModuleDllInventory {
                 # Build Redundancy HTML fragment
                 $RedHtml = ''
                 if ($Report.Redundancies.Count -gt 0) {
-                    foreach ($R in $Report.Redundancies) {
-                        $RedHtml += "<div class='panel'><h3>" + (Convert-ForHtml $R.LibraryName) + ' - version ' + (Convert-ForHtml $R.Version) + "</h3><table class='table'><thead><tr><th>Module</th><th>ModuleVer</th><th>Scope</th><th>ModulePath</th><th>DllPath</th><th>Ref</th></tr></thead><tbody>"
-                        foreach ($I in $R.Instances) {
-                            $RedHtml += '<tr><td>' + (Convert-ForHtml $I.ModuleName) + '</td><td>' + (Convert-ForHtml $I.ModuleVersion) + '</td><td>' + (Convert-ForHtml $I.ModuleScope) + "</td><td><code class='code'>" + (Convert-ForHtml $I.ModulePath) + "</code></td><td><code class='code'>" + (Convert-ForHtml $I.LibraryFullPath) + '</code></td><td>' + (Convert-ForHtml $I.ReferenceType) + '</td></tr>'
+                    foreach ($Redundancy in $Report.Redundancies) {
+                        $RedHtml += "<div class='panel'><h3>" + (Convert-ForHtml $Redundancy.LibraryName) + ' - version ' + (Convert-ForHtml $Redundancy.Version) + "</h3><table class='table'><thead><tr><th>Module</th><th>ModuleVer</th><th>Scope</th><th>ModulePath</th><th>DllPath</th><th>Ref</th></tr></thead><tbody>"
+                        foreach ($Instance in $Redundancy.Instances) {
+                            $RedHtml += '<tr><td>' + (Convert-ForHtml ($Instance.ModuleName -as [string])) + '</td><td>' + (Convert-ForHtml $Instance.ModuleVersion) + '</td><td>' + (Convert-ForHtml $Instance.ModuleScope) + "</td><td><code class='code'>" + (Convert-ForHtml $Instance.ModulePath) + "</code></td><td><code class='code'>" + (Convert-ForHtml $Instance.LibraryFullPath) + '</code></td><td>' + (Convert-ForHtml $Instance.ReferenceType) + '</td></tr>'
                         }
                         $RedHtml += '</tbody></table></div>'
                     }
@@ -724,9 +767,9 @@ function Get-ModuleDllInventory {
                 # Build Inventory by scope HTML fragment
                 $InvHtml = ''
                 $ByScope = $Report.Inventory | Group-Object -Property ModuleScope
-                foreach ($S in $ByScope) {
-                    $InvHtml += '<h3>Scope: ' + (Convert-ForHtml $S.Name) + ' - Items: ' + ($S.Count) + "</h3><table class='table'><thead><tr><th>Module</th><th>ModuleVer</th><th>DLL</th><th>DllVer</th><th>DllPath</th><th>Ref</th></tr></thead><tbody>"
-                    foreach ($Row in $S.Group) {
+                foreach ($ScopeGroup in $ByScope) {
+                    $InvHtml += '<h3>Scope: ' + (Convert-ForHtml $ScopeGroup.Name) + ' - Items: ' + ($ScopeGroup.Count) + "</h3><table class='table'><thead><tr><th>Module</th><th>ModuleVer</th><th>DLL</th><th>DllVer</th><th>DllPath</th><th>Ref</th></tr></thead><tbody>"
+                    foreach ($Row in $ScopeGroup.Group) {
                         $InvHtml += '<tr><td>' + (Convert-ForHtml $Row.ModuleName) + '</td><td>' + (Convert-ForHtml $Row.ModuleVersion) + '</td><td>' + (Convert-ForHtml $Row.LibraryName) + '</td><td>' + (Convert-ForHtml $Row.LibraryVersionRaw) + "</td><td><code class='code'>" + (Convert-ForHtml $Row.LibraryFullPath) + '</code></td><td>' + (Convert-ForHtml $Row.ReferenceType) + '</td></tr>'
                     }
                     $InvHtml += '</tbody></table>'
@@ -746,10 +789,8 @@ function Get-ModuleDllInventory {
                 $Out = $Out -replace '\{\{ModuleDetails\}\}', ''
 
                 $Out | Set-Content -Path $ExportHtml -Encoding UTF8
-                Write-Verbose "Exported HTML to $ExportHtml"
-            } catch {
-                Write-Warning "Failed to export HTML: $($_.Exception.Message)"
-            }
+                Write-Verbose -Message ('Exported HTML to {0}' -f $ExportHtml)
+            } catch { Write-Warning -Message ('Failed to export HTML: {0}' -f $_.Exception.Message) }
         }
 
         # Return structured objects
