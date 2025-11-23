@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  contents: read
+  contents: write  # Required for creating GitHub releases
 
 jobs:
   publish:
@@ -217,3 +217,97 @@ jobs:
           Artifact: published-module-${{ github.run_number }}
           "@
           Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value $summary
+
+      - name: Check for Existing GitHub Release
+        if: success()
+        id: check-release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MODULE_VERSION: ${{ steps.manifest.outputs.fullVersion }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $releaseTag = "v$env:MODULE_VERSION"
+          Write-Host "Checking for existing GitHub release with tag: $releaseTag"
+          
+          try {
+            # Use GitHub CLI to check if release exists
+            $releaseJson = gh release view $releaseTag --json tagName,name 2>&1
+            if ($LASTEXITCODE -eq 0) {
+              Write-Host "✓ Release $releaseTag already exists"
+              echo "exists=true" >> $env:GITHUB_OUTPUT
+            } else {
+              Write-Host "✗ Release $releaseTag does not exist"
+              echo "exists=false" >> $env:GITHUB_OUTPUT
+            }
+          } catch {
+            Write-Host "✗ Release $releaseTag does not exist (caught exception)"
+            echo "exists=false" >> $env:GITHUB_OUTPUT
+          }
+
+      - name: Create GitHub Release
+        if: success() && steps.check-release.outputs.exists == 'false'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MODULE_NAME: ${{ steps.manifest.outputs.name }}
+          MODULE_VERSION: ${{ steps.manifest.outputs.fullVersion }}
+          BASE_VERSION: ${{ steps.manifest.outputs.baseVersion }}
+          IS_PRERELEASE: ${{ steps.manifest.outputs.isPrerelease }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $releaseTag = "v$env:MODULE_VERSION"
+          $releaseName = "$env:MODULE_NAME v$env:MODULE_VERSION"
+          
+          Write-Host "Creating GitHub release: $releaseName (tag: $releaseTag)"
+          
+          # Build release body with module metadata
+          $releaseBody = @"
+          ## $env:MODULE_NAME v$env:MODULE_VERSION
+          
+          This release corresponds to version **$env:MODULE_VERSION** published to the PowerShell Gallery.
+          
+          ### 📦 Installation
+          
+          ``````powershell
+          Install-Module -Name $env:MODULE_NAME -RequiredVersion $env:MODULE_VERSION
+          ``````
+          
+          ### 📋 Module Information
+          - **Module Name:** $env:MODULE_NAME
+          - **Version:** $env:MODULE_VERSION
+          - **Base Version:** $env:BASE_VERSION
+          - **Prerelease:** $env:IS_PRERELEASE
+          - **PowerShell Gallery:** https://www.powershellgallery.com/packages/$env:MODULE_NAME/$env:MODULE_VERSION
+          
+          ### 🔗 Links
+          - **Commit:** $env:GITHUB_SHA
+          - **Workflow Run:** https://github.com/$env:GITHUB_REPOSITORY/actions/runs/$env:GITHUB_RUN_ID
+          - **Published by:** @$env:GITHUB_ACTOR
+          
+          For detailed changes, see the [CHANGELOG](https://github.com/$env:GITHUB_REPOSITORY/blob/main/CHANGELOG.md).
+          "@
+          
+          # Create release using GitHub CLI
+          $ghArgs = @(
+            'release', 'create', $releaseTag,
+            '--title', $releaseName,
+            '--notes', $releaseBody
+          )
+          
+          # Add prerelease flag if this is a prerelease version
+          if ($env:IS_PRERELEASE -eq 'true') {
+            Write-Host "Marking as prerelease"
+            $ghArgs += '--prerelease'
+          }
+          
+          Write-Host "Executing: gh $($ghArgs -join ' ')"
+          & gh @ghArgs
+          
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "✓ GitHub release created successfully!" -ForegroundColor Green
+            Write-Host "View at: https://github.com/$env:GITHUB_REPOSITORY/releases/tag/$releaseTag"
+          } else {
+            Write-Error "Failed to create GitHub release"
+            exit 1
+          }
