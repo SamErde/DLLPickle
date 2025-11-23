@@ -238,22 +238,16 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           MODULE_VERSION: ${{ steps.manifest.outputs.fullVersion }}
         run: |
-          $ErrorActionPreference = 'Stop'
           $releaseTag = "v$env:MODULE_VERSION"
           Write-Host "Checking for existing GitHub release with tag: $releaseTag"
           
-          try {
-            # Use GitHub CLI to check if release exists
-            $null = gh release view $releaseTag --json tagName -ErrorAction SilentlyContinue
-            if ($LASTEXITCODE -eq 0) {
-              Write-Host "✓ Release $releaseTag already exists"
-              echo "exists=true" >> $env:GITHUB_OUTPUT
-            } else {
-              Write-Host "✗ Release $releaseTag does not exist"
-              echo "exists=false" >> $env:GITHUB_OUTPUT
-            }
-          } catch {
-            Write-Host "✗ Release $releaseTag does not exist (caught exception)"
+          # Use GitHub CLI to check if release exists - suppress stderr for cleaner output
+          $output = gh release view $releaseTag --json tagName 2>&1
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "✓ Release $releaseTag already exists"
+            echo "exists=true" >> $env:GITHUB_OUTPUT
+          } else {
+            Write-Host "✗ Release $releaseTag does not exist"
             echo "exists=false" >> $env:GITHUB_OUTPUT
           }
 
@@ -274,47 +268,33 @@ jobs:
           Write-Host "Creating GitHub release: $releaseName (tag: $releaseTag)"
           
           # Build release body with module metadata
-          $releaseBody = @"
-          ## $env:MODULE_NAME v$env:MODULE_VERSION
+          # Using a simple string concatenation to avoid YAML escaping issues
+          $installCmd = "Install-Module -Name $env:MODULE_NAME -RequiredVersion $env:MODULE_VERSION"
+          $releaseBody = "## $env:MODULE_NAME v$env:MODULE_VERSION`n`n"
+          $releaseBody += "This release corresponds to version **$env:MODULE_VERSION** published to the PowerShell Gallery.`n`n"
+          $releaseBody += "### 📦 Installation`n`n"
+          $releaseBody += "``````powershell`n$installCmd`n```````n`n"
+          $releaseBody += "### 📋 Module Information`n"
+          $releaseBody += "- **Module Name:** $env:MODULE_NAME`n"
+          $releaseBody += "- **Version:** $env:MODULE_VERSION`n"
+          $releaseBody += "- **Base Version:** $env:BASE_VERSION`n"
+          $releaseBody += "- **Prerelease:** $env:IS_PRERELEASE`n"
+          $releaseBody += "- **PowerShell Gallery:** https://www.powershellgallery.com/packages/$env:MODULE_NAME/$env:MODULE_VERSION`n`n"
+          $releaseBody += "### 🔗 Links`n"
+          $releaseBody += "- **Commit:** $env:GITHUB_SHA`n"
+          $releaseBody += "- **Workflow Run:** https://github.com/$env:GITHUB_REPOSITORY/actions/runs/$env:GITHUB_RUN_ID`n"
+          $releaseBody += "- **Published by:** @$env:GITHUB_ACTOR`n`n"
+          $releaseBody += "For detailed changes, see the [CHANGELOG](https://github.com/$env:GITHUB_REPOSITORY/blob/main/CHANGELOG.md)."
           
-          This release corresponds to version **$env:MODULE_VERSION** published to the PowerShell Gallery.
+          # Create release using GitHub CLI with proper argument handling
+          Write-Host "Creating release with tag: $releaseTag"
           
-          ### 📦 Installation
-          
-          ``````powershell
-          Install-Module -Name $env:MODULE_NAME -RequiredVersion $env:MODULE_VERSION
-          ``````
-          
-          ### 📋 Module Information
-          - **Module Name:** $env:MODULE_NAME
-          - **Version:** $env:MODULE_VERSION
-          - **Base Version:** $env:BASE_VERSION
-          - **Prerelease:** $env:IS_PRERELEASE
-          - **PowerShell Gallery:** https://www.powershellgallery.com/packages/$env:MODULE_NAME/$env:MODULE_VERSION
-          
-          ### 🔗 Links
-          - **Commit:** $env:GITHUB_SHA
-          - **Workflow Run:** https://github.com/$env:GITHUB_REPOSITORY/actions/runs/$env:GITHUB_RUN_ID
-          - **Published by:** @$env:GITHUB_ACTOR
-          
-          For detailed changes, see the [CHANGELOG](https://github.com/$env:GITHUB_REPOSITORY/blob/main/CHANGELOG.md).
-          "@
-          
-          # Create release using GitHub CLI
-          $ghArgs = @(
-            'release', 'create', $releaseTag,
-            '--title', $releaseName,
-            '--notes', $releaseBody
-          )
-          
-          # Add prerelease flag if this is a prerelease version
           if ($env:IS_PRERELEASE -eq 'true') {
             Write-Host "Marking as prerelease"
-            $ghArgs += '--prerelease'
+            gh release create $releaseTag --title $releaseName --notes $releaseBody --prerelease
+          } else {
+            gh release create $releaseTag --title $releaseName --notes $releaseBody
           }
-          
-          Write-Host "Creating release with tag: $releaseTag"
-          & gh @ghArgs
           
           if ($LASTEXITCODE -eq 0) {
             Write-Host "✓ GitHub release created successfully!" -ForegroundColor Green
