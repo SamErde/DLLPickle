@@ -244,7 +244,7 @@ jobs:
           
           try {
             # Use GitHub CLI to check if release exists
-            $null = gh release view $releaseTag --json tagName 2>$null
+            $null = gh release view $releaseTag --json tagName -ErrorAction SilentlyContinue
             if ($LASTEXITCODE -eq 0) {
               Write-Host "✓ Release $releaseTag already exists"
               echo "exists=true" >> $env:GITHUB_OUTPUT
@@ -281,9 +281,9 @@ jobs:
           
           ### 📦 Installation
           
-          ```powershell
+          ``````powershell
           Install-Module -Name $env:MODULE_NAME -RequiredVersion $env:MODULE_VERSION
-          ```
+          ``````
           
           ### 📋 Module Information
           - **Module Name:** $env:MODULE_NAME
@@ -313,7 +313,7 @@ jobs:
             $ghArgs += '--prerelease'
           }
           
-          Write-Host "Executing: gh $($ghArgs -join ' ')"
+          Write-Host "Creating release with tag: $releaseTag"
           & gh @ghArgs
           
           if ($LASTEXITCODE -eq 0) {
