@@ -273,7 +273,7 @@ jobs:
           $releaseBody = "## $env:MODULE_NAME v$env:MODULE_VERSION`n`n"
           $releaseBody += "This release corresponds to version **$env:MODULE_VERSION** published to the PowerShell Gallery.`n`n"
           $releaseBody += "### 📦 Installation`n`n"
-          $releaseBody += "``````powershell`n$installCmd`n```````n`n"
+          $releaseBody += "``````powershell`n$installCmd`n``````n`n"
           $releaseBody += "### 📋 Module Information`n"
           $releaseBody += "- **Module Name:** $env:MODULE_NAME`n"
           $releaseBody += "- **Version:** $env:MODULE_VERSION`n"
