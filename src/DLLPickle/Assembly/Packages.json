@@ -4,13 +4,25 @@
       "name": "Microsoft.Identity.Abstractions",
       "description": "Interface for higher level API for confidential client applications.",
       "version": "9.6.0",
-      "autoImport": "true"
+      "autoImport": "true",
+      "knownDependents": [
+        "Az.Accounts",
+        "ExchangeOnlineManagement",
+        "Microsoft.Graph.Authentication",
+        "MicrosoftTeams"
+      ]
     },
     {
       "name": "Microsoft.Identity.Client",
       "description": "This package contains the binaries of the Microsoft Authentication Library for .NET (MSAL.NET).",
       "version": "4.79.2",
-      "autoImport": "true"
+      "autoImport": "true",
+      "knownDependents": [
+        "Az.Accounts",
+        "ExchangeOnlineManagement",
+        "Microsoft.Graph.Authentication",
+        "MicrosoftTeams"
+      ]
     },
     {
       "name": "Microsoft.Identity.Client.Broker",
@@ -60,5 +72,17 @@
       "version": "8.15.0",
       "autoImport": "true"
     }
+  ],
+  "knownDependents": [
+    {
+      "name": "Az.Accounts",
+      "version": "",
+      "details": ""
+    },
+      {
+        "name": "Microsoft.Graph.Authentication",
+        "version": "",
+        "details": ""
+      }
   ]
 }
