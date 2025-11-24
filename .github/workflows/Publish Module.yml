@@ -1,16 +1,32 @@
+# This workflow publishes the PowerShell module to the PowerShell Gallery and
+# creates a GitHub release if one doesn't already exist for the module version.
+#
+# Workflow steps:
+# 1. Validates the module manifest and extracts version information
+# 2. Publishes the module to PowerShell Gallery
+# 3. Checks if a GitHub release exists for the module version
+# 4. Creates a GitHub release if none exists (with tag v{version})
+#
+# Triggers:
+# - Manual workflow dispatch (for ad-hoc publishes)
+# - When a GitHub release is published (in case a different workflow creates the GitHub release)
 name: Publish Module to PowerShell Gallery
 
 on:
   release:
     types: [published]
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Module version to publish (optional, uses manifest if not provided)'
+        required: false
 
 concurrency:
-  group: publish-psgallery
+  group: publish-psgallery-${{ github.ref }}
   cancel-in-progress: false
 
 permissions:
-  contents: read
+  contents: write # Create GitHub releases and artifacts
 
 jobs:
   publish:
@@ -18,19 +34,19 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: psgallery
-      url: https://www.powershellgallery.com/packages/DLLPickle
+      url: https://www.powershellgallery.com/packages/${{ steps.manifest.outputs.name || 'DLLPickle' }}
     env:
       MODULE_DIR: ./src/DLLPickle
       MANIFEST: ./src/DLLPickle/DLLPickle.psd1
       ARTIFACT_DIR: ./artifacts
 
     steps:
-      - name: Harden the runner (Audit all outbound calls)
+      - name: Harden the Runner (Audit All Outbound Calls)
         uses: step-security/harden-runner@95d9a5deda9de15063e7595e9719c11c38c90ae2 # v2.13.2
         with:
           egress-policy: audit
 
-      - name: Checkout code
+      - name: Checkout Repository Code
         uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
 
       - name: Setup PowerShell Environment
@@ -40,15 +56,17 @@ jobs:
           Write-Host "Platform: $($PSVersionTable.Platform)"
           Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
 
-      - name: Validate & Extract Manifest
+      - name: Validate Manifest & Version
         id: manifest
         shell: pwsh
         run: |
+          # Validate module manifest
           $manifestPath = $env:MANIFEST
           Write-Host "Validating module manifest: $manifestPath"
           $manifest = Test-ModuleManifest -Path $manifestPath -ErrorAction Stop
-
           $manifestContent = Get-Content $manifestPath -Raw
+
+          # Check if prerelease module and get the full version as a string
           $isPrerelease = $false # Set default as not prerelease
           if ($manifestContent -match "Prerelease\s*=\s*'([^']+)'") {
             $prerelease = $Matches[1]
@@ -61,19 +79,20 @@ jobs:
           }
           Write-Host "Full version resolved: $fullVersion"
 
-          # Duplicate version guard
+          # Check if version already exists in PSGallery
           Write-Host "Checking if version $fullVersion is already published..."
           try {
             $existing = Find-Module -Name DLLPickle -RequiredVersion $fullVersion -ErrorAction SilentlyContinue
             if ($existing) {
               Write-Error "Version $fullVersion is already published to PowerShell Gallery. Please update the module version."
-              exit 1
+              # exit 1 # Commented out to allow proceeding even if version exists so the GitHub release can still be created, if needed.
             }
             Write-Host "Version $fullVersion is not yet published. Proceeding..."
           } catch {
             Write-Host "Version check encountered an exception but will proceed: $($_.Exception.Message)"
           }
 
+          # Determine the GitHub release tag and normalized version
           $releaseTag = ''
           $releaseVersion = ''
           if ($env:GITHUB_EVENT_NAME -eq 'release') {
@@ -83,6 +102,7 @@ jobs:
             Write-Host "Release version (normalized): $releaseVersion"
           }
 
+          # Check alignment of GitHub release tag/version with module version
           $tagVersion = $releaseVersion # normalized tag version
           $moduleVersion = $fullVersion
           $versions = @($releaseVersion, $tagVersion, $moduleVersion) | Where-Object { $_ } | Select-Object -Unique
@@ -103,16 +123,13 @@ jobs:
       - name: Install Dependencies
         shell: pwsh
         run: |
-          Write-Host "Checking PowerShellGet version..."
+          Write-Host "Ensuring PowerShellGet minimum version..."
           $psGetVersion = (Get-Module -Name PowerShellGet -ListAvailable | Sort-Object Version -Descending | Select-Object -First 1).Version
           Write-Host "Current PowerShellGet version: $psGetVersion"
 
-          # Only install if version is less than 2.2.5
           if (-not $psGetVersion -or $psGetVersion -lt [version]'2.2.5') {
-            Write-Host "Updating PowerShellGet to latest version..."
+            Write-Host "Installing PowerShellGet 2.2.5 or later..."
             Install-Module -Name PowerShellGet -MinimumVersion 2.2.5 -Force -Scope CurrentUser -AllowClobber
-          } else {
-            Write-Host "PowerShellGet version is sufficient"
           }
           Import-Module PowerShellGet -MinimumVersion 2.2.5
 
@@ -140,10 +157,11 @@ jobs:
           }
 
           Write-Host "Publishing module to PowerShell Gallery..." -ForegroundColor Green
+          # Implement retry logic for publishing
           $maxRetries = 3; $retryCount = 0; $publishSuccess = $false
           while (-not $publishSuccess -and $retryCount -lt $maxRetries) {
             try {
-              if ($retryCount -gt 0) { Write-Host "Retry attempt $retryCount of $maxRetries..."; -Seconds (5 * $retryCount) }
+              if ($retryCount -gt 0) { Write-Host "Retry attempt $retryCount of $maxRetries..."; Start-Sleep -Seconds (5 * $retryCount) }
               Publish-Module @publishParams
               $publishSuccess = $true
               Write-Host "\n✓ Module published successfully!" -ForegroundColor Green
@@ -159,7 +177,7 @@ jobs:
           $published = Find-Module -Name $env:MODULE_NAME -RequiredVersion $env:MODULE_VERSION -AllowPrerelease -ErrorAction SilentlyContinue
           if (-not $published) { Write-Warning "Module published but not yet visible in gallery search." }
 
-      - name: Save Published Module as Artifact
+      - name: Save Published Module as Artifact (with File Hashes)
         if: success()
         shell: pwsh
         run: |
@@ -197,9 +215,9 @@ jobs:
         with:
           name: published-module-${{ github.run_number }}
           path: ${{ env.ARTIFACT_DIR }}/
-          retention-days: 90
+          retention-days: 30
 
-      - name: Publish Summary
+      - name: Create Summary of Module Publish Steps
         if: success()
         shell: pwsh
         run: |
@@ -217,3 +235,83 @@ jobs:
           Artifact: published-module-${{ github.run_number }}
           "@
           Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value $summary
+
+      - name: Check for Existing GitHub Release
+        if: success()
+        id: check-release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MODULE_VERSION: ${{ steps.manifest.outputs.fullVersion }}
+        run: |
+          $ErrorActionPreference = 'Continue'
+          $releaseTag = "v$env:MODULE_VERSION"
+          Write-Host "Checking for existing GitHub release with tag: $releaseTag"
+
+          # Use GitHub CLI to check if release exists with proper error handling
+          try {
+            $output = gh release view $releaseTag --json tagName 2>&1
+            if ($LASTEXITCODE -eq 0) {
+              Write-Host "✓ Release $releaseTag already exists"
+              echo "exists=true" >> $env:GITHUB_OUTPUT
+            } else {
+              Write-Host "✗ Release $releaseTag does not exist"
+              echo "exists=false" >> $env:GITHUB_OUTPUT
+            }
+          } catch {
+            Write-Host "✗ Release $releaseTag does not exist (error: $($_.Exception.Message))"
+            echo "exists=false" >> $env:GITHUB_OUTPUT
+          }
+
+      - name: Create GitHub Release
+        if: success() && steps.check-release.outputs.exists == 'false'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MODULE_NAME: ${{ steps.manifest.outputs.name }}
+          MODULE_VERSION: ${{ steps.manifest.outputs.fullVersion }}
+          BASE_VERSION: ${{ steps.manifest.outputs.baseVersion }}
+          IS_PRERELEASE: ${{ steps.manifest.outputs.isPrerelease }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $releaseTag = "v$env:MODULE_VERSION"
+          $releaseName = "$env:MODULE_NAME v$env:MODULE_VERSION"
+
+          Write-Host "Creating GitHub release: $releaseName (tag: $releaseTag)"
+
+          # Build release body with module metadata
+          # Using a simple string concatenation to avoid YAML escaping issues
+          $installCmd = "Install-Module -Name $env:MODULE_NAME -RequiredVersion $env:MODULE_VERSION"
+          $releaseBody = "## $env:MODULE_NAME v$env:MODULE_VERSION`n`n"
+          $releaseBody += "This release corresponds to version **$env:MODULE_VERSION** published to the PowerShell Gallery.`n`n"
+          $releaseBody += "### 📦 Installation`n`n"
+          $releaseBody += "``````powershell`n$installCmd`n``````n`n"
+          $releaseBody += "### 📋 Module Information`n"
+          $releaseBody += "- **Module Name:** $env:MODULE_NAME`n"
+          $releaseBody += "- **Version:** $env:MODULE_VERSION`n"
+          $releaseBody += "- **Base Version:** $env:BASE_VERSION`n"
+          $releaseBody += "- **Prerelease:** $env:IS_PRERELEASE`n"
+          $releaseBody += "- **PowerShell Gallery:** https://www.powershellgallery.com/packages/$env:MODULE_NAME/$env:MODULE_VERSION`n`n"
+          $releaseBody += "### 🔗 Links`n"
+          $releaseBody += "- **Commit:** $env:GITHUB_SHA`n"
+          $releaseBody += "- **Workflow Run:** https://github.com/$env:GITHUB_REPOSITORY/actions/runs/$env:GITHUB_RUN_ID`n"
+          $releaseBody += "- **Published by:** @$env:GITHUB_ACTOR`n`n"
+          $releaseBody += "For detailed changes, see the [CHANGELOG](https://github.com/$env:GITHUB_REPOSITORY/blob/main/CHANGELOG.md)."
+
+          # Create release using GitHub CLI with proper argument handling
+          Write-Host "Creating release with tag: $releaseTag"
+
+          if ($env:IS_PRERELEASE -eq 'true') {
+            Write-Host "Marking as prerelease"
+            gh release create $releaseTag --title $releaseName --notes $releaseBody --prerelease
+          } else {
+            gh release create $releaseTag --title $releaseName --notes $releaseBody
+          }
+
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "✓ GitHub release created successfully!" -ForegroundColor Green
+            Write-Host "View at: https://github.com/$env:GITHUB_REPOSITORY/releases/tag/$releaseTag"
+          } else {
+            Write-Error "Failed to create GitHub release"
+            exit 1
+          }
