@@ -86,10 +86,7 @@ subgraph Finalization ["Finalize and Release"]
 
     end
 
-ReleaseSuccess --> EndSuccess([Workflow Complete])
-EndNoUpdate --> EndSuccess
 end
-
-EndSuccess["End"]
 ```
+
 
