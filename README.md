@@ -7,6 +7,7 @@ A PowerShell module that helps you get un-stuck from dependency version conflict
 [![Codacy Badge](https://app.codacy.com/project/badge/Grade/ae92f0d929de494690e712b68fb3b52c)](https://app.codacy.com/gh/SamErde/DLLPickle/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](http://makeapullrequest.com)
 [![PowerShell Gallery Version](https://img.shields.io/powershellgallery/v/DLLPickle?include_prereleases)](https://powershellgallery.com/packages/DLLPickle)
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/11450/badge)](https://www.bestpractices.dev/projects/11450)
 <!-- badges-end -->
 
 <img src="https://raw.githubusercontent.com/SamErde/DLLPickle/main/assets/dllpickle.png" alt="A stressed pickle trying to explain the problem in their code to a rubber duck." width="400" />
@@ -32,14 +33,14 @@ DLL Pickle handles this for you by automatically releasing a new version of DLL 
 
 ## 🧑‍💻 Getting Started
 
-### 📋 Prerequisites
+### Prerequisites
 
 Any of the following PowerShell editions:
 
 - PowerShell on Linux, macOS, or Windows
 - Windows PowerShell 5.1
 
-### 📦 Installation
+### Installation
 
 ```powershell
 Install-PSResource -Name DLLPickle -Prerelease
@@ -53,29 +54,31 @@ Alternatively, if you are starting work in a new PowerShell session in which you
 
 ## 📝 Additional Information
 
-### 🏷️ Versioning
+### Versioning
 
 This project follows the semantic versioning model. It also packages numerous dependencies that follow their own versioning. To maintain clarity, this project will follow SemVer standards and the following logic for version changes:
 
-#### 🏷️ Major Versions: 2.x.x.x
+#### Major Versions
 
-The major version will only change if there is a breaking change in the DLL Pickle project.
+🏷️ **2.x.x.x** - The major version will only change if there is a breaking change in the DLL Pickle project.
 
-#### 🏷️ Minor Versions: X.1.X.X
+#### Minor Versions
 
-The minor version will change if any of the following occur:
+🏷️ **X.1.X.X** - The minor version will change if any of the following occur:
 
 - New features are added to the project
 - New tracked assemblies are added to the project
 
-#### 🏷️ Build Versions: X.X.1.X
+#### Build Versions
 
-The build version will change if any of the following occur:
+🏷️ **X.X.1.X** - The build version will change if any of the following occur:
 
 - Minor refactoring for performance, error handling, or logging
 - A new version of any packaged assembly is automatically updated within the project
 
-#### 🏷️ The revision segment of the version may change if any of the following occur:
+#### Revisions
+
+🏷️ **X.X.X.1234** - The revision segment of the version may change if any of the following occur:
 
 - Minor fixes for typos or formatting
 - Changes to documentation
