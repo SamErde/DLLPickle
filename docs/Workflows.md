@@ -89,4 +89,7 @@ subgraph Finalization ["Finalize and Release"]
 ReleaseSuccess --> EndSuccess([Workflow Complete])
 EndNoUpdate --> EndSuccess
 end
+
+EndSuccess["End"]
 ```
+
