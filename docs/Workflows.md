@@ -85,8 +85,7 @@ subgraph Finalization ["Finalize and Release"]
     PublishRelease --> ReleaseSuccess["✓ GitHub Release Created"]
 
     end
-
-ReleaseSuccess --> EndSuccess([Workflow Complete])
-EndNoUpdate --> EndSuccess
-end
 ```
+
+
+
