@@ -13,6 +13,8 @@ jobs:
   check-and-update-msal:
     runs-on: windows-latest
 
+# Implement skip on forks (if: github.repository_owner == 'SamErde')
+
     steps:
       - name: Harden the runner (Audit all outbound calls)
         uses: step-security/harden-runner@95d9a5deda9de15063e7595e9719c11c38c90ae2 # v2.13.2
@@ -29,7 +31,7 @@ jobs:
         shell: pwsh
         run: |
           # Set initial defaults.
-          $LibPath = Join-Path -Path $env:GITHUB_WORKSPACE -ChildPath "src/DLLPickle/Assembly"
+          $LibPath = Join-Path -Path $env:GITHUB_WORKSPACE -ChildPath "src/DLLPickle/Lib"
           $JsonPath = Join-Path -Path $LibPath -ChildPath "Packages.json"
 
           # Read package tracking JSON
@@ -80,7 +82,7 @@ jobs:
         if: steps.check_packages.outputs.updates_available == 'true'
         shell: pwsh
         run: |
-          $LibPath = Join-Path -Path $env:GITHUB_WORKSPACE -ChildPath "src/DLLPickle/Assembly"
+          $LibPath = Join-Path -Path $env:GITHUB_WORKSPACE -ChildPath "src/DLLPickle/Lib"
           New-Item -ItemType Directory -Path $LibPath -Force | Out-Null
 
           # Read package tracking JSON
@@ -198,7 +200,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add src/DLLPickle/Assembly/*.dll src/DLLPickle/Assembly/Packages.json src/DLLPickle/DLLPickle.psd1
+          git add src/DLLPickle/Lib/*.dll src/DLLPickle/Lib/Packages.json src/DLLPickle/DLLPickle.psd1
           git commit -m "Update MSAL packages: ${{ steps.check_packages.outputs.update_summary }}"
           git push
 
