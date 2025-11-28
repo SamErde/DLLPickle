@@ -10,7 +10,7 @@ if ($PSScriptRoot) {
     $RepoRoot = Get-Location
 }
 
-$LibPath = Join-Path -Path $RepoRoot -ChildPath "src/DLLPickle/Assembly"
+$LibPath = Join-Path -Path $RepoRoot -ChildPath "src/DLLPickle/Lib"
 $JsonPath = Join-Path -Path $LibPath -ChildPath "Packages.json"
 
 Write-Host "=== Simulating Update MSAL Packages Workflow ===" -ForegroundColor Cyan
