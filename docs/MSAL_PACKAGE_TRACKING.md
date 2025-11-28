@@ -40,7 +40,7 @@ The MSAL package tracking system has been migrated from individual text files to
 ```
 
 ## Location
-`src/DLLPickle/Assembly/Packages.json`
+`src/DLLPickle/Lib/Packages.json`
 
 ## Workflow Changes
 The `.github/workflows/Update MSAL Packages.yml` workflow now:
