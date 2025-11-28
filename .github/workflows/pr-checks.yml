@@ -1,0 +1,292 @@
+name: PR Checks
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'src/**'
+      - '!src/Archive/**'
+      - '!src/Artifacts/**'
+      - '.github/workflows/**'
+
+# Prevent concurrent runs for the same PR
+concurrency:
+  group: pr-checks-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+  statuses: write
+
+jobs:
+  validate:
+    name: Validate Module
+    runs-on: windows-latest
+
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@95d9a5deda9de15063e7595e9719c11c38c90ae2 # v2.13.2
+        with:
+          egress-policy: audit
+
+      - name: Checkout repository
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        with:
+          fetch-depth: 0
+
+      - name: Display PowerShell version
+        shell: pwsh
+        run: $PSVersionTable
+
+      - name: Bootstrap dependencies
+        shell: pwsh
+        run: |
+          if (Test-Path ./.github/workflows/Actions_Bootstrap.ps1) {
+              ./.github/workflows/Actions_Bootstrap.ps1
+          } else {
+              Write-Host "No bootstrap script found, skipping..."
+          }
+
+      - name: Validate module manifest
+        shell: pwsh
+        run: |
+          $manifestPath = "./src/DLLPickle/DLLPickle.psd1"
+          Write-Host "Validating module manifest: $manifestPath"
+
+          try {
+              $manifest = Test-ModuleManifest -Path $manifestPath -ErrorAction Stop
+              Write-Host "✓ Module manifest is valid" -ForegroundColor Green
+              Write-Host "  Module: $($manifest.Name)"
+              Write-Host "  Version: $($manifest.Version)"
+              Write-Host "  Author: $($manifest.Author)"
+          } catch {
+              Write-Error "Module manifest validation failed: $_"
+              exit 1
+          }
+
+      - name: Run PSScriptAnalyzer
+        shell: pwsh
+        run: |
+          # Ensure PSScriptAnalyzer is available
+          if (-not (Get-Module -ListAvailable -Name PSScriptAnalyzer)) {
+              Install-Module -Name PSScriptAnalyzer -Force -Scope CurrentUser
+          }
+
+          Import-Module PSScriptAnalyzer
+
+          $settingsPath = "./src/PSScriptAnalyzerSettings.psd1"
+          $sourcePath = "./src/DLLPickle"
+
+          Write-Host "Running PSScriptAnalyzer on: $sourcePath"
+          if (Test-Path $settingsPath) {
+              Write-Host "Using settings file: $settingsPath"
+              $results = Invoke-ScriptAnalyzer -Path $sourcePath -Settings $settingsPath -Recurse
+          } else {
+              $results = Invoke-ScriptAnalyzer -Path $sourcePath -Recurse
+          }
+
+          if ($results) {
+              $results | Format-Table -AutoSize
+              $errorCount = ($results | Where-Object { $_.Severity -eq 'Error' }).Count
+              $warningCount = ($results | Where-Object { $_.Severity -eq 'Warning' }).Count
+
+              Write-Host "`nSummary:"
+              Write-Host "  Errors: $errorCount"
+              Write-Host "  Warnings: $warningCount"
+
+              if ($errorCount -gt 0) {
+                  Write-Error "PSScriptAnalyzer found $errorCount error(s)"
+                  exit 1
+              }
+          } else {
+              Write-Host "✓ No PSScriptAnalyzer issues found" -ForegroundColor Green
+          }
+
+      - name: Check code formatting
+        shell: pwsh
+        run: |
+          Write-Host "Checking PowerShell code formatting..."
+
+          # Check for common formatting issues
+          $files = Get-ChildItem -Path ./src/DLLPickle -Include *.ps1,*.psm1 -Recurse
+          $issues = @()
+
+          foreach ($file in $files) {
+              $content = Get-Content -Path $file.FullName -Raw
+
+              # Check for tabs (should use spaces)
+              if ($content -match "`t") {
+                  $issues += "$($file.Name): Contains tabs (should use spaces)"
+              }
+
+              # Check for trailing whitespace
+              $lines = Get-Content -Path $file.FullName
+              for ($i = 0; $i -lt $lines.Count; $i++) {
+                  if ($lines[$i] -match '\s+$') {
+                      $issues += "$($file.Name):$($i+1): Trailing whitespace"
+                  }
+              }
+          }
+
+          if ($issues) {
+              Write-Host "Formatting issues found:"
+              $issues | ForEach-Object { Write-Host "  $_" }
+              Write-Warning "Please fix formatting issues"
+          } else {
+              Write-Host "✓ No formatting issues found" -ForegroundColor Green
+          }
+
+  test:
+    name: Run Tests
+    runs-on: windows-latest
+    needs: validate
+
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@95d9a5deda9de15063e7595e9719c11c38c90ae2 # v2.13.2
+        with:
+          egress-policy: audit
+
+      - name: Checkout repository
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+
+      - name: Display PowerShell version
+        shell: pwsh
+        run: $PSVersionTable
+
+      - name: Bootstrap dependencies
+        shell: pwsh
+        run: |
+          if (Test-Path ./.github/workflows/Actions_Bootstrap.ps1) {
+              ./.github/workflows/Actions_Bootstrap.ps1
+          }
+
+      - name: Run Pester tests
+        shell: pwsh
+        run: |
+          # Ensure Pester is available (version 5.x)
+          $pesterModule = Get-Module -ListAvailable -Name Pester | Sort-Object Version -Descending | Select-Object -First 1
+          if (-not $pesterModule -or $pesterModule.Version -lt [version]'5.0.0') {
+              Install-Module -Name Pester -MinimumVersion 5.0.0 -Force -Scope CurrentUser -SkipPublisherCheck
+          }
+
+          Import-Module Pester -MinimumVersion 5.0.0
+
+          # Configure Pester
+          $config = New-PesterConfiguration
+          $config.Run.Path = './src/Tests/Unit'
+          $config.Run.PassThru = $true
+          $config.Output.Verbosity = 'Detailed'
+          $config.TestResult.Enabled = $true
+          $config.TestResult.OutputPath = './TestResults.xml'
+          $config.TestResult.OutputFormat = 'NUnitXml'
+
+          # Run tests
+          $result = Invoke-Pester -Configuration $config
+
+          # Check results
+          if ($result.FailedCount -gt 0) {
+              Write-Error "$($result.FailedCount) test(s) failed"
+              exit 1
+          }
+
+          Write-Host "✓ All tests passed ($($result.PassedCount) passed)" -ForegroundColor Green
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: test-results-${{ github.run_number }}
+          path: ./TestResults.xml
+          retention-days: 30
+
+  build:
+    name: Build Module
+    runs-on: windows-latest
+    needs: test
+
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@95d9a5deda9de15063e7595e9719c11c38c90ae2 # v2.13.2
+        with:
+          egress-policy: audit
+
+      - name: Checkout repository
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+
+      - name: Display PowerShell version
+        shell: pwsh
+        run: $PSVersionTable
+
+      - name: Bootstrap dependencies
+        shell: pwsh
+        run: |
+          if (Test-Path ./.github/workflows/Actions_Bootstrap.ps1) {
+              ./.github/workflows/Actions_Bootstrap.ps1
+          }
+
+      - name: Build module
+        shell: pwsh
+        run: |
+          # Check if Invoke-Build is available
+          if (-not (Get-Command Invoke-Build -ErrorAction SilentlyContinue)) {
+              Install-Module -Name InvokeBuild -Force -Scope CurrentUser
+          }
+
+          # Run the build
+          $buildScript = "./src/DLLPickle.Build.ps1"
+          if (Test-Path $buildScript) {
+              Write-Host "Running build script: $buildScript"
+              Invoke-Build -File $buildScript -Task BuildNoIntegration
+          } else {
+              Write-Warning "Build script not found: $buildScript"
+          }
+
+      - name: Upload build artifacts
+        if: success()
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: build-artifacts-${{ github.run_number }}
+          path: |
+            ./src/Artifacts/**
+            ./src/Archive/**
+          retention-days: 30
+
+  label:
+    name: Auto-label PR
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+      - name: Label PR based on paths
+        uses: actions/labeler@25c86f8472ad78b6e3bd9eff3fc7c8d8e16cd4e1 # v5.0.0
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+  summary:
+    name: PR Summary
+    runs-on: ubuntu-latest
+    needs: [validate, test, build]
+    if: always()
+
+    steps:
+      - name: Generate summary
+        shell: pwsh
+        run: |
+          $summary = @"
+          ## PR Checks Summary
+
+          | Check | Status |
+          |-------|--------|
+          | Validation | ${{ needs.validate.result }} |
+          | Tests | ${{ needs.test.result }} |
+          | Build | ${{ needs.build.result }} |
+
+          **PR Number:** #${{ github.event.pull_request.number }}
+          **Run ID:** ${{ github.run_id }}
+          **Triggered by:** @${{ github.actor }}
+          "@
+
+          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value $summary
