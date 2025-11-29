@@ -25,7 +25,7 @@ jobs:
           egress-policy: audit
 
       - name: Apply labels
-        uses: actions/labeler@25c86f8472ad78b6e3bd9eff3fc7c8d8e16cd4e1 # v5.0.0
+        uses: actions/labeler@v6 # v5.0.0
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           sync-labels: true
