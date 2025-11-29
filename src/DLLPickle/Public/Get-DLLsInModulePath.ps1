@@ -4,7 +4,7 @@
         Show a list of all DLLs in PowerShell module paths that contain the specified product name in their FileInfo property.
 
     .DESCRIPTION
-        Check all installed PowerShell module locations for DLL files that have the specified product name (e.g., 'Microsoft Identity') in their file's Productname attribute.
+        Check all installed PowerShell module locations for DLL files that have the specified product name (e.g., 'Microsoft Identity') in their file's ProductName attribute.
         By default, searches all paths in the PSModulePath environment variable. Can optionally check custom locations using the -Path parameter.
 
     .EXAMPLE
@@ -99,7 +99,7 @@
         Get-ChildItem -Path $ScopedPath -Filter '*.dll' -File -Recurse | Where-Object { $ExcludeDirectories -notcontains $_.Directory.Name } | ForEach-Object {
             $VersionInfo = $_.VersionInfo
             if ($VersionInfo.ProductName -like "*$ProductName*") {
-                # Pass the VersionInfo object on through the pipline if it matches the desired product name.
+                # Pass the VersionInfo object on through the pipeline if it matches the desired product name.
                 $VersionInfo
             }
         } | Group-Object -Property OriginalFilename | ForEach-Object {
