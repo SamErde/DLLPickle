@@ -27,7 +27,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
       - name: Apply labels
-        uses: actions/labeler@v6.0.1
+        uses: actions/labeler@9fcb2c863b8a5c478362dcb64feba7eedba18998 # v6.0.1
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           sync-labels: true
