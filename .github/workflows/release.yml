@@ -380,11 +380,14 @@ jobs:
           git remote set-url origin $repoUrl
 
           # Create and push the tag (defensive - in case update-version job's tag push failed)
-          git tag -a $tag -m "Release version $version"
+          $localTag = git tag -l $tag
+          if (-not $localTag) {
+              git tag -a $tag -m "Release version $version"
+              Write-Host "✓ Created and pushed missing tag: $tag" -ForegroundColor Green
+          } else {
+              Write-Host "Tag '$tag' already exists locally, will attempt to push" -ForegroundColor Yellow
+          }
           git push origin $tag
-
-          Write-Host "✓ Created and pushed missing tag: $tag" -ForegroundColor Green
-
       - name: Decode changelog
         id: decode
         shell: pwsh
