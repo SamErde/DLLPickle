@@ -73,16 +73,6 @@
       "autoImport": "true"
     }
   ],
-  "knownDependents": [
-    {
-      "name": "Az.Accounts",
-      "version": "",
-      "details": ""
-    },
-      {
-        "name": "Microsoft.Graph.Authentication",
-        "version": "",
-        "details": ""
-      }
-  ]
+  "knownDependents": []
 }
+
