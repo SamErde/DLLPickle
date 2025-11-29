@@ -359,7 +359,13 @@ jobs:
 
           # Try to fetch the specific tag
           # Note: This may fail if tag doesn't exist, which is expected
+          Write-Host "Attempting to fetch specific tag: $tag"
           git fetch origin "refs/tags/$tag:refs/tags/$tag" 2>&1 | Out-Null
+          if ($LASTEXITCODE -eq 0) {
+              Write-Host "✓ Successfully fetched tag from remote" -ForegroundColor Green
+          } else {
+              Write-Host "Tag not found on remote (expected if creating new release)"
+          }
           $tagExists = git tag -l $tag
 
           if ($tagExists) {
