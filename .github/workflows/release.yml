@@ -251,7 +251,11 @@ jobs:
 
           # Check if tag already exists locally or remotely
           # Note: stderr is suppressed intentionally as git fetch may output warnings for missing tags
-          git fetch --tags origin 2>&1 | Out-Null
+          $fetchResult = git fetch --tags origin 2>&1
+          if ($LASTEXITCODE -ne 0) {
+              Write-Host "Warning: Failed to fetch tags from remote. Output:" -ForegroundColor Yellow
+              Write-Host $fetchResult -ForegroundColor Yellow
+          }
           $remoteTagExists = git tag -l $tag
 
           if ($remoteTagExists) {
