@@ -241,9 +241,29 @@ jobs:
 
       - name: Create version tag
         shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           $version = "${{ needs.check-version.outputs.new_version }}"
           $tag = "v$version"
+
+          Write-Host "Checking if tag '$tag' already exists..."
+
+          # Check if tag already exists locally or remotely
+          $localTagExists = git tag -l $tag
+          git fetch --tags origin 2>$null
+          $remoteTagExists = git tag -l $tag
+
+          if ($remoteTagExists) {
+              Write-Host "✓ Tag '$tag' already exists, skipping tag creation (idempotent)" -ForegroundColor Yellow
+              exit 0
+          }
+
+          Write-Host "Creating tag '$tag'..."
+
+          # Set remote URL with token for authenticated push
+          $repoUrl = "https://x-access-token:$env:GITHUB_TOKEN@github.com/$env:GITHUB_REPOSITORY.git"
+          git remote set-url origin $repoUrl
 
           git tag -a $tag -m "Release version $version"
           git push origin $tag
@@ -309,6 +329,52 @@ jobs:
         uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
         with:
           ref: main
+          fetch-depth: 0  # Fetch full history and tags
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Ensure tag exists
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $version = "${{ needs.check-version.outputs.new_version }}"
+          $tag = "v$version"
+
+          Write-Host "Ensuring tag '$tag' exists for release creation..."
+
+          # Fetch all tags from remote
+          Write-Host "Fetching remote tags..."
+          git fetch --tags origin 2>$null
+
+          # Check if tag exists
+          $tagExists = git tag -l $tag
+          if ($tagExists) {
+              Write-Host "✓ Tag '$tag' exists locally" -ForegroundColor Green
+              exit 0
+          }
+
+          Write-Host "Tag '$tag' not found locally, checking remote..."
+
+          # Try to fetch the specific tag
+          git fetch origin "refs/tags/$tag:refs/tags/$tag" 2>$null
+          $tagExists = git tag -l $tag
+
+          if ($tagExists) {
+              Write-Host "✓ Tag '$tag' fetched from remote" -ForegroundColor Green
+              exit 0
+          }
+
+          Write-Host "Tag '$tag' not found on remote, creating it now..."
+
+          # Set remote URL with token for authenticated push
+          $repoUrl = "https://x-access-token:$env:GITHUB_TOKEN@github.com/$env:GITHUB_REPOSITORY.git"
+          git remote set-url origin $repoUrl
+
+          # Create and push the tag (defensive - in case update-version job's tag push failed)
+          git tag -a $tag -m "Release version $version"
+          git push origin $tag
+
+          Write-Host "✓ Created and pushed missing tag: $tag" -ForegroundColor Green
 
       - name: Decode changelog
         id: decode
