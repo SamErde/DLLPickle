@@ -249,16 +249,18 @@ jobs:
 
           Write-Host "Checking if tag '$tag' already exists..."
 
-          # Check if tag already exists locally or remotely
-          # Note: stderr is suppressed intentionally as git fetch may output warnings for missing tags
+          # Fetch tags from remote and check if tag exists locally after fetch
+          Write-Host "Fetching tags from remote..."
           $fetchResult = git fetch --tags origin 2>&1
           if ($LASTEXITCODE -ne 0) {
               Write-Host "Warning: Failed to fetch tags from remote. Output:" -ForegroundColor Yellow
               Write-Host $fetchResult -ForegroundColor Yellow
           }
-          $remoteTagExists = git tag -l $tag
 
-          if ($remoteTagExists) {
+          # Check if tag exists locally (includes tags just fetched from remote)
+          $tagExistsAfterFetch = git tag -l $tag
+
+          if ($tagExistsAfterFetch) {
               Write-Host "✓ Tag '$tag' already exists, skipping tag creation (idempotent)" -ForegroundColor Yellow
               exit 0
           }
@@ -379,6 +381,7 @@ jobs:
           Write-Host "Tag '$tag' not found on remote, creating it now..."
 
           # Configure git credential helper to securely supply GITHUB_TOKEN
+          # Note: This authentication logic is intentionally duplicated from update-version job for reliability/isolation
           git config --local credential.helper ""
           git config --local --add credential.helper '!f() { echo "username=x-access-token"; echo "password=$env:GITHUB_TOKEN"; }; f'
 
@@ -386,11 +389,21 @@ jobs:
           $localTag = git tag -l $tag
           if (-not $localTag) {
               git tag -a $tag -m "Release version $version"
-              Write-Host "✓ Created and pushed missing tag: $tag" -ForegroundColor Green
+              Write-Host "✓ Created tag locally: $tag" -ForegroundColor Green
           } else {
               Write-Host "Tag '$tag' already exists locally, will attempt to push" -ForegroundColor Yellow
           }
-          git push origin $tag
+
+          # Push tag with error handling for race conditions
+          $pushResult = git push origin $tag 2>&1
+          if ($LASTEXITCODE -eq 0) {
+              Write-Host "✓ Successfully pushed tag: $tag" -ForegroundColor Green
+          } else {
+              # Tag may already exist remotely (race condition or previous successful push)
+              Write-Host "⚠ Tag push returned non-zero exit code. This may be expected if tag already exists remotely." -ForegroundColor Yellow
+              Write-Host "Push output: $pushResult" -ForegroundColor Yellow
+          }
+
       - name: Decode changelog
         id: decode
         shell: pwsh
