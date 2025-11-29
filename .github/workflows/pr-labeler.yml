@@ -3,8 +3,6 @@ name: PR Auto Labeler
 on:
   pull_request:
     types: [opened, synchronize, reopened]
-    paths:
-      - '**'
 
 concurrency:
   group: pr-labeler-${{ github.event.pull_request.number }}
