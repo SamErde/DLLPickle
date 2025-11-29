@@ -62,7 +62,7 @@
         [string]$Scope = 'Both',
 
         # Display formatted output to host in addition to returning objects to the pipeline.
-        [switch] $PassThru
+        [switch] $ShowDetails
     )
 
     # Determine the scoped paths to inspect. Defaults to all scopes.
@@ -112,10 +112,11 @@
         Write-Warning "No DLLs found matching the product name pattern '*ProductName*'."
     }
 
-    if ($PSBoundParameters.ContainsKey('PassThru')) {
+    if ($PSBoundParameters.ContainsKey('ShowDetails')) {
         # Show the results as a table to the host in addition to returning to the pipeline.
         $DLLs | Sort-Object -Property InternalName | Format-Table InternalName, @{Label = 'ProductVersion'; Expression = { $_.ProductVersionRaw } }, @{Label = 'Module'; Expression = { $($_.FileName -replace '^.*Modules[\\/]([^\\/]+)([\\/].*)?', '$1') } }, FileDescription | Out-Host
     }
 
     $DLLs
 }
+
