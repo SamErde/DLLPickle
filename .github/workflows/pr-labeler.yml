@@ -15,7 +15,7 @@ permissions:
   pull-requests: write
 
 jobs:
-  label:
+  labeler:
     name: Apply labels from path changes
     runs-on: ubuntu-latest
     steps:
@@ -25,7 +25,7 @@ jobs:
           egress-policy: audit
 
       - name: Apply labels
-        uses: actions/labeler@v6 # v5.0.0
+        uses: actions/labeler@v6
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           sync-labels: true
