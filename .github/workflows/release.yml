@@ -250,8 +250,9 @@ jobs:
           Write-Host "Checking if tag '$tag' already exists..."
 
           # Check if tag already exists locally or remotely
+          # Note: stderr is suppressed intentionally as git fetch may output warnings for missing tags
           $localTagExists = git tag -l $tag
-          git fetch --tags origin 2>$null
+          git fetch --tags origin 2>&1 | Out-Null
           $remoteTagExists = git tag -l $tag
 
           if ($remoteTagExists) {
@@ -343,8 +344,9 @@ jobs:
           Write-Host "Ensuring tag '$tag' exists for release creation..."
 
           # Fetch all tags from remote
+          # Note: stderr is suppressed intentionally as git fetch may output warnings
           Write-Host "Fetching remote tags..."
-          git fetch --tags origin 2>$null
+          git fetch --tags origin 2>&1 | Out-Null
 
           # Check if tag exists
           $tagExists = git tag -l $tag
@@ -356,7 +358,8 @@ jobs:
           Write-Host "Tag '$tag' not found locally, checking remote..."
 
           # Try to fetch the specific tag
-          git fetch origin "refs/tags/$tag:refs/tags/$tag" 2>$null
+          # Note: This may fail if tag doesn't exist, which is expected
+          git fetch origin "refs/tags/$tag:refs/tags/$tag" 2>&1 | Out-Null
           $tagExists = git tag -l $tag
 
           if ($tagExists) {
