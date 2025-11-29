@@ -375,9 +375,9 @@ jobs:
 
           Write-Host "Tag '$tag' not found on remote, creating it now..."
 
-          # Set remote URL with token for authenticated push
-          $repoUrl = "https://x-access-token:$env:GITHUB_TOKEN@github.com/$env:GITHUB_REPOSITORY.git"
-          git remote set-url origin $repoUrl
+          # Configure git credential helper to securely supply GITHUB_TOKEN
+          git config --local credential.helper ""
+          git config --local --add credential.helper '!f() { echo "username=x-access-token"; echo "password=$env:GITHUB_TOKEN"; }; f'
 
           # Create and push the tag (defensive - in case update-version job's tag push failed)
           $localTag = git tag -l $tag
