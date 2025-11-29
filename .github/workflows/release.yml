@@ -262,9 +262,9 @@ jobs:
 
           Write-Host "Creating tag '$tag'..."
 
-          # Set remote URL with token for authenticated push
-          $repoUrl = "https://x-access-token:$env:GITHUB_TOKEN@github.com/$env:GITHUB_REPOSITORY.git"
-          git remote set-url origin $repoUrl
+          # Configure git credential helper for authenticated push
+          git config --local credential.helper ""
+          git config --local --add credential.helper '!f() { echo "username=x-access-token"; echo "password=$env:GITHUB_TOKEN"; }; f'
 
           git tag -a $tag -m "Release version $version"
           git push origin $tag
