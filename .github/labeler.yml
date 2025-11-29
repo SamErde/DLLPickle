@@ -1,12 +1,7 @@
-src/DLLPickle/**:
-  - source
-src/DLLPickle/Lib/**:
-  - dependencies
-  - source
-src/Tests/**:
-  - tests
-docs/**:
-  - documentation
+src/DLLPickle/**: source
+src/DLLPickle/Lib/**: dependencies, source
+src/Tests/**: tests
+docs/**: documentation
 ci:
   changed-files:
     - any-glob-to-any-files:
