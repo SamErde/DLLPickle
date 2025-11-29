@@ -1,13 +1,12 @@
-src/DLLPickle/**:
-  - source
-src/DLLPickle/Lib/**:
-  - dependencies
-  - source
-src/Tests/**:
-  - tests
-docs/**:
-  - documentation
-ci:
-  changed-files:
-    - any-glob-to-any-files:
-      .github/workflows/**:
+Documentation:
+- changed-files:
+  - any-glob-to-any-file: 'docs/**'
+Source:
+- changed-files:
+  - any-glob-to-any-file: 'src/DLLPickle/**'
+Dependencies:
+- changed-files:
+  - any-glob-to-any-file: 'src/DLLPickle/Lib/**'
+Tests:
+- changed-files:
+  - any-glob-to-any-file: 'src/Tests/**'
