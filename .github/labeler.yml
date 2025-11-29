@@ -7,8 +7,6 @@ src/Tests/**:
   - tests
 docs/**:
   - documentation
-**/*.md:
-  - documentation
 ci:
   changed-files:
     - any-glob-to-any-files:
