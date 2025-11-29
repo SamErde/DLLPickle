@@ -17,11 +17,14 @@
 
         Find all Microsoft Identity-related DLLs within installed PowerShell module locations. Shows the name of the module that the DLL is included in.
 
+    .PARAMETER ShowDetails
+        Display formatted output to host in addition to returning objects to the pipeline.
+
     .NOTES
         To Do:
 
         - Further reduce the number of paths inspected by (optionally) only scanning the newest version of each module in each scope's paths.
-        - Fix PassThru logic.
+        - Fix ShowDetails logic.
         - Apply custom formatting type for output.
 
         Example Output:
