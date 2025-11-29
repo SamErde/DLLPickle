@@ -1,5 +1,5 @@
 src/DLLPickle/**: source
-src/DLLPickle/Lib/**: dependencies, source
+src/DLLPickle/Lib/**: dependencies
 src/Tests/**: tests
 docs/**: documentation
 ci:
