@@ -1,3 +1,4 @@
+<!-- markdownlint-configure-file { "MD033": false } -->
 # 🥒 DLL Pickle
 
 A PowerShell module that helps you get un-stuck from dependency version conflicts that often occur when trying to connect to multiple Microsoft services.
@@ -14,6 +15,22 @@ A PowerShell module that helps you get un-stuck from dependency version conflict
 
 ## 📝 Description
 
+Let's start with a few FAQs:
+
+- **What does DLL Pickle actually *do*?**
+
+  DLL Pickle pre-loads the newest version of DLLs that may be required by your other installed modules and scripts. (See the example below.)
+
+- **Why does it need to do this?**
+
+  It is common for PowerShell modules to ship with DLLs that provide precompiled functionality or dependencies. A PowerShell session cannot import two different versions of the same library (DLL). If a module imports one version of a DLL and then a different module attempts to import a second, newer version of that DLL, they will typically see an error that says, "an assembly with the same name is already loaded."
+
+- **Why don't modules use Application Load Context (ALC) to solve this problem?**
+
+  ALC can be complex to implement and is only available in PowerShell 7, so it is not commonly used in public modules.
+
+### 🧑‍💻 An Example Scenario
+
 Numerous PowerShell modules include a dependency on the Microsoft Authentication Library (MSAL) for authenticating to Microsoft's online services. The latest version of the MSAL is actively maintained in **[AzureAD/microsoft-authentication-library-for-dotnet](https://github.com/AzureAD/microsoft-authentication-library-for-dotnet)**. However, modules that depend on the MSAL libraries (such as **Microsoft.Identity.Client.dll**) all update their releases with different versions of MSAL on different schedules. This results in version conflicts that break authentication flows whenever you try to use multiple modules in one session. Examples of modules that can be affected by this include:
 
 - Az.Accounts
@@ -25,7 +42,7 @@ Numerous PowerShell modules include a dependency on the Microsoft Authentication
 
 ...and many more.
 
-You can manually attempt to work around this by checking which version of the conflicting DLLs are used by each of your PowerShell modules and then _connect first_ to whichever service module uses the newest version of the DLL.
+You can manually attempt to work around this by checking which version of the conflicting DLLs are used by each of your PowerShell modules and then *connect first* to whichever service module uses the newest version of the DLL.
 
 This works because of the "first one wins" rule and because the MSAL is designed to be backwards compatible.
 
