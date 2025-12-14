@@ -8,13 +8,20 @@
 name: Build Module (Windows)
 on:
   pull_request:
-    paths-ignore:
-      - '**.md'
-      - 'docs/**'
+    paths:
+      - "src/**"
+      - ".github/workflows/Build Module - Windows.yml"
+    #paths-ignore:
+    #  - '**.md'
+    #  - 'docs/**'
   push:
-    paths-ignore:
-      - '**.md'
-      - 'docs/**'
+    branches:
+      - main
+    paths:
+      - ".github/workflows/Build Module - Windows.yml"
+    #paths-ignore:
+    #  - '**.md'
+    #  - 'docs/**'
   workflow_dispatch:
 
 permissions:
