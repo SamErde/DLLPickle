@@ -4,6 +4,7 @@
       "name": "Microsoft.Identity.Abstractions",
       "description": "Interface for higher level API for confidential client applications.",
       "version": "9.6.0",
+      "projectUrl": "https://www.nuget.org/packages/Microsoft.Identity.Abstractions",
       "autoImport": "true",
       "knownDependents": [
         "Az.Accounts",
@@ -16,6 +17,7 @@
       "name": "Microsoft.Identity.Client",
       "description": "This package contains the binaries of the Microsoft Authentication Library for .NET (MSAL.NET).",
       "version": "4.79.2",
+      "projectUrl": "https://www.nuget.org/packages/Microsoft.Identity.Client",
       "autoImport": "true",
       "knownDependents": [
         "Az.Accounts",
@@ -28,51 +30,58 @@
       "name": "Microsoft.Identity.Client.Broker",
       "description": "This package contains binaries needed to use brokers in public client desktop applications and supersedes Microsoft.Identity.Client.Desktop.",
       "version": "4.79.2",
+      "projectUrl": "https://www.nuget.org/packages/Microsoft.Identity.Client.Broker",
       "autoImport": "true"
     },
     {
       "name": "Microsoft.Identity.Client.Extensions.Msal",
       "description": "This package contains the public client (desktop) caching to Microsoft Authentication Library for .NET (MSAL.NET)",
       "version": "4.79.2",
+      "projectUrl": "https://www.nuget.org/packages/Microsoft.Identity.Client.Extensions.Msal",
       "autoImport": "true"
     },
     {
       "name": "Microsoft.Identity.Client.NativeInterop",
       "description": "This package contains binaries needed to use brokers in public client desktop applications.",
       "version": "0.19.4",
+      "projectUrl": "https://www.nuget.org/packages/Microsoft.Identity.Client.NativeInterop",
       "autoImport": "false"
     },
     {
       "name": "Microsoft.IdentityModel.Abstractions",
       "description": "A package containing thin abstractions for Microsoft.IdentityModel.",
       "version": "8.15.0",
+      "projectUrl": "https://www.nuget.org/packages/Microsoft.IdentityModel.Abstractions",
       "autoImport": "true"
     },
     {
       "name": "Microsoft.IdentityModel.JsonWebTokens",
       "description": "Includes types that provide support for creating, serializing and validating JSON Web Tokens.",
       "version": "8.15.0",
+      "projectUrl": "https://www.nuget.org/packages/Microsoft.IdentityModel.JsonWebTokens",
       "autoImport": "true"
     },
     {
       "name": "Microsoft.IdentityModel.Logging",
       "description": "Includes Event Source based logging support.",
       "version": "8.15.0",
+      "projectUrl": "https://www.nuget.org/packages/Microsoft.IdentityModel.Logging",
       "autoImport": "true"
     },
     {
       "name": "Microsoft.IdentityModel.Tokens",
       "description": "Includes types that provide support for SecurityTokens, Cryptographic operations: Signing, Verifying Signatures, Encryption.",
       "version": "8.15.0",
+      "projectUrl": "https://www.nuget.org/packages/Microsoft.IdentityModel.Tokens",
       "autoImport": "true"
     },
     {
       "name": "System.IdentityModel.Tokens.Jwt",
       "description": "Includes types that provide support for creating, serializing and validating JSON Web Tokens. As of IdentityModel 7x, this is a legacy tool that should be replaced with Microsoft.IdentityModel.JsonWebTokens.",
       "version": "8.15.0",
+      "projectUrl": "https://www.nuget.org/packages/System.IdentityModel.Tokens.Jwt",
       "autoImport": "true"
     }
   ],
   "knownDependents": []
 }
-
