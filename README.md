@@ -29,6 +29,20 @@ Let's start with a few FAQs:
 
   ALC can be complex to implement and is only available in PowerShell 7, so it is not commonly used in public modules.
 
+- **Do these issues look familiar?**
+
+  <details>
+  <summary>Related GitHub Issues</summary>
+
+  - [Connect-MgGraph fails after Connect-ExchangeOnline](https://github.com/microsoftgraph/msgraph-sdk-powershell/issues/3394)
+  - [UUF Customer feedback: Get-EntraExtensionProperty error](https://github.com/microsoftgraph/entra-powershell/issues/1258) (Assembly with same name is already loaded)
+  - [Assembly with same name is already loaded](https://github.com/microsoftgraph/entra-powershell/issues/1083)
+  - [Design entra-powershell with ALC bridge pattern for a more robust assembly load handling](https://github.com/microsoftgraph/entra-powershell/issues/1242)
+  - [Implement proper assembly isolation to play nice with vscode-powershell](https://github.com/microsoftgraph/msgraph-sdk-powershell/issues/2978)
+  - [Conflict with the .Net dll of the Az module PowerShell/vscode-powershell#3012](https://github.com/PowerShell/vscode-powershell/issues/3012)
+  - [Unable to load Az modules - Assembly with same name is already loaded PowerShell/vscode-powershell#4727](https://github.com/PowerShell/vscode-powershell/issues/4727)
+  </details>
+
 ### 🧑‍💻 An Example Scenario
 
 Numerous PowerShell modules include a dependency on the Microsoft Authentication Library (MSAL) for authenticating to Microsoft's online services. The latest version of the MSAL is actively maintained in **[AzureAD/microsoft-authentication-library-for-dotnet](https://github.com/AzureAD/microsoft-authentication-library-for-dotnet)**. However, modules that depend on the MSAL libraries (such as **Microsoft.Identity.Client.dll**) all update their releases with different versions of MSAL on different schedules. This results in version conflicts that break authentication flows whenever you try to use multiple modules in one session. Examples of modules that can be affected by this include:
