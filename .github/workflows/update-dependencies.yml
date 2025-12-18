@@ -186,7 +186,7 @@ jobs:
         id: check_pr
         shell: pwsh
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
           $branchName = "chore/update-packages"
 
@@ -301,3 +301,4 @@ jobs:
           "@
 
           Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value $summary
+
