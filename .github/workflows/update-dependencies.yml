@@ -238,7 +238,7 @@ jobs:
         if: steps.check_packages.outputs.updates_available == 'true' && steps.check_pr.outputs.pr_exists == 'false'
         shell: pwsh
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
           $branchName = "chore/update-packages"
           $prTitle = "chore(deps): Update tracked packages"
@@ -268,7 +268,7 @@ jobs:
         if: steps.check_packages.outputs.updates_available == 'true' && steps.check_pr.outputs.pr_exists == 'true'
         shell: pwsh
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
           $prNumber = "${{ steps.check_pr.outputs.pr_number }}"
           Write-Host "Updating existing PR #$prNumber"
@@ -301,4 +301,5 @@ jobs:
           "@
 
           Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value $summary
+
 
