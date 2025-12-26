@@ -10,7 +10,7 @@ on:
   # To guarantee Maintained check is occasionally updated. See
   # https://github.com/ossf/scorecard/blob/main/docs/checks.md#maintained
   schedule:
-    - cron: '20 7 * * 2'
+    - cron: '00 2 * * *'  # Every day at 02:00 UTC
   push:
     branches: ["main"]
 
@@ -72,7 +72,7 @@ jobs:
         with:
           name: SARIF file
           path: results.sarif
-          retention-days: 5
+          retention-days: 7
 
       # Upload the results to GitHub's code scanning dashboard.
       - name: "Upload to code-scanning"
