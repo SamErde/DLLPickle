@@ -1,0 +1,14 @@
+name: "Bootstrap dependencies"
+description: "Run repository bootstrap script if present"
+runs:
+  using: "composite"
+  steps:
+    - name: Run Actions_Bootstrap.ps1 if present
+      shell: pwsh
+      run: |
+        if (Test-Path ./.github/workflows/Actions_Bootstrap.ps1) {
+          Write-Host "Running bootstrap script..."
+          ./.github/workflows/Actions_Bootstrap.ps1
+        } else {
+          Write-Host "No bootstrap script found, skipping..."
+        }
