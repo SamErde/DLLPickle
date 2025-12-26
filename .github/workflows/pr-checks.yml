@@ -249,17 +249,6 @@ jobs:
 #                  ./src/Archive/**
 #                retention-days: 30
 
-        label:
-          name: Auto-label PR
-          runs-on: ubuntu-latest
-          if: always()
-
-          steps:
-            - name: Label PR based on paths
-              uses: actions/labeler@v6.0.1
-              with:
-                repo-token: ${{ secrets.GITHUB_TOKEN }}
-
         summary:
           name: PR Summary
           runs-on: ubuntu-latest
