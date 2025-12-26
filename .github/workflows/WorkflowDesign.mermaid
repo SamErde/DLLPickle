@@ -1,0 +1,17 @@
+flowchart TD
+    A[Scheduled Check] --> |Get Dependency Updates| IsUpdates
+    B[Commit/PR] --> |Push Module Code Changes| IsVersion
+
+    IsUpdates{Were dependencies updated?}
+    IsUpdates -->|No|EndWorkflow(End Dependency<br />Workflow)
+    IsUpdates -->|Yes|BumpVersionD("Bump Version<br />(Patch)")
+    BumpVersionD --> IsNewRelease{Is New Version?}
+    IsNewRelease -->|Yes| CreateRelease("Create GitHub<br />Release") --> PublishModule(Publish to<br />PSGallery)
+    IsNewRelease -->|No| CreateIssue(Create Issue)
+
+    IsVersion{Check commit message for version trigger.}
+    IsVersion -->|"No: Chore, Docs, other)"|EndPush(End Code<br />Workflow)
+    IsVersion -->|"Yes: Feat, Fix, Minor, Major, Refactor, Breaking"|BumpVersionP("Bump Version per Commit Message Type")
+    BumpVersionP --> ReleaseTrigger{Release Workflow Trigger}
+    ReleaseTrigger -->|Automatic|EndPush
+    ReleaseTrigger -->|Manual|CreateRelease
