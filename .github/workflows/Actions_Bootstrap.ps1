@@ -32,9 +32,9 @@ $ModulesToInstall = New-Object System.Collections.Generic.List[object]
         }))
 
 # https://github.com/PowerShell/Microsoft.PowerShell.PlatyPS
-[void]$ModulesToInstall.Add(([PSCustomObject]@{
-            ModuleName    = 'Microsoft.PowerShell.PlatyPS'
-        }))
+#[void]$ModulesToInstall.Add(([PSCustomObject]@{
+#            ModuleName    = 'Microsoft.PowerShell.PlatyPS'
+#        }))
 
 'Installing PowerShell Modules'
 foreach ($Module in $ModulesToInstall) {
@@ -62,3 +62,4 @@ foreach ($Module in $ModulesToInstall) {
         throw
     }
 }
+
