@@ -6,34 +6,34 @@
 # https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-powershell
 # https://github.com/actions/upload-artifact#where-does-the-upload-go
 name: Build Module (Windows)
+
 on:
+  workflow_call:
+  workflow_dispatch:
   pull_request:
     paths:
       - "src/**"
       - ".github/workflows/Build Module - Windows.yml"
-    #paths-ignore:
-    #  - '**.md'
-    #  - 'docs/**'
   push:
     branches:
       - main
     paths:
+      - "src/**"
       - ".github/workflows/Build Module - Windows.yml"
-    #paths-ignore:
-    #  - '**.md'
-    #  - 'docs/**'
-  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  test:
-    name: Run Tests
+
+  build:
+
+    name: Test and Build Module (Windows)
     runs-on: windows-latest
     strategy:
       fail-fast: false
     steps:
+
     - name: Harden the runner (Audit all outbound calls)
       uses: step-security/harden-runner@20cf305ff2072d973412fa9b1e3a4f227bda3c76 # v2.14.0
       with:
@@ -41,31 +41,34 @@ jobs:
 
     - name: Check out repository
       uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
-    - name: Display the path
-      shell: pwsh
-      run: echo ${env:PATH}
-    - name: Version Display
-      shell: pwsh
-      run: $PSVersionTable
-    # Uncomment below to explore what modules/variables/env variables are available in the build image
-    # - name: Modules and Variables Display
-    #   shell: pwsh
-    #   run: Get-Module -ListAvailable; (Get-Variable).GetEnumerator() | Sort-Object Name | Out-String; (Get-ChildItem env:*).GetEnumerator() | Sort-Object Name | Out-String
+
+    - name: Cache PowerShell modules
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~\Documents\PowerShell\Modules
+          ~\Documents\WindowsPowerShell\Modules
+        key: ${{ runner.os }}-psmodules-${{ hashFiles('src/DLLPickle.build.ps1', '.github/workflows/Actions_Bootstrap.ps1') }}
+
     - name: Bootstrap
       shell: pwsh
       run: ./.github/workflows/Actions_Bootstrap.ps1
+
     - name: Test and Build
       shell: pwsh
       run: Invoke-Build -File ./src/DLLPickle.Build.ps1
+
     - name: Upload pester results
+      if: always() # Ensure this step runs even if prior steps fail
       uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
       with:
         name: pester-results
         path: ./src/Artifacts/TestOutput
         if-no-files-found: warn
+
     - name: Upload zip module archive build
       uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
       with:
         name: zip-archive
-        path: .\src\Archive
+        path: ./src/Archive
         if-no-files-found: warn
