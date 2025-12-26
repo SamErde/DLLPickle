@@ -20,8 +20,8 @@ I want to know what you think is missing from DLLPickle and how it can be made b
 ## Making Changes
 
 - From your fork of the repository, create a topic branch where work on your change will take place.
-- To quickly create a topic branch based on master; `git checkout -b my_contribution master`.
-  Please avoid working directly on the `master` branch.
+- To quickly create a topic branch based on master; `git checkout -b my_contribution main`.
+  Please avoid working directly on the `main` branch.
 - Make commits of logical units.
 - Check for unnecessary whitespace with `git diff --check` before committing.
 - Please follow the prevailing code conventions in the repository.
