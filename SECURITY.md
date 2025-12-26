@@ -2,7 +2,7 @@
 
 ## Reporting a Vulnerability
 
-If you discover a vulnerability in DLLPickle, please follow the _following process_:
+If you discover a vulnerability in DLLPickle, please follow the process below:
 
 1. Open a generic bug issue advising you have discovered a vulnerability. Avoid sharing specifics or details of the vulnerability in an open GitHub issue. You may also email [security](mailto:security@day3bits.com)@day3bits.com
 2. A repo owner will reach out to you to establish a private form of communication.
