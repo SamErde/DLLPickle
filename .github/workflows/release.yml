@@ -265,7 +265,7 @@ jobs:
   create-release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
-    needs: [analyze, build-and-test]
+     needs: [analyze, update-version, build-and-test]
 
     steps:
       - name: Harden the runner (Audit all outbound calls)
@@ -407,17 +407,21 @@ jobs:
 
           try {
               Set-PSRepository -Name PSGallery -InstallationPolicy Trusted -ErrorAction SilentlyContinue
-              $existing = Find-Module -Name ${{ env.MODULE_NAME }} -RequiredVersion $version -ErrorAction SilentlyContinue
+             # Create the release (tag should already exist from update-version job)
+             Write-Host "Attempting to create release with tag: $tagName"
 
-              if ($existing) {
-                  Write-Host "Version $version already published to PSGallery"
-                  "already_published=true" >> $env:GITHUB_OUTPUT
-              } else {
-                  Write-Host "Version $version not yet published"
-                  "already_published=false" >> $env:GITHUB_OUTPUT
-              }
-          }
-          catch {
+             $output = gh release create $tagName `
+               --title "Release $version" `
+               --notes $releaseNotes `
+               --draft=false `
+               --prerelease=false 2>&1
+
+             if ($LASTEXITCODE -ne 0) {
+                 Write-Host "Error output: $output"
+                 Write-Host "Exit code: $LASTEXITCODE"
+                 Write-Error "Failed to create GitHub release"
+                 exit 1
+             }
               Write-Host "Could not check PSGallery, assuming not published"
               "already_published=false" >> $env:GITHUB_OUTPUT
           }
