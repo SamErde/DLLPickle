@@ -56,7 +56,7 @@ jobs:
 
     - name: Test and Build
       shell: pwsh
-      run: Invoke-Build -File ./src/DLLPickle.Build.ps1
+      run: Invoke-Build -File ./src/DLLPickle.build.ps1
 
     - name: Upload pester results
       if: always() # Ensure this step runs even if prior steps fail
