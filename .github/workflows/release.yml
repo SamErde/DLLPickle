@@ -5,14 +5,14 @@ on:
     branches:
       - main
     paths:
-      - 'src/DLLPickle/**'
-      - '!src/Archive/**'
-      - '!src/Artifacts/**'
-      - '!**.md'
+      - "src/DLLPickle/**"
+      - "!src/Archive/**"
+      - "!src/Artifacts/**"
+      - "!**.md"
   workflow_dispatch:
     inputs:
       version_bump:
-        description: 'Version bump type (major, minor, patch) - overrides conventional commit analysis'
+        description: "Version bump type (major, minor, patch) - overrides conventional commit analysis"
         required: false
         type: choice
         options:
@@ -160,6 +160,9 @@ jobs:
 
       - name: Checkout repository
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          token: ${{ secrets.PAT_TOKEN }}
+          fetch-depth: 0
 
       - name: Update module manifest version
         shell: pwsh
@@ -191,7 +194,7 @@ jobs:
       - name: Create version tag
         shell: pwsh
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
           $version = "${{ needs.analyze.outputs.new_version }}"
           $tagName = "v$version"
