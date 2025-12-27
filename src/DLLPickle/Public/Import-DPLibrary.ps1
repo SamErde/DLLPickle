@@ -21,7 +21,13 @@
         [switch] $ImportAll
     )
 
-    $ModuleDirectory = if ($PSModuleRoot) { $PSModuleRoot } elseif ($PSScriptRoot) { Split-Path -Path $PSScriptRoot -Parent } else { $PWD }
+    $ModuleDirectory = if ($PSModuleRoot) {
+        $PSModuleRoot
+    } elseif ($PSScriptRoot) {
+        Split-Path -Path $PSScriptRoot -Parent
+    } else {
+        $PWD
+    }
     $AssemblyDirectory = Join-Path -Path $ModuleDirectory -ChildPath 'Assembly'
     $Packages = Get-Content -Path (Join-Path -Path $AssemblyDirectory -ChildPath 'Packages.json') |
         ConvertFrom-Json | Select-Object -ExpandProperty packages
