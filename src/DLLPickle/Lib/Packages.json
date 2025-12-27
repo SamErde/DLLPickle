@@ -82,6 +82,5 @@
       "projectUrl": "https://www.nuget.org/packages/System.IdentityModel.Tokens.Jwt",
       "autoImport": "true"
     }
-  ],
-  "knownDependents": []
+  ]
 }
