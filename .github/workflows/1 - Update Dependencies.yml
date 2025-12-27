@@ -219,6 +219,7 @@ jobs:
 
       - name: Wait for checks to complete
         if: steps.check_packages.outputs.updates_available == 'true'
+        continue-on-error: true
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.PAT_CREATEPR }}
