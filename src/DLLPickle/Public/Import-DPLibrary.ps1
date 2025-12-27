@@ -1,16 +1,17 @@
-﻿function Import-DPAssembly {
+﻿function Import-DPLibrary {
     <#
     .SYNOPSIS
-    Short description
+    Import DLLPickle libraries based on Packages.json configuration.
 
     .DESCRIPTION
-    Long description
+    Import all DLLs (libraries) that are tracked and marked for auto-import in the Packages.json file.
 
     .EXAMPLE
-    An example
+    Import-DPLibrary
+    Imports all DLLPickle libraries marked for auto-import.
 
-    .NOTES
-    General notes
+    Import-DPLibrary -ImportAll
+    Imports all DLLPickle libraries, ignoring auto-import settings.
     #>
 
     [CmdletBinding()]
