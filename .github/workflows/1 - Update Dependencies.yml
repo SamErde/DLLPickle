@@ -216,6 +216,7 @@ jobs:
           } catch {
               Write-Warning "Could not request reviews: $_"
           }
+          Write-Host "✓ Copilot review requested. Waiting for review and checks to complete..."
 
       - name: Wait for checks to complete
         if: steps.check_packages.outputs.updates_available == 'true'
@@ -224,45 +225,50 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.PAT_CREATEPR }}
         run: |
+          Write-Host "Waiting for all checks to complete on the PR"
           $prNumber = "${{ steps.create_pr.outputs.pr_number || steps.check_pr.outputs.pr_number }}"
           Write-Host "Waiting for checks to complete on PR #$prNumber"
 
-          $maxWaitMinutes = 30
-          $checkIntervalSeconds = 30
-          $elapsedSeconds = 0
+          try {
+            $maxWaitMinutes = 30
+            $checkIntervalSeconds = 30
+            $elapsedSeconds = 0
 
-          while ($elapsedSeconds -lt ($maxWaitMinutes * 60)) {
-              Start-Sleep -Seconds $checkIntervalSeconds
-              $elapsedSeconds += $checkIntervalSeconds
+            while ($elapsedSeconds -lt ($maxWaitMinutes * 60)) {
+                Start-Sleep -Seconds $checkIntervalSeconds
+                $elapsedSeconds += $checkIntervalSeconds
 
-              # Get PR check status
-              $checks = gh pr checks $prNumber --json state,name,conclusion | ConvertFrom-Json
+                # Get PR check status
+                $checks = gh pr checks $prNumber --json state,name,conclusion | ConvertFrom-Json
 
-              if (-not $checks) {
-                  Write-Warning "No checks found for PR #$prNumber"
-                  continue
-              }
+                if (-not $checks) {
+                    Write-Warning "No checks found for PR #$prNumber"
+                    continue
+                }
 
-              $pending = $checks | Where-Object { $_.state -eq 'PENDING' -or $_.state -eq 'QUEUED' -or $_.state -eq 'IN_PROGRESS' }
-              $failed = $checks | Where-Object { $_.conclusion -eq 'FAILURE' -or $_.conclusion -eq 'CANCELLED' }
+                $pending = $checks | Where-Object { $_.state -eq 'PENDING' -or $_.state -eq 'QUEUED' -or $_.state -eq 'IN_PROGRESS' }
+                $failed = $checks | Where-Object { $_.conclusion -eq 'FAILURE' -or $_.conclusion -eq 'CANCELLED' }
 
-              if ($pending.Count -eq 0) {
-                  if ($failed.Count -gt 0) {
-                      Write-Warning "Some checks failed:"
-                      $failed | ForEach-Object { Write-Warning "  - $($_.name): $($_.conclusion)" }
-                      exit 0  # Don't fail the workflow, just don't approve
-                  } else {
-                      Write-Host "✓ All checks passed!"
-                      break
-                  }
-              }
+                if ($pending.Count -eq 0) {
+                    if ($failed.Count -gt 0) {
+                        Write-Warning "Some checks failed:"
+                        $failed | ForEach-Object { Write-Warning "  - $($_.name): $($_.conclusion)" }
+                        exit 0  # Don't fail the workflow, just don't approve
+                    } else {
+                        Write-Host "✓ All checks passed!"
+                        break
+                    }
+                }
 
-              Write-Host "Still waiting... ($elapsedSeconds seconds elapsed, $($pending.Count) checks pending)"
-          }
+                Write-Host "Still waiting... ($elapsedSeconds seconds elapsed, $($pending.Count) checks pending)"
+            }
 
-          if ($elapsedSeconds -ge ($maxWaitMinutes * 60)) {
-              Write-Warning "Timeout waiting for checks to complete after $maxWaitMinutes minutes"
-              exit 0  # Don't fail, just don't approve yet
+            if ($elapsedSeconds -ge ($maxWaitMinutes * 60)) {
+                Write-Warning "Timeout waiting for checks to complete after $maxWaitMinutes minutes"
+                exit 0  # Don't fail, just don't approve yet
+            }
+          } catch {
+              Write-Warning "Error while waiting for checks: $_"
           }
 
       - name: Auto-approve PR
