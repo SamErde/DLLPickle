@@ -4,17 +4,17 @@ BeforeAll {
     $PathToManifest = [System.IO.Path]::Combine('..', '..', $ModuleName, "$ModuleName.psd1")
     Get-Module $ModuleName -ErrorAction SilentlyContinue | Remove-Module -Force
     Import-Module $PathToManifest -Force
-    $manifestContent = Test-ModuleManifest -Path $PathToManifest
-    $moduleExported = Get-Command -Module $ModuleName | Select-Object -ExpandProperty Name
-    $manifestExported = ($manifestContent.ExportedFunctions).Keys
+    $ManifestContent = Test-ModuleManifest -Path $PathToManifest
+    $ModuleExported = Get-Command -Module $ModuleName | Select-Object -ExpandProperty Name
+    $ManifestExported = ($ManifestContent.ExportedFunctions).Keys
 }
 BeforeDiscovery {
     Set-Location -Path $PSScriptRoot
     $ModuleName = 'DLLPickle'
     $PathToManifest = [System.IO.Path]::Combine('..', '..', $ModuleName, "$ModuleName.psd1")
-    $manifestContent = Test-ModuleManifest -Path $PathToManifest
-    $moduleExported = Get-Command -Module $ModuleName | Select-Object -ExpandProperty Name
-    $manifestExported = ($manifestContent.ExportedFunctions).Keys
+    $ManifestContent = Test-ModuleManifest -Path $PathToManifest
+    $ModuleExported = Get-Command -Module $ModuleName | Select-Object -ExpandProperty Name
+    $ManifestExported = ($ManifestContent.ExportedFunctions).Keys
 }
 Describe $ModuleName {
 
@@ -23,15 +23,15 @@ Describe $ModuleName {
         Context 'Number of commands' -Fixture {
 
             It 'Exports the same number of public functions as what is listed in the Module Manifest' {
-                $manifestExported.Count | Should -BeExactly $moduleExported.Count
+                $ManifestExported.Count | Should -BeExactly $ModuleExported.Count
             }
 
         }
 
         Context 'Explicitly exported commands' {
 
-            It 'Includes <_> in the Module Manifest ExportedFunctions' -ForEach $moduleExported {
-                $manifestExported -contains $_ | Should -BeTrue
+            It 'Includes <_> in the Module Manifest ExportedFunctions' -ForEach $ModuleExported {
+                $ManifestExported -contains $_ | Should -BeTrue
             }
 
         }
@@ -41,21 +41,20 @@ Describe $ModuleName {
         Context '<_>' -Foreach $moduleExported {
 
             BeforeEach {
-                $help = Get-Help -Name $_ -Full
+                $Help = Get-Help -Name $_ -Full
             }
 
             It -Name 'Includes a Synopsis' -Test {
-                $help.Synopsis | Should -Not -BeNullOrEmpty
+                $Help.Synopsis | Should -Not -BeNullOrEmpty
             }
 
             It -Name 'Includes a Description' -Test {
-                $help.description.Text | Should -Not -BeNullOrEmpty
+                $Help.Description.Text | Should -Not -BeNullOrEmpty
             }
 
             It -Name 'Includes an Example' -Test {
-                $help.examples.example | Should -Not -BeNullOrEmpty
+                $Help.Examples.Example | Should -Not -BeNullOrEmpty
             }
         }
     } #context_CommandHelp
 }
-

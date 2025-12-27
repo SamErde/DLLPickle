@@ -353,7 +353,7 @@ Add-BuildTask CreateMarkdownHelp -After CreateHelpStart {
 
     Write-Build Gray '           Replacing markdown elements...'
     Write-Build DarkGray '             Replace multi-line EXAMPLES'
-    $OutputDir = "$script:ArtifactsPath\docs\"
+    #$OutputDir = "$script:ArtifactsPath\docs\"
     <#
     $OutputDir | Get-ChildItem -File | ForEach-Object {
         # fix formatting in multiline examples
