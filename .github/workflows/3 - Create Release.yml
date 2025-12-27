@@ -1,14 +1,15 @@
 name: Release and Publish
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'src/DLLPickle/**'
-      - '!src/Archive/**'
-      - '!src/Artifacts/**'
-      - '!**.md'
+  workflow_dispatch:
+  #push:
+  #  branches:
+  #    - main
+  #  paths:
+  #    - 'src/DLLPickle/**'
+  #    - '!src/Archive/**'
+  #    - '!src/Artifacts/**'
+  #    - '!**.md'
 
 # Prevent concurrent releases
 concurrency:
@@ -50,79 +51,11 @@ jobs:
         id: version_check
         shell: pwsh
         run: |
-          $manifestPath = "./src/DLLPickle/DLLPickle.psd1"
+          $versionResult = & .\.github\scripts\Get-VersionBump.ps1
 
-          # Read current version
-          $manifest = Import-PowerShellDataFile -Path $manifestPath
-          $currentVersion = [version]$manifest.ModuleVersion
-          Write-Host "Current version: $currentVersion"
-
-          # Get the last tag
-          $lastTag = git describe --tags --abbrev=0 2>$null
-          if (-not $lastTag) {
-              Write-Host "No previous tag found, using initial commit"
-              $lastTag = (git rev-list --max-parents=0 HEAD)
-          }
-          Write-Host "Last tag: $lastTag"
-
-          # Get commits since last tag
-          $commits = git log "$lastTag..HEAD" --pretty=format:"%s" 2>$null
-          if (-not $commits) {
-              Write-Host "No new commits since last tag"
-              "should_release=false" >> $env:GITHUB_OUTPUT
-              exit 0
-          }
-
-          Write-Host "`nCommits since last tag:"
-          $commits | ForEach-Object { Write-Host "  $_" }
-
-          # Analyze conventional commits to determine version bump
-          $hasMajor = $false
-          $hasMinor = $false
-          $hasPatch = $false
-
-          foreach ($commit in $commits) {
-              # Check for breaking changes
-              if ($commit -match 'BREAKING CHANGE:|!:') {
-                  $hasMajor = $true
-              }
-              # Check for features
-              elseif ($commit -match '^feat(\(.+\))?:') {
-                  $hasMinor = $true
-              }
-              # Check for fixes
-              elseif ($commit -match '^fix(\(.+\))?:') {
-                  $hasPatch = $true
-              }
-              # Other conventional commit types (chore, docs, style, refactor, perf, test)
-              elseif ($commit -match '^(chore|docs|style|refactor|perf|test)(\(.+\))?:') {
-                  $hasPatch = $true
-              }
-          }
-
-          # Determine version bump
-          $versionBump = "none"
-          if ($hasMajor) {
-              $newVersion = [version]::new($currentVersion.Major + 1, 0, 0)
-              $versionBump = "major"
-          } elseif ($hasMinor) {
-              $newVersion = [version]::new($currentVersion.Major, $currentVersion.Minor + 1, 0)
-              $versionBump = "minor"
-          } elseif ($hasPatch) {
-              $newVersion = [version]::new($currentVersion.Major, $currentVersion.Minor, $currentVersion.Build + 1)
-              $versionBump = "patch"
-          } else {
-              Write-Host "No version bump needed (no conventional commits found)"
-              "should_release=false" >> $env:GITHUB_OUTPUT
-              exit 0
-          }
-
-          Write-Host "`nVersion bump: $versionBump"
-          Write-Host "New version: $newVersion"
-
-          "should_release=true" >> $env:GITHUB_OUTPUT
-          "new_version=$newVersion" >> $env:GITHUB_OUTPUT
-          "version_bump=$versionBump" >> $env:GITHUB_OUTPUT
+          "should_release=$($versionResult.ShouldRelease)" >> $env:GITHUB_OUTPUT
+          "new_version=$($versionResult.NewVersion)" >> $env:GITHUB_OUTPUT
+          "version_bump=$($versionResult.VersionBump)" >> $env:GITHUB_OUTPUT
 
       - name: Generate changelog entry
         id: changelog
@@ -221,13 +154,14 @@ jobs:
       - name: Update module manifest
         shell: pwsh
         run: |
-          $manifestPath = "./src/DLLPickle/DLLPickle.psd1"
-          $newVersion = "${{ needs.check-version.outputs.new_version }}"
+          $updateResult = & .\.github\scripts\Update-ModuleVersion.ps1 `
+            -ManifestPath "./src/DLLPickle/DLLPickle.psd1" `
+            -NewVersion "${{ needs.check-version.outputs.new_version }}"
 
-          Write-Host "Updating module manifest to version: $newVersion"
-          Update-ModuleManifest -Path $manifestPath -ModuleVersion $newVersion
-
-          Write-Host "✓ Module manifest updated" -ForegroundColor Green
+          if (-not $updateResult.Success) {
+            Write-Error $updateResult.ErrorMessage
+            exit 1
+          }
 
       - name: Commit version bump
         shell: pwsh
@@ -566,43 +500,13 @@ jobs:
               exit 1
           }
 
-          $version = "${{ needs.check-version.outputs.new_version }}"
-          $modulePath = "./src/DLLPickle"
+          $publishResult = & .\.github\scripts\Publish-ToGallery.ps1 `
+            -ModuleDirectory "./src/DLLPickle" `
+            -ApiKey $env:PSGALLERY_API_KEY
 
-          Write-Host "Publishing DLLPickle version $version to PowerShell Gallery..."
-
-          $publishParams = @{
-              Path        = $modulePath
-              NuGetApiKey = $env:PSGALLERY_API_KEY
-              Repository  = 'PSGallery'
-              Verbose     = $true
-              Force       = $true
-          }
-
-          # Retry logic
-          $maxRetries = 3
-          $retryCount = 0
-          $publishSuccess = $false
-
-          while (-not $publishSuccess -and $retryCount -lt $maxRetries) {
-              try {
-                  if ($retryCount -gt 0) {
-                      Write-Host "Retry attempt $retryCount of $maxRetries..."
-                      Start-Sleep -Seconds (5 * $retryCount)
-                  }
-
-                  Publish-Module @publishParams
-                  $publishSuccess = $true
-                  Write-Host "✓ Module published successfully!" -ForegroundColor Green
-                  Write-Host "View at: https://www.powershellgallery.com/packages/DLLPickle/$version"
-              } catch {
-                  $retryCount++
-                  if ($retryCount -ge $maxRetries) {
-                      Write-Error "Failed to publish after $maxRetries attempts: $_"
-                      exit 1
-                  }
-                  Write-Warning "Publish failed: $($_.Exception.Message)"
-              }
+          if (-not $publishResult.Success) {
+              Write-Error "Publishing failed: $($publishResult.Message)"
+              exit 1
           }
 
       - name: Verify publication
