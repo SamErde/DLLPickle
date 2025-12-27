@@ -52,7 +52,7 @@ jobs:
 
     - name: Bootstrap
       shell: pwsh
-      run: ./.github/workflows/Actions_Bootstrap.ps1
+      run: ./.github/scripts/Actions_Bootstrap.ps1
 
     - name: Test and Build
       shell: pwsh
