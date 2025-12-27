@@ -10,16 +10,16 @@ name: Build Module (Windows)
 on:
   workflow_call:
   workflow_dispatch:
-  pull_request:
-    paths:
-      - "src/**"
-      - ".github/workflows/Build Module - Windows.yml"
-  push:
-    branches:
-      - main
-    paths:
-      - "src/**"
-      - ".github/workflows/Build Module - Windows.yml"
+  #pull_request:
+  #  paths:
+  #    - "src/**"
+  #    - ".github/workflows/Build Module - Windows.yml"
+  #push:
+  #  branches:
+  #    - main
+  #  paths:
+  #    - "src/**"
+  #    - ".github/workflows/Build Module - Windows.yml"
 
 permissions:
   contents: read
