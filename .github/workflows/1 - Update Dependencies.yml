@@ -53,7 +53,7 @@ jobs:
           foreach ($Package in $PackageTracking.packages) {
               $checkResult = & .\.github\scripts\Get-NuGetLatestVersion.ps1 `
                 -PackageName $Package.name `
-                -CurrentVersion $Package.version
+                -CheckVersion $Package.version
 
               if ($checkResult.UpdateAvailable) {
                   $UpdatesAvailable = $true
