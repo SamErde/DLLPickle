@@ -211,7 +211,8 @@ jobs:
 
           try {
               gh pr edit $prNumber --add-label "dependencies" --add-label "automated"
-              gh api --method POST "/repos/${{ github.repository }}/pulls/$prNumber/requested_reviewers" -f team_reviewers='[]' 2>&1 | Out-Null
+              #gh pr edit $prNumber --add-reviewer "@copilot-reviewers"
+              #gh api --method POST "/repos/${{ github.repository }}/pulls/$prNumber/requested_reviewers" -f team_reviewers='[]' 2>&1 | Out-Null
               Write-Host "✓ Labels added and reviewers notified"
           } catch {
               Write-Warning "Could not request reviews: $_"
