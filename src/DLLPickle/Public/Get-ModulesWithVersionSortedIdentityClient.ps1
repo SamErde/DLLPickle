@@ -11,10 +11,7 @@ function Get-ModulesWithVersionSortedIdentityClient {
 
     .EXAMPLE
     Get-ModulesWithVersionSortedIdentityClient -Name 'Az.Accounts','ExchangeOnlineManagement'
-    This will return a list of modules ordered by the version of 'Microsoft.Identity.Client.dll'
-
-    .NOTES
-    General notes
+    This will return a list of modules ordered by the version of 'Microsoft.Identity.Client.dll'.
     #>
     [CmdletBinding()]
     param(
