@@ -236,7 +236,7 @@ jobs:
         with:
           path: |
             ~/.local/share/powershell/Modules
-          key: ${{ runner.os }}-psmodules-${{ hashFiles('src/DLLPickle.build.ps1') }}
+          key: ${{ runner.os }}-psmodules-${{ hashFiles('src/DLLPickle.Build.ps1') }}
 
       - name: Bootstrap
         shell: pwsh
@@ -246,7 +246,7 @@ jobs:
         shell: pwsh
         run: |
           try {
-              Invoke-Build -File ./src/DLLPickle.build.ps1
+              Invoke-Build -File ./src/DLLPickle.Build.ps1
               Write-Host "✓ Build and tests passed" -ForegroundColor Green
           }
           catch {
@@ -490,4 +490,3 @@ jobs:
           "@
 
           Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value $summary
-
