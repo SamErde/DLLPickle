@@ -231,7 +231,7 @@ jobs:
 #                }
 
 #                # Run the build
-#                $buildScript = "./src/DLLPickle.Build.ps1"
+#                $buildScript = "./src/DLLPickle.build.ps1"
 #                if (Test-Path $buildScript) {
 #                    Write-Host "Running build script: $buildScript"
 #                    Invoke-Build -File $buildScript -Task BuildNoIntegration
@@ -278,3 +278,4 @@ jobs:
                 "@
 
                 Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value $summary
+
