@@ -238,6 +238,11 @@ jobs:
               # Get PR check status
               $checks = gh pr checks $prNumber --json state,name,conclusion | ConvertFrom-Json
 
+              if (-not $checks) {
+                  Write-Warning "No checks found for PR #$prNumber"
+                  continue
+              }
+
               $pending = $checks | Where-Object { $_.state -eq 'PENDING' -or $_.state -eq 'QUEUED' -or $_.state -eq 'IN_PROGRESS' }
               $failed = $checks | Where-Object { $_.conclusion -eq 'FAILURE' -or $_.conclusion -eq 'CANCELLED' }
 
