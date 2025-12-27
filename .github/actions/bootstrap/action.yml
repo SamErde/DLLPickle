@@ -6,9 +6,9 @@ runs:
     - name: Run Actions_Bootstrap.ps1 if present
       shell: pwsh
       run: |
-        if (Test-Path ./.github/workflows/Actions_Bootstrap.ps1) {
+        if (Test-Path ./.github/scripts/Actions_Bootstrap.ps1) {
           Write-Host "Running bootstrap script..."
-          ./.github/workflows/Actions_Bootstrap.ps1
+          ./.github/scripts/Actions_Bootstrap.ps1
         } else {
           Write-Host "No bootstrap script found, skipping..."
         }
