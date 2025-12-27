@@ -38,7 +38,7 @@ env:
 jobs:
   analyze:
     name: Analyze and Determine Version
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     # Skip if commit message contains [skip-release] or [no-release]
     if: |
       !contains(github.event.head_commit.message, '[skip-release]') &&
@@ -148,7 +148,7 @@ jobs:
 
   update-version:
     name: Update Module Version
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     needs: analyze
     if: needs.analyze.outputs.should_release == 'true'
 
@@ -217,7 +217,7 @@ jobs:
 
   build-and-test:
     name: Build and Test Module
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     needs: update-version
 
     steps:
@@ -235,8 +235,7 @@ jobs:
         uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
         with:
           path: |
-            ~\Documents\PowerShell\Modules
-            ~\Documents\WindowsPowerShell\Modules
+            ~/.local/share/powershell/Modules
           key: ${{ runner.os }}-psmodules-${{ hashFiles('src/DLLPickle.build.ps1') }}
 
       - name: Bootstrap
@@ -265,7 +264,7 @@ jobs:
   create-release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
-     needs: [analyze, update-version, build-and-test]
+    needs: [analyze, update-version, build-and-test]
 
     steps:
       - name: Harden the runner (Audit all outbound calls)
@@ -370,7 +369,7 @@ jobs:
 
   publish:
     name: Publish to PowerShell Gallery
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     needs: [analyze, create-release]
     environment:
       name: psgallery
