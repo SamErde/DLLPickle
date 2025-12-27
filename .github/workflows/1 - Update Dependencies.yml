@@ -40,6 +40,7 @@ jobs:
         run: |
           $LibPath = Join-Path -Path $env:GITHUB_WORKSPACE -ChildPath "src/DLLPickle/Lib"
           $JsonPath = Join-Path -Path $LibPath -ChildPath "Packages.json"
+          Write-Host "Checking packages in $JsonPath" -ForegroundColor Cyan
 
           if (-not (Test-Path $JsonPath)) {
               Write-Error "Package tracking JSON not found at $JsonPath"
@@ -51,9 +52,7 @@ jobs:
           $UpdateSummary = @()
 
           foreach ($Package in $PackageTracking.packages) {
-              $checkResult = & .\.github\scripts\Get-NuGetLatestVersion.ps1 `
-                -PackageName $Package.name `
-                -CheckVersion $Package.version
+              $checkResult = & .\.github\scripts\Get-NuGetLatestVersion.ps1 -PackageName $Package.name -CheckVersion $Package.version
 
               if ($checkResult.UpdateAvailable) {
                   $UpdatesAvailable = $true
@@ -76,12 +75,10 @@ jobs:
           $LibPath = Join-Path -Path $env:GITHUB_WORKSPACE -ChildPath "src/DLLPickle/Lib"
           $JsonPath = Join-Path -Path $LibPath -ChildPath "Packages.json"
 
-          $updateResult = & .\.github\scripts\Update-NuGetPackages.ps1 `
-            -PackageTrackingPath $JsonPath `
-            -DestinationPath $LibPath
+          $updateResult = & .\.github\scripts\Update-NuGetPackages.ps1 -PackageTrackingPath $JsonPath -DestinationPath $LibPath
 
           if ($updateResult.UpdatedCount -eq 0) {
-              Write-Warning "No packages were successfully updated"
+              Write-Warning "No packages were successfully updated."
           }
 
           Write-Host "Updated: $($updateResult.UpdatedCount), Failed: $($updateResult.FailedCount)"
@@ -155,11 +152,6 @@ jobs:
 
           ${{ steps.check_packages.outputs.update_summary }}
 
-          ### Details
-          - **Source**: Daily scheduled dependency check
-          - **Branch**: ``$branchName``
-          - **Run ID**: $env:GITHUB_RUN_ID
-
           ### Automated Workflow
           - ✅ Copilot review will be requested automatically
           - ✅ CodeQL analysis will run
@@ -194,8 +186,6 @@ jobs:
           🔄 **Updated with latest package changes**
 
           ${{ steps.check_packages.outputs.update_summary }}
-
-          Run ID: $env:GITHUB_RUN_ID
           "@
 
           gh pr comment $prNumber --body $comment
@@ -210,7 +200,8 @@ jobs:
           Write-Host "Requesting Copilot review for PR #$prNumber"
 
           try {
-              gh pr edit $prNumber --add-label "dependencies" --add-label "automated"
+              # Testing with no actions to see if this step is actually breaking.
+              #gh pr edit $prNumber --add-label "dependencies" --add-label "automated"
               #gh pr edit $prNumber --add-reviewer "@copilot-reviewers"
               #gh api --method POST "/repos/${{ github.repository }}/pulls/$prNumber/requested_reviewers" -f team_reviewers='[]' 2>&1 | Out-Null
               Write-Host "✓ Labels added and reviewers notified"
@@ -295,8 +286,12 @@ jobs:
           *Approved and merged by automated dependency workflow*
           "@
 
-          gh pr review $prNumber --approve --body $approvalComment
-          Write-Host "✓ PR approved!"
+          try {
+              gh pr review $prNumber --approve --body $approvalComment
+              Write-Host "✓ PR approved!"
+          } catch {
+              Write-Warning "Could not approve PR: $_"
+          }
 
       - name: Enable auto-merge
         if: steps.check_packages.outputs.updates_available == 'true'
@@ -327,16 +322,7 @@ jobs:
 
           **Changes:** ${{ steps.check_packages.outputs.update_summary }}
 
-          **PR Status:** ${{ steps.check_pr.outputs.pr_exists == 'true' && 'Updated existing PR' || steps.check_packages.outputs.updates_available == 'true' && 'Created new PR' || 'No PR needed' }}
-
-          **PR Number:** ${{ steps.create_pr.outputs.pr_number || steps.check_pr.outputs.pr_number || 'N/A' }}
-
-          Run ID: $env:GITHUB_RUN_ID
-
-          ### Next Steps
-          - ✅ PR has been created and approved automatically
-          - ✅ Auto-merge enabled - will merge once all checks pass
-          - 🔄 Release workflow will trigger on merge and handle versioning/publishing
+          **PR Status:** ${{ steps.check_pr.outputs.pr_exists == 'true' && 'Updated existing PR' || steps.check_packages.outputs.updates_available == 'true' && 'Created new PR' || 'No PR needed' }}: ${{ steps.create_pr.outputs.pr_number || steps.check_pr.outputs.pr_number || 'N/A' }}
           "@
 
           Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value $summary
