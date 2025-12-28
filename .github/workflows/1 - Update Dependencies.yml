@@ -62,7 +62,7 @@ jobs:
 
           if ($UpdatesAvailable) {
               "updates_available=true" >> $env:GITHUB_OUTPUT
-              $SummaryText = $UpdateSummary -join "; "
+              $SummaryText = $UpdateSummary -join "`n "
               "update_summary=$SummaryText" >> $env:GITHUB_OUTPUT
           } else {
               "updates_available=false" >> $env:GITHUB_OUTPUT
