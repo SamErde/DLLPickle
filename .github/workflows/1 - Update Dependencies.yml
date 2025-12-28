@@ -1,4 +1,4 @@
-name: Update Dependencies
+name: 📦 Update Dependencies
 
 on:
   schedule:
@@ -328,3 +328,4 @@ jobs:
           "@
 
           Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value $summary
+
