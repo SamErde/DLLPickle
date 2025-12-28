@@ -105,39 +105,50 @@ jobs:
           }
 
       - name: Create or update branch
+        id: commit_changes
         if: steps.check_packages.outputs.updates_available == 'true'
         shell: pwsh
         run: |
-          $branchName = "chore/update-packages"
+            $branchName = "chore/update-packages"
 
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          # Check if branch exists locally
-          $branchExists = git branch --list $branchName
+            # Check if branch exists locally
+            $branchExists = git branch --list $branchName
 
-          if ($branchExists) {
-              Write-Host "Checking out existing branch: $branchName"
-              git checkout $branchName
-              git pull origin main --rebase
-          } else {
-              Write-Host "Creating new branch: $branchName"
-              git checkout -b $branchName
-          }
+            if ($branchExists) {
+                Write-Host "Checking out existing branch: $branchName"
+                git checkout $branchName
+                git pull origin main --rebase
+            } else {
+                Write-Host "Creating new branch: $branchName"
+                git checkout -b $branchName
+            }
 
-          # Stage and commit changes
-          git add src/DLLPickle/Lib/*.dll src/DLLPickle/Lib/Packages.json
-          git commit -m "chore(deps): update packages
+            # Stage changes and skip commit if nothing changed
+            git add src/DLLPickle/Lib/*.dll src/DLLPickle/Lib/Packages.json
+            git diff --cached --quiet
 
-          ${{ steps.check_packages.outputs.update_summary }}
+            if ($LASTEXITCODE -eq 0) {
+                Write-Host "No changes detected after package update; skipping commit and PR steps."
+                "changes_committed=false" >> $env:GITHUB_OUTPUT
+                git checkout main
+                exit 0
+            }
 
-          Updates to tracked dependencies from NuGet.org"
+            git commit -m "chore(deps): update packages
 
-          # Force push to update the branch (safe since this is a bot-managed branch)
-          git push origin $branchName --force
+            ${{ steps.check_packages.outputs.update_summary }}
+
+            Updates to tracked dependencies from NuGet.org"
+
+            # Force push to update the branch (safe since this is a bot-managed branch)
+            git push origin $branchName --force
+            "changes_committed=true" >> $env:GITHUB_OUTPUT
 
       - name: Create pull request
-        if: steps.check_packages.outputs.updates_available == 'true' && steps.check_pr.outputs.pr_exists == 'false'
+        if: steps.check_packages.outputs.updates_available == 'true' && steps.commit_changes.outputs.changes_committed == 'true' && steps.check_pr.outputs.pr_exists == 'false'
         id: create_pr
         shell: pwsh
         env:
@@ -173,7 +184,7 @@ jobs:
           }
 
       - name: Update existing PR
-        if: steps.check_packages.outputs.updates_available == 'true' && steps.check_pr.outputs.pr_exists == 'true'
+        if: steps.check_packages.outputs.updates_available == 'true' && steps.commit_changes.outputs.changes_committed == 'true' && steps.check_pr.outputs.pr_exists == 'true'
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.PAT_CREATEPR }}
@@ -191,7 +202,7 @@ jobs:
           gh pr comment $prNumber --body $comment
 
       - name: Request Copilot review
-        if: steps.check_packages.outputs.updates_available == 'true'
+        if: steps.check_packages.outputs.updates_available == 'true' && steps.commit_changes.outputs.changes_committed == 'true'
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.PAT_CREATEPR }}
@@ -211,7 +222,7 @@ jobs:
           Write-Host "✓ Copilot review requested. Waiting for review and checks to complete..."
 
       - name: Wait for checks to complete
-        if: steps.check_packages.outputs.updates_available == 'true'
+        if: steps.check_packages.outputs.updates_available == 'true' && steps.commit_changes.outputs.changes_committed == 'true'
         continue-on-error: true
         shell: pwsh
         env:
@@ -226,25 +237,48 @@ jobs:
             $checkIntervalSeconds = 30
             $elapsedSeconds = 0
 
+            $prInfo = gh pr view $prNumber --json headRefOid | ConvertFrom-Json
+            $headSha = $prInfo.headRefOid
+            if (-not $headSha) {
+                Write-Warning "Could not determine head SHA for PR #$prNumber"
+                exit 0
+            }
+
             while ($elapsedSeconds -lt ($maxWaitMinutes * 60)) {
                 Start-Sleep -Seconds $checkIntervalSeconds
                 $elapsedSeconds += $checkIntervalSeconds
 
-                # Get PR check status
-                $checks = gh pr checks $prNumber --json  bucket,link,name,state | ConvertFrom-Json
+                # Get combined status and check runs for the PR head commit
+                $combinedStatus = gh api repos/${{ github.repository }}/commits/$headSha/status | ConvertFrom-Json
+                $checkRunsResponse = gh api repos/${{ github.repository }}/commits/$headSha/check-runs --paginate | ConvertFrom-Json
 
-                if (-not $checks) {
-                    Write-Warning "No checks found for PR #$prNumber"
-                    continue
+                $pending = @()
+                $failed = @()
+
+                if ($combinedStatus.state -eq 'pending') {
+                    $pending += "combined-status"
                 }
 
-                $pending = $checks | Where-Object { $_.state -eq 'PENDING' -or $_.state -eq 'QUEUED' -or $_.state -eq 'IN_PROGRESS' }
-                $failed = $checks | Where-Object { $_.conclusion -eq 'FAILURE' -or $_.conclusion -eq 'CANCELLED' }
+                foreach ($status in ($combinedStatus.statuses | Where-Object { $_ })) {
+                    switch ($status.state) {
+                        'pending' { $pending += $status.context }
+                        'error' { $failed += $status.context }
+                        'failure' { $failed += $status.context }
+                    }
+                }
+
+                foreach ($run in ($checkRunsResponse.check_runs | Where-Object { $_ })) {
+                    if ($run.status -ne 'completed') {
+                        $pending += $run.name
+                    } elseif ($run.conclusion -in @('failure','timed_out','cancelled','action_required','stale')) {
+                        $failed += $run.name
+                    }
+                }
 
                 if ($pending.Count -eq 0) {
                     if ($failed.Count -gt 0) {
                         Write-Warning "Some checks failed:"
-                        $failed | ForEach-Object { Write-Warning "  - $($_.name): $($_.conclusion)" }
+                        $failed | Sort-Object -Unique | ForEach-Object { Write-Warning "  - $_" }
                         exit 0  # Don't fail the workflow, just don't approve
                     } else {
                         Write-Host "✓ All checks passed!"
@@ -264,7 +298,7 @@ jobs:
           }
 
       - name: Auto-approve PR
-        if: steps.check_packages.outputs.updates_available == 'true'
+        if: steps.check_packages.outputs.updates_available == 'true' && steps.commit_changes.outputs.changes_committed == 'true'
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.PAT_CREATEPR }}
@@ -296,7 +330,7 @@ jobs:
           }
 
       - name: Enable auto-merge
-        if: steps.check_packages.outputs.updates_available == 'true'
+        if: steps.check_packages.outputs.updates_available == 'true' && steps.commit_changes.outputs.changes_committed == 'true'
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.PAT_CREATEPR }}
@@ -328,4 +362,3 @@ jobs:
           "@
 
           Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value $summary
-
