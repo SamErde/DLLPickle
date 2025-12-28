@@ -287,7 +287,9 @@ jobs:
           "@
 
           try {
-              gh pr review $prNumber --approve --body $approvalComment
+                # Skip approval since the same token created the PR
+                # Instead, rely on auto-merge to handle the merge
+                Write-Host "✓ Skipping self-approval. Using auto-merge to merge PR."
               Write-Host "✓ PR approved!"
           } catch {
               Write-Warning "Could not approve PR: $_"
