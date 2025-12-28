@@ -161,14 +161,14 @@ jobs:
           > This PR was automatically created by the dependency update workflow.
           "@
 
-          $prOutputJson = gh pr create --title $prTitle --body $prBody --head $branchName --base main --json number
-          $prData = $prOutputJson | ConvertFrom-Json
-          if ($prData.number) {
-              $prNumber = $prData.number
+          $prOutput = gh pr create --title $prTitle --body $prBody --head $branchName --base main
+          # Extract PR number from URL output (format: https://github.com/owner/repo/pull/1234)
+          if ($prOutput -match 'pull/(\d+)') {
+              $prNumber = $matches[1]
               Write-Host "Created PR #$prNumber"
               "pr_number=$prNumber" >> $env:GITHUB_OUTPUT
           } else {
-              Write-Error "Failed to extract PR number from output"
+              Write-Error "Failed to extract PR number from output: $prOutput"
               exit 1
           }
 
