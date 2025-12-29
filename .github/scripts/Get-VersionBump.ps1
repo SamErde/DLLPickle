@@ -60,6 +60,7 @@ if (-not $Commits) {
         ShouldRelease       = $false
         NewVersionType         = 'none'
         NewVersion          = $CurrentVersion
+        CurrentVersion      = $CurrentVersion
         CommitsSinceLastTag = @()
     }
     Write-Output ([PSCustomObject]$Result)
@@ -120,7 +121,8 @@ if ($HasMajor) {
     $Result = @{
         ShouldRelease       = $false
         NewVersionType         = 'none'
-        NewVersion          = $CurrentVersion
+        NewVersion          = $NewVersion
+        CurrentVersion      = $CurrentVersion
         CommitsSinceLastTag = $Commits
     }
     Write-Output ([PSCustomObject]$Result)
@@ -132,8 +134,9 @@ Write-Host "New version: $NewVersion"
 
 $Result = @{
     ShouldRelease       = $true
-    NewVersionType         = $NewVersionType
+    NewVersionType      = $NewVersionType
     NewVersion          = $NewVersion
+    CurrentVersion      = $CurrentVersion
     CommitsSinceLastTag = $Commits
 }
 
