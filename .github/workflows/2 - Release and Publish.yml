@@ -75,67 +75,56 @@ jobs:
           MANUAL_BUMP: ${{ inputs.version_bump }}
           MERGE_COMMIT: ${{ github.event.pull_request.merge_commit_sha }}
         run: |
-          # Determine trigger source
+          # Use Get-VersionBump function to determine current and new versions.
+          Write-Host "Analyzing conventional commits..."
+          $VersionResult = & ./.github/scripts/Get-VersionBump.ps1
+          $ShouldRelease = $VersionResult.ShouldRelease
+          $NewVersionType = $VersionResult.NewVersionType
+          $NewVersion = $VersionResult.NewVersion
+          $CurrentVersion = $VersionResult.CurrentVersion.ToString()
+
+          # Determine workflow trigger (push, pr-merge, manual workflow dispatch).
             if ($env:EVENT_NAME -eq "workflow_dispatch") {
-              $triggerSource = "manual"
+              $TriggerSource = "manual"
+            } elseif ($env:EVENT_NAME -eq "pull_request") {
+              $TriggerSource = "pr-merge"
+            } else {
+              $TriggerSource = "push"
             }
-            elseif ($env:EVENT_NAME -eq "pull_request") {
-              $triggerSource = "pr-merge"
-            }
-            else {
-              $triggerSource = "push"
-            }
-          Write-Host "Trigger source: $triggerSource"
+          Write-Host "Trigger source: $TriggerSource"
 
-          # If manual dispatch with explicit version bump, use that
-          if ($triggerSource -eq "manual" -and $env:MANUAL_BUMP -ne "auto" -and -not [string]::IsNullOrEmpty($env:MANUAL_BUMP)) {
+          # If manual dispatch with explicit version bump type (major, minor, build, patch), increment the version explicitly.
+          if ($TriggerSource -eq "manual" -and $env:MANUAL_BUMP -ne "auto" -and -not [string]::IsNullOrEmpty($env:MANUAL_BUMP)) {
               Write-Host "Manual version bump specified: $($env:MANUAL_BUMP)"
-              $versionBump = $env:MANUAL_BUMP
-              $shouldRelease = $true
-          } else {
-              # Analyze conventional commits to determine version
-              Write-Host "Analyzing conventional commits..."
-              $versionResult = & ./.github/scripts/Get-VersionBump.ps1
+              $NewVersionType = $env:MANUAL_BUMP
+              switch ($NewVersionType) {
+                "major" { $NewVersion = [version]::new($CurrentVersion.Major + 1, 0, 0) }
+                "minor" { $NewVersion = [version]::new($CurrentVersion.Major, $CurrentVersion.Minor + 1, 0) }
+                "patch" { $NewVersion = [version]::new($CurrentVersion.Major, $CurrentVersion.Minor, $CurrentVersion.Build + 1) }
+                }
+              $ShouldRelease = $true
 
-              $shouldRelease = $versionResult.ShouldRelease
-              $versionBump = $versionResult.VersionBump
-              $newVersion = $versionResult.NewVersion
-              $currentVersion = $versionResult.NewVersion.ToString()
           }
 
-          # If we're doing semantic analysis (not manual explicit), get the versions from the script result
-          if ($triggerSource -in @("push","pr-merge") -or ($triggerSource -eq "manual" -and $env:MANUAL_BUMP -eq "auto")) {
-              if (-not $shouldRelease) {
-                  Write-Host "No release needed based on commit analysis"
-                  "should_release=false" >> $env:GITHUB_OUTPUT
-                  "trigger_source=$triggerSource" >> $env:GITHUB_OUTPUT
-                  exit 0
-              }
+          # If we're doing semantic analysis or manual dispatch with 'auto' versioning, get the versions from the script result.
+          #if ($TriggerSource -in @("push","pr-merge") -or ($TriggerSource -eq "manual" -and $env:MANUAL_BUMP -eq "auto")) { # Not needed.
 
-              # Get current version from manifest for semantic analysis
-              $manifest = Import-PowerShellDataFile -Path "$($env:MANIFEST_PATH)"
-              $currentVersion = $manifest.ModuleVersion
-          } else {
-              # For manual dispatch with explicit bump, we always release
-              $manifest = Import-PowerShellDataFile -Path "$($env:MANIFEST_PATH)"
-              $currentVersion = [version]$manifest.ModuleVersion
-
-              switch ($versionBump) {
-                  "major" { $newVersion = [version]::new($currentVersion.Major + 1, 0, 0) }
-                  "minor" { $newVersion = [version]::new($currentVersion.Major, $currentVersion.Minor + 1, 0) }
-                  "patch" { $newVersion = [version]::new($currentVersion.Major, $currentVersion.Minor, $currentVersion.Build + 1) }
-              }
+          if (-not $ShouldRelease) {
+              Write-Host "No release needed based on commit analysis"
+              "should_release=false" >> $env:GITHUB_OUTPUT
+              "trigger_source=$TriggerSource" >> $env:GITHUB_OUTPUT
+              exit 0
           }
 
-          Write-Host "Version bump: $versionBump"
-          Write-Host "Current version: $currentVersion"
-          Write-Host "New version: $newVersion"
+          Write-Host "Version bump type: $NewVersionType"
+          Write-Host "Current version: $CurrentVersion"
+          Write-Host "New version: $NewVersion"
 
           "should_release=true" >> $env:GITHUB_OUTPUT
-          "version_bump=$versionBump" >> $env:GITHUB_OUTPUT
-          "current_version=$currentVersion" >> $env:GITHUB_OUTPUT
-          "new_version=$newVersion" >> $env:GITHUB_OUTPUT
-          "trigger_source=$triggerSource" >> $env:GITHUB_OUTPUT
+          "version_bump=$NewVersionType" >> $env:GITHUB_OUTPUT
+          "current_version=$CurrentVersion" >> $env:GITHUB_OUTPUT
+          "new_version=$NewVersion" >> $env:GITHUB_OUTPUT
+          "trigger_source=$TriggerSource" >> $env:GITHUB_OUTPUT
 
       - name: Display release plan
         if: steps.determine_version.outputs.should_release == 'true'
