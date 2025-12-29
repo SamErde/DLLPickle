@@ -128,12 +128,12 @@ jobs:
           } # end if ShouldRelease
 
           Write-Host "Version bump type: $NewVersionType"
-          Write-Host "Current version: $CurrentVersion.ToString()"
+          Write-Host "Current version: $($CurrentVersion.ToString())"
           Write-Host "New version: $NewVersion"
 
           "should_release=true" >> $env:GITHUB_OUTPUT
           "version_bump=$NewVersionType" >> $env:GITHUB_OUTPUT
-          "current_version=$CurrentVersion" >> $env:GITHUB_OUTPUT
+          "current_version=$($CurrentVersion.ToString())" >> $env:GITHUB_OUTPUT
           "new_version=$NewVersion" >> $env:GITHUB_OUTPUT
           "trigger_source=$TriggerSource" >> $env:GITHUB_OUTPUT
 
