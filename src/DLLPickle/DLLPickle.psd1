@@ -12,7 +12,7 @@
 RootModule = 'DLLPickle.psm1'
 
 # Version number of this module.
-ModuleVersion = '0.0.1'
+ModuleVersion = '0.4.2'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -69,7 +69,7 @@ FormatsToProcess = 'DLLPickle.Format.ps1xml'
 # NestedModules = @()
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
-FunctionsToExport = 'Get-DLLsInModulePath', 'Get-ModulesWithDependency', 
+FunctionsToExport = 'Get-DLLsInModulePath', 'Get-ModulesWithDependency',
                'Get-ModulesWithVersionSortedIdentityClient', 'Import-DPLibrary'
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
@@ -130,4 +130,3 @@ HelpInfoURI = 'https://day3bits.com/DLLPickle'
 # DefaultCommandPrefix = ''
 
 }
-
