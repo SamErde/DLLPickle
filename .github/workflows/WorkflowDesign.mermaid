@@ -1,3 +1,6 @@
+# Update and Release Workflows
+
+```mermaid
 flowchart TD
     A[Scheduled Dependency Check] --> | Get Dependency Updates | DependencyUpdates
     B[Push to Main Branch] --> | Push Module Code Changes | PushCommit
@@ -17,3 +20,4 @@ flowchart TD
     ReleaseTrigger --> | Manual | CreateRelease
 
     CreateRelease("Create GitHub<br />Release") --> PublishModule(Publish to<br />PSGallery)
+```
