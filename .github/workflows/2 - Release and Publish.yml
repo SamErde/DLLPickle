@@ -1,7 +1,8 @@
 name: 🚀 Release and Publish
 
 on:
-  push:
+  pull_request:
+    types: [closed]
     branches:
       - main
     paths:
@@ -39,11 +40,13 @@ jobs:
   analyze:
     name: Analyze and Determine Version
     runs-on: ubuntu-latest
-    # Skip if commit message contains [skip-release] or [no-release]
+    # Only run for merged PRs to main or manual dispatch
     if: |
-      !contains(github.event.head_commit.message, '[skip-release]') &&
-      !contains(github.event.head_commit.message, '[no-release]') &&
-      github.repository_owner == 'SamErde'
+      github.repository_owner == 'SamErde' &&
+      (
+        github.event_name == 'workflow_dispatch' ||
+        (github.event_name == 'pull_request' && github.event.pull_request.merged == true)
+      )
 
     outputs:
       should_release: ${{ steps.determine_version.outputs.should_release }}
@@ -62,6 +65,7 @@ jobs:
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           fetch-depth: 0
+          ref: ${{ github.event.pull_request.merge_commit_sha || github.ref }}
 
       - name: Determine version and bump type
         id: determine_version
@@ -69,13 +73,18 @@ jobs:
         env:
           EVENT_NAME: ${{ github.event_name }}
           MANUAL_BUMP: ${{ inputs.version_bump }}
+          MERGE_COMMIT: ${{ github.event.pull_request.merge_commit_sha }}
         run: |
           # Determine trigger source
-          if ($env:EVENT_NAME -eq "workflow_dispatch") {
+            if ($env:EVENT_NAME -eq "workflow_dispatch") {
               $triggerSource = "manual"
-          } else {
+            }
+            elseif ($env:EVENT_NAME -eq "pull_request") {
+              $triggerSource = "pr-merge"
+            }
+            else {
               $triggerSource = "push"
-          }
+            }
           Write-Host "Trigger source: $triggerSource"
 
           # If manual dispatch with explicit version bump, use that
@@ -86,7 +95,7 @@ jobs:
           } else {
               # Analyze conventional commits to determine version
               Write-Host "Analyzing conventional commits..."
-              $versionResult = & .\.github\scripts\Get-VersionBump.ps1
+              $versionResult = & ./.github/scripts/Get-VersionBump.ps1
 
               $shouldRelease = $versionResult.ShouldRelease
               $versionBump = $versionResult.VersionBump
@@ -95,7 +104,7 @@ jobs:
           }
 
           # If we're doing semantic analysis (not manual explicit), get the versions from the script result
-          if ($triggerSource -eq "push" -or ($triggerSource -eq "manual" -and $env:MANUAL_BUMP -eq "auto")) {
+          if ($triggerSource -in @("push","pr-merge") -or ($triggerSource -eq "manual" -and $env:MANUAL_BUMP -eq "auto")) {
               if (-not $shouldRelease) {
                   Write-Host "No release needed based on commit analysis"
                   "should_release=false" >> $env:GITHUB_OUTPUT
@@ -104,7 +113,7 @@ jobs:
               }
           } else {
               # For manual dispatch with explicit bump, we always release
-              $manifest = Import-PowerShellDataFile -Path $env:MANIFEST_PATH
+              $manifest = Import-PowerShellDataFile -Path "$($env:MANIFEST_PATH)"
               $currentVersion = [version]$manifest.ModuleVersion
 
               switch ($versionBump) {
@@ -163,13 +172,12 @@ jobs:
         with:
           token: ${{ secrets.PAT_TOKEN }}
           fetch-depth: 0
+          ref: ${{ github.event.pull_request.merge_commit_sha || github.ref }}
 
       - name: Update module manifest version
         shell: pwsh
         run: |
-          $updateResult = & .\.github\scripts\Update-ModuleVersion.ps1 `
-            -ManifestPath $env:MANIFEST_PATH `
-            -NewVersion "${{ needs.analyze.outputs.new_version }}"
+          $updateResult = & ./.github/scripts/Update-ModuleVersion.ps1 -ManifestPath "$($env:MANIFEST_PATH)" -NewVersion "${{ needs.analyze.outputs.new_version }}"
 
           if (-not $updateResult.Success) {
               Write-Error "Failed to update module manifest: $($updateResult.ErrorMessage)"
@@ -230,6 +238,7 @@ jobs:
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           fetch-depth: 0
+          ref: ${{ github.event.pull_request.merge_commit_sha || github.ref }}
 
       - name: Cache PowerShell modules
         uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
@@ -436,9 +445,8 @@ jobs:
               exit 1
           }
 
-          $publishResult = & .\.github\scripts\Publish-ToGallery.ps1 `
-            -ModuleDirectory $env:MODULE_DIR `
-            -ApiKey $env:PSGALLERY_API_KEY
+          $publishResult = & ./.github/scripts/Publish-ToGallery.ps1 `
+            -ModuleDirectory "$($env:MODULE_DIR)" -ApiKey "$($env:PSGALLERY_API_KEY)"
 
           if (-not $publishResult.Success) {
               Write-Error "Publishing failed: $($publishResult.Message)`nError: $($publishResult.ErrorMessage)"
