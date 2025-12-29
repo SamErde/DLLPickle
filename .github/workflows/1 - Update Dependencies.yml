@@ -232,6 +232,7 @@ jobs:
           $prNumber = "${{ steps.create_pr.outputs.pr_number || steps.check_pr.outputs.pr_number }}"
           Write-Host "Waiting for checks to complete on PR #$prNumber"
 
+          <# Shouldn't be necessary because enabling auto-merge will wait for checks anyway.
           try {
             $maxWaitMinutes = 30
             $checkIntervalSeconds = 30
@@ -296,6 +297,7 @@ jobs:
           } catch {
               Write-Warning "Error while waiting for checks: $_"
           }
+          #>
 
       - name: Auto-approve PR
         # This step can be removed.
