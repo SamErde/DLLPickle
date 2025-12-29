@@ -1,0 +1,23 @@
+# Update and Release Workflows
+
+```mermaid
+flowchart TD
+    A[Scheduled Dependency Check] --> | Get Dependency Updates | DependencyUpdates
+    B[Push to Main Branch] --> | Push Module Code Changes | PushCommit
+
+    DependencyUpdates{Were dependencies updated?}
+    DependencyUpdates --> | Yes | BumpVersionDependencies("Bump Version<br />(Patch)")
+    DependencyUpdates --> | No | EndWorkflow("End Dependency<br />Workflow")
+    BumpVersionDependencies --> IsNewVersion{Is New Version?}
+    IsNewVersion --> | No | CreateIssue(Create Issue)
+    IsNewVersion --> | Yes | CreateRelease
+
+    PushCommit{Check commit message for version trigger.}
+    PushCommit --> |"No: Chore, Docs, other" | EndPush(End Code<br />Workflow)
+    PushCommit --> |"Yes: Feat, Fix, Minor, Major, Refactor, Breaking" | BumpVersionPush("Bump Version per Commit Message Type")
+    BumpVersionPush --> ReleaseTrigger{Release Workflow Trigger}
+    ReleaseTrigger --> | Automatic | EndPushWorkflow["End Code<br />Workflow"]
+    ReleaseTrigger --> | Manual | CreateRelease
+
+    CreateRelease("Create GitHub<br />Release") --> PublishModule(Publish to<br />PSGallery)
+```
