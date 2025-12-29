@@ -4,26 +4,24 @@
 
 .DESCRIPTION
     Calls the NuGet.org v3 API to retrieve the latest version of a package and
-    compares it against the current version to determine if an update is available.
+    compares it against the present version to determine if an update is available.
 
 .PARAMETER PackageName
     Name of the NuGet package to check.
 
 .PARAMETER CheckVersion
-    The currently embedded version of the package to check against the latest version.
+    The presently embedded version of the package to check against the latest version.
 
 .OUTPUTS
     PSCustomObject with properties:
     - PackageName: Name of the package
-    - CheckVersion: The current version provided
+    - CheckVersion: The presently embedded version
     - LatestVersion: The latest version available on NuGet
     - UpdateAvailable: Boolean indicating if an update is available
     - UpdateMessage: Human-readable update status
 
 .EXAMPLE
-    $result = & .\.github\scripts\Get-NuGetLatestVersion.ps1 `
-        -PackageName "Microsoft.Identity.Client" `
-        -CheckVersion "4.48.0"
+    $result = & .\.github\scripts\Get-NuGetLatestVersion.ps1 -PackageName "Microsoft.Identity.Client" -CheckVersion "4.48.0"
     if ($result.UpdateAvailable) {
         Write-Host "Update available: $($result.CheckVersion) → $($result.LatestVersion)"
     }
