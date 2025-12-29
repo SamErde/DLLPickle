@@ -422,23 +422,17 @@ jobs:
 
           try {
               Set-PSRepository -Name PSGallery -InstallationPolicy Trusted -ErrorAction SilentlyContinue
-             # Create the release (tag should already exist from update-version job)
-             Write-Host "Attempting to create release with tag: $tagName"
-
-             $output = gh release create $tagName `
-               --title "Release $version" `
-               --notes $releaseNotes `
-               --draft=false `
-               --prerelease=false 2>&1
-
-             if ($LASTEXITCODE -ne 0) {
-                 Write-Host "Error output: $output"
-                 Write-Host "Exit code: $LASTEXITCODE"
-                 Write-Error "Failed to create GitHub release"
-                 exit 1
-             }
+              # AI slop was incorrect. Will add this check later.
               Write-Host "Could not check PSGallery, assuming not published"
               "already_published=false" >> $env:GITHUB_OUTPUT
+          } catch {
+              if ($_.Exception.Message -match "is already published") {
+                  Write-Host "Version $version is already published to PSGallery"
+                  "already_published=true" >> $env:GITHUB_OUTPUT
+              } else {
+                  Write-Host "Could not check PSGallery, assuming not published"
+                  "already_published=false" >> $env:GITHUB_OUTPUT
+              }
           }
 
       - name: Publish to PowerShell Gallery
