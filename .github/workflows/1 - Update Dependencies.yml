@@ -298,6 +298,7 @@ jobs:
           }
 
       - name: Auto-approve PR
+        # This step can be removed.
         if: steps.check_packages.outputs.updates_available == 'true' && steps.commit_changes.outputs.changes_committed == 'true'
         shell: pwsh
         env:
