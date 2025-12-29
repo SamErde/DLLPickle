@@ -111,6 +111,10 @@ jobs:
                   "trigger_source=$triggerSource" >> $env:GITHUB_OUTPUT
                   exit 0
               }
+
+              # Get current version from manifest for semantic analysis
+              $manifest = Import-PowerShellDataFile -Path "$($env:MANIFEST_PATH)"
+              $currentVersion = $manifest.ModuleVersion
           } else {
               # For manual dispatch with explicit bump, we always release
               $manifest = Import-PowerShellDataFile -Path "$($env:MANIFEST_PATH)"
