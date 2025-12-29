@@ -1,12 +1,10 @@
 # PowerShell Helper Scripts - Quick Reference
 
-This directory contains reusable PowerShell scripts extracted from GitHub Actions workflows.
+This directory contains PowerShell scripts to support GitHub Actions workflows.
 
-## Testing Scripts Locally
+## Scripts
 
-Each script returns a `PSCustomObject` with structured output, making them easy to test and debug locally.
-
-### Example: Test Get-VersionBump
+### Test Get-VersionBump
 
 ```powershell
 # Navigate to your workspace root
