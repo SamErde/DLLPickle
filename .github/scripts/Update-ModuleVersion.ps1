@@ -3,8 +3,7 @@
     Updates the PowerShell module manifest with a new version number.
 
 .DESCRIPTION
-    Updates the ModuleVersion in a PowerShell module manifest (.psd1) file using the
-    Update-ModuleManifest cmdlet and verifies the change was applied successfully.
+    Updates the ModuleVersion in a PowerShell module manifest (.psd1) file and verifies the change was applied successfully.
 
 .PARAMETER ManifestPath
     Path to the module manifest file.
@@ -20,36 +19,36 @@
     - ManifestPath: Path to the updated manifest
 
 .EXAMPLE
-    $Result = & .\.github\scripts\Update-ModuleManifest.ps1 `
-        -ManifestPath "./src/DLLPickle/DLLPickle.psd1" `
-        -NewVersion "1.3.0"
+    $Result = & .\.github\scripts\Update-ModuleManifest.ps1 -ManifestPath "./src/DLLPickle/DLLPickle.psd1" -NewVersion "1.3.0"
     if ($Result.Success) {
         Write-Host "Updated to version $($Result.NewVersion)"
     }
-
-.NOTES
-    This script requires PowerShell 5.1 or higher.
 #>
 
 param(
     [Parameter(Mandatory = $true)]
     [ValidateScript({ Test-Path $_ })]
-    [string]$ManifestPath,
+    [string]$ManifestPath = [System.IO.Path]::Join( (Split-Path -Path (Split-Path -Path $PSScriptRoot)), 'src', 'DLLPickle', 'DLLPickle.psd1' ),
 
     [Parameter(Mandatory = $true)]
     [ValidateNotNullOrEmpty()]
-    [string]$NewVersion
+    $NewVersion
 )
 
 $ErrorActionPreference = 'Stop'
 
 # Read current version before update
-$OldManifest = Import-PowerShellDataFile -Path $ManifestPath
-$OldVersion = $OldManifest.ModuleVersion
+try {
+    $OldManifest = Import-PowerShellDataFile -Path $ManifestPath
+    $OldVersion = $OldManifest.ModuleVersion
+} catch {
+    Write-Error "Unable to read the current version from the module manifest. $_"
+    exit 1
+}
 
-Write-Host "Updating module manifest: $ManifestPath"
-Write-Host "Current version: $OldVersion"
-Write-Host "New version: $NewVersion"
+Write-Host "Updating module manifest: $ManifestPath" -ForegroundColor Green
+Write-Host "Current version: $OldVersion" -ForegroundColor White
+Write-Host "New version: $NewVersion" -ForegroundColor White
 
 try {
     # Update the manifest
