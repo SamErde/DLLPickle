@@ -1,0 +1,964 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Documentation for the consolidated release workflow that handles all release pathways">
+      
+      
+        <meta name="author" content="Sam Erde">
+      
+      
+        <link rel="canonical" href="https://day3bits.com/DLLPickle/RELEASE_WORKFLOW/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+    
+    
+      
+        <title>Unified Release Workflow Architecture - DLLPickle PowerShell Module</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#unified-release-workflow" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="DLLPickle PowerShell Module" class="md-header__button md-logo" aria-label="DLLPickle PowerShell Module" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            DLLPickle PowerShell Module
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Unified Release Workflow Architecture
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m14.3 16-.7-2h-3.2l-.7 2H7.8L11 7h2l3.2 9zM20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12zm-9.15 3.96h2.3L12 9z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_2" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to system preference"  type="radio" name="__palette" id="__palette_2">
+    
+      <label class="md-header__button md-icon" title="Switch to system preference" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/SamErde/DLLPickle" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    SamErde/DLLPickle
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="DLLPickle PowerShell Module" class="md-nav__button md-logo" aria-label="DLLPickle PowerShell Module" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    DLLPickle PowerShell Module
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/SamErde/DLLPickle" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    SamErde/DLLPickle
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://raw.githubusercontent.com/SamErde/DLLPickle/main/CHANGELOG.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Change Log
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+  
+
+
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="unified-release-workflow">🎯 Unified Release Workflow<a class="headerlink" href="#unified-release-workflow" title="Permanent link">&para;</a></h1>
+<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
+<p>The <strong>unified release workflow</strong> (<code>release.yml</code>) consolidates three competing release workflows into a single, coherent system that handles <strong>all release scenarios</strong> from a single source of truth.</p>
+<h3 id="what-it-replaces">What It Replaces<a class="headerlink" href="#what-it-replaces" title="Permanent link">&para;</a></h3>
+<ul>
+<li>❌ <code>2 - Release.yml</code> (dependency-triggered releases) → <strong>CONSOLIDATED</strong></li>
+<li>❌ <code>3 - Create Release.yml</code> (code commit releases) → <strong>CONSOLIDATED</strong>  </li>
+<li>❌ <code>4 - Publish Module.yml</code> (standalone publish) → <strong>CONSOLIDATED</strong></li>
+</ul>
+<h3 id="what-it-retains">What It Retains<a class="headerlink" href="#what-it-retains" title="Permanent link">&para;</a></h3>
+<ul>
+<li>✅ <code>1 - Update Dependencies.yml</code> (checks for updates, creates PRs) → <strong>UNCHANGED</strong> - This workflow still exists to create dependency update PRs. When merged to main, it triggers the new unified release workflow.</li>
+</ul>
+<hr />
+<h2 id="architecture">Architecture<a class="headerlink" href="#architecture" title="Permanent link">&para;</a></h2>
+<h3 id="trigger-events">Trigger Events<a class="headerlink" href="#trigger-events" title="Permanent link">&para;</a></h3>
+<p>The unified workflow is triggered in these scenarios:</p>
+<h4 id="1-code-commit-trigger-push-to-main">1. <strong>Code Commit Trigger</strong> (Push to main)<a class="headerlink" href="#1-code-commit-trigger-push-to-main" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">on</span><span class="p">:</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nt">push</span><span class="p">:</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">    </span><span class="nt">branches</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">main</span><span class="p p-Indicator">]</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">    </span><span class="nt">paths</span><span class="p">:</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&#39;src/DLLPickle/**&#39;</span><span class="w">  </span><span class="c1"># Only release if module code changes</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&#39;!**.md&#39;</span><span class="w">             </span><span class="c1"># Ignore documentation changes</span>
+</code></pre></div>
+<p><strong>Version Bump Logic:</strong> Automatic analysis of conventional commits since last release tag</p>
+<ul>
+<li><code>BREAKING:</code> → Major bump (e.g., 1.0.0 → 2.0.0)</li>
+<li><code>feat:</code> → Minor bump (e.g., 1.0.0 → 1.1.0)</li>
+<li><code>fix:</code>, <code>chore:</code>, etc. → Patch bump (e.g., 1.0.0 → 1.0.1)</li>
+</ul>
+<p><strong>Approval:</strong> No additional approval needed (code review via PR)</p>
+<h4 id="2-dependency-update-trigger-dependency-workflow-merges-pr-to-main">2. <strong>Dependency Update Trigger</strong> (Dependency workflow merges PR to main)<a class="headerlink" href="#2-dependency-update-trigger-dependency-workflow-merges-pr-to-main" title="Permanent link">&para;</a></h4>
+<p>When <code>1 - Update Dependencies.yml</code> auto-merges a PR with package updates, the commit push triggers this workflow via path-based activation.</p>
+<p><strong>Version Bump Logic:</strong> Either:</p>
+<ul>
+<li>Conventional commits if there are other code commits in the push</li>
+<li>Patch bump if only the dependency commit is new (default behavior)</li>
+</ul>
+<p><strong>Approval:</strong> No additional approval needed (dependencies were pre-approved)</p>
+<h4 id="3-manual-dispatch-trigger-explicit-release-request">3. <strong>Manual Dispatch Trigger</strong> (Explicit release request)<a class="headerlink" href="#3-manual-dispatch-trigger-explicit-release-request" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nt">workflow_dispatch</span><span class="p">:</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span><span class="nt">inputs</span><span class="p">:</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">    </span><span class="nt">version_bump</span><span class="p">:</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">      </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;Version</span><span class="nv"> </span><span class="s">bump</span><span class="nv"> </span><span class="s">type</span><span class="nv"> </span><span class="s">(major,</span><span class="nv"> </span><span class="s">minor,</span><span class="nv"> </span><span class="s">patch)</span><span class="nv"> </span><span class="s">-</span><span class="nv"> </span><span class="s">overrides</span><span class="nv"> </span><span class="s">conventional</span><span class="nv"> </span><span class="s">commit</span><span class="nv"> </span><span class="s">analysis&#39;</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">      </span><span class="nt">required</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">choice</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">      </span><span class="nt">options</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">auto</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">major</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">minor</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">patch</span><span class="p p-Indicator">]</span>
+</code></pre></div>
+<p><strong>Usage:</strong> Go to <strong>Actions → Release and Publish → Run workflow</strong> and select bump type</p>
+<p><strong>Version Bump Logic:</strong></p>
+<ul>
+<li><code>auto</code> → Uses conventional commit analysis (like code trigger)</li>
+<li><code>major</code>, <code>minor</code>, <code>patch</code> → Uses explicitly specified bump</li>
+</ul>
+<p><strong>Approval:</strong> Requires approval if in psgallery environment (see below)</p>
+<hr />
+<h2 id="workflow-jobs-sequential">Workflow Jobs (Sequential)<a class="headerlink" href="#workflow-jobs-sequential" title="Permanent link">&para;</a></h2>
+<p>The workflow is organized into 6 sequential jobs, each with clear responsibility:</p>
+<h3 id="1-analyze">1. <strong>analyze</strong><a class="headerlink" href="#1-analyze" title="Permanent link">&para;</a></h3>
+<p><strong>Purpose:</strong> Determine if a release is needed and what version to release</p>
+<p><strong>Triggers:</strong></p>
+<ul>
+<li>Skips if commit contains <code>[skip-release]</code> or <code>[no-release]</code></li>
+<li>Always runs for code commits and manual dispatch</li>
+</ul>
+<p><strong>Outputs:</strong></p>
+<ul>
+<li><code>should_release</code> - Boolean: whether to proceed with release</li>
+<li><code>version_bump</code> - String: <code>major</code>, <code>minor</code>, or <code>patch</code></li>
+<li><code>current_version</code> - String: e.g., &ldquo;1.2.3&rdquo;</li>
+<li><code>new_version</code> - String: e.g., &ldquo;1.2.4&rdquo;</li>
+<li><code>trigger_source</code> - String: <code>push</code>, <code>manual</code>, or <code>dependency</code></li>
+</ul>
+<p><strong>Uses Helper Script:</strong></p>
+<ul>
+<li><strong><code>Get-VersionBump.ps1</code></strong> - Analyzes git commit history since last tag</li>
+<li>Parses conventional commit messages</li>
+<li>Returns semantic version bump recommendation</li>
+<li>Returns <code>false</code> if no release-worthy commits found</li>
+</ul>
+<p><strong>Key Logic:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c"># For push/code triggers: Analyze commits</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="nv">$versionResult</span> <span class="p">=</span> <span class="p">&amp;</span> <span class="p">.\.</span><span class="n">github</span><span class="p">\</span><span class="n">scripts</span><span class="p">\</span><span class="nb">Get-VersionBump</span><span class="p">.</span><span class="n">ps1</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c"># For manual dispatch: Use input or analyze commits</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="k">if</span> <span class="p">(</span><span class="nv">$triggerSource</span> <span class="o">-eq</span> <span class="s2">&quot;manual&quot;</span> <span class="o">-and</span> <span class="nv">$versionBump</span> <span class="o">-ne</span> <span class="s2">&quot;auto&quot;</span><span class="p">)</span> <span class="p">{</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    <span class="c"># Use explicit bump from input</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>    <span class="c"># Use semantic analysis from commits</span>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="p">}</span>
+</code></pre></div>
+<hr />
+<h3 id="2-update-version">2. <strong>update-version</strong><a class="headerlink" href="#2-update-version" title="Permanent link">&para;</a></h3>
+<p><strong>Depends on:</strong> <code>analyze</code> (only runs if <code>should_release == true</code>)</p>
+<p><strong>Purpose:</strong> Update the PowerShell module manifest with the new version and create a git commit + tag</p>
+<p><strong>Steps:</strong></p>
+<ol>
+<li>Calls <strong><code>Update-ModuleVersion.ps1</code></strong> to bump version in <code>DLLPickle.psd1</code></li>
+<li>Updates <code>ModuleVersion</code> field</li>
+<li>Validates change was applied</li>
+<li>
+<p>Returns success/error status</p>
+</li>
+<li>
+<p>Commits the version change to <code>main</code></p>
+</li>
+</ol>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">git</span> <span class="n">commit</span> <span class="n">-m</span> <span class="s2">&quot;chore(release): bump version to X.Y.Z&quot;</span>
+</code></pre></div>
+<ol>
+<li>Creates an annotated git tag</li>
+</ol>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">git</span> <span class="n">tag</span> <span class="n">-a</span> <span class="n">vX</span><span class="p">.</span><span class="n">Y</span><span class="p">.</span><span class="n">Z</span> <span class="n">-m</span> <span class="s2">&quot;Release X.Y.Z&quot;</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="n">git</span> <span class="n">push</span> <span class="n">origin</span> <span class="n">vX</span><span class="p">.</span><span class="n">Y</span><span class="p">.</span><span class="n">Z</span>
+</code></pre></div>
+<p><strong>Why This Order:</strong></p>
+<ul>
+<li>Updates manifest BEFORE building ensures build picks up new version</li>
+<li>Creates tag BEFORE release ensures GitHub knows which commit to release</li>
+<li>All done on main branch so dependencies resolve correctly</li>
+</ul>
+<hr />
+<h3 id="3-build-and-test">3. <strong>build-and-test</strong><a class="headerlink" href="#3-build-and-test" title="Permanent link">&para;</a></h3>
+<p><strong>Depends on:</strong> <code>update-version</code></p>
+<p><strong>Purpose:</strong> Build the module and run all tests to validate the release</p>
+<p><strong>Steps:</strong></p>
+<ol>
+<li>Checkout updated repository (includes new tag)</li>
+<li>Build module using <code>Invoke-Build</code></li>
+<li>Run all unit and integration tests</li>
+<li>Upload build artifacts if tests pass</li>
+</ol>
+<p><strong>Why This Order:</strong></p>
+<ul>
+<li>Ensures version is already bumped in manifest</li>
+<li>Ensures tests run against actual release version</li>
+<li>Prevents publishing if tests fail</li>
+</ul>
+<p><strong>If Tests Fail:</strong></p>
+<ul>
+<li>Job fails</li>
+<li>GitHub release is NOT created</li>
+<li>Version was already bumped and tagged (manual cleanup needed)</li>
+</ul>
+<hr />
+<h3 id="4-create-release">4. <strong>create-release</strong><a class="headerlink" href="#4-create-release" title="Permanent link">&para;</a></h3>
+<p><strong>Depends on:</strong> <code>build-and-test</code></p>
+<p><strong>Purpose:</strong> Create a GitHub release with generated release notes</p>
+<p><strong>Checks:</strong></p>
+<ol>
+<li>Verifies release doesn&rsquo;t already exist for this version</li>
+<li>Generates release notes from git history</li>
+<li>Creates release with notes</li>
+</ol>
+<p><strong>Release Notes Include:</strong></p>
+<ul>
+<li>Version number</li>
+<li>Version bump type (major/minor/patch)</li>
+<li>Trigger source (push/manual/dependency)</li>
+<li>Recent commit messages</li>
+<li>Links to Gallery and GitHub release page</li>
+</ul>
+<p><strong>Why This Order:</strong></p>
+<ul>
+<li>Ensures build is successful before creating release</li>
+<li>Release marks the &ldquo;official&rdquo; release point for users</li>
+</ul>
+<hr />
+<h3 id="5-publish">5. <strong>publish</strong><a class="headerlink" href="#5-publish" title="Permanent link">&para;</a></h3>
+<p><strong>Depends on:</strong> <code>create-release</code></p>
+<p><strong>Approval Gate:</strong></p>
+<ul>
+<li>Uses GitHub <code>environment: psgallery</code> with required reviewers</li>
+<li>Configure in repository settings: <strong>Settings → Environments → psgallery → Required reviewers</strong></li>
+<li>Prevents accidental publishes to live gallery</li>
+</ul>
+<p><strong>Purpose:</strong> Publish the module to PowerShell Gallery</p>
+<p><strong>Checks:</strong></p>
+<ol>
+<li>Verifies manifest version matches expected version</li>
+<li>Checks if version already published (idempotency)</li>
+<li>Calls <strong><code>Publish-ToGallery.ps1</code></strong> with retry logic</li>
+<li>Attempts up to 3 times with exponential backoff</li>
+<li>Waits for indexing (30 seconds default)</li>
+<li>Verifies publish via <code>Find-Module</code></li>
+</ol>
+<p><strong>Requires Secret:</strong></p>
+<ul>
+<li><code>PSGALLERY_API_KEY</code> - PowerShell Gallery API token</li>
+<li>Store in repository secrets: <strong>Settings → Secrets and variables → Actions</strong></li>
+</ul>
+<p><strong>Why This Order:</strong></p>
+<ul>
+<li>Ensures everything is tested and released before publishing</li>
+<li>Uses approval gate to prevent accidents</li>
+<li>Uses retry logic to handle transient API issues</li>
+</ul>
+<hr />
+<h3 id="6-summary">6. <strong>summary</strong><a class="headerlink" href="#6-summary" title="Permanent link">&para;</a></h3>
+<p><strong>Depends on:</strong> All previous jobs (runs even if previous jobs fail)</p>
+<p><strong>Purpose:</strong> Generate workflow summary with status and links</p>
+<p><strong>Output:</strong></p>
+<ul>
+<li>Displays in workflow run summary</li>
+<li>Shows final status of all jobs</li>
+<li>Provides links to release, gallery, and workflow run</li>
+</ul>
+<hr />
+<h2 id="decision-tree">Decision Tree<a class="headerlink" href="#decision-tree" title="Permanent link">&para;</a></h2>
+<p>This diagram shows how the workflow determines whether to release and what version to bump:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>┌─ Push to main (with code changes)
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>│  ├─ Analyze commits since last tag
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>│  ├─ If conventional commits found → Determine bump (major/minor/patch)
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>│  └─ Release with semantic version
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>│
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>├─ Dependency workflow merges PR to main
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>│  ├─ Push event triggers workflow
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>│  ├─ Analyze commits (likely just dep update commit)
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>│  ├─ Likely patch bump (or based on actual commits)
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>│  └─ Release with bump version
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>│
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>└─ Manual dispatch with version_bump
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>   ├─ If &quot;auto&quot; → Analyze commits (same as push)
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>   ├─ If &quot;major/minor/patch&quot; → Use explicit bump
+<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a>   └─ Release with specified version
+</code></pre></div>
+<hr />
+<h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
+<h3 id="repository-secrets">Repository Secrets<a class="headerlink" href="#repository-secrets" title="Permanent link">&para;</a></h3>
+<p><strong>Required:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>PSGALLERY_API_KEY=&lt;your-powershell-gallery-api-token&gt;
+</code></pre></div>
+<p>Get this from PowerShell Gallery account settings:
+<a href="https://www.powershellgallery.com/account/apikeys">https://www.powershellgallery.com/account/apikeys</a></p>
+<h3 id="environment-approval-gate">Environment Approval Gate<a class="headerlink" href="#environment-approval-gate" title="Permanent link">&para;</a></h3>
+<p>Configure approval for PSGallery publishes:</p>
+<ol>
+<li>Go to <strong>Settings → Environments</strong></li>
+<li>Click <strong>New environment</strong> → Name it <code>psgallery</code></li>
+<li>Check <strong>Required reviewers</strong></li>
+<li>Add team members who can approve releases</li>
+</ol>
+<h3 id="path-based-triggering">Path-Based Triggering<a class="headerlink" href="#path-based-triggering" title="Permanent link">&para;</a></h3>
+<p>The workflow only triggers on changes to specific paths:</p>
+<ul>
+<li>✅ Changes in <code>src/DLLPickle/</code> → TRIGGER</li>
+<li>❌ Changes only in docs → SKIP</li>
+<li>❌ Changes only in markdown → SKIP</li>
+</ul>
+<p>This prevents unnecessary releases for documentation changes.</p>
+<hr />
+<h2 id="usage-examples">Usage Examples<a class="headerlink" href="#usage-examples" title="Permanent link">&para;</a></h2>
+<h3 id="1-automatic-release-code-commit">1. <strong>Automatic Release (Code Commit)</strong><a class="headerlink" href="#1-automatic-release-code-commit" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="c1"># 1. Create a feature branch</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>git<span class="w"> </span>checkout<span class="w"> </span>-b<span class="w"> </span>feat/new-feature
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="c1"># 2. Make code changes</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;New feature code&quot;</span><span class="w"> </span>&gt;&gt;<span class="w"> </span>src/DLLPickle/Public/Get-Example.ps1
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="c1"># 3. Commit with conventional message</span>
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;feat: add new Get-Example function&quot;</span>
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a><span class="c1"># 4. Create PR, get review, merge to main</span>
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>git<span class="w"> </span>push<span class="w"> </span>origin<span class="w"> </span>feat/new-feature
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a><span class="c1"># ... Create PR and merge ...</span>
+<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>
+<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a><span class="c1"># Result: Workflow triggers automatically</span>
+<a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a><span class="c1"># - Analyzes commit: &quot;feat: add...&quot; → minor bump</span>
+<a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a><span class="c1"># - Updates version: 1.0.0 → 1.1.0</span>
+<a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a><span class="c1"># - Builds and tests</span>
+<a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a><span class="c1"># - Creates release v1.1.0</span>
+<a id="__codelineno-7-19" name="__codelineno-7-19" href="#__codelineno-7-19"></a><span class="c1"># - Publishes to gallery (after approval)</span>
+</code></pre></div>
+<h3 id="2-dependency-update-release">2. <strong>Dependency Update Release</strong><a class="headerlink" href="#2-dependency-update-release" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="c1"># 1. Dependency workflow runs on schedule (2 AM UTC daily)</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="c1"># 2. Finds updates to packages in Packages.json</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="c1"># 3. Creates/updates PR with updates</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="c1"># 4. Auto-merges PR when checks pass</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="c1"># Result: Commit push to main triggers release workflow</span>
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="c1"># - Detects commit from dependency update</span>
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a><span class="c1"># - Patches version (e.g., 1.1.0 → 1.1.1)</span>
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a><span class="c1"># - Builds and tests</span>
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a><span class="c1"># - Creates release v1.1.1</span>
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a><span class="c1"># - Publishes to gallery</span>
+</code></pre></div>
+<h3 id="3-manual-release-emergency-hotfix">3. <strong>Manual Release (Emergency Hotfix)</strong><a class="headerlink" href="#3-manual-release-emergency-hotfix" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="c1"># 1. Go to GitHub repository</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="c1"># 2. Actions → Release and Publish → Run workflow</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="c1"># 3. Select version_bump: &quot;patch&quot;</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="c1"># 4. Click &quot;Run workflow&quot;</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="c1"># Result: Workflow runs immediately</span>
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="c1"># - Uses explicit patch bump</span>
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a><span class="c1"># - Updated version: 1.1.1 → 1.1.2</span>
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a><span class="c1"># - Builds and tests</span>
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a><span class="c1"># - Creates release v1.1.2</span>
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a><span class="c1"># - Publishes to gallery (after approval)</span>
+</code></pre></div>
+<h3 id="4-skip-release-on-specific-commit">4. <strong>Skip Release on Specific Commit</strong><a class="headerlink" href="#4-skip-release-on-specific-commit" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="c1"># Skip release for this commit</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;chore: update readme [skip-release]&quot;</span>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="c1"># Or</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;docs: update docs [no-release]&quot;</span>
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a><span class="c1"># Result: Workflow runs but analyze job exits early</span>
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a><span class="c1"># - No release created</span>
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a><span class="c1"># - Useful for documentation-only or chore commits</span>
+</code></pre></div>
+<hr />
+<h2 id="failure-scenarios">Failure Scenarios<a class="headerlink" href="#failure-scenarios" title="Permanent link">&para;</a></h2>
+<h3 id="if-build-fails">If Build Fails<a class="headerlink" href="#if-build-fails" title="Permanent link">&para;</a></h3>
+<p><strong>What happens:</strong></p>
+<ul>
+<li><code>build-and-test</code> job fails</li>
+<li><code>create-release</code> and <code>publish</code> jobs are skipped</li>
+<li>Version was already bumped and tagged (on main branch)</li>
+</ul>
+<p><strong>Recovery:</strong></p>
+<ol>
+<li>Fix the issue locally</li>
+<li>Create new PR with fix</li>
+<li>Merge to main</li>
+<li>New release will be created for the fix commit</li>
+</ol>
+<p><strong>Note:</strong> Manual cleanup may be needed if the failed version tag should be removed</p>
+<h3 id="if-publish-fails">If Publish Fails<a class="headerlink" href="#if-publish-fails" title="Permanent link">&para;</a></h3>
+<p><strong>What happens:</strong></p>
+<ul>
+<li><code>publish</code> job fails (usually after 3 retry attempts)</li>
+<li>GitHub release exists but module not in gallery</li>
+<li>Version tag exists on main</li>
+</ul>
+<p><strong>Recovery:</strong></p>
+<ol>
+<li>Fix the underlying issue (e.g., API key, network)</li>
+<li>Either:</li>
+<li>Manually run <code>Publish-ToGallery.ps1</code> locally, OR</li>
+<li>Manually trigger workflow with <code>workflow_dispatch</code> and &ldquo;auto&rdquo; option</li>
+</ol>
+<h3 id="if-approval-gate-times-out">If Approval Gate Times Out<a class="headerlink" href="#if-approval-gate-times-out" title="Permanent link">&para;</a></h3>
+<p><strong>What happens:</strong></p>
+<ul>
+<li><code>publish</code> job waits for approval</li>
+<li>If approval not provided within environment timeout (GitHub default: unlimited)</li>
+<li>Job stays pending</li>
+</ul>
+<p><strong>Recovery:</strong></p>
+<ol>
+<li>Visit workflow run page</li>
+<li>Click &ldquo;Review deployments&rdquo;</li>
+<li>Select &ldquo;Approve&rdquo; or &ldquo;Reject&rdquo;</li>
+</ol>
+<hr />
+<h2 id="removing-old-workflows">Removing Old Workflows<a class="headerlink" href="#removing-old-workflows" title="Permanent link">&para;</a></h2>
+<p>Once the unified workflow is tested and validated, remove these legacy workflows:</p>
+<ol>
+<li><strong>Delete <code>.github/workflows/2 - Release.yml</code></strong></li>
+</ol>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>git<span class="w"> </span>rm<span class="w"> </span><span class="s1">&#39;.github/workflows/2 - Release.yml&#39;</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;chore: remove legacy release workflow (consolidated to release.yml)&quot;</span>
+</code></pre></div>
+<ol>
+<li><strong>Delete <code>.github/workflows/4 - Publish Module.yml</code></strong></li>
+</ol>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>git<span class="w"> </span>rm<span class="w"> </span><span class="s1">&#39;.github/workflows/4 - Publish Module.yml&#39;</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;chore: remove legacy publish workflow (consolidated to release.yml)&quot;</span>
+</code></pre></div>
+<ol>
+<li><strong>Keep <code>.github/workflows/1 - Update Dependencies.yml</code></strong></li>
+<li>This still creates dependency update PRs</li>
+<li>They merge to main, which triggers the unified release workflow</li>
+</ol>
+<p><strong>Do NOT delete until:</strong></p>
+<ul>
+<li>✅ Unified workflow has been tested with at least one successful release</li>
+<li>✅ Both code commit and dependency update pathways have been validated</li>
+<li>✅ All team members understand the new system</li>
+</ul>
+<hr />
+<h2 id="helper-scripts-used">Helper Scripts Used<a class="headerlink" href="#helper-scripts-used" title="Permanent link">&para;</a></h2>
+<p>The unified workflow calls these PowerShell helper scripts (created in Phase 2):</p>
+<table>
+<thead>
+<tr>
+<th>Script</th>
+<th>Purpose</th>
+<th>Called By</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Get-VersionBump.ps1</code></td>
+<td>Analyze commits, determine version bump</td>
+<td><code>analyze</code> job</td>
+</tr>
+<tr>
+<td><code>Update-ModuleVersion.ps1</code></td>
+<td>Update .psd1 manifest version</td>
+<td><code>update-version</code> job</td>
+</tr>
+<tr>
+<td><code>Publish-ToGallery.ps1</code></td>
+<td>Publish to gallery with retry logic</td>
+<td><code>publish</code> job</td>
+</tr>
+</tbody>
+</table>
+<p>See <code>.github/scripts/README.md</code> for detailed documentation on each script.</p>
+<hr />
+<h2 id="environment-variables">Environment Variables<a class="headerlink" href="#environment-variables" title="Permanent link">&para;</a></h2>
+<p>Key environment variables used:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="n">MODULE_NAME</span> <span class="p">=</span> <span class="s2">&quot;DLLPickle&quot;</span>
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="n">MODULE_DIR</span> <span class="p">=</span> <span class="s2">&quot;./src/DLLPickle&quot;</span>
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a><span class="n">MANIFEST_PATH</span> <span class="p">=</span> <span class="s2">&quot;./src/DLLPickle/DLLPickle.psd1&quot;</span>
+</code></pre></div>
+<p>These are set at the workflow level and available to all jobs.</p>
+<hr />
+<h2 id="monitoring">Monitoring<a class="headerlink" href="#monitoring" title="Permanent link">&para;</a></h2>
+<h3 id="check-release-status">Check Release Status<a class="headerlink" href="#check-release-status" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Go to GitHub repository → <strong>Actions</strong></li>
+<li>Click <strong>Release and Publish</strong> workflow</li>
+<li>View recent runs</li>
+<li>Click a run to see detailed job status</li>
+</ol>
+<h3 id="enable-notifications">Enable Notifications<a class="headerlink" href="#enable-notifications" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Go to <strong>GitHub Settings → Notifications</strong></li>
+<li>Configure email/web notifications for workflow completions</li>
+</ol>
+<h3 id="check-gallery-listing">Check Gallery Listing<a class="headerlink" href="#check-gallery-listing" title="Permanent link">&para;</a></h3>
+<p>After publish completes, verify module is on PSGallery:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>Find-Module<span class="w"> </span>-Name<span class="w"> </span>DLLPickle<span class="w"> </span>-Repository<span class="w"> </span>PSGallery<span class="w"> </span><span class="p">|</span><span class="w"> </span>Select-Object<span class="w"> </span>Version,<span class="w"> </span>PublishedDate
+</code></pre></div>
+<hr />
+<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
+<h3 id="version-already-published-error">&ldquo;Version already published&rdquo; Error<a class="headerlink" href="#version-already-published-error" title="Permanent link">&para;</a></h3>
+<p><strong>Problem:</strong> Workflow tries to publish version that already exists on gallery</p>
+<p><strong>Solution:</strong> Manual override in <code>publish</code> job check - modify <code>already_published</code> condition or increment version and re-run</p>
+<h3 id="approval-gate-timeout">&ldquo;Approval gate timeout&rdquo;<a class="headerlink" href="#approval-gate-timeout" title="Permanent link">&para;</a></h3>
+<p><strong>Problem:</strong> <code>publish</code> job waits forever for approval that never comes</p>
+<p><strong>Solution:</strong></p>
+<ol>
+<li>Visit workflow run page</li>
+<li>Click &ldquo;Review deployments&rdquo; button</li>
+<li>Approve or reject the deployment</li>
+</ol>
+<h3 id="tag-already-exists">&ldquo;Tag already exists&rdquo;<a class="headerlink" href="#tag-already-exists" title="Permanent link">&para;</a></h3>
+<p><strong>Problem:</strong> Git tag for release version already exists</p>
+<p><strong>Solution:</strong> Manual cleanup - delete old tag with <code>git tag -d vX.Y.Z &amp;&amp; git push origin :refs/tags/vX.Y.Z</code></p>
+<h3 id="manifest-version-doesnt-match">&ldquo;Manifest version doesn&rsquo;t match&rdquo;<a class="headerlink" href="#manifest-version-doesnt-match" title="Permanent link">&para;</a></h3>
+<p><strong>Problem:</strong> Published module version doesn&rsquo;t match expected version</p>
+<p><strong>Solution:</strong> Check manifest file directly - run <code>Update-ModuleVersion.ps1</code> locally to verify</p>
+<hr />
+<h2 id="next-steps">Next Steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h2>
+<ol>
+<li>✅ <strong>Review this unified workflow</strong> - Understand how it works</li>
+<li>📝 <strong>Test with a code commit</strong> - Make a small code change, merge to main, verify release is created</li>
+<li>📝 <strong>Test with dependency update</strong> - Wait for dependency workflow or manually trigger, verify release</li>
+<li>📝 <strong>Configure approvals</strong> - Set up <code>psgallery</code> environment with required reviewers</li>
+<li>🗑️ <strong>Remove legacy workflows</strong> - Delete <code>2 - Release.yml</code> and <code>4 - Publish Module.yml</code> after validation</li>
+<li>📚 <strong>Update documentation</strong> - Update team wiki/docs to reference new unified workflow</li>
+</ol>
+<p>```mermaid
+flowchart TD
+    Start([Publish Module to PowerShell Gallery]) &rarr; Trigger{Trigger Type}</p>
+<div class="highlight"><pre><span></span><code>Trigger --&gt;|Release Published| TriggerA[Release Event]
+Trigger --&gt;|Manual Dispatch| TriggerB[Workflow Dispatch]
+
+TriggerA --&gt; Harden[Harden Runner - Audit Egress]
+TriggerB --&gt; Harden
+
+Harden --&gt; Checkout[Checkout Repository Code]
+Checkout --&gt; Setup[Setup PowerShell Environment]
+Setup --&gt; Validate[Validate Manifest &amp; Version]
+
+Validate --&gt; CheckVersion{Version Check}
+CheckVersion --&gt;|Version Exists in Gallery| WarnContinue[&quot;⚠️ Warning: Version exists&lt;br/&gt;Continue anyway&quot;]
+CheckVersion --&gt;|Version Not Found| ProceedOK[&quot;✓ Version available&quot;]
+
+WarnContinue --&gt; VersionAlign{Version Alignment Check}
+ProceedOK --&gt; VersionAlign
+
+VersionAlign --&gt;|Mismatch| WarnMismatch[&quot;⚠️ Warning: Version mismatch&lt;br/&gt;between tag/release/manifest&quot;]
+VersionAlign --&gt;|Aligned| VersionOK[&quot;✓ Versions aligned&quot;]
+
+WarnMismatch --&gt; SetOutputs[Set Workflow Outputs:&lt;br/&gt;name, baseVersion, fullVersion,&lt;br/&gt;isPrerelease, releaseTag]
+VersionOK --&gt; SetOutputs
+
+SetOutputs --&gt; InstallDeps[Install PowerShellGet Dependencies]
+InstallDeps --&gt; Publish[Publish Module to PSGallery]
+
+Publish --&gt; RetryLogic{Publish Attempt}
+RetryLogic --&gt;|Retry 1| Wait1[Wait 5 seconds]
+RetryLogic --&gt;|Retry 2| Wait2[Wait 10 seconds]
+RetryLogic --&gt;|Retry 3| Wait3[Wait 15 seconds]
+
+Wait1 --&gt; Publish
+Wait2 --&gt; Publish
+Wait3 --&gt; Publish
+
+RetryLogic --&gt;|Success| PublishOK[&quot;✓ Module Published&quot;]
+RetryLogic --&gt;|All Failed| PublishFail[&quot;❌ Publish Failed&lt;br/&gt;Exit 1&quot;]
+
+PublishOK --&gt; Wait30[Wait 30 seconds for indexing]
+Wait30 --&gt; VerifyPublish[Verify Module in Gallery]
+
+VerifyPublish --&gt; ArtifactPrep[Prepare Artifact:&lt;br/&gt;Copy module files,&lt;br/&gt;Generate publish-info.json,&lt;br/&gt;Calculate SHA256 file hashes]
+
+ArtifactPrep --&gt; UploadArtifact[Upload Module Artifact&lt;br/&gt;Retention: 30 days]
+UploadArtifact --&gt; Summary[Create Workflow Summary]
+
+Summary --&gt; CheckRelease[Check for Existing&lt;br/&gt;GitHub Release]
+
+CheckRelease --&gt; ReleaseExists{Release Exists?}
+ReleaseExists --&gt;|Yes| Skip[&quot;✓ Release exists&lt;br/&gt;Skip creation&quot;]
+ReleaseExists --&gt;|No| CreateRelease[Create GitHub Release]
+
+CreateRelease --&gt; Prerelease{Is Prerelease?}
+Prerelease --&gt;|Yes| CreatePre[Create as Prerelease&lt;br/&gt;with tag v&amp;lcub;version&amp;rcub;]
+Prerelease --&gt;|No| CreateStable[Create as Stable Release&lt;br/&gt;with tag v&amp;lcub;version&amp;rcub;]
+
+CreatePre --&gt; ReleaseBody[Generate Release Body:&lt;br/&gt;Installation instructions,&lt;br/&gt;Module info, Links]
+CreateStable --&gt; ReleaseBody
+
+ReleaseBody --&gt; ReleaseSuccess[&quot;✓ GitHub Release Created&quot;]
+
+Skip --&gt; End([Workflow Complete])
+ReleaseSuccess --&gt; End
+PublishFail --&gt; End
+
+style Start fill:#e1f5e1
+style End fill:#e1f5e1
+style PublishOK fill:#d4edda
+style ReleaseSuccess fill:#d4edda
+style PublishFail fill:#f8d7da
+style WarnContinue fill:#fff3cd
+style WarnMismatch fill:#fff3cd
+style Prerelease fill:#cfe2ff
+style CheckVersion fill:#cfe2ff
+style VersionAlign fill:#cfe2ff
+style ReleaseExists fill:#cfe2ff
+</code></pre></div>
+<p>```</p>
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      (c) 2025 Sam Erde
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.path", "navigation.instant", "navigation.instant.prefetch", "navigation.tracking", "navigation.sections", "navigation.expand", "navigation.top", "toc.follow", "toc.integrate"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

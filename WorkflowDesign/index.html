@@ -1,0 +1,861 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A PowerShell module that helps you get un-stuck from version conflicts (aka DLL pickle) that occur when using modules that depend on multiple versions of the same dependencies such as the Microsoft Authentication Library (MSAL).">
+      
+      
+        <meta name="author" content="Sam Erde">
+      
+      
+        <link rel="canonical" href="https://day3bits.com/DLLPickle/WorkflowDesign/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+    
+    
+      
+        <title>GitHub Actions Workflow Architecture - DLLPickle PowerShell Module</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#github-actions-workflow-architecture" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="DLLPickle PowerShell Module" class="md-header__button md-logo" aria-label="DLLPickle PowerShell Module" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            DLLPickle PowerShell Module
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              GitHub Actions Workflow Architecture
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m14.3 16-.7-2h-3.2l-.7 2H7.8L11 7h2l3.2 9zM20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12zm-9.15 3.96h2.3L12 9z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_2" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to system preference"  type="radio" name="__palette" id="__palette_2">
+    
+      <label class="md-header__button md-icon" title="Switch to system preference" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/SamErde/DLLPickle" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    SamErde/DLLPickle
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="DLLPickle PowerShell Module" class="md-nav__button md-logo" aria-label="DLLPickle PowerShell Module" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    DLLPickle PowerShell Module
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/SamErde/DLLPickle" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    SamErde/DLLPickle
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://raw.githubusercontent.com/SamErde/DLLPickle/main/CHANGELOG.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Change Log
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+  
+
+
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="github-actions-workflow-architecture">GitHub Actions Workflow Architecture<a class="headerlink" href="#github-actions-workflow-architecture" title="Permanent link">&para;</a></h1>
+<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
+<p>The DLLPickle repository uses a two-stage workflow architecture for automated dependency management:</p>
+<ol>
+<li><strong>Update Dependencies</strong> - Creates PRs with dependency updates</li>
+<li><strong>Release and Publish</strong> - Bumps version, creates releases, and publishes to PSGallery</li>
+</ol>
+<p>```mermaid
+flowchart TD
+    A[Scheduled Dependency Check] &rarr; | Get Dependency Updates | DependencyUpdates
+    B[Push to Main Branch] &rarr; | Push Module Code Changes | PushCommit</p>
+<div class="highlight"><pre><span></span><code>DependencyUpdates{Were dependencies updated?}
+DependencyUpdates --&gt; | Yes | BumpVersionDependencies(&quot;Bump Version&lt;br /&gt;(Patch)&quot;)
+DependencyUpdates --&gt; | No | EndWorkflow(&quot;End Dependency&lt;br /&gt;Workflow&quot;)
+BumpVersionDependencies --&gt; IsNewVersion{Is New Version?}
+IsNewVersion --&gt; | No | CreateIssue(Create Issue)
+IsNewVersion --&gt; | Yes | CreateRelease
+
+PushCommit{Check commit message for version trigger.}
+PushCommit --&gt; |&quot;No: Chore, Docs, other&quot; | EndPush(End Code&lt;br /&gt;Workflow)
+PushCommit --&gt; |&quot;Yes: Feat, Fix, Minor, Major, Refactor, Breaking&quot; | BumpVersionPush(&quot;Bump Version per Commit Message Type&quot;)
+BumpVersionPush --&gt; ReleaseTrigger{Release Workflow Trigger}
+ReleaseTrigger --&gt; | Automatic | EndPushWorkflow[&quot;End Code&lt;br /&gt;Workflow&quot;]
+ReleaseTrigger --&gt; | Manual | CreateRelease
+
+CreateRelease(&quot;Create GitHub&lt;br /&gt;Release&quot;) --&gt; PublishModule(Publish to&lt;br /&gt;PSGallery)
+</code></pre></div>
+<p>```</p>
+<h2 id="workflow-1-update-dependencies">Workflow 1: Update Dependencies<a class="headerlink" href="#workflow-1-update-dependencies" title="Permanent link">&para;</a></h2>
+<p><strong>File</strong>: <code>.github/workflows/Update Dependencies.yml</code></p>
+<p><strong>Trigger</strong>: Daily at 2 AM UTC (scheduled) or manual</p>
+<p><strong>Purpose</strong>: Automatically check for NuGet package updates and create PRs</p>
+<h3 id="process-flow">Process Flow<a class="headerlink" href="#process-flow" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>Check for Updates</strong> - Queries NuGet API for latest versions</li>
+<li><strong>Download &amp; Extract</strong> - Downloads new packages if updates are available</li>
+<li><strong>Create/Update Branch</strong> - Creates or updates <code>chore/update-packages</code> branch</li>
+<li><strong>Create/Update PR</strong> - Opens PR with dependency changes</li>
+<li><strong>Request Reviews</strong> - Adds labels and requests Copilot review</li>
+<li><strong>Wait for Checks</strong> - Waits up to 30 minutes for CI checks</li>
+<li><strong>Auto-Approve</strong> - Approves PR automatically if all checks pass</li>
+</ol>
+<h3 id="key-features">Key Features<a class="headerlink" href="#key-features" title="Permanent link">&para;</a></h3>
+<ul>
+<li>✅ <strong>Concurrency Control</strong> - Prevents overlapping runs</li>
+<li>✅ <strong>Fork Safety</strong> - Only runs on main repository</li>
+<li>✅ <strong>Idempotent</strong> - Updates existing PRs instead of creating duplicates</li>
+<li>✅ <strong>Smart Waiting</strong> - Waits for CodeQL and other checks</li>
+<li>✅ <strong>Auto-Approval</strong> - Approves after successful checks</li>
+</ul>
+<h2 id="workflow-2-release-and-publish">Workflow 2: Release and Publish<a class="headerlink" href="#workflow-2-release-and-publish" title="Permanent link">&para;</a></h2>
+<p><strong>File</strong>: <code>.github/workflows/Release and Publish.yml</code></p>
+<p><strong>Trigger</strong>: PR merge to main with <code>dependencies</code> label, or manual</p>
+<p><strong>Purpose</strong>: Version bump, create GitHub releases, and publish to PSGallery</p>
+<h3 id="process-flow_1">Process Flow<a class="headerlink" href="#process-flow_1" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>Determine Bump Type</strong> - Patch (default), minor, or major</li>
+<li><strong>Update Module Version</strong> - Updates <code>DLLPickle.psd1</code></li>
+<li><strong>Extract Changes</strong> - Captures PR summary for release notes</li>
+<li><strong>Commit Version</strong> - Commits version bump to main</li>
+<li><strong>Create Release</strong> - Creates tagged GitHub release</li>
+<li><strong>Publish Module</strong> - Publishes to PowerShell Gallery</li>
+</ol>
+<h3 id="key-features_1">Key Features<a class="headerlink" href="#key-features_1" title="Permanent link">&para;</a></h3>
+<ul>
+<li>✅ <strong>Automatic Trigger</strong> - Runs on dependency PR merge</li>
+<li>✅ <strong>Manual Trigger</strong> - Can be run manually with version control</li>
+<li>✅ <strong>Smart Versioning</strong> - Detects version bump type from PR</li>
+<li>✅ <strong>Rich Release Notes</strong> - Auto-generates from PR content</li>
+<li>✅ <strong>PSGallery Publishing</strong> - Automated module publication</li>
+</ul>
+<h3 id="version-bump-logic">Version Bump Logic<a class="headerlink" href="#version-bump-logic" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Patch</strong> (default): Dependency updates</li>
+<li><strong>Minor</strong>: Feature additions (detect via PR title keywords)</li>
+<li><strong>Major</strong>: Breaking changes (detect via PR title keywords)</li>
+<li><strong>Manual</strong>: Choose any bump type when manually triggered</li>
+</ul>
+<h2 id="complete-update-flow">Complete Update Flow<a class="headerlink" href="#complete-update-flow" title="Permanent link">&para;</a></h2>
+<p><code>mermaid
+graph TD
+    A[Scheduled: 2 AM UTC] --&gt; B[Check NuGet Versions]
+    B --&gt; C{Updates Available?}
+    C --&gt;|No| D[Exit]
+    C --&gt;|Yes| E[Download Packages]
+    E --&gt; F[Create/Update PR]
+    F --&gt; G[Request Copilot Review]
+    G --&gt; H[Run CodeQL &amp; Checks]
+    H --&gt; I{Checks Pass?}
+    I --&gt;|No| J[Manual Review Needed]
+    I --&gt;|Yes| K[Auto-Approve PR]
+    K --&gt; L[Human Merges PR]
+    L --&gt; M[Release Workflow Triggers]
+    M --&gt; N[Bump Module Version]
+    N --&gt; O[Create GitHub Release]
+    O --&gt; P[Publish to PSGallery]
+    P --&gt; Q[Complete]</code></p>
+<h2 id="safety-features">Safety Features<a class="headerlink" href="#safety-features" title="Permanent link">&para;</a></h2>
+<h3 id="update-dependencies-workflow">Update Dependencies Workflow<a class="headerlink" href="#update-dependencies-workflow" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Only runs on <code>SamErde/DLLPickle</code> repository (not forks)</li>
+<li>Single concurrent run allowed (prevents conflicts)</li>
+<li>Won&rsquo;t approve if any checks fail</li>
+<li>30-minute timeout for check completion</li>
+<li>Uses bot account for commits and PRs</li>
+</ul>
+<h3 id="release-workflow">Release Workflow<a class="headerlink" href="#release-workflow" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Only triggers on merged PRs with <code>dependencies</code> label</li>
+<li>Validates module manifest before publishing</li>
+<li>Creates git tags for version tracking</li>
+<li>Can be manually triggered for non-automated releases</li>
+<li>Fails fast if PSGallery publish errors occur</li>
+</ul>
+<h2 id="manual-operations">Manual Operations<a class="headerlink" href="#manual-operations" title="Permanent link">&para;</a></h2>
+<h3 id="trigger-dependency-check">Trigger Dependency Check<a class="headerlink" href="#trigger-dependency-check" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>gh<span class="w"> </span>workflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;Update Dependencies&quot;</span>
+</code></pre></div>
+<h3 id="trigger-release-with-version-control">Trigger Release (with version control)<a class="headerlink" href="#trigger-release-with-version-control" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># Patch release (0.0.X)</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>gh<span class="w"> </span>workflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;Release and Publish&quot;</span><span class="w"> </span>-f<span class="w"> </span><span class="nv">version_bump</span><span class="o">=</span>patch
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="c1"># Minor release (0.X.0)</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>gh<span class="w"> </span>workflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;Release and Publish&quot;</span><span class="w"> </span>-f<span class="w"> </span><span class="nv">version_bump</span><span class="o">=</span>minor
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="c1"># Major release (X.0.0)</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>gh<span class="w"> </span>workflow<span class="w"> </span>run<span class="w"> </span><span class="s2">&quot;Release and Publish&quot;</span><span class="w"> </span>-f<span class="w"> </span><span class="nv">version_bump</span><span class="o">=</span>major
+</code></pre></div>
+<h3 id="enable-auto-merge">Enable Auto-Merge<a class="headerlink" href="#enable-auto-merge" title="Permanent link">&para;</a></h3>
+<p>To fully automate the process, enable auto-merge on the created PR:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>gh<span class="w"> </span>pr<span class="w"> </span>merge<span class="w"> </span>&lt;PR_NUMBER&gt;<span class="w"> </span>--auto<span class="w"> </span>--squash
+</code></pre></div>
+<p>This allows PRs to merge automatically once approved and checks pass.</p>
+<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
+<h3 id="pr-not-auto-approved">PR Not Auto-Approved<a class="headerlink" href="#pr-not-auto-approved" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Check that all required checks passed</li>
+<li>Verify PAT_CREATEPR has appropriate permissions</li>
+<li>Review workflow logs for timeout issues</li>
+</ul>
+<h3 id="release-not-triggered">Release Not Triggered<a class="headerlink" href="#release-not-triggered" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Ensure merged PR has <code>dependencies</code> label</li>
+<li>Verify PR was merged to <code>main</code> branch</li>
+<li>Check that PR merge event triggered workflow</li>
+</ul>
+<h3 id="psgallery-publish-failed">PSGallery Publish Failed<a class="headerlink" href="#psgallery-publish-failed" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Validate PSGALLERY_API_KEY is set correctly</li>
+<li>Ensure API key has publish permissions</li>
+<li>Check module manifest is valid (<code>Test-ModuleManifest</code>)</li>
+</ul>
+<hr />
+<h2 id="detailed-workflow-diagrams">Detailed Workflow Diagrams<a class="headerlink" href="#detailed-workflow-diagrams" title="Permanent link">&para;</a></h2>
+<h1 id="workflows">Workflows<a class="headerlink" href="#workflows" title="Permanent link">&para;</a></h1>
+<p>This project relies on several workflows to keep library dependencies updated automatically.</p>
+<h2 id="update-monitored-packages">Update Monitored Packages<a class="headerlink" href="#update-monitored-packages" title="Permanent link">&para;</a></h2>
+<p>```mermaid
+flowchart</p>
+<div class="highlight"><pre><span></span><code>Start([Update Monitored Packages]) --&gt; LoopStart[Initialize Loop: process each tracked library in Packages.json]
+
+subgraph Left [&quot;Check for Updates to Monitored Packages&quot;]
+
+    JSON[&quot;Sample entry in Packages.json:&lt;br/&gt;&lt;br/&gt;{&lt;br/&gt;  name: Microsoft.Identity.Client.Broker,&lt;br/&gt;  version: 4.79.2&lt;br/&gt;}&quot;]
+    style JSON text-align: left
+    JSON --&gt; CompareVersion
+
+    LoopStart[Initialize Loop: process each tracked library in Packages.json]
+    LoopStart --&gt; CheckPackage[Check NuGet.org for the latest package version]
+    CheckPackage --&gt; CompareVersion{Is JSON tracking the latest version number?}
+
+    CompareVersion --&gt;|No:&lt;br /&gt;Current Entry &lt; Latest Release | UpdateAvailable[&quot;Update Available&lt;br/&gt;Add to Summary&quot;]
+    CompareVersion --&gt;|Yes:&lt;br /&gt;Current Entry = Latest Release | UpToDate[✓ Already Up to Date]
+
+    UpdateAvailable --&gt; MarkUpdate[Set updates_available=true&lt;br/&gt;Append to update_summary]
+    UpToDate --&gt; NextPackage{More Packages?}
+    MarkUpdate --&gt; NextPackage
+
+    NextPackage --&gt;|Yes| CheckPackage
+    NextPackage --&gt;|No| AnyUpdates{Updates Available?}
+
+end
+
+subgraph Right [&quot;Download Updates if Available&quot;]
+
+    AnyUpdates --&gt;|No| EndNoUpdate[&quot;✓ All packages up to date&lt;br/&gt;Workflow Complete&quot;]
+    AnyUpdates --&gt;|Yes| DownloadLoop
+
+    DownloadLoop --&gt; Download[Download .nupkg&lt;br/&gt;from NuGet.org]
+    Download --&gt; Extract[Extract nupkg&lt;br/&gt;as ZIP archive]
+
+    Extract --&gt; FindFramework[Search for DLLs in&lt;br/&gt;framework paths]
+
+    FindFramework --&gt; TryPaths{Try Framework Paths}
+    TryPaths --&gt;|netstandard2.0| PathFound1
+    TryPaths --&gt;|netstandard2.1| PathFound1
+    TryPaths --&gt;|net6.0| PathFound1
+    TryPaths --&gt;|net472| PathFound1
+    TryPaths --&gt;|runtimes/win paths| PathFound1
+
+    PathFound1{DLLs Found?}
+    PathFound1 --&gt;|Yes| CopyDLLs[Copy DLLs to&lt;br/&gt;Assembly folder]
+    PathFound1 --&gt;|No| WarnNoDLL[&quot;⚠️ Warning: No compatible DLLs&lt;br/&gt;Continue to next&quot;]
+
+    CopyDLLs --&gt; UpdateJSON[Update version in&lt;br/&gt;Packages.json]
+    UpdateJSON --&gt; MarkUpdated[Mark as updated]
+
+    MarkUpdated --&gt; MoreDownloads{More Packages?}
+    WarnNoDLL --&gt; MoreDownloads
+
+    MoreDownloads --&gt;|Yes| DownloadLoop
+    MoreDownloads --&gt;|No| SaveJSON[Save updated&lt;br/&gt;Packages.json]
+
+end
+</code></pre></div>
+<p>subgraph Finalization [&ldquo;Finalize and Release&rdquo;]</p>
+<div class="highlight"><pre><span></span><code>SaveJSON --&gt; ModuleManifest[Read Module Manifest]
+
+ModuleManifest --&gt; IncrementVersion[Increment Patch Version&lt;br/&gt;x.y.z → x.y.z+1]
+IncrementVersion --&gt; UpdateManifest[Update Module Manifest&lt;br/&gt;with new version]
+
+UpdateManifest --&gt; GitConfig[Configure Git User:&lt;br/&gt;github-actions bot]
+
+GitConfig --&gt; GitStage[Stage Changes:&lt;br/&gt;Assembly/*.dll&lt;br/&gt;Assembly/Packages.json&lt;br/&gt;DLLPickle.psd1]
+
+GitStage --&gt; GitCommit[Commit Changes:&lt;br/&gt;Update MSAL packages:&lt;br/&gt;summary message]
+GitCommit --&gt; GitPush[Push to Repository]
+
+GitPush --&gt; CreateRelease[Create GitHub Release]
+CreateRelease --&gt; ReleaseDetails[Set Release Details:&lt;br/&gt;Tag: v&amp;lcub;new_version&amp;rcub;&lt;br/&gt;Title: Release v&amp;lcub;new_version&amp;rcub;&lt;br/&gt;Body: Package update summary]
+
+ReleaseDetails --&gt; PublishRelease[Publish Release:&lt;br/&gt;Not draft, Not prerelease]
+
+PublishRelease --&gt; ReleaseSuccess[&quot;✓ GitHub Release Created&quot;]
+
+end
+</code></pre></div>
+<p>```</p>
+<p>```mermaid
+flowchart</p>
+<div class="highlight"><pre><span></span><code>Start([Update Monitored Packages]) --&gt; LoopStart[Initialize Loop: process each tracked library in Packages.json]
+
+subgraph Left [&quot;Check for Updates to Monitored Packages&quot;]
+
+    JSON[&quot;Sample entry in Packages.json:&lt;br/&gt;&lt;br/&gt;{&lt;br/&gt;  name: Microsoft.Identity.Client.Broker,&lt;br/&gt;  version: 4.79.2&lt;br/&gt;}&quot;]
+    style JSON text-align: left
+    JSON --&gt; CompareVersion
+
+    LoopStart[Initialize Loop: process each tracked library in Packages.json]
+    LoopStart --&gt; CheckPackage[Check NuGet.org for the latest package version]
+    CheckPackage --&gt; CompareVersion{Is JSON tracking the latest version number?}
+
+    CompareVersion --&gt;|No:&lt;br /&gt;Current Entry &lt; Latest Release | UpdateAvailable[&quot;Update Available&lt;br/&gt;Add to Summary&quot;]
+    CompareVersion --&gt;|Yes:&lt;br /&gt;Current Entry = Latest Release | UpToDate[✓ Already Up to Date]
+
+    UpdateAvailable --&gt; MarkUpdate[Set updates_available=true&lt;br/&gt;Append to update_summary]
+    UpToDate --&gt; NextPackage{More Packages?}
+    MarkUpdate --&gt; NextPackage
+
+    NextPackage --&gt;|Yes| CheckPackage
+    NextPackage --&gt;|No| AnyUpdates{Updates Available?}
+
+end
+
+subgraph Right [&quot;Download Updates if Available&quot;]
+
+    AnyUpdates --&gt;|No| EndNoUpdate[&quot;✓ All packages up to date&lt;br/&gt;Workflow Complete&quot;]
+    AnyUpdates --&gt;|Yes| DownloadLoop
+
+    DownloadLoop --&gt; Download[Download .nupkg&lt;br/&gt;from NuGet.org]
+    Download --&gt; Extract[Extract nupkg&lt;br/&gt;as ZIP archive]
+
+    Extract --&gt; FindFramework[Search for DLLs in&lt;br/&gt;framework paths]
+
+    FindFramework --&gt; TryPaths{Try Framework Paths}
+    TryPaths --&gt;|netstandard2.0| PathFound1
+    TryPaths --&gt;|netstandard2.1| PathFound1
+    TryPaths --&gt;|net6.0| PathFound1
+    TryPaths --&gt;|net472| PathFound1
+    TryPaths --&gt;|runtimes/win paths| PathFound1
+
+    PathFound1{DLLs Found?}
+    PathFound1 --&gt;|Yes| CopyDLLs[Copy DLLs to&lt;br/&gt;Assembly folder]
+    PathFound1 --&gt;|No| WarnNoDLL[&quot;⚠️ Warning: No compatible DLLs&lt;br/&gt;Continue to next&quot;]
+
+    CopyDLLs --&gt; UpdateJSON[Update version in&lt;br/&gt;Packages.json]
+    UpdateJSON --&gt; MarkUpdated[Mark as updated]
+
+    MarkUpdated --&gt; MoreDownloads{More Packages?}
+    WarnNoDLL --&gt; MoreDownloads
+
+    MoreDownloads --&gt;|Yes| DownloadLoop
+    MoreDownloads --&gt;|No| SaveJSON[Save updated&lt;br/&gt;Packages.json]
+
+end
+</code></pre></div>
+<p>subgraph Finalization [&ldquo;Finalize and Release&rdquo;]</p>
+<div class="highlight"><pre><span></span><code>SaveJSON --&gt; ModuleManifest[Read Module Manifest]
+
+ModuleManifest --&gt; IncrementVersion[Increment Patch Version&lt;br/&gt;x.y.z → x.y.z+1]
+IncrementVersion --&gt; UpdateManifest[Update Module Manifest&lt;br/&gt;with new version]
+
+UpdateManifest --&gt; GitConfig[Configure Git User:&lt;br/&gt;github-actions bot]
+
+GitConfig --&gt; GitStage[Stage Changes:&lt;br/&gt;Assembly/*.dll&lt;br/&gt;Assembly/Packages.json&lt;br/&gt;DLLPickle.psd1]
+
+GitStage --&gt; GitCommit[Commit Changes:&lt;br/&gt;Update MSAL packages:&lt;br/&gt;summary message]
+GitCommit --&gt; GitPush[Push to Repository]
+
+GitPush --&gt; CreateRelease[Create GitHub Release]
+CreateRelease --&gt; ReleaseDetails[Set Release Details:&lt;br/&gt;Tag: v&amp;lcub;new_version&amp;rcub;&lt;br/&gt;Title: Release v&amp;lcub;new_version&amp;rcub;&lt;br/&gt;Body: Package update summary]
+
+ReleaseDetails --&gt; PublishRelease[Publish Release:&lt;br/&gt;Not draft, Not prerelease]
+
+PublishRelease --&gt; ReleaseSuccess[&quot;✓ GitHub Release Created&quot;]
+
+ReleaseSuccess --&gt; EndSuccess([Workflow Complete])
+EndNoUpdate --&gt; EndSuccess
+Error1 --&gt; EndSuccess
+</code></pre></div>
+<p>end
+```</p>
+<hr />
+<h2 id="workflow-design-principles">Workflow Design Principles<a class="headerlink" href="#workflow-design-principles" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Require a PR for any changes to files/folders under the source directory (<code>./src/DLLPickle/*</code>).</li>
+<li>Follow <a href="https://www.conventionalcommits.org/">Conventional Commits</a> guidelines for every commit message.</li>
+<li>Do not manually increment versions in the PowerShell module manifest (<code>./src/DLLPickle/DLLPickle.psd1</code>).</li>
+</ul>
+<h2 id="workflow-controls">Workflow Controls<a class="headerlink" href="#workflow-controls" title="Permanent link">&para;</a></h2>
+<h3 id="concurrency-and-race-proofing">Concurrency and race-proofing<a class="headerlink" href="#concurrency-and-race-proofing" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Concurrency</strong>: Add concurrency keys per workflow (e.g., update-deps, release) to prevent overlapping runs and double-bumps when two PRs merge close together.</li>
+<li><strong>Single updater PR</strong>: Ensure the daily job reuses a fixed branch (e.g., chore/update-packages) and force-push/rebase it; auto-close older PRs if any exist.</li>
+</ul>
+<h3 id="avoiding-workflow-loops">Avoiding workflow loops<a class="headerlink" href="#avoiding-workflow-loops" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Skip tokens</strong>: Use a standard token such as [skip-build] or [no-release] in commit messages and conditional if: guards in jobs to prevent the version-bump commit from re-triggering the release/publish steps.</li>
+<li><strong>Path filters</strong>: Keep strong paths includes/excludes to avoid artifact/doc-only pushes from triggering build/release.</li>
+</ul>
+<h3 id="versioning-strategy-pick-one">Versioning strategy (pick ONE)<a class="headerlink" href="#versioning-strategy-pick-one" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Tag-driven</strong>: Create a tag (vX.Y.Z) derived from conventional commits at merge time, then build uses the tag to set the ModuleVersion without committing the .psd1 bump to main. This is clean and avoids a bump commit loop.</li>
+<li><strong>PR bump</strong>: Have a bot open a short PR with the .psd1 bump before merging to main. This keeps main source-of-truth and avoids post-merge commits to main.</li>
+</ul>
+<h3 id="pr-pipeline-hygiene">PR pipeline hygiene<a class="headerlink" href="#pr-pipeline-hygiene" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Labels by path</strong>: Auto-label PRs based on changed paths (src/docs/workflows) to route checks/review.</li>
+<li><strong>Draft until ready</strong>: Let the daily updater open PRs as draft until tests pass.</li>
+<li><strong>Auto-merge rules</strong>: Optionally enable auto-merge for the updater PR when all checks pass.</li>
+</ul>
+<hr />
+<h2 id="steps-triggers">Steps / Triggers<a class="headerlink" href="#steps-triggers" title="Permanent link">&para;</a></h2>
+<h3 id="1-code-contributions">1. Code Contributions<a class="headerlink" href="#1-code-contributions" title="Permanent link">&para;</a></h3>
+<h3 id="a-scheduled-workflow-update-monitored-packages">(a) Scheduled Workflow: Update Monitored Packages<a class="headerlink" href="#a-scheduled-workflow-update-monitored-packages" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Check nuget.org for new versions of tracked DLLs in <strong>Packages.json</strong></li>
+<li>Update DLLs in ./src/DLLPickle/Lib</li>
+</ul>
+<h3 id="b-work-code-contributions">(b) Work: Code Contributions<a class="headerlink" href="#b-work-code-contributions" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Contribution Type</th>
+<th>Path</th>
+<th>Requirements</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Source Code: features, fixes, quality improvements</td>
+<td>./src</td>
+<td>Pull Request</td>
+</tr>
+<tr>
+<td>Documentation: additions, fixes, improvements</td>
+<td>./docs</td>
+<td></td>
+</tr>
+<tr>
+<td>Repository: workflows, repository settings, metadata</td>
+<td>Other</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="2-pull-requests">2. Pull Requests<a class="headerlink" href="#2-pull-requests" title="Permanent link">&para;</a></h3>
+<p>Actions may be triggered when pull requests are submitted or merged to specific branches (or all branches).</p>
+<table>
+<thead>
+<tr>
+<th>Trigger</th>
+<th>Branch</th>
+<th>Details</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>PR: On Submit</td>
+<td>all</td>
+<td></td>
+</tr>
+<tr>
+<td>PR: On Merge</td>
+<td>main</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>(placeholder)</p>
+</blockquote>
+<hr />
+<h3 id="3-commits">3. Commits<a class="headerlink" href="#3-commits" title="Permanent link">&para;</a></h3>
+<p>Actions may be triggered when a commit is pushed to any particular branch or path. (Triggered by merging a PR or by directly commiting to a branch.)</p>
+<h4 id="on-push-to-main">On <code>push</code> to <strong>main</strong><a class="headerlink" href="#on-push-to-main" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>Condition</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>all</td>
+<td>Run code quality and security checks</td>
+</tr>
+<tr>
+<td>if <code>path</code> in:<br />  ./src/**,<br />  !./src/archive/**,<br />!  ./src/artifacts/**<br /><br />and <code>flag</code> not <strong>DoNotReprocessPush</strong></td>
+<td><strong>Trigger Build, Release, Publish Workflows</strong><br /><br />Increment version based on conventional commits<br />Update module manifest version with a commit message flag to prevent loop<br />Run <code>Build Module</code> workflow</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="4-workflow-build-release-publish">4: Workflow: Build, Release, Publish<a class="headerlink" href="#4-workflow-build-release-publish" title="Permanent link">&para;</a></h3>
+<p>This workflow (or series of workflows) will be triggered by the previous step that processes commits to the source if/after those commits pass required checks.</p>
+<p>If any of these steps fail, the workflow should exit with a warning and detailed summary. (It may be helpful to provide a way to manually trigger any one of these steps during inevitable troubleshooting of this overarching workflow.)</p>
+<ul>
+<li>Build Module</li>
+<li>Check if a GitHub release and PSGallery release already exists with this version</li>
+<li>Update changelog with details from commit messages</li>
+<li>Create GitHub release with details from changelog as notes)</li>
+<li>Publish to PowerShell Gallery</li>
+<li>Provide a summary</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      (c) 2025 Sam Erde
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.path", "navigation.instant", "navigation.instant.prefetch", "navigation.tracking", "navigation.sections", "navigation.expand", "navigation.top", "toc.follow", "toc.integrate"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
