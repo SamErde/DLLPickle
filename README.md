@@ -51,8 +51,6 @@ Numerous PowerShell modules include a dependency on the Microsoft Authentication
 - ExchangeOnlineManagement
 - Microsoft.Graph.Authentication
 - MicrosoftTeams
-- MSAL.PS
-- Maester
 
 ...and many more.
 

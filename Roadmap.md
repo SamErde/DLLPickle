@@ -2,7 +2,7 @@
 
 ## v1.0.0
 
-- Add function to import assemblies.
+- Add function to import specific sets of assemblies.
 - Add basic and verbose output.
 - Remove default behavior to load assemblies when the module is imported
 - List all installed resources that include the MSAL
