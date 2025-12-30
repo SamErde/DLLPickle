@@ -10,7 +10,7 @@ Locale: en-US
 
 ## Description
 
-A PowerShell module that helps you get un-stuck from version conflicts (aka DLL pickle) that occur when using modules that depend on multiple versions of the same dependencies such as the Microsoft Authentication Library (MSAL).
+A PowerShell module that helps you get un-stuck from version conflicts (aka DLL pickle) that occur when using multiple modules that connect to Microsoft services using different versions of the Microsoft Authentication Library (MSAL).
 
 ## DLLPickle Cmdlets
 

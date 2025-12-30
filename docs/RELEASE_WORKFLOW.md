@@ -564,3 +564,86 @@ Find-Module -Name DLLPickle -Repository PSGallery | Select-Object Version, Publi
 4. 📝 **Configure approvals** - Set up `psgallery` environment with required reviewers
 5. 🗑️ **Remove legacy workflows** - Delete `2 - Release.yml` and `4 - Publish Module.yml` after validation
 6. 📚 **Update documentation** - Update team wiki/docs to reference new unified workflow
+
+
+```mermaid
+flowchart TD
+    Start([Publish Module to PowerShell Gallery]) --> Trigger{Trigger Type}
+
+    Trigger -->|Release Published| TriggerA[Release Event]
+    Trigger -->|Manual Dispatch| TriggerB[Workflow Dispatch]
+
+    TriggerA --> Harden[Harden Runner - Audit Egress]
+    TriggerB --> Harden
+
+    Harden --> Checkout[Checkout Repository Code]
+    Checkout --> Setup[Setup PowerShell Environment]
+    Setup --> Validate[Validate Manifest & Version]
+
+    Validate --> CheckVersion{Version Check}
+    CheckVersion -->|Version Exists in Gallery| WarnContinue["⚠️ Warning: Version exists<br/>Continue anyway"]
+    CheckVersion -->|Version Not Found| ProceedOK["✓ Version available"]
+
+    WarnContinue --> VersionAlign{Version Alignment Check}
+    ProceedOK --> VersionAlign
+
+    VersionAlign -->|Mismatch| WarnMismatch["⚠️ Warning: Version mismatch<br/>between tag/release/manifest"]
+    VersionAlign -->|Aligned| VersionOK["✓ Versions aligned"]
+
+    WarnMismatch --> SetOutputs[Set Workflow Outputs:<br/>name, baseVersion, fullVersion,<br/>isPrerelease, releaseTag]
+    VersionOK --> SetOutputs
+
+    SetOutputs --> InstallDeps[Install PowerShellGet Dependencies]
+    InstallDeps --> Publish[Publish Module to PSGallery]
+
+    Publish --> RetryLogic{Publish Attempt}
+    RetryLogic -->|Retry 1| Wait1[Wait 5 seconds]
+    RetryLogic -->|Retry 2| Wait2[Wait 10 seconds]
+    RetryLogic -->|Retry 3| Wait3[Wait 15 seconds]
+
+    Wait1 --> Publish
+    Wait2 --> Publish
+    Wait3 --> Publish
+
+    RetryLogic -->|Success| PublishOK["✓ Module Published"]
+    RetryLogic -->|All Failed| PublishFail["❌ Publish Failed<br/>Exit 1"]
+
+    PublishOK --> Wait30[Wait 30 seconds for indexing]
+    Wait30 --> VerifyPublish[Verify Module in Gallery]
+
+    VerifyPublish --> ArtifactPrep[Prepare Artifact:<br/>Copy module files,<br/>Generate publish-info.json,<br/>Calculate SHA256 file hashes]
+
+    ArtifactPrep --> UploadArtifact[Upload Module Artifact<br/>Retention: 30 days]
+    UploadArtifact --> Summary[Create Workflow Summary]
+
+    Summary --> CheckRelease[Check for Existing<br/>GitHub Release]
+
+    CheckRelease --> ReleaseExists{Release Exists?}
+    ReleaseExists -->|Yes| Skip["✓ Release exists<br/>Skip creation"]
+    ReleaseExists -->|No| CreateRelease[Create GitHub Release]
+
+    CreateRelease --> Prerelease{Is Prerelease?}
+    Prerelease -->|Yes| CreatePre[Create as Prerelease<br/>with tag v&lcub;version&rcub;]
+    Prerelease -->|No| CreateStable[Create as Stable Release<br/>with tag v&lcub;version&rcub;]
+
+    CreatePre --> ReleaseBody[Generate Release Body:<br/>Installation instructions,<br/>Module info, Links]
+    CreateStable --> ReleaseBody
+
+    ReleaseBody --> ReleaseSuccess["✓ GitHub Release Created"]
+
+    Skip --> End([Workflow Complete])
+    ReleaseSuccess --> End
+    PublishFail --> End
+
+    style Start fill:#e1f5e1
+    style End fill:#e1f5e1
+    style PublishOK fill:#d4edda
+    style ReleaseSuccess fill:#d4edda
+    style PublishFail fill:#f8d7da
+    style WarnContinue fill:#fff3cd
+    style WarnMismatch fill:#fff3cd
+    style Prerelease fill:#cfe2ff
+    style CheckVersion fill:#cfe2ff
+    style VersionAlign fill:#cfe2ff
+    style ReleaseExists fill:#cfe2ff
+```
