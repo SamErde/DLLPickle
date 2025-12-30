@@ -196,58 +196,48 @@ jobs:
                 path: ./TestResults.xml
                 retention-days: 30
 
-#        build:
-#          name: Build Module
-#          runs-on: windows-latest
-#          needs: [lint, test]
+        build:
+          name: Test Module Build
+          runs-on: windows-latest
+          needs: [lint, test]
 
-#          steps:
-#            - name: Harden the runner (Audit all outbound calls)
-#              uses: step-security/harden-runner@20cf305ff2072d973412fa9b1e3a4f227bda3c76 # v2.14.0
-#              with:
-#                egress-policy: audit
+          steps:
+            - name: Harden the runner (Audit all outbound calls)
+              uses: step-security/harden-runner@20cf305ff2072d973412fa9b1e3a4f227bda3c76 # v2.14.0
+              with:
+                egress-policy: audit
 
-#            - name: Checkout repository
-#              uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+            - name: Checkout repository
+              uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
 
-#            - name: Cache PowerShell modules
-#              uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
-#              with:
-#                path: |
-#                  ~\Documents\PowerShell\Modules
-#                key: ps-modules-${{ runner.os }}-v1
-#                restore-keys: |
-#                  ps-modules-${{ runner.os }}-
+            - name: Cache PowerShell modules
+              uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
+              with:
+                path: |
+                  ~\Documents\PowerShell\Modules
+                key: ps-modules-${{ runner.os }}-v1
+                restore-keys: |
+                  ps-modules-${{ runner.os }}-
 
-#            - name: Bootstrap dependencies
-#              uses: ./.github/actions/bootstrap
+            - name: Bootstrap dependencies
+              uses: ./.github/actions/bootstrap
 
-#            - name: Build module
-#              shell: pwsh
-#              run: |
-#                # Check if Invoke-Build is available
-#                if (-not (Get-Command Invoke-Build -ErrorAction SilentlyContinue)) {
-#                    Install-Module -Name InvokeBuild -Force -Scope CurrentUser
-#                }
+            - name: Build module
+              shell: pwsh
+              run: |
+                # Check if Invoke-Build is available
+                if (-not (Get-Command Invoke-Build -ErrorAction SilentlyContinue)) {
+                    Install-Module -Name InvokeBuild -Force -Scope CurrentUser
+                }
 
-#                # Run the build
-#                $buildScript = "./src/DLLPickle.Build.ps1"
-#                if (Test-Path $buildScript) {
-#                    Write-Host "Running build script: $buildScript"
-#                    Invoke-Build -File $buildScript -Task BuildNoIntegration
-#                } else {
-#                    Write-Warning "Build script not found: $buildScript"
-#                }
-
-#            - name: Upload build artifacts
-#              if: success()
-#              uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
-#              with:
-#                name: build-artifacts-${{ github.run_number }}
-#                path: |
-#                  ./src/Artifacts/**
-#                  ./src/Archive/**
-#                retention-days: 30
+                # Run the build
+                $buildScript = "./src/DLLPickle.Build.ps1"
+                if (Test-Path $buildScript) {
+                    Write-Host "Running build script: $buildScript"
+                    Invoke-Build -File $buildScript -Task Test
+                } else {
+                    Write-Warning "Build script not found: $buildScript"
+                }
 
         summary:
           name: PR Summary
