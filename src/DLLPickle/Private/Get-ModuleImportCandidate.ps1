@@ -1,124 +1,100 @@
-function Get-ModuleImportCandidate {
-    <#
-    .SYNOPSIS
-    Returns information about the specific installed version of a module that Import-Module would load.
+    function Get-ModuleImportCandidate {
+        <#
+        .SYNOPSIS
+        Reports the version, path, and scope that would be imported for a given module name.
 
-    .DESCRIPTION
-    Get-ModuleImportCandidate is a cross-platform function that reliably determines which module version would be
-    selected by Import-Module when multiple versions of the same module are available in multiple installation scopes.
+        .DESCRIPTION
+        Searches PSModulePath in order to determine which version of a module would be imported
+        by Import-Module, mimicking PowerShell's module resolution logic.
 
-    When importing modules, PSModulePath is the primary factor in determining which module version is loaded,
-    and the order of the paths in PSModulePath is important. The CurrentUser paths generally appear first in PSModulePath,
-    followed by the AllUsers scope paths. The function takes into account the following standard PowerShell behaviors:
+        .PARAMETER Name
+        The name or array of names of the module to check.
 
-    Location takes precedence over version:
-    - A lower version in a higher-priority location will be loaded before a higher version in a lower-priority location.
-    - Within a location, higher versions are loaded first.
+        .PARAMETER Scope
+        Limits the search to modules installed for the CurrentUser, AllUsers, or Any (default) scope.
 
-    .PARAMETER Name
-    The name of the module[s] to check. This can be a single module name or an array of module names.
+        .OUTPUTS
+        A full [System.Management.Automation.PSModuleInfo] object with a Scope and custom type name (DLLPickle.ModuleImportCandidate) added.
 
-    .EXAMPLE
-    Get-ModuleImportCandidate -Name 'Az.Accounts'
+        .EXAMPLE
+        Get-ModuleImportCandidate -Name "Pester"
+        Gets the effective module information for Pester from any scope.
 
-    Returns a PSModuleInfo object for the version of the 'Az.Accounts' module that would be imported by Import-Module.
+        .EXAMPLE
+        Get-ModuleImportCandidate "PSReadLine" -Scope CurrentUser
+        Gets the effective module information for PSReadLine only from the CurrentUser scope.
 
-    .EXAMPLE
-    'Az.Accounts','Microsoft.Graph.Authentication' | Get-ModuleImportCandidate
+        .EXAMPLE
+        "Pester", "PSReadLine" | Get-ModuleImportCandidate
+        Gets the effective module information for multiple modules from any scope.
+        #>
+        [CmdletBinding()]
+        [OutputType([PSCustomObject])]
+        param(
+            [Parameter(Mandatory = $true, ValueFromPipeline = $true)]
+            [ValidateNotNullOrEmpty()]
+            [string[]]$Name,
 
-    Returns PSModuleInfo objects for the specified modules that would be imported by Import-Module.
+            [Parameter(Mandatory = $false)]
+            [ValidateSet('CurrentUser', 'AllUsers', 'Any')]
+            [string]$Scope = 'Any'
+        )
 
-    .EXAMPLE
-    Get-ModuleImportCandidate -Name @('Az.Accounts','ExchangeOnlineManagement','Microsoft.Graph.Authentication','MicrosoftTeams')
+        begin {
+            # Set a flag to indicate if the module path was found.
+            $FoundModule = $false
 
-    Returns PSModuleInfo objects for the versions of the 'Az.Accounts', 'ExchangeOnlineManagement',
-    'Microsoft.Graph.Authentication', and 'MicrosoftTeams' modules that would be imported by Import-Module.
-    #>
-
-    [CmdletBinding()]
-    param(
-        # The name of the module[s] to check. This can be a single module name or an array of module names.
-        [Parameter(
-            Position = 0,
-            ValueFromPipeline,
-            ValueFromPipelineByPropertyName,
-            HelpMessage = 'Enter a module name or a list of names. Wildcards are allowed.'
-        )]
-        [string[]]$Name
-    )
-
-    begin {
-        # Get PSModulePath entries in order (defaults to the 'Process' environment variable target which includes users and computer values, in that order).
-        # Filter out empty entries and resolve the full path to account for symbolic links or variables.
-        $PSModulePathEntries = $env:PSModulePath -split [System.IO.Path]::PathSeparator |
-            Where-Object { $_ } | ForEach-Object { [System.IO.Path]::GetFullPath($_) } |
-            Select-Object -Unique
-    } # end begin block
-
-    process {
-        # Process each module name (handles both array input and pipeline input)
-        foreach ($ModuleName in $Name) {
-            # Get all available modules with this name
-            $AllModules = Get-Module -Name $ModuleName -ListAvailable
-
-            # Skip and warn if no modules were found for this name.
-            if (-not $AllModules) {
-                Write-Warning "No module named '$ModuleName' found in PSModulePath."
-                continue
+            # Split PSModulePath into individual paths, using a switch statement to only get paths in the specified scope or default to any scope.
+            $ScopeFilter = switch ($Scope) {
+                'CurrentUser' { [ScriptBlock] { $_ -like "$HOME*" -and (Test-Path -Path $_ -PathType Container -ErrorAction SilentlyContinue) } }
+                'AllUsers' { [ScriptBlock] { $_ -notlike "$HOME*" -and (Test-Path -Path $_ -PathType Container -ErrorAction SilentlyContinue) } }
+                'Any' { [ScriptBlock] { Test-Path -Path $_ -PathType Container -ErrorAction SilentlyContinue } }
             }
+            $ModulePaths = $env:PSModulePath -split [System.IO.Path]::PathSeparator |
+                Where-Object -FilterScript $ScopeFilter
+        } # end begin
 
-            # Use a script block to group modules by their base path and find the highest version in each grouped location.
-            $ModulesByLocation = $AllModules | Group-Object {
+        process {
 
-                # Get the module's root directory (usually Modules folder)
-                $ModulePath = [System.IO.Path]::GetFullPath($_.ModuleBase)
+            foreach ($ModuleName in $Name) {
+                $FoundModule = $false
+                foreach ($BasePath in $ModulePaths) {
+                    # Get the full module path and scope to check.
+                    $ModuleFolder = Join-Path -Path $BasePath -ChildPath $ModuleName
+                    $BasePathScope = if ($BasePath -like "$HOME*") { 'CurrentUser' } else { 'AllUsers' }
+                    if (Test-Path -Path $ModuleFolder) {
+                        # Found the module, now get the highest version for directories that can be parsed as versions.
+                        $VersionFolders = Get-ChildItem -Path $ModuleFolder -Directory -ErrorAction SilentlyContinue |
+                            Where-Object { [version]::TryParse($_.Name, [ref]$null) } |
+                                Sort-Object { [version]$_.Name } -Descending
 
-                # Find which PSModulePath entry this module's path begins with.
-                foreach ($PathEntry in $PSModulePathEntries) {
-                    # Normalize the path to account for symbolic links or variables within the environment variable.
-                    $NormalizedPathEntry = [System.IO.Path]::GetFullPath($PathEntry)
-                    if ($ModulePath.StartsWith($NormalizedPathEntry, [System.StringComparison]::OrdinalIgnoreCase)) {
-                        # If the module path starts with this PSModulePath entry, return it as the grouping key.
-                        return $NormalizedPathEntry
-                    }
-                }
+                        if ($VersionFolders) {
+                            $HighestVersion = $VersionFolders | Select-Object -ExpandProperty Name -First 1
+                            $ModuleInfo = Get-Module -Name $ModuleName -ListAvailable |
+                                Where-Object { $_.Version -eq [version]$HighestVersion }
+                            $ModuleInfo | Add-Member -MemberType NoteProperty -Name Scope -Value $BasePathScope
+                            $ModuleInfo.PSObject.TypeNames.Insert(0, 'DLLPickle.ModuleImportCandidate')
+                        } else {
+                            # Module folder exists but no version sub-folders.
+                            $ModuleInfo = Get-Module -Name $ModuleName -ListAvailable | Sort-Object -Property Version -Descending -Unique | Select-Object -First 1
+                            $ModuleInfo | Add-Member -MemberType NoteProperty -Name Scope -Value $BasePathScope
+                            $ModuleInfo.PSObject.TypeNames.Insert(0, 'DLLPickle.ModuleImportCandidate')
+                        } # end if VersionFolders
 
-            } # end of Group-Object script block
-
-            # Find the highest version module from the first location in PSModulePath order.
-            # Initialize the variable at its max value to ensure it is always greater than any valid index.
-            $BestLocationIndex = [int]::MaxValue
-            $CandidateModule = $null
-
-            foreach ($LocationGroup in $ModulesByLocation) {
-                # Get the highest version module from this location
-                $HighestVersionInLocation = $LocationGroup.Group | Sort-Object Version -Descending | Select-Object -First 1
-
-                # Find this location's index in PSModulePath (initialize at max value as best practice).
-                $LocationIndex = [int]::MaxValue
-                $LocationPath = $LocationGroup.Name
-
-                for ($i = 0; $i -lt $PSModulePathEntries.Count; $i++) {
-                    # Perform a case-insensitive comparison to find the index of this location in PSModulePath.
-                    if ($LocationPath.StartsWith($PSModulePathEntries[$i], [System.StringComparison]::OrdinalIgnoreCase)) {
-                        $LocationIndex = $i
+                        # Stop searching after first match
+                        $FoundModule = $true
                         break
-                    }
-                }
+                    } # end if Test-Path ModuleFolder
+                } # end foreach BasePath
 
-                # Use this module if it's from an earlier location in PSModulePath.
-                if ($LocationIndex -lt $BestLocationIndex) {
-                    $BestLocationIndex = $LocationIndex
-                    $CandidateModule = $HighestVersionInLocation
-                }
-            }
-
-            # Output the candidate module for this module name
-            if ($CandidateModule) {
-                $CandidateModule.PSObject.TypeNames.Insert(0, 'DLLPickle.ModuleImportCandidate')
-                $CandidateModule
-            }
-        }
-    } # end process block
-
-} # end Get-ModuleImportCandidate function
+                if ($FoundModule) {
+                    # Output the module info object
+                    $ModuleInfo
+                } else {
+                    # Module not found in any path. Return an empty, but named object with null properties.
+                    Write-Warning "Module '$ModuleName' not found in PSModulePath (Scope: $Scope).`n"
+                    $null
+                } # end if FoundModule
+            } # end foreach ModuleName
+        } # end process
+    } # end function Get-ModuleImportCandidate
