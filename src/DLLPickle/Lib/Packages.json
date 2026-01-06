@@ -16,7 +16,7 @@
     {
       "name": "Microsoft.Identity.Client",
       "description": "This package contains the binaries of the Microsoft Authentication Library for .NET (MSAL.NET).",
-      "version": "4.79.2",
+      "version": "4.80.0",
       "projectUrl": "https://www.nuget.org/packages/Microsoft.Identity.Client",
       "autoImport": "true",
       "knownDependents": [
@@ -29,14 +29,14 @@
     {
       "name": "Microsoft.Identity.Client.Broker",
       "description": "This package contains binaries needed to use brokers in public client desktop applications and supersedes Microsoft.Identity.Client.Desktop.",
-      "version": "4.79.2",
+      "version": "4.80.0",
       "projectUrl": "https://www.nuget.org/packages/Microsoft.Identity.Client.Broker",
       "autoImport": "true"
     },
     {
       "name": "Microsoft.Identity.Client.Extensions.Msal",
       "description": "This package contains the public client (desktop) caching to Microsoft Authentication Library for .NET (MSAL.NET)",
-      "version": "4.79.2",
+      "version": "4.80.0",
       "projectUrl": "https://www.nuget.org/packages/Microsoft.Identity.Client.Extensions.Msal",
       "autoImport": "true"
     },
