@@ -6,6 +6,7 @@
 - Add basic and verbose output.
 - Remove default behavior to load assemblies when the module is imported
 - List all installed resources that include the MSAL
+- Add function to clean up older versions of the DLL Pickle module (OR to import specific versions of the DLLs?)
 
 ## vNext
 
