@@ -60,8 +60,8 @@
                 Write-Warning "DLL not found: $FilePath"
                 [PSCustomObject]@{
                     PackageName = $Package.name
-                    FilePath    = $FilePath
-                    Status      = 'NotFound'
+                    Version     = $Package.version
+                    Status      = 'Not Found'
                     Error       = 'File does not exist'
                 }
                 continue
@@ -77,8 +77,8 @@
                     Write-Verbose "Assembly already loaded: $($Package.name)"
                     [PSCustomObject]@{
                         PackageName = $Package.name
-                        FilePath    = $FilePath
-                        Status      = 'AlreadyLoaded'
+                        Version     = $Package.version
+                        Status      = 'Already Loaded'
                         Error       = $null
                     }
                 } else {
@@ -86,7 +86,7 @@
                     Write-Verbose "Successfully imported: $($Package.name)"
                     [PSCustomObject]@{
                         PackageName = $Package.name
-                        FilePath    = $FilePath
+                        Version     = $Package.version
                         Status      = 'Imported'
                         Error       = $null
                     }
@@ -95,7 +95,7 @@
                 Write-Warning "Failed to import $($Package.name): $_"
                 [PSCustomObject]@{
                     PackageName = $Package.name
-                    FilePath    = $FilePath
+                    Version     = $Package.version
                     Status      = 'Failed'
                     Error       = $_.Exception.Message
                 }
@@ -104,7 +104,7 @@
             Write-Verbose "Skipping auto-import for $($Package.name)."
             [PSCustomObject]@{
                 PackageName = $Package.name
-                FilePath    = $FilePath
+                Version     = $Package.version
                 Status      = 'Skipped'
                 Error       = $null
             }
