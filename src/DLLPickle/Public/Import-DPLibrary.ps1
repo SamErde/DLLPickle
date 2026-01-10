@@ -6,6 +6,9 @@
     .DESCRIPTION
     Import all DLLs (libraries) that are tracked and marked for auto-import in the Packages.json file.
 
+    .PARAMETER ImportAll
+    Ignore preset 'autoImport' values and attempt to import all packages.
+
     .EXAMPLE
     Import-DPLibrary
     Imports all DLLPickle libraries marked for auto-import.
@@ -28,13 +31,21 @@
     } else {
         $PWD
     }
-    $AssemblyDirectory = Join-Path -Path $ModuleDirectory -ChildPath 'Assembly'
-    $Packages = Get-Content -Path (Join-Path -Path $AssemblyDirectory -ChildPath 'Packages.json') |
-        ConvertFrom-Json | Select-Object -ExpandProperty packages
+    $LibraryDirectory = Join-Path -Path $ModuleDirectory -ChildPath 'Lib'
+    $PackagesJsonPath = Join-Path -Path $LibraryDirectory -ChildPath 'Packages.json'
+    if (-not (Test-Path -Path $PackagesJsonPath)) {
+        throw "Packages.json not found at: $PackagesJsonPath"
+    }
 
-    foreach ( $Package in $Packages) {
-        $FilePath = Join-Path -Path $AssemblyDirectory -ChildPath "$($Package.name).dll"
-        if ( $Package.autoImport -eq $true -or $PSBoundParameters.ContainsKey('ImportAll') ) {
+    try {
+        $Packages = Get-Content -Path $PackagesJsonPath | ConvertFrom-Json | Select-Object -ExpandProperty packages
+    } catch {
+        throw "Failed to read or parse Packages.json at: $PackagesJsonPath. Error: $_"
+    }
+
+    foreach ($Package in $Packages) {
+        $FilePath = Join-Path -Path $LibraryDirectory -ChildPath "$($Package.name).dll"
+        if ( $Package.autoImport -eq $true -or $ImportAll) {
             Add-Type -Path $FilePath
         } else {
             Write-Verbose "Skipping auto-import for $FilePath."
