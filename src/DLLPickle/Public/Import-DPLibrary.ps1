@@ -13,8 +13,13 @@
     Import-DPLibrary
     Imports all DLLPickle libraries marked for auto-import.
 
+    .EXAMPLE
     Import-DPLibrary -ImportAll
     Imports all DLLPickle libraries, ignoring auto-import settings.
+
+    .OUTPUTS
+    System.Management.Automation.PSCustomObject
+    Returns information about imported libraries.
     #>
 
     [CmdletBinding()]
@@ -31,8 +36,10 @@
     } else {
         $PWD
     }
+
     $LibraryDirectory = Join-Path -Path $ModuleDirectory -ChildPath 'Lib'
     $PackagesJsonPath = Join-Path -Path $LibraryDirectory -ChildPath 'Packages.json'
+
     if (-not (Test-Path -Path $PackagesJsonPath)) {
         throw "Packages.json not found at: $PackagesJsonPath"
     }
