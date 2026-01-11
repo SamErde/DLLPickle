@@ -112,7 +112,7 @@
     )
 
     if ($DLLs.Count -eq 0) {
-        Write-Warning "No DLLs found matching the product name pattern '*ProductName*'."
+        Write-Warning "No DLLs found matching the product name pattern '*$ProductName*'."
     }
 
     if ($PSBoundParameters.ContainsKey('ShowDetails')) {
