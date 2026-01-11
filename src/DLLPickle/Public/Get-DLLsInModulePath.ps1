@@ -89,15 +89,6 @@
     Write-Verbose "Enumerating DLLs with the product name '$ProductName' under:`n - $($ScopedPath -join "`n - ")"
 
     # Get the newest version of any DLLs that have "Microsoft Identity" in their ProductName property.
-    <#
-    $DLLs = @(
-        Get-ChildItem -Path $ScopedPath -Filter '*.dll' -File -Recurse |
-            Select-Object -ExpandProperty VersionInfo -ErrorAction SilentlyContinue | Where-Object { $_.ProductName -like "*$ProductName*" } | Group-Object -Property OriginalFilename | ForEach-Object {
-                $_.Group | Sort-Object -Property Version -Descending | Select-Object -First 1
-            }
-    )
-    # Potentially optimized below.
-    #>
     $DLLs = @(
         Get-ChildItem -Path $ScopedPath -Filter '*.dll' -File -Recurse | Where-Object { $_.Directory.Name -notin $ExcludeDirectories } | ForEach-Object {
             $VersionInfo = $_.VersionInfo
