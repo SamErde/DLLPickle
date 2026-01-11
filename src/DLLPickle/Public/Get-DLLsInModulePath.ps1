@@ -43,7 +43,7 @@
     #>
 
     [CmdletBinding()]
-    [OutputType([System.Object[]],[System.Diagnostics.FileVersionInfo])]
+    [OutputType([System.Diagnostics.FileVersionInfo])]
     param (
         # The product name to search for in DLL file info properties.
         [Parameter()]
