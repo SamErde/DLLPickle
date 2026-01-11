@@ -99,7 +99,7 @@
     # Potentially optimized below.
     #>
     $DLLs = @(
-        Get-ChildItem -Path $ScopedPath -Filter '*.dll' -File -Recurse | Where-Object { $ExcludeDirectories -notcontains $_.Directory.Name } | ForEach-Object {
+        Get-ChildItem -Path $ScopedPath -Filter '*.dll' -File -Recurse | Where-Object { $_.Directory.Name -notin $ExcludeDirectories } | ForEach-Object {
             $VersionInfo = $_.VersionInfo
             if ($VersionInfo.ProductName -like "*$ProductName*") {
                 # Pass the VersionInfo object on through the pipeline if it matches the desired product name.
