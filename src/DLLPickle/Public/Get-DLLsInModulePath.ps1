@@ -21,12 +21,6 @@
         Display formatted output to host in addition to returning objects to the pipeline.
 
     .NOTES
-        To Do:
-
-        - Further reduce the number of paths inspected by (optionally) only scanning the newest version of each module in each scope's paths.
-        - Fix ShowDetails logic.
-        - Apply custom formatting type for output.
-
         Example Output:
 
         InternalName                                        ProductVersion Module
@@ -45,12 +39,12 @@
     [CmdletBinding()]
     [OutputType([System.Diagnostics.FileVersionInfo])]
     param (
-        # The product name to search for in DLL file info properties.
+        # The product name to search for in DLL file info properties. Defaults to 'Microsoft Identity'.
         [Parameter()]
         [ValidateNotNullOrEmpty()]
         [string]$ProductName = 'Microsoft Identity',
 
-        # Locations to search for Microsoft Identity-related DLLs.
+        # Locations to search for Microsoft Identity-related DLLs. Defaults to all valid directories in the PSModulePath environment variable.
         [Parameter()]
         [ValidateScript({ Test-Path -Path $_ -PathType Container })]
         [string[]]$Path = @( $env:PSModulePath -split [System.IO.Path]::PathSeparator | Where-Object { Test-Path $_ -PathType Container } ),
