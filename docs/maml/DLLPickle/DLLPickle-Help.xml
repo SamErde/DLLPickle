@@ -2,6 +2,196 @@
 <helpItems xmlns:maml="http://schemas.microsoft.com/maml/2004/10" xmlns:command="http://schemas.microsoft.com/maml/dev/command/2004/10" xmlns:dev="http://schemas.microsoft.com/maml/dev/2004/10" schema="maml" xmlns="http://msh">
   <command:command>
     <command:details>
+      <command:name>Find-DLLInPSModulePath</command:name>
+      <maml:description>
+        <maml:para>Show a list of all DLLs in PowerShell module paths that contain the specified product name in their FileInfo property.</maml:para>
+      </maml:description>
+      <command:verb>Find</command:verb>
+      <command:noun>DLLInPSModulePath</command:noun>
+    </command:details>
+    <maml:description>
+      <maml:para>Check all installed PowerShell module locations for DLL files that have the specified product name (e.g., 'Microsoft Identity') in their file's ProductName attribute. By default, searches all paths in the PSModulePath environment variable. Can optionally check custom locations using the -Path parameter.</maml:para>
+    </maml:description>
+    <command:syntax>
+      <command:syntaxItem>
+        <maml:name>Find-DLLInPSModulePath</maml:name>
+        <command:parameter required="false" variableLength="false" globbing="false" pipelineInput="false" position="3" aliases="none">
+          <maml:name>ExcludeDirectories</maml:name>
+          <maml:description>
+            <maml:para>Directories to exclude from inspection so the process goes faster.</maml:para>
+          </maml:description>
+          <command:parameterValue required="false" variableLength="true">System.String[]</command:parameterValue>
+        </command:parameter>
+        <command:parameter required="false" variableLength="false" globbing="false" pipelineInput="false" position="1" aliases="none">
+          <maml:name>FileName</maml:name>
+          <maml:description>
+            <maml:para>The file name pattern to search for.
+Supports wildcards.
+Defaults to '*.dll' to search all DLL files.
+Use a specific pattern like 'Microsoft.IdentityModel*.dll' to narrow the search.</maml:para>
+          </maml:description>
+          <command:parameterValue required="false" variableLength="true">System.String</command:parameterValue>
+        </command:parameter>
+        <command:parameter required="false" variableLength="false" globbing="false" pipelineInput="false" position="Named" aliases="none">
+          <maml:name>NewestVersion</maml:name>
+          <maml:description>
+            <maml:para>If specified, only the newest version of each matching DLL will be returned.</maml:para>
+          </maml:description>
+          <command:parameterValue required="false" variableLength="true">System.Management.Automation.SwitchParameter</command:parameterValue>
+        </command:parameter>
+        <command:parameter required="false" variableLength="false" globbing="false" pipelineInput="false" position="2" aliases="none">
+          <maml:name>Path</maml:name>
+          <maml:description>
+            <maml:para>Locations to search for DLLs.
+Defaults to all valid directories in the PSModulePath environment variable.</maml:para>
+          </maml:description>
+          <command:parameterValue required="false" variableLength="true">System.String[]</command:parameterValue>
+        </command:parameter>
+        <command:parameter required="false" variableLength="false" globbing="false" pipelineInput="false" position="0" aliases="none">
+          <maml:name>ProductName</maml:name>
+          <maml:description>
+            <maml:para>The product name to search for in DLL ProductName properties.
+Supports wildcards.
+Defaults to 'Microsoft Identity'.</maml:para>
+          </maml:description>
+          <command:parameterValue required="false" variableLength="true">System.String</command:parameterValue>
+        </command:parameter>
+        <command:parameter required="false" variableLength="false" globbing="false" pipelineInput="false" position="4" aliases="none">
+          <maml:name>Scope</maml:name>
+          <maml:description>
+            <maml:para>The module installation scope to search.
+Valid options are AllUsers, CurrentUser, or Both (default).</maml:para>
+          </maml:description>
+          <command:parameterValue required="false" variableLength="true">System.String</command:parameterValue>
+        </command:parameter>
+        <command:parameter required="false" variableLength="false" globbing="false" pipelineInput="false" position="Named" aliases="none">
+          <maml:name>ShowDetails</maml:name>
+          <maml:description>
+            <maml:para>Display formatted output to host in addition to returning objects to the pipeline.</maml:para>
+          </maml:description>
+          <command:parameterValue required="false" variableLength="true">System.Management.Automation.SwitchParameter</command:parameterValue>
+        </command:parameter>
+      </command:syntaxItem>
+    </command:syntax>
+    <command:parameters>
+      <command:parameter required="false" variableLength="false" globbing="false" pipelineInput="false" position="3" aliases="none">
+        <maml:name>ExcludeDirectories</maml:name>
+        <maml:description>
+          <maml:para>Directories to exclude from inspection so the process goes faster.</maml:para>
+        </maml:description>
+        <command:parameterValue required="false" variableLength="true">System.String[]</command:parameterValue>
+      </command:parameter>
+      <command:parameter required="false" variableLength="false" globbing="false" pipelineInput="false" position="1" aliases="none">
+        <maml:name>FileName</maml:name>
+        <maml:description>
+          <maml:para>The file name pattern to search for.
+Supports wildcards.
+Defaults to '*.dll' to search all DLL files.
+Use a specific pattern like 'Microsoft.IdentityModel*.dll' to narrow the search.</maml:para>
+        </maml:description>
+        <command:parameterValue required="false" variableLength="true">System.String</command:parameterValue>
+      </command:parameter>
+      <command:parameter required="false" variableLength="false" globbing="false" pipelineInput="false" position="Named" aliases="none">
+        <maml:name>NewestVersion</maml:name>
+        <maml:description>
+          <maml:para>If specified, only the newest version of each matching DLL will be returned.</maml:para>
+        </maml:description>
+        <command:parameterValue required="false" variableLength="true">System.Management.Automation.SwitchParameter</command:parameterValue>
+      </command:parameter>
+      <command:parameter required="false" variableLength="false" globbing="false" pipelineInput="false" position="2" aliases="none">
+        <maml:name>Path</maml:name>
+        <maml:description>
+          <maml:para>Locations to search for DLLs.
+Defaults to all valid directories in the PSModulePath environment variable.</maml:para>
+        </maml:description>
+        <command:parameterValue required="false" variableLength="true">System.String[]</command:parameterValue>
+      </command:parameter>
+      <command:parameter required="false" variableLength="false" globbing="false" pipelineInput="false" position="0" aliases="none">
+        <maml:name>ProductName</maml:name>
+        <maml:description>
+          <maml:para>The product name to search for in DLL ProductName properties.
+Supports wildcards.
+Defaults to 'Microsoft Identity'.</maml:para>
+        </maml:description>
+        <command:parameterValue required="false" variableLength="true">System.String</command:parameterValue>
+      </command:parameter>
+      <command:parameter required="false" variableLength="false" globbing="false" pipelineInput="false" position="4" aliases="none">
+        <maml:name>Scope</maml:name>
+        <maml:description>
+          <maml:para>The module installation scope to search.
+Valid options are AllUsers, CurrentUser, or Both (default).</maml:para>
+        </maml:description>
+        <command:parameterValue required="false" variableLength="true">System.String</command:parameterValue>
+      </command:parameter>
+      <command:parameter required="false" variableLength="false" globbing="false" pipelineInput="false" position="Named" aliases="none">
+        <maml:name>ShowDetails</maml:name>
+        <maml:description>
+          <maml:para>Display formatted output to host in addition to returning objects to the pipeline.</maml:para>
+        </maml:description>
+        <command:parameterValue required="false" variableLength="true">System.Management.Automation.SwitchParameter</command:parameterValue>
+      </command:parameter>
+    </command:parameters>
+    <command:inputTypes />
+    <command:returnValues>
+      <command:returnValue>
+        <dev:type>
+          <dev:name>System.Diagnostics.FileVersionInfo</dev:name>
+        </dev:type>
+        <maml:description>
+          <maml:para>{{ Fill in the Description }}</maml:para>
+        </maml:description>
+      </command:returnValue>
+    </command:returnValues>
+    <maml:alertSet>
+      <maml:alert>
+        <maml:para />
+      </maml:alert>
+    </maml:alertSet>
+    <command:examples>
+      <command:example>
+        <maml:title>--------- EXAMPLE 1 ---------</maml:title>
+        <maml:introduction>
+          <maml:para>Find-DLLInPSModulePath -ProductName "Microsoft Identity"</maml:para>
+          <maml:para>&#x80;</maml:para>
+          <maml:para>Find all DLLs with 'Microsoft Identity' in their ProductName property within installed PowerShell module locations.</maml:para>
+        </maml:introduction>
+        <dev:code />
+        <dev:remarks />
+      </command:example>
+      <command:example>
+        <maml:title>--------- EXAMPLE 2 ---------</maml:title>
+        <maml:introduction>
+          <maml:para>Find-DLLInPSModulePath -FileName "Microsoft.IdentityModel*.dll"</maml:para>
+          <maml:para>&#x80;</maml:para>
+          <maml:para>Find all DLL files matching the pattern 'Microsoft.IdentityModel*.dll' that also have 'Microsoft Identity' in their ProductName.</maml:para>
+          <maml:para>&#x80;</maml:para>
+          <maml:para>Example Output:</maml:para>
+          <maml:para>&#x80;</maml:para>
+          <maml:para>InternalName                                        ProductVersion Module
+------------                                        -------------- ------
+Microsoft.Identity.Abstractions.dll                 9.5.0.0        DLLPickle
+Microsoft.IdentityModel.Abstractions.dll            0.0.0.0        Az.Accounts
+Microsoft.IdentityModel.JsonWebTokens.dll           8.6.0.0        ExchangeOnlineManagement
+Microsoft.IdentityModel.Logging.dll                 8.6.0.0        ExchangeOnlineManagement
+Microsoft.IdentityModel.Protocols.dll               8.6.1.0        WinTuner
+Microsoft.IdentityModel.Protocols.OpenIdConnect.dll 8.6.1.0        WinTuner
+Microsoft.IdentityModel.Tokens.dll                  8.6.0.0        ExchangeOnlineManagement
+Microsoft.IdentityModel.Validators.dll              8.6.1.0        WinTuner
+System.IdentityModel.Tokens.Jwt.dll                 8.6.0.0        ExchangeOnlineManagement</maml:para>
+        </maml:introduction>
+        <dev:code />
+        <dev:remarks />
+      </command:example>
+    </command:examples>
+    <command:relatedLinks>
+      <maml:navigationLink>
+        <maml:linkText>Online Version</maml:linkText>
+        <command:uri />
+      </maml:navigationLink>
+    </command:relatedLinks>
+  </command:command>
+  <command:command>
+    <command:details>
       <command:name>Get-DLLsInModulePath</command:name>
       <maml:description>
         <maml:para>Show a list of all DLLs in PowerShell module paths that contain the specified product name in their FileInfo property.</maml:para>
@@ -151,6 +341,122 @@ System.IdentityModel.Tokens.Jwt.dll                 8.6.0.0        ExchangeOnlin
           <maml:para>&#x80;</maml:para>
           <maml:para>Find all Microsoft Identity-related DLLs within installed PowerShell module locations.
 Shows the name of the module that the DLL is included in.</maml:para>
+        </maml:introduction>
+        <dev:code />
+        <dev:remarks />
+      </command:example>
+    </command:examples>
+    <command:relatedLinks>
+      <maml:navigationLink>
+        <maml:linkText>Online Version</maml:linkText>
+        <command:uri />
+      </maml:navigationLink>
+    </command:relatedLinks>
+  </command:command>
+  <command:command>
+    <command:details>
+      <command:name>Get-ModuleImportCandidate</command:name>
+      <maml:description>
+        <maml:para>Reports the version, path, and scope that would be imported for a given module name.</maml:para>
+      </maml:description>
+      <command:verb>Get</command:verb>
+      <command:noun>ModuleImportCandidate</command:noun>
+    </command:details>
+    <maml:description>
+      <maml:para>Searches PSModulePath in order to determine which version of a module would be imported by Import-Module, mimicking PowerShell's module resolution logic.</maml:para>
+    </maml:description>
+    <command:syntax>
+      <command:syntaxItem>
+        <maml:name>Get-ModuleImportCandidate</maml:name>
+        <command:parameter required="true" variableLength="false" globbing="false" pipelineInput="false" position="0" aliases="none">
+          <maml:name>Name</maml:name>
+          <maml:description>
+            <maml:para>The name or array of names of the module to check.</maml:para>
+          </maml:description>
+          <command:parameterValue required="true" variableLength="true">System.String[]</command:parameterValue>
+        </command:parameter>
+        <command:parameter required="false" variableLength="false" globbing="false" pipelineInput="false" position="1" aliases="none">
+          <maml:name>Scope</maml:name>
+          <maml:description>
+            <maml:para>Limits the search to modules installed for the CurrentUser, AllUsers, or Any (default) scope.</maml:para>
+          </maml:description>
+          <command:parameterValue required="false" variableLength="true">System.String</command:parameterValue>
+        </command:parameter>
+      </command:syntaxItem>
+    </command:syntax>
+    <command:parameters>
+      <command:parameter required="true" variableLength="false" globbing="false" pipelineInput="false" position="0" aliases="none">
+        <maml:name>Name</maml:name>
+        <maml:description>
+          <maml:para>The name or array of names of the module to check.</maml:para>
+        </maml:description>
+        <command:parameterValue required="true" variableLength="true">System.String[]</command:parameterValue>
+      </command:parameter>
+      <command:parameter required="false" variableLength="false" globbing="false" pipelineInput="false" position="1" aliases="none">
+        <maml:name>Scope</maml:name>
+        <maml:description>
+          <maml:para>Limits the search to modules installed for the CurrentUser, AllUsers, or Any (default) scope.</maml:para>
+        </maml:description>
+        <command:parameterValue required="false" variableLength="true">System.String</command:parameterValue>
+      </command:parameter>
+    </command:parameters>
+    <command:inputTypes>
+      <command:inputType>
+        <dev:type>
+          <dev:name>System.String</dev:name>
+        </dev:type>
+        <maml:description>
+          <maml:para>{{ Fill in the Description }}</maml:para>
+        </maml:description>
+      </command:inputType>
+    </command:inputTypes>
+    <command:returnValues>
+      <command:returnValue>
+        <dev:type>
+          <dev:name>A full</dev:name>
+        </dev:type>
+        <maml:description>
+          <maml:para>{{ Fill in the Description }}</maml:para>
+        </maml:description>
+      </command:returnValue>
+      <command:returnValue>
+        <dev:type>
+          <dev:name>System.Management.Automation.PSObject</dev:name>
+        </dev:type>
+        <maml:description>
+          <maml:para>{{ Fill in the Description }}</maml:para>
+        </maml:description>
+      </command:returnValue>
+    </command:returnValues>
+    <maml:alertSet>
+      <maml:alert>
+        <maml:para />
+      </maml:alert>
+    </maml:alertSet>
+    <command:examples>
+      <command:example>
+        <maml:title>--------- EXAMPLE 1 ---------</maml:title>
+        <maml:introduction>
+          <maml:para>Get-ModuleImportCandidate -Name "Pester"
+Gets the effective module information for Pester from any scope.</maml:para>
+        </maml:introduction>
+        <dev:code />
+        <dev:remarks />
+      </command:example>
+      <command:example>
+        <maml:title>--------- EXAMPLE 2 ---------</maml:title>
+        <maml:introduction>
+          <maml:para>Get-ModuleImportCandidate "PSReadLine" -Scope CurrentUser
+Gets the effective module information for PSReadLine only from the CurrentUser scope.</maml:para>
+        </maml:introduction>
+        <dev:code />
+        <dev:remarks />
+      </command:example>
+      <command:example>
+        <maml:title>--------- EXAMPLE 3 ---------</maml:title>
+        <maml:introduction>
+          <maml:para>"Pester", "PSReadLine" | Get-ModuleImportCandidate
+Gets the effective module information for multiple modules from any scope.</maml:para>
         </maml:introduction>
         <dev:code />
         <dev:remarks />

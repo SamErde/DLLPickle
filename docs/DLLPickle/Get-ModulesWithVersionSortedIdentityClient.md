@@ -4,7 +4,7 @@ external help file: DLLPickle-Help.xml
 HelpUri: ''
 Locale: en-US
 Module Name: DLLPickle
-ms.date: 01/11/2026
+ms.date: 01/12/2026
 PlatyPS schema version: 2024-05-01
 title: Get-ModulesWithVersionSortedIdentityClient
 ---
