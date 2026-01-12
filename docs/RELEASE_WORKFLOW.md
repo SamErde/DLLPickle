@@ -646,7 +646,3 @@ flowchart TD
     style VersionAlign fill:#cfe2ff
     style ReleaseExists fill:#cfe2ff
 ```
-
-## End
-
-End of combined workflow documentation. This will be consolidated at some point!
