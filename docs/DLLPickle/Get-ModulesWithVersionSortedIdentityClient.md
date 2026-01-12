@@ -19,7 +19,7 @@ Get a list of modules with the MSAL, and which versions each have packaged.
 
 ### __AllParameterSets
 
-```
+```powershell
 Get-ModulesWithVersionSortedIdentityClient [[-Name] <string[]>] [<CommonParameters>]
 ```
 
