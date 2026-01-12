@@ -264,7 +264,7 @@ if ($triggerSource -eq "manual" -and $versionBump -ne "auto") {
 
 This diagram shows how the workflow determines whether to release and what version to bump:
 
-```
+```text
 ┌─ Push to main (with code changes)
 │  ├─ Analyze commits since last tag
 │  ├─ If conventional commits found → Determine bump (major/minor/patch)
@@ -290,7 +290,7 @@ This diagram shows how the workflow determines whether to release and what versi
 
 **Required:**
 
-```
+```shell
 PSGALLERY_API_KEY=<your-powershell-gallery-api-token>
 ```
 
@@ -477,7 +477,7 @@ Once the unified workflow is tested and validated, remove these legacy workflows
 The unified workflow calls these PowerShell helper scripts (created in Phase 2):
 
 | Script | Purpose | Called By |
-|--------|---------|-----------|
+| ------ | ------- | --------- |
 | `Get-VersionBump.ps1` | Analyze commits, determine version bump | `analyze` job |
 | `Update-ModuleVersion.ps1` | Update .psd1 manifest version | `update-version` job |
 | `Publish-ToGallery.ps1` | Publish to gallery with retry logic | `publish` job |
@@ -565,7 +565,6 @@ Find-Module -Name DLLPickle -Repository PSGallery | Select-Object Version, Publi
 5. 🗑️ **Remove legacy workflows** - Delete `2 - Release.yml` and `4 - Publish Module.yml` after validation
 6. 📚 **Update documentation** - Update team wiki/docs to reference new unified workflow
 
-
 ```mermaid
 flowchart TD
     Start([Publish Module to PowerShell Gallery]) --> Trigger{Trigger Type}
@@ -647,3 +646,7 @@ flowchart TD
     style VersionAlign fill:#cfe2ff
     style ReleaseExists fill:#cfe2ff
 ```
+
+## End
+
+End of combined workflow documentation. This will be consolidated at some point!

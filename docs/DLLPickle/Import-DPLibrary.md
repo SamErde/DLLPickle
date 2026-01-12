@@ -19,7 +19,7 @@ Import DLLPickle libraries based on Packages.json configuration.
 
 ### __AllParameterSets
 
-```
+```PowerShell
 Import-DPLibrary [-ImportAll] [<CommonParameters>]
 ```
 
@@ -79,6 +79,7 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 ## OUTPUTS
 
 ### System.Management.Automation.PSCustomObject
+
 Returns information about imported libraries.
 
 {{ Fill in the Description }}
@@ -88,4 +89,3 @@ Returns information about imported libraries.
 ## RELATED LINKS
 
 {{ Fill in the related links here }}
-

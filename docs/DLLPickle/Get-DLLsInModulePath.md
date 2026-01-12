@@ -19,7 +19,7 @@ Show a list of all DLLs in PowerShell module paths that contain the specified pr
 
 ### __AllParameterSets
 
-```
+```PowerShell
 Get-DLLsInModulePath [[-ProductName] <string>] [[-Path] <string[]>]
  [[-ExcludeDirectories] <string[]>] [[-Scope] <string>] [-ShowDetails] [<CommonParameters>]
 ```
@@ -203,4 +203,3 @@ System.IdentityModel.Tokens.Jwt.dll                 8.6.0.0        ExchangeOnlin
 ## RELATED LINKS
 
 {{ Fill in the related links here }}
-

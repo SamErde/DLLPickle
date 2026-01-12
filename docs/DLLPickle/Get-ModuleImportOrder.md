@@ -12,7 +12,7 @@ Evaluates the import order of specified modules based on their versions and the 
 
 ## SYNTAX
 
-```
+```powershell
 Get-ModuleImportOrder [[-Name] <String[]>] [-ProgressAction <ActionPreference>] [<CommonParameters>]
 ```
 
@@ -24,7 +24,8 @@ and then sorts them by the version of 'Microsoft.Identity.Client.dll' that is pa
 ## EXAMPLES
 
 ### EXAMPLE 1
-```
+
+```powershell
 Get-ModuleImportOrder -Name 'Az.Accounts','ExchangeOnlineManagement'
 ```
 
