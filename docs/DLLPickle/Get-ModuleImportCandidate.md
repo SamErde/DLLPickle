@@ -19,7 +19,7 @@ Reports the version, path, and scope that would be imported for a given module n
 
 ### __AllParameterSets
 
-```
+```powershell
 Get-ModuleImportCandidate [-Name] <string[]> [[-Scope] <string>] [<CommonParameters>]
 ```
 
@@ -122,4 +122,3 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 ## RELATED LINKS
 
 {{ Fill in the related links here }}
-

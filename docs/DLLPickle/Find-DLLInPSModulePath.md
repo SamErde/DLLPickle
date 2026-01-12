@@ -19,7 +19,7 @@ Show a list of all DLLs in PowerShell module paths that contain the specified pr
 
 ### __AllParameterSets
 
-```
+```powershell
 Find-DLLInPSModulePath [[-ProductName] <string>] [[-FileName] <string>] [[-Path] <string[]>]
  [[-ExcludeDirectories] <string[]>] [[-Scope] <string>] [-NewestVersion] [-ShowDetails]
  [<CommonParameters>]
@@ -242,4 +242,3 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 ## RELATED LINKS
 
 {{ Fill in the related links here }}
-

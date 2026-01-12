@@ -63,7 +63,7 @@ flowchart TD
 
 **Purpose**: Version bump, create GitHub releases, and publish to PSGallery
 
-### Process Flow
+### Process Flow (Update Dependencies)
 
 1. **Determine Bump Type** - Patch (default), minor, or major
 2. **Update Module Version** - Updates `DLLPickle.psd1`
@@ -72,7 +72,7 @@ flowchart TD
 5. **Create Release** - Creates tagged GitHub release
 6. **Publish Module** - Publishes to PowerShell Gallery
 
-### Key Features
+### Key Features (Update Dependencies)
 
 - ✅ **Automatic Trigger** - Runs on dependency PR merge
 - ✅ **Manual Trigger** - Can be run manually with version control
@@ -181,8 +181,6 @@ This allows PRs to merge automatically once approved and checks pass.
 ---
 
 ## Detailed Workflow Diagrams
-
-# Workflows
 
 This project relies on several workflows to keep library dependencies updated automatically.
 
@@ -428,6 +426,7 @@ Actions may be triggered when pull requests are submitted or merged to specific 
 Actions may be triggered when a commit is pushed to any particular branch or path. (Triggered by merging a PR or by directly commiting to a branch.)
 
 #### On `push` to **main**
+
 | Condition | Action |
 | --- | --- |
 | all | Run code quality and security checks |
@@ -444,6 +443,6 @@ If any of these steps fail, the workflow should exit with a warning and detailed
 - Build Module
 - Check if a GitHub release and PSGallery release already exists with this version
 - Update changelog with details from commit messages
-- Create GitHub release with details from changelog as notes)
+- Create GitHub release with details from changelog as notes
 - Publish to PowerShell Gallery
 - Provide a summary

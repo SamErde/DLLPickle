@@ -19,7 +19,7 @@ Finds installed PowerShell modules that have a common file dependency.
 
 ### __AllParameterSets
 
-```
+```powershell
 Get-ModulesWithDependency [-FileName] <string> [<CommonParameters>]
 ```
 
@@ -94,4 +94,3 @@ An array of PSResourceInfo objects
 ## RELATED LINKS
 
 {{ Fill in the related links here }}
-
