@@ -35,43 +35,43 @@
 
     # Create mock FileVersionInfo objects
     $script:MockVersionInfo1 = [PSCustomObject]@{
-        PSTypeName        = 'System.Diagnostics.FileVersionInfo'
-        OriginalFilename  = 'Microsoft.Identity.Test.dll'
-        InternalName      = 'Microsoft.Identity.Test.dll'
-        ProductName       = 'Microsoft Identity Client'
-        ProductVersion    = '4.56.0.0'
-        FileVersion       = '4.56.0.0'
-        FileName          = $script:MockDLLPath1
+        PSTypeName       = 'System.Diagnostics.FileVersionInfo'
+        OriginalFilename = 'Microsoft.Identity.Test.dll'
+        InternalName     = 'Microsoft.Identity.Test.dll'
+        ProductName      = 'Microsoft Identity Client'
+        ProductVersion   = '4.56.0.0'
+        FileVersion      = '4.56.0.0'
+        FileName         = $script:MockDLLPath1
     }
 
     $script:MockVersionInfo2 = [PSCustomObject]@{
-        PSTypeName        = 'System.Diagnostics.FileVersionInfo'
-        OriginalFilename  = 'Microsoft.Identity.Test.dll'
-        InternalName      = 'Microsoft.Identity.Test.dll'
-        ProductName       = 'Microsoft Identity Client'
-        ProductVersion    = '4.57.0.0'
-        FileVersion       = '4.57.0.0'
-        FileName          = $script:MockDLLPath2
+        PSTypeName       = 'System.Diagnostics.FileVersionInfo'
+        OriginalFilename = 'Microsoft.Identity.Test.dll'
+        InternalName     = 'Microsoft.Identity.Test.dll'
+        ProductName      = 'Microsoft Identity Client'
+        ProductVersion   = '4.57.0.0'
+        FileVersion      = '4.57.0.0'
+        FileName         = $script:MockDLLPath2
     }
 
     $script:MockVersionInfo3 = [PSCustomObject]@{
-        PSTypeName        = 'System.Diagnostics.FileVersionInfo'
-        OriginalFilename  = 'OtherProduct.dll'
-        InternalName      = 'OtherProduct.dll'
-        ProductName       = 'Other Product Name'
-        ProductVersion    = '1.0.0.0'
-        FileVersion       = '1.0.0.0'
-        FileName          = $script:MockDLLPath3
+        PSTypeName       = 'System.Diagnostics.FileVersionInfo'
+        OriginalFilename = 'OtherProduct.dll'
+        InternalName     = 'OtherProduct.dll'
+        ProductName      = 'Other Product Name'
+        ProductVersion   = '1.0.0.0'
+        FileVersion      = '1.0.0.0'
+        FileName         = $script:MockDLLPath3
     }
 
     $script:MockVersionInfo4 = [PSCustomObject]@{
-        PSTypeName        = 'System.Diagnostics.FileVersionInfo'
-        OriginalFilename  = 'Microsoft.Identity.Test.dll'
-        InternalName      = 'Microsoft.Identity.Test.dll'
-        ProductName       = 'Microsoft Identity Client'
-        ProductVersion    = '4.56.0.0'
-        FileVersion       = '4.56.0.0'
-        FileName          = $script:MockDLLPath4
+        PSTypeName       = 'System.Diagnostics.FileVersionInfo'
+        OriginalFilename = 'Microsoft.Identity.Test.dll'
+        InternalName     = 'Microsoft.Identity.Test.dll'
+        ProductName      = 'Microsoft Identity Client'
+        ProductVersion   = '4.56.0.0'
+        FileVersion      = '4.56.0.0'
+        FileName         = $script:MockDLLPath4
     }
 }
 
@@ -104,7 +104,7 @@ Describe 'Find-DLLInPSModulePath' -Tag 'Unit' {
 
         It 'Scope should validate against CurrentUser, AllUsers, and Both' {
             $Command = Get-Command -Name Find-DLLInPSModulePath
-            $ValidateSet = $Command.Parameters['Scope'].Attributes.Where{$_ -is [System.Management.Automation.ValidateSetAttribute]}
+            $ValidateSet = $Command.Parameters['Scope'].Attributes.Where{ $_ -is [System.Management.Automation.ValidateSetAttribute] }
             $ValidateSet.ValidValues | Should -Be @('CurrentUser', 'AllUsers', 'Both')
         }
 
@@ -126,18 +126,18 @@ Describe 'Find-DLLInPSModulePath' -Tag 'Unit' {
                 [void]$Path, $Filter, $File, $Recurse
                 $items = @(
                     [PSCustomObject]@{
-                        FullName  = $script:MockDLLPath1
-                        Directory = [PSCustomObject]@{ Name = 'TestModule1' }
+                        FullName    = $script:MockDLLPath1
+                        Directory   = [PSCustomObject]@{ Name = 'TestModule1' }
                         VersionInfo = $script:MockVersionInfo1
                     }
                     [PSCustomObject]@{
-                        FullName  = $script:MockDLLPath2
-                        Directory = [PSCustomObject]@{ Name = 'TestModule2' }
+                        FullName    = $script:MockDLLPath2
+                        Directory   = [PSCustomObject]@{ Name = 'TestModule2' }
                         VersionInfo = $script:MockVersionInfo2
                     }
                     [PSCustomObject]@{
-                        FullName  = $script:MockDLLPath3
-                        Directory = [PSCustomObject]@{ Name = 'TestModule3' }
+                        FullName    = $script:MockDLLPath3
+                        Directory   = [PSCustomObject]@{ Name = 'TestModule3' }
                         VersionInfo = $script:MockVersionInfo3
                     }
                 )
@@ -157,8 +157,8 @@ Describe 'Find-DLLInPSModulePath' -Tag 'Unit' {
                 [void]$Path, $Filter, $File, $Recurse
                 $items = @(
                     [PSCustomObject]@{
-                        FullName  = $script:MockDLLPath1
-                        Directory = [PSCustomObject]@{ Name = 'TestModule1' }
+                        FullName    = $script:MockDLLPath1
+                        Directory   = [PSCustomObject]@{ Name = 'TestModule1' }
                         VersionInfo = $script:MockVersionInfo1
                     }
                 )
@@ -185,14 +185,15 @@ Describe 'Find-DLLInPSModulePath' -Tag 'Unit' {
             Mock -CommandName Get-ChildItem -ModuleName DLLPickle -MockWith {
                 param($Path, $Filter, [switch]$File, [switch]$Recurse)
                 [void]$Path, $Filter, $File, $Recurse
+                $items = @(
                     [PSCustomObject]@{
-                        FullName  = $script:MockDLLPath1
-                        Directory = [PSCustomObject]@{ Name = 'TestModule1' }
+                        FullName    = $script:MockDLLPath1
+                        Directory   = [PSCustomObject]@{ Name = 'TestModule1' }
                         VersionInfo = $script:MockVersionInfo1
                     }
                     [PSCustomObject]@{
-                        FullName  = $script:MockDLLPath4
-                        Directory = [PSCustomObject]@{ Name = 'en-US' }
+                        FullName    = $script:MockDLLPath4
+                        Directory   = [PSCustomObject]@{ Name = 'en-US' }
                         VersionInfo = $script:MockVersionInfo4
                     }
                 )
@@ -214,13 +215,13 @@ Describe 'Find-DLLInPSModulePath' -Tag 'Unit' {
                 [void]$Path, $Filter, $File, $Recurse
                 $items = @(
                     [PSCustomObject]@{
-                        FullName  = $script:MockDLLPath1
-                        Directory = [PSCustomObject]@{ Name = 'TestModule1' }
+                        FullName    = $script:MockDLLPath1
+                        Directory   = [PSCustomObject]@{ Name = 'TestModule1' }
                         VersionInfo = $script:MockVersionInfo1
                     }
                     [PSCustomObject]@{
-                        FullName  = $script:MockDLLPath2
-                        Directory = [PSCustomObject]@{ Name = 'TestModule2' }
+                        FullName    = $script:MockDLLPath2
+                        Directory   = [PSCustomObject]@{ Name = 'TestModule2' }
                         VersionInfo = $script:MockVersionInfo2
                     }
                 )
@@ -300,8 +301,8 @@ Describe 'Find-DLLInPSModulePath' -Tag 'Unit' {
                 [void]$Path, $Filter, $File, $Recurse
                 $items = @(
                     [PSCustomObject]@{
-                        FullName  = $script:MockDLLPath1
-                        Directory = [PSCustomObject]@{ Name = 'TestModule1' }
+                        FullName    = $script:MockDLLPath1
+                        Directory   = [PSCustomObject]@{ Name = 'TestModule1' }
                         VersionInfo = $script:MockVersionInfo1
                     }
                 )
