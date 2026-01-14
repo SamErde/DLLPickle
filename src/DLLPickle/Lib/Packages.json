@@ -43,7 +43,7 @@
     {
       "name": "Microsoft.Identity.Client.NativeInterop",
       "description": "This package contains binaries needed to use brokers in public client desktop applications.",
-      "version": "0.19.4",
+      "version": "0.20.2",
       "projectUrl": "https://www.nuget.org/packages/Microsoft.Identity.Client.NativeInterop",
       "autoImport": "false"
     },
