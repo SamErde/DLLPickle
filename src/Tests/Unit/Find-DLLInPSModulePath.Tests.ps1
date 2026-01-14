@@ -3,7 +3,7 @@
     Set-Location -Path $PSScriptRoot
     #-------------------------------------------------------------------------
     $ModuleName = 'DLLPickle'
-    $PathToManifest = Resolve-Path ( [System.IO.Path]::Combine('..', '..', '..', "$ModuleName", "$ModuleName.psd1") )
+    $PathToManifest = Resolve-Path ( [System.IO.Path]::Combine('..', '..', "$ModuleName", "$ModuleName.psd1") )
     #-------------------------------------------------------------------------
     if (Get-Module -Name $ModuleName -ErrorAction 'SilentlyContinue') {
         Remove-Module -Name $ModuleName -Force
@@ -123,6 +123,7 @@ Describe 'Find-DLLInPSModulePath' -Tag 'Unit' {
         BeforeEach {
             Mock -CommandName Get-ChildItem -ModuleName DLLPickle -MockWith {
                 param($Path, $Filter, [switch]$File, [switch]$Recurse)
+                [void]$Path, $Filter, $File, $Recurse
                 $items = @(
                     [PSCustomObject]@{
                         FullName  = $script:MockDLLPath1
@@ -153,6 +154,7 @@ Describe 'Find-DLLInPSModulePath' -Tag 'Unit' {
         It 'Should filter by FileName pattern' {
             Mock -CommandName Get-ChildItem -ModuleName DLLPickle -MockWith {
                 param($Path, $Filter, [switch]$File, [switch]$Recurse)
+                [void]$Path, $Filter, $File, $Recurse
                 $items = @(
                     [PSCustomObject]@{
                         FullName  = $script:MockDLLPath1
@@ -182,7 +184,7 @@ Describe 'Find-DLLInPSModulePath' -Tag 'Unit' {
         BeforeEach {
             Mock -CommandName Get-ChildItem -ModuleName DLLPickle -MockWith {
                 param($Path, $Filter, [switch]$File, [switch]$Recurse)
-                $items = @(
+                [void]$Path, $Filter, $File, $Recurse
                     [PSCustomObject]@{
                         FullName  = $script:MockDLLPath1
                         Directory = [PSCustomObject]@{ Name = 'TestModule1' }
@@ -209,6 +211,7 @@ Describe 'Find-DLLInPSModulePath' -Tag 'Unit' {
         BeforeEach {
             Mock -CommandName Get-ChildItem -ModuleName DLLPickle -MockWith {
                 param($Path, $Filter, [switch]$File, [switch]$Recurse)
+                [void]$Path, $Filter, $File, $Recurse
                 $items = @(
                     [PSCustomObject]@{
                         FullName  = $script:MockDLLPath1
@@ -243,6 +246,7 @@ Describe 'Find-DLLInPSModulePath' -Tag 'Unit' {
         BeforeEach {
             Mock -CommandName Get-ChildItem -ModuleName DLLPickle -MockWith {
                 param($Path, $Filter, [switch]$File, [switch]$Recurse)
+                [void]$Path, $Filter, $File, $Recurse
                 return @()
             }
         }
@@ -271,6 +275,7 @@ Describe 'Find-DLLInPSModulePath' -Tag 'Unit' {
         BeforeEach {
             Mock -CommandName Get-ChildItem -ModuleName DLLPickle -MockWith {
                 param($Path, $Filter, [switch]$File, [switch]$Recurse)
+                [void]$Path, $Filter, $File, $Recurse
                 return @()
             }
         }
@@ -283,6 +288,7 @@ Describe 'Find-DLLInPSModulePath' -Tag 'Unit' {
         It 'Should write warning when no DLLs are found' {
             Mock -CommandName Test-Path -MockWith { $true }
             $Result = Find-DLLInPSModulePath -Path $TestModulePath -ProductName 'NonExistentProduct' -WarningVariable warnings -WarningAction SilentlyContinue
+            [void]$Result
             $warnings | Should -Not -BeNullOrEmpty
         }
     }
@@ -291,6 +297,7 @@ Describe 'Find-DLLInPSModulePath' -Tag 'Unit' {
         BeforeEach {
             Mock -CommandName Get-ChildItem -ModuleName DLLPickle -MockWith {
                 param($Path, $Filter, [switch]$File, [switch]$Recurse)
+                [void]$Path, $Filter, $File, $Recurse
                 $items = @(
                     [PSCustomObject]@{
                         FullName  = $script:MockDLLPath1
@@ -312,6 +319,7 @@ Describe 'Find-DLLInPSModulePath' -Tag 'Unit' {
         BeforeEach {
             Mock -CommandName Get-ChildItem -ModuleName DLLPickle -MockWith {
                 param($Path, $Filter, [switch]$File, [switch]$Recurse)
+                [void]$Path, $Filter, $File, $Recurse
                 return @()
             }
             Mock -CommandName Test-Path -MockWith { $true }
