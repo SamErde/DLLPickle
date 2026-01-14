@@ -18,6 +18,7 @@ Describe 'Import-DPLibrary' -Tag Unit {
 
         BeforeAll {
             $Command = Get-Command -Name Import-DPLibrary
+            [void]$Command
         }
 
         It 'should have ImportAll parameter' {
@@ -315,12 +316,6 @@ Describe 'Import-DPLibrary' -Tag Unit {
             $Result.PackageName | Should -BeExactly 'TestPackage1'
             # Note: With dummy DLL files, GetAssemblyName will fail before Add-Type is called
             # This is expected behavior - the function gracefully handles the error
-        }
-
-        It 'should report "Already Loaded" status for assemblies that are already loaded' {
-            # This test is complex due to .NET static method mocking limitations
-            # We verify the function handles the scenario correctly through code review
-            $true | Should -BeTrue
         }
 
         It 'should report "Failed" status and error message when Add-Type fails' {
