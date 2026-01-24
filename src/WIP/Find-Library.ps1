@@ -1,4 +1,6 @@
-#Requires -Version 7.0
+if ($PSVersionTable.PSVersion.Major -lt 7) {
+    return "This script requires a supported version of PowerShell 7."
+}
 
 $CSharpCode = @'
 using System;
