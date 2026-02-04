@@ -45,6 +45,55 @@ I want to know what you think is missing from DLLPickle and how it can be made b
 I am infallible and as such my documenation needs no corectoin. 😉
 In the highly unlikely event that that is _not_ the case, commits to update or add documentation are highly appreciated.
 
+## Automated Dependency Management
+
+DLL Pickle uses automated workflows to keep NuGet packages up to date. Here's what contributors need to know:
+
+### How It Works
+
+- **Daily automation** checks for package updates at 2 AM UTC
+- **Automatic PRs** are created when updates are available
+- **Security checks** validate all changes before merging
+- **Auto-merge** enables seamless updates
+
+### Working with Packages
+
+#### Adding a New Package
+
+To add a new tracked package:
+
+1. Edit `src/DLLPickle/Lib/Packages.json` with the new package details
+2. Run the update script to download the initial version:
+   ```powershell
+   & .\.github\scripts\Update-NuGetPackages.ps1 `
+       -PackageTrackingPath "./src/DLLPickle/Lib/Packages.json" `
+       -DestinationPath "./src/DLLPickle/Lib"
+   ```
+3. Create a PR explaining why the package is needed
+
+#### Reviewing Update PRs
+
+When you see an automated dependency update PR:
+
+- ✅ **Review the changelog** - Check NuGet.org for what changed
+- ✅ **Verify checks pass** - Ensure security scans are clean
+- ✅ **Check for breaking changes** - Review major version updates carefully
+- ✅ **Test if needed** - Download and test locally for significant updates
+
+### Manual Workflow Triggers
+
+To manually trigger the dependency check:
+
+```bash
+gh workflow run "1 - Update Dependencies.yml"
+```
+
+### More Information
+
+For detailed documentation about the automation system, see:
+- [Dependency Automation Guide](../docs/DEPENDENCY_AUTOMATION.md)
+- [Workflow Design](../docs/WorkflowDesign.md)
+
 ## Submitting Changes
 
 - Push your changes to a topic branch in your fork of the repository.

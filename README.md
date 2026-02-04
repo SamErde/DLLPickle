@@ -83,6 +83,17 @@ Alternatively, if you are starting work in a new PowerShell session in which you
 
 ## 📝 Additional Information
 
+### 🤖 Automated Dependency Updates
+
+DLL Pickle uses a fully automated system to keep its NuGet packages up to date:
+
+- **Daily checks** run at 2:00 AM UTC to detect new package versions
+- **Automatic PRs** are created when updates are available
+- **Security scanning** validates all dependency updates
+- **Auto-merge** enabled after all checks pass
+
+The automation ensures DLL Pickle always includes the latest Microsoft Identity libraries without manual intervention. For details, see [Dependency Automation Documentation](docs/DEPENDENCY_AUTOMATION.md).
+
 ### Versioning
 
 This project follows the semantic versioning model. It also packages numerous dependencies that follow their own versioning. To maintain clarity, this project will follow SemVer standards and the following logic for version changes:

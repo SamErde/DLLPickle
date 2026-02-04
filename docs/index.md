@@ -57,3 +57,11 @@ Alternatively, if you are starting work in a new PowerShell session in which you
 ## Tracked Libraries
 
 MSAL Latest Version: [![NuGet](https://img.shields.io/nuget/v/microsoft.identity.client.svg?style=flat-square&label=nuget&colorB=00b200)](https://www.nuget.org/packages/Microsoft.Identity.Client/)
+
+## Documentation
+
+- **[Getting Started Guide](DLLPickle/about_DLLPickle.help.md)** - Learn how to use DLL Pickle
+- **[Deep Dive](Deep-Dive.md)** - Technical explanation of how DLL Pickle solves dependency conflicts
+- **[Dependency Automation](DEPENDENCY_AUTOMATION.md)** - How automated updates keep packages current
+- **[Workflow Design](WorkflowDesign.md)** - Architecture of CI/CD workflows
+- **[Release Workflow](RELEASE_WORKFLOW.md)** - Details on the release process
