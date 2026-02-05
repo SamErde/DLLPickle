@@ -7,7 +7,17 @@ output/
 Scratch/
 testResults.xml
 
+# .NET build artifacts
+bin/
+obj/
+
+# NuGet
+*.nupkg
+packages/
+.nuget/
+
 ### VisualStudioCode ###
+.vs/
 .vscode/*
 !.vscode/settings.json
 !.vscode/tasks.json
