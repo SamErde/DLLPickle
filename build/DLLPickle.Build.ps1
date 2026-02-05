@@ -529,7 +529,7 @@ Add-BuildTask UpdateCBH -After AssetCopy {
 # Synopsis: Copies module assets to Artifacts folder
 Add-BuildTask AssetCopy -Before Build {
     Write-Build Gray '        Copying assets to Artifacts...'
-    Copy-Item -Path "$script:ModuleSourcePath\*" -Destination $script:ArtifactsPath -Exclude *.psd1, *.psm1 -Recurse -ErrorAction Stop
+    #Copy-Item -Path "$script:ModuleSourcePath\*" -Destination $script:ArtifactsPath -Exclude *.psd1, *.psm1 -Recurse -ErrorAction Stop
     Write-Build Gray '        ...Assets copy complete.'
 } #AssetCopy
 
@@ -539,7 +539,7 @@ Add-BuildTask Build {
     Write-Build White '      Performing Module Build'
 
     Write-Build Gray '        Copying manifest file to Artifacts...'
-    Copy-Item -Path $script:ModuleManifestFile -Destination $script:ArtifactsPath -Recurse -ErrorAction Stop
+    #Copy-Item -Path $script:ModuleManifestFile -Destination $script:ArtifactsPath -Recurse -ErrorAction Stop
     #Copy-Item -Path $script:ModuleSourcePath\bin -Destination $script:ArtifactsPath -Recurse -ErrorAction Stop
     Write-Build Gray '        ...manifest copy complete.'
 
@@ -619,24 +619,25 @@ Add-BuildTask IntegrationTest {
     }
 } #IntegrationTest
 
+
 #Synopsis: Creates an archive of the built Module
 Add-BuildTask Archive {
     Write-Build White '        Performing Archive...'
 
-    $archivePath = Join-Path -Path $BuildRoot -ChildPath 'Archive'
-    if (Test-Path -Path $archivePath) {
-        $null = Remove-Item -Path $archivePath -Recurse -Force
+    $ArchivePath = Join-Path -Path $ProjectRoot -ChildPath 'archive'
+    if (Test-Path -Path $ArchivePath) {
+        # $null = Remove-Item -Path $ArchivePath -Recurse -Force
     }
 
-    $null = New-Item -Path $archivePath -ItemType Directory -Force
+    # $null = New-Item -Path $ArchivePath -ItemType Directory -Force
 
-    $zipFileName = '{0}_{1}_{2}.{3}.zip' -f $script:ModuleName, $script:ModuleVersion, ([DateTime]::UtcNow.ToString("yyyyMMdd")), ([DateTime]::UtcNow.ToString("hhmmss"))
-    $zipFile = Join-Path -Path $archivePath -ChildPath $zipFileName
+    #$ZipFileName = '{0}_{1}_{2}.{3}.zip' -f $script:ModuleName, $script:ModuleVersion, ([DateTime]::UtcNow.ToString("yyyyMMdd")), ([DateTime]::UtcNow.ToString("HHmmss"))
+    #$ZipFile = Join-Path -Path $ArchivePath -ChildPath $ZipFileName
 
     if ($PSEdition -eq 'Desktop') {
         Add-Type -AssemblyName 'System.IO.Compression.FileSystem'
     }
-    [System.IO.Compression.ZipFile]::CreateFromDirectory($script:ArtifactsPath, $zipFile)
+    #[System.IO.Compression.ZipFile]::CreateFromDirectory($script:ArtifactsPath, $ZipFile)
 
     Write-Build Green '        ...Archive Complete!'
 } #Archive
