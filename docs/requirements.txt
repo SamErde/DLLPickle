@@ -5,3 +5,4 @@ mkdocs>=1.6.1               #https://github.com/mkdocs/mkdocs
 mkdocs-material>=9.5.32     #https://github.com/squidfunk/mkdocs-material
 pygments>=2.18              #https://pypi.org/project/Pygments/
 pymdown-extensions>=10.16.1
+
