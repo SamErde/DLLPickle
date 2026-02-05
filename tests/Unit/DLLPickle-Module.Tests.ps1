@@ -3,8 +3,8 @@ BeforeAll {
     Set-Location -Path $PSScriptRoot
     #-------------------------------------------------------------------------
     $ModuleName = 'DLLPickle'
-    $PathToManifest = [System.IO.Path]::Combine('..', '..', $ModuleName, "$ModuleName.psd1")
-    $PathToModule = [System.IO.Path]::Combine('..', '..', $ModuleName, "$ModuleName.psm1")
+    $PathToManifest = [System.IO.Path]::Combine('..', '..', 'src', $ModuleName, "$ModuleName.psd1")
+    $PathToModule = [System.IO.Path]::Combine('..', '..', 'src', $ModuleName, "$ModuleName.psm1")
     #-------------------------------------------------------------------------
 }
 Describe 'Module Tests' -Tag Unit {

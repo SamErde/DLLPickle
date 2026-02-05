@@ -1,7 +1,7 @@
 BeforeAll {
     Set-Location -Path $PSScriptRoot
     $ModuleName = 'DLLPickle'
-    $PathToManifest = [System.IO.Path]::Combine('..', '..', $ModuleName, "$ModuleName.psd1")
+    $PathToManifest = [System.IO.Path]::Combine('..', '..', 'src', $ModuleName, "$ModuleName.psd1")
     Get-Module $ModuleName -ErrorAction SilentlyContinue | Remove-Module -Force
     Import-Module $PathToManifest -Force
     $ManifestContent = Test-ModuleManifest -Path $PathToManifest
@@ -11,7 +11,7 @@ BeforeAll {
 BeforeDiscovery {
     Set-Location -Path $PSScriptRoot
     $ModuleName = 'DLLPickle'
-    $PathToManifest = [System.IO.Path]::Combine('..', '..', $ModuleName, "$ModuleName.psd1")
+    $PathToManifest = [System.IO.Path]::Combine('..', '..', 'src', $ModuleName, "$ModuleName.psd1")
     $ManifestContent = Test-ModuleManifest -Path $PathToManifest
     $ModuleExported = Get-Command -Module $ModuleName | Select-Object -ExpandProperty Name
     $ManifestExported = ($ManifestContent.ExportedFunctions).Keys
@@ -38,7 +38,7 @@ Describe $ModuleName {
     } #context_ExportedCommands
 
     Context 'Command Help' -Fixture {
-        Context '<_>' -Foreach $moduleExported {
+        Context '<_>' -Foreach $ModuleExported {
 
             BeforeEach {
                 $Help = Get-Help -Name $_ -Full

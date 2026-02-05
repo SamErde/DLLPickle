@@ -3,7 +3,7 @@
     Set-Location -Path $PSScriptRoot
     #-------------------------------------------------------------------------
     $ModuleName = 'DLLPickle'
-    $PathToManifest = Resolve-Path ( [System.IO.Path]::Combine('..', '..', "$ModuleName", "$ModuleName.psd1") )
+    $PathToManifest = Resolve-Path ( [System.IO.Path]::Combine('..', '..', 'src', "$ModuleName", "$ModuleName.psd1") )
     #-------------------------------------------------------------------------
     if (Get-Module -Name $ModuleName -ErrorAction 'SilentlyContinue') {
         Remove-Module -Name $ModuleName -Force
