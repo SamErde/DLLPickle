@@ -3,11 +3,12 @@
     Repair PlatyPS generated markdown files.
 .NOTES
     This file is temporarily required to handle platyPS help generation.
-        https://github.com/PowerShell/platyPS/issues/595
+
     This is a result of a breaking change introduced in PowerShell 7.4.0:
-        https://learn.microsoft.com/en-us/powershell/scripting/whats-new/what-s-new-in-powershell-74?view=powershell-7.4
         Breaking Changes: Added the ProgressAction parameter to the Common Parameters
-    modified from source: https://github.com/PowerShell/platyPS/issues/595#issuecomment-1820971702
+        https://learn.microsoft.com/en-us/powershell/scripting/whats-new/what-s-new-in-powershell-74?view=powershell-7.4
+        https://github.com/PowerShell/platyPS/issues/595
+        modified from source: https://github.com/PowerShell/platyPS/issues/595#issuecomment-1820971702
 #>
 
 function Remove-CommonParameterFromMarkdown {
@@ -83,11 +84,9 @@ function Add-MissingCommonParameterToMarkdown {
                     if ($CommonParameter.StartsWith('-')) {
                         if ($CommonParameter.EndsWith(',')) {
                             $CleanParam = $CommonParameter.Substring(0, $CommonParameter.Length - 1)
-                        }
-                        elseif ($p.EndsWith('.')) {
+                        } elseif ($p.EndsWith('.')) {
                             $CleanParam = $CommonParameter.Substring(0, $CommonParameter.Length - 1)
-                        }
-                        else {
+                        } else {
                             $CleanParam = $CommonParameter
                         }
                         $CommonParameters += $CleanParam
@@ -97,7 +96,7 @@ function Add-MissingCommonParameterToMarkdown {
                     $CommonParameters += $NewParameter
                 }
                 $CommonParameters[-1] = "and $($CommonParameters[-1]). "
-                return "This cmdlet supports the common parameters: " + (($CommonParameters | Sort-Object) -join ', ')
+                return 'This cmdlet supports the common parameters: ' + (($CommonParameters | Sort-Object) -join ', ')
             }
             $newContent = $content -replace $pattern, $replacement
             if ($null -ne (Compare-Object -ReferenceObject $content -DifferenceObject $newContent)) {
