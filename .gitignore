@@ -1,10 +1,8 @@
 # CI Artifacts
-Archive
+archive
 artifacts
 cov.xml
 coverage.xml
-output/
-Scratch/
 testResults.xml
 
 # Staged Module Output
@@ -28,6 +26,9 @@ packages/
 !.vscode/extensions.json
 !.vscode/*.code-snippets
 
+### Codacy ###
+.codacy/*
+
 ### OS ###
 Thumbs.db
 .DS_Store
@@ -36,6 +37,4 @@ Thumbs.db
 .Spotlight-V100
 .Trashes
 ehthumbs.db
-
-### Codacy ###
-.codacy/*
+Desktop.ini
