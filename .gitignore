@@ -1,15 +1,18 @@
-# Project Files #
+# CI Artifacts
 Archive
-Artifacts
+artifacts
 cov.xml
 coverage.xml
 output/
 Scratch/
 testResults.xml
 
+# Staged Module Output
+module/
+
 # .NET build artifacts
-bin/
-obj/
+**/bin/
+**/obj/
 
 # NuGet
 *.nupkg
