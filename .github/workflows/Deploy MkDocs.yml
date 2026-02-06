@@ -27,11 +27,6 @@ jobs:
       cancel-in-progress: true
 
     steps:
-      - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@e3f713f2d8f53843e71c69a996d56f51aa9adfb9 # v2.14.1
-        with:
-          egress-policy: audit
-
       - name: ✅ Checkout Repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
@@ -43,7 +38,7 @@ jobs:
         with:
           python-version: "3.x" # specify the Python version
 
-      - name: ➕ Install Dependencies
+      - name: 📦 Install Dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r docs/requirements.txt
