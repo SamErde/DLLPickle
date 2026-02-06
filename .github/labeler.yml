@@ -6,7 +6,10 @@ Source:
   - any-glob-to-any-file: 'src/DLLPickle/**'
 Dependencies:
 - changed-files:
-  - any-glob-to-any-file: 'src/DLLPickle/Lib/**'
+  - any-glob-to-any-file: ['src/DLLPickle/Lib/**', 'src/DLLPickle/bin/**','src/DLLPickle.Build/**']
 Tests:
 - changed-files:
   - any-glob-to-any-file: 'src/Tests/**'
+Workflows:
+- changed-files:
+  - any-glob-to-any-file: '.github/Workflows'
