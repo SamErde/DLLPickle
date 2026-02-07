@@ -40,7 +40,9 @@
 #>
 
 #Include: Settings
-. "$(Join-Path -Path $PSScriptRoot -ChildPath "$ModuleName.Settings.ps1")"
+### QUESTION: Is the $BuildFile variable created by Invoke-Build automatically?
+$script:ModuleName = [regex]::Match((Get-Item $BuildFile).Name, '^(.*)\.Build\.ps1$').Groups[1].Value
+. "$(Join-Path -Path $PSScriptRoot -ChildPath "${ModuleName}.Settings.ps1")"
 
 function Test-ManifestBool ($Path) {
     # Validate the module manifest file
