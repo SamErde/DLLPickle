@@ -52,23 +52,23 @@ jobs:
 
     - name: Bootstrap
       shell: pwsh
-      run: ./.github/scripts/Actions_Bootstrap.ps1
+      run: ./.github/ci-scripts/Actions_Bootstrap.ps1
 
     - name: Test and Build
       shell: pwsh
-      run: Invoke-Build -File ./src/DLLPickle.Build.ps1
+      run: Invoke-Build -File ./build/DLLPickle.Build.ps1
 
     - name: Upload pester results
       if: always() # Ensure this step runs even if prior steps fail
       uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
       with:
         name: pester-results
-        path: ./src/Artifacts/TestOutput
+        path: ./artifacts/TestOutput
         if-no-files-found: warn
 
     - name: Upload zip module archive build
       uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
       with:
         name: zip-archive
-        path: ./src/Archive
+        path: ./archive
         if-no-files-found: warn
