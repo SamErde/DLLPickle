@@ -1,4 +1,25 @@
-# Bootstrap dependencies
+<#
+.SYNOPSIS
+    Bootstraps the GitHub Actions environment with required dependencies.
+
+.DESCRIPTION
+    Installs required PowerShell modules and tools needed for the CI/CD pipeline.
+    This includes build tools, testing frameworks, and code analysis modules.
+
+.EXAMPLE
+    ./.github/scripts/Actions_Bootstrap.ps1
+
+.NOTES
+    Run this script at the beginning of CI/CD workflows to ensure all dependencies are available.
+#>
+
+[CmdletBinding()]
+param()
+
+$ErrorActionPreference = 'Stop'
+$ProgressPreference = 'SilentlyContinue'
+
+Write-Host '🔨 Bootstrapping CI/CD Environment...'
 
 # https://docs.microsoft.com/powershell/module/packagemanagement/get-packageprovider
 Get-PackageProvider -Name Nuget -ForceBootstrap | Out-Null
@@ -8,21 +29,24 @@ Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
 
 # List of PowerShell Modules required for the build.
 $ModulesToInstall = New-Object System.Collections.Generic.List[object]
-
 # https://github.com/pester/Pester
 [void]$ModulesToInstall.Add(([PSCustomObject]@{
-            ModuleName    = 'Pester'
+            ModuleName = 'Pester'
             #ModuleVersion = '5.7.1'
         }))
 # https://github.com/nightroman/Invoke-Build
 [void]$ModulesToInstall.Add(([PSCustomObject]@{
-            ModuleName    = 'InvokeBuild'
+            ModuleName = 'InvokeBuild'
             #ModuleVersion = '5.12.1'
         }))
 # https://github.com/PowerShell/PSScriptAnalyzer
 [void]$ModulesToInstall.Add(([PSCustomObject]@{
-            ModuleName    = 'PSScriptAnalyzer'
+            ModuleName = 'PSScriptAnalyzer'
             #ModuleVersion = '1.23.0'
+        }))
+# https://github.com/PowerShell/Microsoft.PowerShell.PlatyPS
+[void]$ModulesToInstall.Add(([PSCustomObject]@{
+            ModuleName = 'Microsoft.PowerShell.PlatyPS'
         }))
 # https://github.com/PowerShell/platyPS
 # older version used due to: https://github.com/PowerShell/platyPS/issues/457
@@ -31,12 +55,7 @@ $ModulesToInstall = New-Object System.Collections.Generic.List[object]
 #            #ModuleVersion = '0.12.0'
 #        }))
 
-# https://github.com/PowerShell/Microsoft.PowerShell.PlatyPS
-[void]$ModulesToInstall.Add(([PSCustomObject]@{
-            ModuleName    = 'Microsoft.PowerShell.PlatyPS'
-        }))
-
-'Installing PowerShell Modules'
+Write-Host '📦 Installing PowerShell Modules'
 foreach ($Module in $ModulesToInstall) {
     $InstallSplat = @{
         Name               = $Module.ModuleName
@@ -55,10 +74,21 @@ foreach ($Module in $ModulesToInstall) {
             Install-Module @InstallSplat
         }
         Import-Module -Name $Module.ModuleName -ErrorAction Stop
-        '  - Successfully installed {0}' -f $Module.ModuleName
+        Write-Host "  - Successfully installed $($Module.ModuleName)"
     } catch {
         $message = 'Failed to install {0}' -f $Module.ModuleName
-        "  - $message"
+        Write-Host "  - $message"
         throw
     }
 }
+
+# Ensure .NET tools are available
+Write-Host "`n🧑‍💻 Verifying .NET environment..."
+try {
+    $dotnetVersion = dotnet --version
+    Write-Host "  ✓ .NET SDK: $dotnetVersion"
+} catch {
+    Write-Error ".NET SDK is not installed: $_"
+}
+
+Write-Host "`n✅ Bootstrap complete!"
