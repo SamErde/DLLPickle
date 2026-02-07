@@ -1,0 +1,50 @@
+name: 🤖 Dependabot Auto-Approve NuGet Package Updates
+on: pull_request
+
+permissions: {} # Restrictive default - grant explicitly at job level
+
+concurrency:
+  group: dependabot-approve-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  dependabot:
+    runs-on: ubuntu-latest
+    if: github.actor == 'dependabot[bot]'
+    permissions:
+      pull-requests: write # Required to approve PRs
+      contents: read # Required for gh CLI to query PR files
+    steps:
+      - name: Check if NuGet packages were updated
+        id: nuget_check
+        run: |
+          set -e
+
+          # Check if PR modifies .csproj or packages.lock.json
+          MATCHING_FILES=$(gh pr view "$PR_NUMBER" --json files --jq '
+            .files[].path | select(
+              . == "src/DLLPickle.Build/DLLPickle.csproj" or
+              . == "src/DLLPickle.Build/packages.lock.json"
+            )
+          ')
+
+          if [ -n "$MATCHING_FILES" ]; then
+            echo "is_nuget_update=true" >> "$GITHUB_OUTPUT"
+            echo "✓ PR modifies NuGet package files:"
+            echo "$MATCHING_FILES"
+          else
+            echo "is_nuget_update=false" >> "$GITHUB_OUTPUT"
+            echo "✗ PR does not modify NuGet package files - skipping"
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+
+      - name: Approve PR
+        if: steps.nuget_check.outputs.is_nuget_update == 'true'
+        run: |
+          set -e
+          gh pr review --approve "$PR_URL" --body "✅ Auto-approved: NuGet version update (constrained by .csproj version limits)"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
