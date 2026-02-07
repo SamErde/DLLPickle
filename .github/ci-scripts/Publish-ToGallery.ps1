@@ -41,6 +41,7 @@
     Transient failures trigger automatic retries with exponential backoff.
 #>
 
+[CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)]
     [ValidateScript({ Test-Path $_ -PathType Container })]
@@ -61,7 +62,7 @@ param(
 $ErrorActionPreference = 'Stop'
 
 # Read module manifest to get name and version
-$ManifestFile = Get-ChildItem -Path $ModuleDirectory -Filter '*.psd1' -Depth 0 | Select-Object -First 1
+$ManifestFile = Get-ChildItem -Path $ModuleDirectory -Filter '*.psd1' | Select-Object -First 1
 if (-not $ManifestFile) {
     throw "No .psd1 manifest file found in $ModuleDirectory"
 }
@@ -117,17 +118,19 @@ while (-not $PublishSuccess -and $AttemptCount -lt $MaxRetries) {
     }
 }
 
+$GalleryUrl = "https://www.powershellgallery.com/packages/$ModuleName/$ModuleVersion"
+
 if (-not $PublishSuccess) {
     $Result = @{
         Success      = $false
         ModuleName   = $ModuleName
         Version      = $ModuleVersion
-        GalleryUrl   = ''
+        GalleryUrl   = $GalleryUrl
         AttemptCount = $AttemptCount
         Message      = "Failed to publish after $MaxRetries attempts"
         ErrorMessage = $LastError.Exception.Message
     }
-    Write-Output ([PSCustomObject]$Result)
+    $Result
     exit 1
 }
 
@@ -149,7 +152,6 @@ try {
     Write-Warning "Could not verify publication: $_"
 }
 
-$GalleryUrl = "https://www.powershellgallery.com/packages/$ModuleName/$ModuleVersion"
 Write-Host "View at: $GalleryUrl" -ForegroundColor Cyan
 
 $Result = @{
@@ -161,4 +163,4 @@ $Result = @{
     Message      = 'Published successfully'
 }
 
-Write-Output ([PSCustomObject]$Result)
+$Result
