@@ -28,5 +28,5 @@
       ]
     }
   },
-  "postCreateCommand": "pwsh -NoLogo -c 'Invoke-Build -Task Init -File src/DLLPickle.Build.ps1'"
+  "postCreateCommand": "pwsh -NoLogo -c 'Invoke-Build -Task Init -File build/DLLPickle.Build.ps1'"
 }
