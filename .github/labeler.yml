@@ -1,15 +1,23 @@
-Documentation:
+Build:
 - changed-files:
-  - any-glob-to-any-file: 'docs/**'
-Source:
-- changed-files:
-  - any-glob-to-any-file: 'src/DLLPickle/**'
+  - any-glob-to-any-file: ['build/**']
+
 Dependencies:
 - changed-files:
   - any-glob-to-any-file: ['src/DLLPickle/Lib/**', 'src/DLLPickle/bin/**','src/DLLPickle.Build/**']
+
+Documentation:
+- changed-files:
+  - any-glob-to-any-file: ['docs/**','README.md','mkdocs.yml','.github/workflows/Deploy MkDocs.yml']
+
+Source:
+- changed-files:
+  - any-glob-to-any-file: 'src/DLLPickle/**'
+
 Tests:
 - changed-files:
-  - any-glob-to-any-file: 'src/Tests/**'
+  - any-glob-to-any-file: 'tests/**'
+
 Workflows:
 - changed-files:
-  - any-glob-to-any-file: '.github/Workflows'
+  - any-glob-to-any-file: '.github/workflows/**'
