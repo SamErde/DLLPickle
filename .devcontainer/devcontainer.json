@@ -1,12 +1,13 @@
 {
   "name": "PowerShell",
   "dockerFile": "Dockerfile",
+  "remoteUser": "vscode",
   "customizations": {
     "vscode": {
       "settings": {
         "terminal.integrated.profiles.linux": {
           "bash": {
-            "path": "usr/bin/bash",
+            "path": "/usr/bin/bash",
             "icon": "terminal-bash"
           },
           "zsh": {
@@ -21,10 +22,11 @@
       },
       "extensions": [
         "ms-vscode.powershell",
+        "ms-dotnettools.csharp",
         "davidanson.vscode-markdownlint",
         "streetsidesoftware.code-spell-checker"
       ]
     }
   },
-  "postCreateCommand": "pwsh -c './Build.ps1 -Task Init -Bootstrap'"
+  "postCreateCommand": "pwsh -NoLogo -c 'Invoke-Build -Task Init -File build/DLLPickle.Build.ps1'"
 }

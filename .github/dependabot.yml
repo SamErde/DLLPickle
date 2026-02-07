@@ -10,14 +10,32 @@ updates:
   - package-ecosystem: docker
     directory: /.devcontainer
     schedule:
-      interval: daily
+      interval: weekly
 
   - package-ecosystem: github-actions
     directory: /
     schedule:
-      interval: daily
+      interval: weekly
+    commit-message:
+      prefix: "ci"
+      prefix-development: "ci"
 
   - package-ecosystem: nuget
-      directory: /
-      schedule:
-        interval: daily
+    directory: /src/DLLPickle.Build/
+    schedule:
+      interval: daily
+    commit-message:
+      prefix: "deps"
+      prefix-development: "deps"
+    # Only auto-approve non-major updates (handled by workflow)
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: pip
+    directory: /docs/
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "docs"
+      prefix-development: "docs"
