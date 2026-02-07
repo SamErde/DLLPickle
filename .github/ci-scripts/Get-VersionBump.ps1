@@ -14,15 +14,19 @@
     - ShouldRelease: Boolean indicating if a release should proceed
     - NewVersionType: String indicating bump type ('major', 'minor', 'patch', 'none')
     - NewVersion: Version object with the calculated new version
-    - CommitsSinceLastTag: Array of commit messages since last tag
+    - CurrentVersion: Version object with the current version from the manifest
+    - CommitsSinceLastTag: Integer count of commits since last tag
+    - CommitMessages: Array of commit messages since last tag
 
-.EXAMPLE
+    .EXAMPLE
     $Result = & .\.github\scripts\Get-VersionBump.ps1
     if ($Result.ShouldRelease) {
         Write-Host "New version: $($Result.NewVersion)"
     }
 #>
 
+[CmdletBinding()]
+[OutputType([PSCustomObject])]
 param(
     # Path to the module manifest. Defaults to "../../src/DLLPickle/DLLPickle.psd1"
     [Parameter(Mandatory = $false)]
@@ -31,6 +35,11 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+# Verify git is available
+if (-not (Get-Command -Name 'git' -ErrorAction SilentlyContinue)) {
+    Write-Error 'Git is not installed or not available in the PATH.'
+    exit 1
+}
 
 # Get the current module version from the manifest.
 Write-Host "Using manifest path: $ManifestPath" -ForegroundColor Cyan
@@ -51,93 +60,54 @@ if (-not $LastTag) {
 }
 Write-Host "Last tag: $LastTag" -ForegroundColor Cyan
 
+# Determine version bump type based on commits since last tag
+[string]$VersionBump = 'none'
+[bool]$ShouldRelease = $false
+
 # Get commits since last tag.
-$Commits = git log "$LastTag..HEAD" --pretty=format:"%s" 2>$null
-# If no commits found, set "ShouldRelease" to false and exit.
-if (-not $Commits) {
-    Write-Host 'No new commits since last tag'
-    $Result = @{
-        ShouldRelease       = $false
-        NewVersionType         = 'none'
-        NewVersion          = $CurrentVersion
-        CurrentVersion      = $CurrentVersion
-        CommitsSinceLastTag = @()
-    }
-    Write-Output ([PSCustomObject]$Result)
-    exit 0
-}
-
-# Ensure commits is an array.
-if ($Commits -is [string]) {
-    $Commits = @($Commits)
-}
-
-Write-Host "`nCommits since last tag:"
-$Commits | ForEach-Object { Write-Host "  $_" }
-
-# Analyze conventional commit message prefix to determine version bump.
-$HasMajor = $false
-$HasMinor = $false
-$HasPatch = $false
-
+[string[]]$Commits = @(git log "$LastTag..HEAD" --pretty=format:"%s" --no-merges 2>$null)
 foreach ($Commit in $Commits) {
-    # Check for breaking changes
+    # Analyze commit message for conventional commit types.
     if ($Commit -match '^BREAKING CHANGE:|^breaking:|major-release') {
-        $HasMajor = $true
-    }
-    # Check for features
-    elseif ($Commit -match '^feat(\(.+\))?:') {
-        $HasMinor = $true
-    }
-    # Check for fixes
-    elseif ($Commit -match '^fix(\(.+\))?:') {
-        $HasPatch = $true
-    }
-    # Other conventional commit types (chore, docs, style, refactor, perf).
-    elseif ($Commit -match '^(chore|docs|style|refactor|perf)(\(.+\))?:') {
-        $HasPatch = $true
-    }
-    # Ignore other commit types (test, ci, build, etc.)
-    else {
+        # Check for breaking changes. Set as major and stop checking further commits.
+        $VersionBump = 'major'
+        $ShouldRelease = $true
+        break
+    } elseif ($Commit -match '^(feat|minor)(\(.+\))?:') {
+        # Check for features. Set as minor if not already major.
+        if ($VersionBump -ne 'major') {
+            $VersionBump = 'minor'
+            $ShouldRelease = $true
+        }
+    } elseif ($Commit -match '^(fix|perf|refactor|security|chore)(\(.+\))?:') {
+        # Check for fixes. Set as patch if not already major or minor.
+        if ($VersionBump -ne 'major' -and $VersionBump -ne 'minor') {
+            $VersionBump = 'patch'
+            $ShouldRelease = $true
+        }
+    } else {
+        # Ignore other commit types (docs, style, etc.) for version bumping.
         Write-Host "Ignoring commit (not a conventional type): $Commit" -ForegroundColor DarkGray
+        continue
     }
 }
 
-# Determine version bump type and number.
-$NewVersionType = 'none'
-$NewVersion = $CurrentVersion
-
-if ($HasMajor) {
-    $NewVersion = [version]::new($CurrentVersion.Major + 1, 0, 0)
-    $NewVersionType = 'major'
-} elseif ($HasMinor) {
-    $NewVersion = [version]::new($CurrentVersion.Major, $CurrentVersion.Minor + 1, 0)
-    $NewVersionType = 'minor'
-} elseif ($HasPatch) {
-    $NewVersion = [version]::new($CurrentVersion.Major, $CurrentVersion.Minor, $CurrentVersion.Build + 1)
-    $NewVersionType = 'patch'
-} else {
-    Write-Host 'No version bump needed (no relevant conventional commits found).' -ForegroundColor Yellow
-    $Result = @{
-        ShouldRelease       = $false
-        NewVersionType         = 'none'
-        NewVersion          = $NewVersion
-        CurrentVersion      = $CurrentVersion
-        CommitsSinceLastTag = $Commits
-    }
-    Write-Output ([PSCustomObject]$Result)
-    exit 0
+# Calculate new version
+$NewVersion = switch ($VersionBump) {
+    'major' { [version]::new($CurrentVersion.Major + 1, 0, 0) }
+    'minor' { [version]::new($CurrentVersion.Major, $CurrentVersion.Minor + 1, 0) }
+    'patch' { [version]::new($CurrentVersion.Major, $CurrentVersion.Minor, $CurrentVersion.Build + 1) }
+    'none' { $CurrentVersion }
 }
 
-Write-Host "`nNew version type: $NewVersionType"
-Write-Host "New version: $NewVersion"
-
-$Result = @{
-    ShouldRelease       = $true
-    NewVersionType      = $NewVersionType
+# Create the result object.
+[PSCustomObject]$Result = @{
+    ShouldRelease       = $ShouldRelease
+    NewVersionType      = $VersionBump
     NewVersion          = $NewVersion
     CurrentVersion      = $CurrentVersion
-    CommitsSinceLastTag = $Commits
+    CommitsSinceLastTag = $Commits.Count
+    CommitMessages      = $Commits
 }
 
-Write-Output ([PSCustomObject]$Result)
+$Result
