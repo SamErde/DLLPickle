@@ -178,7 +178,7 @@ jobs:
       - name: Update module manifest version
         shell: pwsh
         run: |
-          $updateResult = & ./.github/scripts/Update-ModuleVersion.ps1 -ManifestPath "$($env:MANIFEST_PATH)" -NewVersion "${{ needs.analyze.outputs.new_version }}"
+          $updateResult = & ./.github/ci-scripts/Update-ModuleVersion.ps1 -ManifestPath "$($env:MANIFEST_PATH)" -NewVersion "${{ needs.analyze.outputs.new_version }}"
 
           if (-not $updateResult.Success) {
               Write-Error "Failed to update module manifest: $($updateResult.ErrorMessage)"
