@@ -1,5 +1,5 @@
 # PowerShell 7.4 LTS on Debian 12 (Dependabot should update this)
-FROM mcr.microsoft.com/powershell:7.4-debian-12@sha256:810c4f1e0c9d23022c3ec18c50a6205ee4b60766f1739d329b2948df1fd7d5b0
+FROM mcr.microsoft.com/powershell:7.5-debian-12@sha256:7ab5bd5ca6f95a3351fa0c6a1205237d57048c94542355aab55519a0861a9b25
 
 # Configure non-root user for development. See https://aka.ms/vscode-remote/containers/non-root-user for details.
 ARG USERNAME=vscode
