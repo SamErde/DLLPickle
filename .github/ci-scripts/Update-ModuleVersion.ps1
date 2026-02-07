@@ -19,31 +19,34 @@
     - ManifestPath: Path to the updated manifest
 
 .EXAMPLE
-    $Result = & .\.github\scripts\Update-ModuleManifest.ps1 -ManifestPath "./src/DLLPickle/DLLPickle.psd1" -NewVersion "1.3.0"
+    $Result = & .\.github\ci-scripts\Update-ModuleVersion.ps1 -ManifestPath "./src/DLLPickle/DLLPickle.psd1" -NewVersion "1.3.0"
     if ($Result.Success) {
         Write-Host "Updated to version $($Result.NewVersion)"
     }
 #>
-
+[CmdletBinding()]
 param(
-    [Parameter(Mandatory = $true)]
-    [ValidateScript({ Test-Path $_ })]
+    [Parameter()]
     [string]$ManifestPath = [System.IO.Path]::Join( (Split-Path -Path (Split-Path -Path $PSScriptRoot)), 'src', 'DLLPickle', 'DLLPickle.psd1' ),
 
     [Parameter(Mandatory = $true)]
     [ValidateNotNullOrEmpty()]
-    $NewVersion
+    [string]$NewVersion
 )
-
-$ErrorActionPreference = 'Stop'
 
 # Read current version before update
 try {
     $OldManifest = Import-PowerShellDataFile -Path $ManifestPath
     $OldVersion = $OldManifest.ModuleVersion
 } catch {
-    Write-Error "Unable to read the current version from the module manifest. $_"
-    exit 1
+    Write-Error "Unable to read the current version from the requested module manifest path. $_"
+}
+
+# Validate new version format
+try {
+    [version]$NewVersion
+} catch {
+    Write-Error "Invalid version format: $NewVersion"
 }
 
 Write-Host "Updating module manifest: $ManifestPath" -ForegroundColor Green
@@ -52,7 +55,7 @@ Write-Host "New version: $NewVersion" -ForegroundColor White
 
 try {
     # Update the manifest
-    Update-ModuleManifest -Path $ManifestPath -ModuleVersion $NewVersion -ErrorAction Stop
+    Update-ModuleManifest -Path $ManifestPath -ModuleVersion $NewVersion -Confirm:$false -ErrorAction Stop
     Write-Host '✓ Module manifest updated' -ForegroundColor Green
 
     # Verify the update
@@ -76,10 +79,10 @@ try {
     $Result = @{
         Success      = $false
         OldVersion   = $OldVersion
-        NewVersion   = $null
+        NewVersion   = $NewVersion
         ManifestPath = $ManifestPath
         ErrorMessage = $_.Exception.Message
     }
 }
 
-Write-Output ([PSCustomObject]$Result)
+$Result
