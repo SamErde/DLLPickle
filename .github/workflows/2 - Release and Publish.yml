@@ -250,7 +250,7 @@ jobs:
 
       - name: Bootstrap
         shell: pwsh
-        run: ./.github/scripts/Actions_Bootstrap.ps1
+        run: ./.github/ci-scripts/Actions_Bootstrap.ps1
 
       - name: Build and Test Module
         shell: pwsh
@@ -268,7 +268,7 @@ jobs:
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: build-artifacts-${{ github.run_number }}
-          path: ./src/Archive
+          path: ./archive
           if-no-files-found: warn
 
   create-release:
