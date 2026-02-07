@@ -1,7 +1,7 @@
 <!-- markdownlint-configure-file { "MD033": false } -->
 # 🥒 DLL Pickle
 
-A PowerShell module that helps you get un-stuck from dependency version conflicts that often occur when trying to connect to multiple Microsoft services.
+A PowerShell module that helps you get un-stuck from dependency version conflicts that can occur when connecting to multiple Microsoft online services.
 
 <!-- badges-start -->
 ![GitHub top language](https://img.shields.io/github/languages/top/SamErde/DLLPickle)

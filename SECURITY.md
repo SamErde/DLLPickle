@@ -12,7 +12,7 @@ Our goal is to have all reports acknowledged within 7 days and resolved within 3
 
 ## 3rd Party Modules
 
-Please report security bugs in third-party modules to the person or team maintaining the module. You can also report a vulnerability through the [npm contact form](https://www.npmjs.com/support) by selecting "I'm reporting a security vulnerability".
+Please report security bugs in third-party modules to the person or team maintaining the module. You can also report a vulnerability through GitHub for the [MSAL packages](https://github.com/AzureAD/microsoft-authentication-library-for-dotnet/security).
 
 ## Public Disclosure
 
