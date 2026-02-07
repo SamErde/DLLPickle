@@ -34,7 +34,7 @@ Generate commit messages for PowerShell projects using this format:
 
 Follow the GitMoji specifications at <https://conventional-emoji-commits.site/full-specification/specification> for commit messages. Tailor commit messages for PowerShell development, using the provided types and scopes.
 
-## PowerShell-Specific Types
+# PowerShell-Specific Commit Types
 
 - feat: ✨ New cmdlet, function, or module feature
 - fix: 🐛 Bug fix in PowerShell code
@@ -50,7 +50,7 @@ Follow the GitMoji specifications at <https://conventional-emoji-commits.site/fu
 - packaging: 📦 Packaging changes, module version updates
 - security: 🔒 Security-related changes, input validation, authentication
 
-## PowerShell Scopes
+# PowerShell Commit Scopes
 
 - module: Module-level changes
 - cmdlet: Specific cmdlet modifications
@@ -59,7 +59,7 @@ Follow the GitMoji specifications at <https://conventional-emoji-commits.site/fu
 - manifest: Module manifest updates
 - tests: Test-related changes
 
-## Example Commit Messages with GitMoji
+# Example Commit Messages with GitMoji
 
 ✨ feat(cmdlet): add Get-UserProfile with parameter validation
 🐛 fix(function): resolve Invoke-ApiCall error handling
