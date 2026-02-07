@@ -74,7 +74,7 @@ jobs:
         run: |
           # Use Get-VersionBump function to determine current and new versions.
           Write-Host "Analyzing conventional commits..."
-          $VersionResult  = & ./.github/co-scripts/Get-VersionBump.ps1
+          $VersionResult  = & ./.github/ci-scripts/Get-VersionBump.ps1
           $ShouldRelease  = $VersionResult.ShouldRelease
           $NewVersionType = $VersionResult.NewVersionType
           $NewVersion     = $VersionResult.NewVersion
