@@ -22,7 +22,7 @@
       },
       "extensions": [
         "ms-vscode.powershell",
-        "ms-vscode.csharp",
+        "ms-dotnettools.csharp",
         "davidanson.vscode-markdownlint",
         "streetsidesoftware.code-spell-checker"
       ]
