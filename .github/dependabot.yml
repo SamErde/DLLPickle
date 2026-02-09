@@ -7,6 +7,7 @@
 
 version: 2
 updates:
+
   - package-ecosystem: "devcontainers"
     directory: "/"
     schedule:
@@ -14,10 +15,10 @@ updates:
       day: "sunday"
       time: "16:00"
 
-  - package-ecosystem: docker
-    directory: /.devcontainer
+  - package-ecosystem: "docker"
+    directory: "/.devcontainer"
     schedule:
-      interval: weekly
+      interval: "weekly"
       day: "sunday"
       time: "16:00"
 
@@ -34,8 +35,8 @@ updates:
       prefix: "ci"
       prefix-development: "ci"
 
-  - package-ecosystem: nuget
-    directory: /src/DLLPickle.Build/
+  - package-ecosystem: "nuget"
+    directory: "/src/DLLPickle.Build/"
     schedule:
       interval: "weekly"
       day: "sunday"
@@ -48,15 +49,8 @@ updates:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
 
-  - package-ecosystem: "dotnet-sdk"
-    directory: /src/DLLPickle.Build/
-    schedule:
-      interval: "weekly"
-      day: "sunday"
-      time: "16:00"
-
-  - package-ecosystem: pip
-    directory: /docs/
+  - package-ecosystem: "pip"
+    directory: "/docs/"
     schedule:
       interval: "weekly"
       day: "sunday"
@@ -64,10 +58,3 @@ updates:
     commit-message:
       prefix: "docs"
       prefix-development: "docs"
-
-  - package-ecosystem: "gitsubmodule"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-      day: "sunday"
-      time: "16:00"
