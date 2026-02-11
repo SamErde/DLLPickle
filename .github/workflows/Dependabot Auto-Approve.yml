@@ -1,7 +1,7 @@
 name: 🤖 Dependabot Auto-Approve NuGet Package Updates
 on: pull_request
 
-permissions: {} # Restrictive default - grant explicitly at job level
+permissions: {}
 
 concurrency:
   group: dependabot-approve-${{ github.event.pull_request.number }}
@@ -11,24 +11,27 @@ jobs:
   dependabot:
     runs-on: ubuntu-latest
     if: github.actor == 'dependabot[bot]'
-    permissions:
-      pull-requests: write # Required to approve PRs
-      contents: read # Required for gh CLI to query PR files
+    # Permissions are now handled by the App Token, so we don't need job-level overrides
 
     steps:
+      - name: Generate GitHub App Token
+        id: generate_token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
 
       - name: Fetch Dependabot metadata
         id: metadata
         uses: dependabot/fetch-metadata@v1
         with:
-          github-token: "${{ secrets.GITHUB_TOKEN }}"
+          # REPLACED
+          github-token: "${{ steps.generate_token.outputs.token }}"
 
       - name: Check if NuGet packages were updated
         id: nuget_check
         run: |
           set -e
-
-          # Check if PR modifies .csproj or packages.lock.json
           MATCHING_FILES=$(gh pr view "$PR_NUMBER" --json files --jq '
             .files[].path | select(
               . == "src/DLLPickle.Build/DLLPickle.csproj" or
@@ -38,13 +41,12 @@ jobs:
 
           if [ -n "$MATCHING_FILES" ]; then
             echo "is_nuget_update=true" >> "$GITHUB_OUTPUT"
-            echo "✓ PR modifies NuGet package files"
           else
             echo "is_nuget_update=false" >> "$GITHUB_OUTPUT"
-            echo "ℹ PR does not modify NuGet package files"
           fi
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # REPLACED
+          GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
 
       - name: Dependency Review
@@ -52,7 +54,6 @@ jobs:
         if: steps.nuget_check.outputs.is_nuget_update == 'true'
 
       - name: Approve and auto-merge NuGet patch/minor updates
-        # Only approve patch and minor updates (ignores major version jumps)
         if: |
           steps.nuget_check.outputs.is_nuget_update == 'true' &&
           steps.metadata.outputs.update-type != 'version-update:semver-major'
@@ -62,10 +63,10 @@ jobs:
           gh pr merge --auto --squash "$PR_URL"
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # REPLACED
+          GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}
 
       - name: Skip major version updates
-        # Explicitly skip major versions to flag them for manual review
         if: |
           steps.nuget_check.outputs.is_nuget_update == 'true' &&
           steps.metadata.outputs.update-type == 'version-update:semver-major'
