@@ -17,6 +17,13 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - name: Generate GitHub App Token
+        id: generate_token  # This ID matches what you use later
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
       # 1. Add this step to ensure MSBuild is available in the PATH
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v2
@@ -61,13 +68,13 @@ jobs:
         if: always()
         uses: dorny/test-reporter@v2
         with:
-          # Use the token from your GitHub App step
+          #token: ${{ secrets.GITHUB_TOKEN }}
           token: ${{ steps.generate_token.outputs.token }}
-          
+
           name: 🚀 Unit Test Results
           path: '**/TestResults/*.trx'
           reporter: dotnet-trx
-          
+
           # v2 specific: Enhanced UI options
           only-summary: 'false'      # Creates both a Check Run and a Job Summary
           list-tests: 'failed'       # Clean view: only shows what broke
