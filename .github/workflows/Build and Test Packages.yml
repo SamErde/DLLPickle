@@ -28,8 +28,16 @@ jobs:
           dotnet-version: '8.0.x' # 4.8.x removed (it's already on the OS)
 
       - name: Restore dependencies
-        # Added --force to ensure local lock file assemblies are handled correctly
-        run: dotnet restore src/DLLPickle.Build/DLLPickle.csproj --locked-mode
+        # If it's Dependabot, allow it to fix the lock file. Otherwise, keep --locked-mode for strict safety.
+        run: |
+          if ("${{ github.actor }}" -eq "dependabot[bot]") {
+            echo "🤖 Dependabot detected: Updating lock file via --force-evaluate"
+            dotnet restore src/DLLPickle.Build/DLLPickle.csproj --force-evaluate
+          } else {
+            echo "👤 Standard user: Running strict --locked-mode restore"
+            dotnet restore src/DLLPickle.Build/DLLPickle.csproj --locked-mode
+          }
+        shell: pwsh
 
       - name: Build
         run: dotnet build src/DLLPickle.Build/DLLPickle.csproj --configuration Release --no-restore
