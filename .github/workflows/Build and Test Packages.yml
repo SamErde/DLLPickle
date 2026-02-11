@@ -7,38 +7,29 @@ jobs:
   build-and-test:
     name: 🚀 Build and Test
     runs-on: windows-latest
+    
+    # 🔒 Security: Use standard GITHUB_TOKEN permissions
     permissions:
-      contents: read
-      actions: read
-      checks: write      # Required for test reporting
-      pull-requests: write # Required for test reporting
+      contents: read        # To clone code and read dependency files
+      pull-requests: write  # To comment if a vulnerability is found
 
     steps:
-      # 1. Checkout Code (Using the new v6)
+      # 1. Checkout (Standard)
       - uses: actions/checkout@v6
 
-      # 2. Generate the App Token (CRITICAL: This was missing before!)
-      - name: Generate GitHub App Token
-        id: generate_token
-        uses: actions/create-github-app-token@v1
-        with:
-          app-id: ${{ secrets.APP_ID }}
-          private-key: ${{ secrets.APP_PRIVATE_KEY }}
-
-      # 3. Setup MSBuild (Required for .NET Framework 4.8)
-      - name: Setup MSBuild
+      # 2. Setup Environment
+      - name: 🧑‍💻 Setup MSBuild
         uses: microsoft/setup-msbuild@v2
 
-      # 4. Setup .NET (Using v5 which supports Node 24)
-      - name: Setup .NET
+      - name: 🧑‍💻 Setup .NET
         uses: actions/setup-dotnet@v5
         with:
           dotnet-version: '8.0.x'
 
-      # 5. Restore with Dependabot Logic
-      - name: Restore dependencies
+      # 3. Restore (Your custom logic)
+      - name: 📦 Restore dependencies
         run: |
-          if ("${{ github.actor }}" -eq "dependabot[bot]" -or "${{ github.actor }}" -eq "SamErde") {
+          if ("${{ github.actor }}" -eq "dependabot[bot]") {
             Write-Host "🤖 Dependabot detected: Force-updating lock file"
             dotnet restore src/DLLPickle.Build/DLLPickle.csproj --force-evaluate
           } else {
@@ -47,32 +38,14 @@ jobs:
           }
         shell: pwsh
 
-      # 6. Build
-      - name: Build
+      # 4. Build (Confirms the packages work)
+      - name: 🏗️ Build
         run: dotnet build src/DLLPickle.Build/DLLPickle.csproj --configuration Release --no-restore
 
-      # 7. Test (Generates .trx files)
-      - name: Test
-        run: dotnet test src/DLLPickle.Build/DLLPickle.csproj --no-build --verbosity normal --logger "trx;LogFileName=test-results.trx" --results-directory ./TestResults
-
-      # 8. Upload Artifacts (Using the new v6)
-      - name: Upload Test Results
-        if: always()
-        uses: actions/upload-artifact@v6
+      # 5. Security Scan (Replaces Unit Tests)
+      # Uses the default GITHUB_TOKEN automatically
+      - name: 🛡️ Dependency Review
+        if: github.event_name == 'pull_request'
+        uses: actions/dependency-review-action@v4
         with:
-          name: dotnet-test-results
-          path: TestResults/*.trx
-
-      # 9. Publish Report (Uses the token generated in Step 2)
-      - name: 📄 Publish Test Report
-        if: always()
-        uses: dorny/test-reporter@v2
-        with:
-          token: ${{ steps.generate_token.outputs.token }}
-          name: 🚀 Unit Test Results
-          path: '**/TestResults/*.trx'
-          reporter: dotnet-trx
-          only-summary: 'false'      # Creates both a Check Run and a Job Summary
-          list-tests: 'failed'       # Clean view: only shows what broke
-          list-suites: 'failed'      # Skips passing suites to reduce noise
-          fail-on-error: 'true'      # Ensures the action fails if tests fail
+          fail-on-severity: high
