@@ -1,0 +1,41 @@
+name: CI Build & Test
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    name: 🚀 Build and Test
+    # CHANGE: Switch from ubuntu-latest to windows-latest
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          # CHANGE: Install both versions to support multi-targeting
+          dotnet-version: |
+            4.8.x
+            8.0.x
+
+      - name: Restore dependencies
+        # Added --force to ensure local lock file assemblies are handled correctly
+        run: dotnet restore src/DLLPickle.Build/DLLPickle.csproj --locked-mode
+
+      - name: Build
+        run: dotnet build src/DLLPickle.Build/DLLPickle.csproj --configuration Release --no-restore
+
+      - name: Test
+        # We add --logger trx to generate a machine-readable report
+        # We specify a results directory so the upload step knows where to look
+        run: dotnet test src/DLLPickle.Build/DLLPickle.csproj --no-build --verbosity normal --logger "trx;LogFileName=test-results.trx" --results-directory TestResults
+
+      - name: Upload Test Results
+        # This runs even if the 'Test' step fails (which is when you need it most!)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dotnet-test-results
+          path: TestResults/*.trx
