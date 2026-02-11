@@ -7,7 +7,6 @@
 
 version: 2
 updates:
-
   - package-ecosystem: "devcontainers"
     directory: "/"
     schedule:
@@ -30,7 +29,7 @@ updates:
       time: "16:00"
     groups:
       all-actions:
-        patterns: [ "*" ]
+        patterns: ["*"]
     commit-message:
       prefix: "ci"
       prefix-development: "ci"

@@ -1,0 +1,68 @@
+name: CI Build & Test
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    name: 🚀 Build and Test
+    # CHANGE: Switch from ubuntu-latest to windows-latest
+    runs-on: windows-latest
+    permissions:
+      contents: read
+      actions: read
+      checks: write  # Needed for test reporting
+      pull-requests: write  # Needed for test reporting
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # 1. Add this step to ensure MSBuild is available in the PATH
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      # 2. Install only the modern .NET SDK (which can build legacy targets)
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x' # 4.8.x removed (it's already on the OS)
+
+      - name: Restore dependencies
+        # If it's Dependabot, allow it to fix the lock file. Otherwise, keep --locked-mode for strict safety.
+        run: |
+          if ("${{ github.actor }}" -eq "dependabot[bot]") {
+            echo "🤖 Dependabot detected: Updating lock file via --force-evaluate"
+            dotnet restore src/DLLPickle.Build/DLLPickle.csproj --force-evaluate
+          } else {
+            echo "👤 Standard user: Running strict --locked-mode restore"
+            dotnet restore src/DLLPickle.Build/DLLPickle.csproj --locked-mode
+          }
+        shell: pwsh
+
+      - name: Build
+        run: dotnet build src/DLLPickle.Build/DLLPickle.csproj --configuration Release --no-restore
+
+      - name: Test
+        # We add --logger trx to generate a machine-readable report
+        # We specify a results directory so the upload step knows where to look
+        run: dotnet test src/DLLPickle.Build/DLLPickle.csproj --no-build --verbosity normal --logger "trx;LogFileName=test-results.trx" --results-directory TestResults
+
+      - name: Upload Test Results
+        # This runs even if the 'Test' step fails (which is when you need it most!)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dotnet-test-results
+          path: TestResults/*.trx
+
+      - name: 📄 Publish Test Report
+        # Use if: always() so you get a report even when tests fail
+        if: always()
+        uses: dorny/test-reporter@v1
+        with:
+          name: 🚀 Unit Test Results  # Name that appears in GitHub UI
+          path: 'TestResults/*.trx'
+          reporter: dotnet-trx
+          # This specifically adds the report to the Actions Summary page
+          only-summary: 'false'
+          list-tests: 'failed'    # Shows a list of specifically which tests failed
