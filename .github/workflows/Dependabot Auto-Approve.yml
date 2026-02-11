@@ -14,7 +14,15 @@ jobs:
     permissions:
       pull-requests: write # Required to approve PRs
       contents: read # Required for gh CLI to query PR files
+
     steps:
+
+      - name: Fetch Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@v1
+        with:
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+
       - name: Check if NuGet packages were updated
         id: nuget_check
         run: |
@@ -30,21 +38,36 @@ jobs:
 
           if [ -n "$MATCHING_FILES" ]; then
             echo "is_nuget_update=true" >> "$GITHUB_OUTPUT"
-            echo "✓ PR modifies NuGet package files:"
-            echo "$MATCHING_FILES"
+            echo "✓ PR modifies NuGet package files"
           else
             echo "is_nuget_update=false" >> "$GITHUB_OUTPUT"
-            echo "✗ PR does not modify NuGet package files - skipping"
+            echo "ℹ PR does not modify NuGet package files"
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
 
-      - name: Approve PR
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v3
         if: steps.nuget_check.outputs.is_nuget_update == 'true'
+
+      - name: Approve and auto-merge NuGet patch/minor updates
+        # Only approve patch and minor updates (ignores major version jumps)
+        if: |
+          steps.nuget_check.outputs.is_nuget_update == 'true' &&
+          steps.metadata.outputs.update-type != 'version-update:semver-major'
         run: |
           set -e
-          gh pr review --approve "$PR_URL" --body "✅ Auto-approved: NuGet version update (constrained by .csproj version limits)"
+          gh pr review --approve "$PR_URL" --body "✅ Auto-approved: NuGet ${{ steps.metadata.outputs.update-type }} update"
+          gh pr merge --auto --squash "$PR_URL"
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Skip major version updates
+        # Explicitly skip major versions to flag them for manual review
+        if: |
+          steps.nuget_check.outputs.is_nuget_update == 'true' &&
+          steps.metadata.outputs.update-type == 'version-update:semver-major'
+        run: |
+          echo "⏭️ Skipping major version update - requires manual review"
