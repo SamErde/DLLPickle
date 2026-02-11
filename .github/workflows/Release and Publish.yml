@@ -7,9 +7,7 @@ on:
       - main
     paths:
       - "src/DLLPickle/**"
-      - "!src/Archive/**"
-      - "!src/Artifacts/**"
-      - "!**.md"
+      - "module/**"
   workflow_dispatch:
     inputs:
       version_bump:
@@ -60,11 +58,6 @@ jobs:
       trigger_source: ${{ steps.determine_version.outputs.trigger_source }}
 
     steps:
-      - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@e3f713f2d8f53843e71c69a996d56f51aa9adfb9 # v2.14.1
-        with:
-          egress-policy: audit
-
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -81,7 +74,7 @@ jobs:
         run: |
           # Use Get-VersionBump function to determine current and new versions.
           Write-Host "Analyzing conventional commits..."
-          $VersionResult  = & ./.github/scripts/Get-VersionBump.ps1
+          $VersionResult  = & ./.github/ci-scripts/Get-VersionBump.ps1
           $ShouldRelease  = $VersionResult.ShouldRelease
           $NewVersionType = $VersionResult.NewVersionType
           $NewVersion     = $VersionResult.NewVersion
@@ -171,7 +164,7 @@ jobs:
 
     steps:
       - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@e3f713f2d8f53843e71c69a996d56f51aa9adfb9 # v2.14.1
+        uses: step-security/harden-runner@5ef0c079ce82195b2a36a210272d6b661572d83e # v2.14.2
         with:
           egress-policy: audit
 
@@ -185,7 +178,7 @@ jobs:
       - name: Update module manifest version
         shell: pwsh
         run: |
-          $updateResult = & ./.github/scripts/Update-ModuleVersion.ps1 -ManifestPath "$($env:MANIFEST_PATH)" -NewVersion "${{ needs.analyze.outputs.new_version }}"
+          $updateResult = & ./.github/ci-scripts/Update-ModuleVersion.ps1 -ManifestPath "$($env:MANIFEST_PATH)" -NewVersion "${{ needs.analyze.outputs.new_version }}"
 
           if (-not $updateResult.Success) {
               Write-Error "Failed to update module manifest: $($updateResult.ErrorMessage)"
@@ -238,7 +231,7 @@ jobs:
 
     steps:
       - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@e3f713f2d8f53843e71c69a996d56f51aa9adfb9 # v2.14.1
+        uses: step-security/harden-runner@5ef0c079ce82195b2a36a210272d6b661572d83e # v2.14.2
         with:
           egress-policy: audit
 
@@ -257,7 +250,7 @@ jobs:
 
       - name: Bootstrap
         shell: pwsh
-        run: ./.github/scripts/Actions_Bootstrap.ps1
+        run: ./.github/ci-scripts/Actions_Bootstrap.ps1
 
       - name: Build and Test Module
         shell: pwsh
@@ -275,7 +268,7 @@ jobs:
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: build-artifacts-${{ github.run_number }}
-          path: ./src/Archive
+          path: ./archive
           if-no-files-found: warn
 
   create-release:
@@ -285,7 +278,7 @@ jobs:
 
     steps:
       - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@e3f713f2d8f53843e71c69a996d56f51aa9adfb9 # v2.14.1
+        uses: step-security/harden-runner@5ef0c079ce82195b2a36a210272d6b661572d83e # v2.14.2
         with:
           egress-policy: audit
 
@@ -394,7 +387,7 @@ jobs:
 
     steps:
       - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@e3f713f2d8f53843e71c69a996d56f51aa9adfb9 # v2.14.1
+        uses: step-security/harden-runner@5ef0c079ce82195b2a36a210272d6b661572d83e # v2.14.2
         with:
           egress-policy: audit
 
@@ -469,7 +462,7 @@ jobs:
 
     steps:
       - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@e3f713f2d8f53843e71c69a996d56f51aa9adfb9 # v2.14.1
+        uses: step-security/harden-runner@5ef0c079ce82195b2a36a210272d6b661572d83e # v2.14.2
         with:
           egress-policy: audit
 
