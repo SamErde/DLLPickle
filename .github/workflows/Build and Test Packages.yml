@@ -45,7 +45,7 @@ jobs:
       - name: Test
         # We add --logger trx to generate a machine-readable report
         # We specify a results directory so the upload step knows where to look
-        run: dotnet test src/DLLPickle.Build/DLLPickle.csproj --no-build --verbosity normal --logger "trx;LogFileName=test-results.trx" --results-directory TestResults
+        run: dotnet test src/DLLPickle.Build/DLLPickle.csproj --no-build --verbosity normal --logger "trx;LogFileName=test-results.trx" --results-directory ./TestResults
 
       - name: Upload Test Results
         # This runs even if the 'Test' step fails (which is when you need it most!)
@@ -61,8 +61,9 @@ jobs:
         uses: dorny/test-reporter@v2
         with:
           name: 🚀 Unit Test Results  # Name that appears in GitHub UI
-          path: 'TestResults/*.trx'
+          path: '**/TestResults/*.trx'
           reporter: dotnet-trx
+          token: ${{ steps.generate_token.outputs.token }}
           # This specifically adds the report to the Actions Summary page
           only-summary: 'false'
           list-tests: 'failed'    # Shows a list of specifically which tests failed
