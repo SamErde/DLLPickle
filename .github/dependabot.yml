@@ -7,17 +7,54 @@
 
 version: 2
 updates:
-  - package-ecosystem: docker
-    directory: /.devcontainer
-    schedule:
-      interval: daily
 
-  - package-ecosystem: github-actions
-    directory: /
+  - package-ecosystem: "devcontainers"
+    directory: "/"
     schedule:
-      interval: daily
+      interval: "weekly"
+      day: "sunday"
+      time: "16:00"
 
-  - package-ecosystem: nuget
-      directory: /
-      schedule:
-        interval: daily
+  - package-ecosystem: "docker"
+    directory: "/.devcontainer"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+      time: "16:00"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+      time: "16:00"
+    groups:
+      all-actions:
+        patterns: [ "*" ]
+    commit-message:
+      prefix: "ci"
+      prefix-development: "ci"
+
+  - package-ecosystem: "nuget"
+    directory: "/src/DLLPickle.Build/"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+      time: "16:00"
+    commit-message:
+      prefix: "deps"
+      prefix-development: "deps"
+    # Only auto-approve non-major updates (handled by workflow)
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: "pip"
+    directory: "/docs/"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+      time: "16:00"
+    commit-message:
+      prefix: "docs"
+      prefix-development: "docs"

@@ -26,42 +26,32 @@
       "shell": {
         // "executable": "powershell.exe",
         "executable": "pwsh.exe",
-        "args": [
-          "-NoProfile",
-          "-ExecutionPolicy",
-          "Bypass",
-          "-Command"
-        ]
+        "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command"]
       }
     }
   },
   "linux": {
     "options": {
       "shell": {
-        "executable": "/usr/bin/pwsh",
-        "args": [
-          "-NoProfile",
-          "-Command"
-        ]
+        "executable": "pwsh",
+        "args": ["-NoProfile", "-Command"]
       }
     }
   },
   "osx": {
     "options": {
       "shell": {
-        "executable": "/usr/local/bin/pwsh",
-        "args": [
-          "-NoProfile",
-          "-Command"
-        ]
+        "executable": "pwsh",
+        "args": ["-NoProfile", "-Command"]
       }
     }
   },
   "tasks": [
     {
       "label": ".",
+      "description": "Default build task",
       "type": "shell",
-      "command": "$PSVersionTable;Invoke-Build -Task . -File '${workspaceFolder}/src/${workspaceFolderBasename}.Build.ps1'",
+      "command": "$PSVersionTable;Invoke-Build -Task . -File ''${workspaceFolder}/build/${workspaceFolderBasename}.Build.ps1''",
       "problemMatcher": "$msCompile",
       "presentation": {
         "echo": false,
@@ -74,8 +64,9 @@
     },
     {
       "label": "TestLocal",
+      "description": "Run tests locally without integration tests",
       "type": "shell",
-      "command": "Invoke-Build -Task TestLocal -File '${workspaceFolder}/src/${workspaceFolderBasename}.Build.ps1'",
+      "command": "Invoke-Build -Task TestLocal -File ''${workspaceFolder}/build/${workspaceFolderBasename}.Build.ps1''",
       "problemMatcher": "$msCompile",
       "presentation": {
         "echo": false,
@@ -85,8 +76,9 @@
     },
     {
       "label": "HelpLocal",
+      "description": "Generate local help documentation",
       "type": "shell",
-      "command": "Invoke-Build -Task HelpLocal -File '${workspaceFolder}/src/${workspaceFolderBasename}.Build.ps1'",
+      "command": "Invoke-Build -Task HelpLocal -File ''${workspaceFolder}/build/${workspaceFolderBasename}.Build.ps1''",
       "problemMatcher": "$msCompile",
       "presentation": {
         "echo": false,
@@ -96,8 +88,9 @@
     },
     {
       "label": "Clean",
+      "description": "Clean build artifacts and temporary files",
       "type": "shell",
-      "command": "Invoke-Build -Task Clean -File '${workspaceFolder}/src/${workspaceFolderBasename}.Build.ps1'",
+      "command": "Invoke-Build -Task Clean -File ''${workspaceFolder}/build/${workspaceFolderBasename}.Build.ps1''",
       "problemMatcher": "$msCompile",
       "presentation": {
         "echo": false,
@@ -107,8 +100,9 @@
     },
     {
       "label": "ValidateRequirements",
+      "description": "Validate project requirements are met",
       "type": "shell",
-      "command": "Invoke-Build -Task ValidateRequirements -File '${workspaceFolder}/src/${workspaceFolderBasename}.Build.ps1'",
+      "command": "Invoke-Build -Task ValidateRequirements -File ''${workspaceFolder}/build/${workspaceFolderBasename}.Build.ps1''",
       "problemMatcher": "$msCompile",
       "presentation": {
         "echo": false,
@@ -118,9 +112,10 @@
     },
     {
       "label": "Analyze",
+      "description": "Run PowerShell script analysis",
       "type": "shell",
+      "command": "Invoke-Build -Task Analyze -File ''${workspaceFolder}/build/${workspaceFolderBasename}.Build.ps1''",
       "problemMatcher": "$msCompile",
-      "command": "Invoke-Build -Task Analyze -File '${workspaceFolder}/src/${workspaceFolderBasename}.Build.ps1'",
       "presentation": {
         "echo": false,
         "showReuseMessage": false
@@ -129,8 +124,9 @@
     },
     {
       "label": "AnalyzeTests",
+      "description": "Analyze test files for issues",
       "type": "shell",
-      "command": "Invoke-Build -Task AnalyzeTests -File '${workspaceFolder}/src/${workspaceFolderBasename}.Build.ps1'",
+      "command": "Invoke-Build -Task AnalyzeTests -File ''${workspaceFolder}/build/${workspaceFolderBasename}.Build.ps1''",
       "problemMatcher": "$msCompile",
       "presentation": {
         "echo": false,
@@ -140,8 +136,9 @@
     },
     {
       "label": "FormattingCheck",
+      "description": "Check code formatting compliance",
       "type": "shell",
-      "command": "Invoke-Build -Task FormattingCheck -File '${workspaceFolder}/src/${workspaceFolderBasename}.Build.ps1'",
+      "command": "Invoke-Build -Task FormattingCheck -File ''${workspaceFolder}/build/${workspaceFolderBasename}.Build.ps1''",
       "problemMatcher": "$msCompile",
       "presentation": {
         "echo": false,
@@ -151,8 +148,9 @@
     },
     {
       "label": "Test",
+      "description": "Run all tests (unit and integration)",
       "type": "shell",
-      "command": "Invoke-Build -Task Test -File '${workspaceFolder}/src/${workspaceFolderBasename}.Build.ps1'",
+      "command": "Invoke-Build -Task Test -File ''${workspaceFolder}/build/${workspaceFolderBasename}.Build.ps1''",
       "problemMatcher": "$msCompile",
       "presentation": {
         "echo": false,
@@ -165,8 +163,9 @@
     },
     {
       "label": "DevCC",
+      "description": "Generate code coverage report for development",
       "type": "shell",
-      "command": "Invoke-Build -Task DevCC -File '${workspaceFolder}/src/${workspaceFolderBasename}.Build.ps1'",
+      "command": "Invoke-Build -Task DevCC -File ''${workspaceFolder}/build/${workspaceFolderBasename}.Build.ps1''",
       "problemMatcher": "$msCompile",
       "presentation": {
         "echo": false,
@@ -176,8 +175,9 @@
     },
     {
       "label": "Build",
+      "description": "Full build with all validations",
       "type": "shell",
-      "command": "Invoke-Build -Task Build -File '${workspaceFolder}/src/${workspaceFolderBasename}.Build.ps1'",
+      "command": "Invoke-Build -Task Build -File ''${workspaceFolder}/build/${workspaceFolderBasename}.Build.ps1''",
       "problemMatcher": "$msCompile",
       "presentation": {
         "echo": false,
@@ -187,8 +187,9 @@
     },
     {
       "label": "BuildNoIntegration",
+      "description": "Build without integration tests",
       "type": "shell",
-      "command": "Invoke-Build -Task BuildNoIntegration -File '${workspaceFolder}/src/${workspaceFolderBasename}.Build.ps1'",
+      "command": "Invoke-Build -Task BuildNoIntegration -File ''${workspaceFolder}/build/${workspaceFolderBasename}.Build.ps1''",
       "problemMatcher": "$msCompile",
       "presentation": {
         "echo": false,
@@ -198,8 +199,9 @@
     },
     {
       "label": "IntegrationTest",
+      "description": "Run integration tests only",
       "type": "shell",
-      "command": "Invoke-Build -Task IntegrationTest -File '${workspaceFolder}/src/${workspaceFolderBasename}.Build.ps1'",
+      "command": "Invoke-Build -Task IntegrationTest -File ''${workspaceFolder}/build/${workspaceFolderBasename}.Build.ps1''",
       "problemMatcher": "$msCompile",
       "presentation": {
         "echo": false,
@@ -209,15 +211,21 @@
     },
     {
       "label": "PesterTest",
+      "description": "Run Pester unit tests with detailed output",
       "type": "shell",
-      "command": "Invoke-Pester '${workspaceFolder}/src/Tests/Unit' -Output Detailed",
+      "command": "Invoke-Pester '${workspaceFolder}/tests/Unit' -Output Detailed",
       "problemMatcher": "$pester",
+      "presentation": {
+        "echo": false,
+        "showReuseMessage": false
+      },
       "group": "test"
     },
     {
       "label": "Pester-Single-Coverage",
+      "description": "Run single test with code coverage",
       "type": "shell",
-      "command": "Import-Module -Name '${workspaceFolder}/src/${workspaceFolderBasename}/${workspaceFolderBasename}.psm1';$pesterConfig = New-PesterConfiguration;$pesterConfig.run.Path = '${workspaceFolder}/src/Tests/Unit/*/${input:functionName}.Tests.ps1';$pesterConfig.CodeCoverage.Enabled = $true;$pesterConfig.CodeCoverage.Path = '${workspaceFolder}/src/${workspaceFolderBasename}/*/${input:functionName}.ps1';Invoke-Pester -Configuration $pesterConfig",
+      "command": "Import-Module -Name '${workspaceFolder}/src/${workspaceFolderBasename}/${workspaceFolderBasename}.psm1';$pesterConfig = New-PesterConfiguration;$pesterConfig.run.Path = '${workspaceFolder}/tests/Unit/*/${input:functionName}.Tests.ps1';$pesterConfig.CodeCoverage.Enabled = $true;$pesterConfig.CodeCoverage.Path = '${workspaceFolder}/src/${workspaceFolderBasename}/*/${input:functionName}.ps1';Invoke-Pester -Configuration $pesterConfig",
       "problemMatcher": "$pester",
       "presentation": {
         "echo": false,
@@ -227,8 +235,9 @@
     },
     {
       "label": "Pester-Single-Detailed",
+      "description": "Run single test with detailed output",
       "type": "shell",
-      "command": "Import-Module -Name '${workspaceFolder}/src/${workspaceFolderBasename}/${workspaceFolderBasename}.psm1';Invoke-Pester '${workspaceFolder}/src/Tests/Unit/*/${input:functionName}.Tests.ps1' -Output Detailed",
+      "command": "Import-Module -Name '${workspaceFolder}/src/${workspaceFolderBasename}/${workspaceFolderBasename}.psm1';Invoke-Pester '${workspaceFolder}/tests/Unit/*/${input:functionName}.Tests.ps1' -Output Detailed",
       "problemMatcher": "$pester",
       "presentation": {
         "echo": false,
@@ -238,8 +247,9 @@
     },
     {
       "label": "DevCC-Single",
+      "description": "Generate code coverage for single test",
       "type": "shell",
-      "command": "Import-Module -Name '${workspaceFolder}/src/${workspaceFolderBasename}/${workspaceFolderBasename}.psm1';$pesterConfig = New-PesterConfiguration;$pesterConfig.run.Path = '${workspaceFolder}/src/Tests/Unit/*/${input:functionName}.Tests.ps1';$pesterConfig.CodeCoverage.Enabled = $true;$pesterConfig.CodeCoverage.Path = '${workspaceFolder}/src/${workspaceFolderBasename}/*/${input:functionName}.ps1';$pesterConfig.CodeCoverage.OutputPath = '${workspaceFolder}/cov.xml';$pesterConfig.CodeCoverage.OutputFormat = 'CoverageGutters';Invoke-Pester -Configuration $pesterConfig",
+      "command": "Import-Module -Name '${workspaceFolder}/src/${workspaceFolderBasename}/${workspaceFolderBasename}.psm1';$pesterConfig = New-PesterConfiguration;$pesterConfig.run.Path = '${workspaceFolder}/tests/Unit/*/${input:functionName}.Tests.ps1';$pesterConfig.CodeCoverage.Enabled = $true;$pesterConfig.CodeCoverage.Path = '${workspaceFolder}/src/${workspaceFolderBasename}/*/${input:functionName}.ps1';$pesterConfig.CodeCoverage.OutputPath = '${workspaceFolder}/cov.xml';$pesterConfig.CodeCoverage.OutputFormat = 'CoverageGutters';Invoke-Pester -Configuration $pesterConfig",
       "problemMatcher": "$pester",
       "presentation": {
         "echo": false,
@@ -249,8 +259,9 @@
     },
     {
       "label": "Integration-Single-Detailed",
+      "description": "Run single integration test with detailed output",
       "type": "shell",
-      "command": "Import-Module -Name '${workspaceFolder}/src/${workspaceFolderBasename}/${workspaceFolderBasename}.psm1';Invoke-Pester '${workspaceFolder}/src/Tests/Integration/*/${input:functionName}.Tests.ps1' -Output Detailed",
+      "command": "Import-Module -Name '${workspaceFolder}/src/${workspaceFolderBasename}/${workspaceFolderBasename}.psm1';Invoke-Pester '${workspaceFolder}/tests/Integration/*/${input:functionName}.Tests.ps1' -Output Detailed",
       "problemMatcher": "$pester",
       "presentation": {
         "echo": false,

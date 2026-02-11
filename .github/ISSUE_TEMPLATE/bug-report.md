@@ -7,6 +7,7 @@ assignees: SamErde
 
 ---
 <!--- Provide a general summary of the issue in the Title above -->
+## Description
 
 ### Expected Behavior
 <!--- Tell us what should happen -->

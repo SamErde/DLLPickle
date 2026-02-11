@@ -1,19 +1,33 @@
-# Project Files #
-Archive
-Artifacts
+# CI Artifacts
+archive
+artifacts
 cov.xml
 coverage.xml
-output/
-Scratch/
 testResults.xml
 
+# Staged Module Output
+module/
+
+# .NET build artifacts
+**/bin/
+**/obj/
+
+# NuGet
+*.nupkg
+packages/
+.nuget/
+
 ### VisualStudioCode ###
+.vs/
 .vscode/*
 !.vscode/settings.json
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
 !.vscode/*.code-snippets
+
+### Codacy ###
+.codacy/*
 
 ### OS ###
 Thumbs.db
@@ -23,6 +37,4 @@ Thumbs.db
 .Spotlight-V100
 .Trashes
 ehthumbs.db
-
-### Codacy ###
-.codacy/*
+Desktop.ini

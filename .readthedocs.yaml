@@ -11,6 +11,7 @@ build:
   os: ubuntu-22.04
   tools:
     python: "3.12"
+  fail_on_warning: true
 
 mkdocs:
   configuration: mkdocs.yml
@@ -19,7 +20,5 @@ python:
   install:
     - requirements: docs/requirements.txt
 
-# # Build PDF & ePub
-formats: all
-#   - epub
-#   - pdf
+# Build HTML only (faster, PDF/ePub often unused)
+formats: []
