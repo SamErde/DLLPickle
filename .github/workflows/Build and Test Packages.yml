@@ -5,7 +5,7 @@ on:
     paths:
       - 'src/DLLPickle.Build/**'
       - 'packages.lock.json'
-      - '.github/workflows/ci.yml'
+      - '.github/workflows/Build and Test Packages.yml'
 
 jobs:
   build-and-test:
@@ -18,19 +18,19 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Setup MSBuild
+      - name: 👷 Setup MSBuild
         uses: microsoft/setup-msbuild@v2
 
-      - name: Setup .NET
+      - name: 🧑‍💻 Setup .NET
         uses: actions/setup-dotnet@v5
         with:
           dotnet-version: '8.0.x'
 
-      - name: Restore dependencies
+      - name: 📦 Restore dependencies
         run: dotnet restore src/DLLPickle.Build/DLLPickle.csproj --force-evaluate
         shell: pwsh
 
-      - name: Build
+      - name: 🏗️ Build
         run: dotnet build src/DLLPickle.Build/DLLPickle.csproj --configuration Release --no-restore
 
       - name: 🛡️ Dependency Review
