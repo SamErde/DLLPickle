@@ -15,7 +15,7 @@ jobs:
       pull-requests: write  # Needed for test reporting
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       # 1. Add this step to ensure MSBuild is available in the PATH
       - name: Setup MSBuild
@@ -23,7 +23,7 @@ jobs:
 
       # 2. Install only the modern .NET SDK (which can build legacy targets)
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: '8.0.x' # 4.8.x removed (it's already on the OS)
 
@@ -50,7 +50,7 @@ jobs:
       - name: Upload Test Results
         # This runs even if the 'Test' step fails (which is when you need it most!)
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: dotnet-test-results
           path: TestResults/*.trx
@@ -58,7 +58,7 @@ jobs:
       - name: 📄 Publish Test Report
         # Use if: always() so you get a report even when tests fail
         if: always()
-        uses: dorny/test-reporter@v1
+        uses: dorny/test-reporter@v2
         with:
           name: 🚀 Unit Test Results  # Name that appears in GitHub UI
           path: 'TestResults/*.trx'
