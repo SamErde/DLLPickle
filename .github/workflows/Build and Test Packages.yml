@@ -38,7 +38,7 @@ jobs:
       # 5. Restore with Dependabot Logic
       - name: Restore dependencies
         run: |
-          if ("${{ github.actor }}" -eq "dependabot[bot]") {
+          if ("${{ github.actor }}" -eq "dependabot[bot]" -or "${{ github.actor }}" -eq "SamErde") {
             Write-Host "🤖 Dependabot detected: Force-updating lock file"
             dotnet restore src/DLLPickle.Build/DLLPickle.csproj --force-evaluate
           } else {
