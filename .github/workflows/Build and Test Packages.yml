@@ -30,11 +30,12 @@ jobs:
       - name: Restore dependencies
         # If it's Dependabot, allow it to fix the lock file. Otherwise, keep --locked-mode for strict safety.
         run: |
+          # The actor name must be exactly 'dependabot[bot]'
           if ("${{ github.actor }}" -eq "dependabot[bot]") {
-            echo "🤖 Dependabot detected: Updating lock file via --force-evaluate"
+            Write-Host "🤖 Dependabot detected: Force-updating lock file"
             dotnet restore src/DLLPickle.Build/DLLPickle.csproj --force-evaluate
           } else {
-            echo "👤 Standard user: Running strict --locked-mode restore"
+            Write-Host "👤 User ${{ github.actor }} detected: Running strict restore"
             dotnet restore src/DLLPickle.Build/DLLPickle.csproj --locked-mode
           }
         shell: pwsh
@@ -60,10 +61,15 @@ jobs:
         if: always()
         uses: dorny/test-reporter@v2
         with:
-          name: 🚀 Unit Test Results  # Name that appears in GitHub UI
+          # Use the token from your GitHub App step
+          token: ${{ steps.generate_token.outputs.token }}
+          
+          name: 🚀 Unit Test Results
           path: '**/TestResults/*.trx'
           reporter: dotnet-trx
-          token: ${{ steps.generate_token.outputs.token }}
-          # This specifically adds the report to the Actions Summary page
-          only-summary: 'false'
-          list-tests: 'failed'    # Shows a list of specifically which tests failed
+          
+          # v2 specific: Enhanced UI options
+          only-summary: 'false'      # Creates both a Check Run and a Job Summary
+          list-tests: 'failed'       # Clean view: only shows what broke
+          list-suites: 'failed'      # Skips passing suites to reduce noise
+          fail-on-error: 'true'      # Ensures the action fails if tests fail
