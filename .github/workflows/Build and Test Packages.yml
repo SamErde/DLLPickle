@@ -17,13 +17,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # 1. Add this step to ensure MSBuild is available in the PATH
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      # 2. Install only the modern .NET SDK (which can build legacy targets)
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          # CHANGE: Install both versions to support multi-targeting
-          dotnet-version: |
-            4.8.x
-            8.0.x
+          dotnet-version: '8.0.x' # 4.8.x removed (it's already on the OS)
 
       - name: Restore dependencies
         # Added --force to ensure local lock file assemblies are handled correctly
