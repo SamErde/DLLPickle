@@ -8,6 +8,11 @@ jobs:
     name: 🚀 Build and Test
     # CHANGE: Switch from ubuntu-latest to windows-latest
     runs-on: windows-latest
+    permissions:
+      contents: read
+      actions: read
+      checks: write  # Needed for test reporting
+      pull-requests: write  # Needed for test reporting
 
     steps:
       - uses: actions/checkout@v4
@@ -39,3 +44,15 @@ jobs:
         with:
           name: dotnet-test-results
           path: TestResults/*.trx
+
+      - name: 📄 Publish Test Report
+        # Use if: always() so you get a report even when tests fail
+        if: always()
+        uses: dorny/test-reporter@v1
+        with:
+          name: 🚀 Unit Test Results  # Name that appears in GitHub UI
+          path: 'TestResults/*.trx'
+          reporter: dotnet-trx
+          # This specifically adds the report to the Actions Summary page
+          only-summary: 'false'
+          list-tests: 'failed'    # Shows a list of specifically which tests failed
