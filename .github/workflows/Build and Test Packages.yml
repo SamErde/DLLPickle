@@ -6,32 +6,39 @@ on:
 jobs:
   build-and-test:
     name: 🚀 Build and Test
-    # CHANGE: Switch from ubuntu-latest to windows-latest
     runs-on: windows-latest
     permissions:
       contents: read
       actions: read
-      checks: write  # Needed for test reporting
-      pull-requests: write  # Needed for test reporting
+      checks: write      # Required for test reporting
+      pull-requests: write # Required for test reporting
 
     steps:
+      # 1. Checkout Code (Using the new v6)
       - uses: actions/checkout@v6
 
-      # 1. Add this step to ensure MSBuild is available in the PATH
+      # 2. Generate the App Token (CRITICAL: This was missing before!)
+      - name: Generate GitHub App Token
+        id: generate_token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
+      # 3. Setup MSBuild (Required for .NET Framework 4.8)
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v2
 
-      # 2. Install only the modern .NET SDK (which can build legacy targets)
+      # 4. Setup .NET (Using v5 which supports Node 24)
       - name: Setup .NET
         uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: '8.0.x' # 4.8.x removed (it's already on the OS)
+          dotnet-version: '8.0.x'
 
+      # 5. Restore with Dependabot Logic
       - name: Restore dependencies
-        # If it's Dependabot, allow it to fix the lock file. Otherwise, keep --locked-mode for strict safety.
         run: |
-          # The actor name must be exactly 'dependabot[bot]'
-          if ("${{ github.actor }}" -eq "dependabot[bot]") {
+          if ("${{ github.actor }}" -eq "dependabot[bot]" -or "${{ github.actor }}" -eq "SamErde") {
             Write-Host "🤖 Dependabot detected: Force-updating lock file"
             dotnet restore src/DLLPickle.Build/DLLPickle.csproj --force-evaluate
           } else {
@@ -40,35 +47,31 @@ jobs:
           }
         shell: pwsh
 
+      # 6. Build
       - name: Build
         run: dotnet build src/DLLPickle.Build/DLLPickle.csproj --configuration Release --no-restore
 
+      # 7. Test (Generates .trx files)
       - name: Test
-        # We add --logger trx to generate a machine-readable report
-        # We specify a results directory so the upload step knows where to look
         run: dotnet test src/DLLPickle.Build/DLLPickle.csproj --no-build --verbosity normal --logger "trx;LogFileName=test-results.trx" --results-directory ./TestResults
 
+      # 8. Upload Artifacts (Using the new v6)
       - name: Upload Test Results
-        # This runs even if the 'Test' step fails (which is when you need it most!)
         if: always()
         uses: actions/upload-artifact@v6
         with:
           name: dotnet-test-results
           path: TestResults/*.trx
 
+      # 9. Publish Report (Uses the token generated in Step 2)
       - name: 📄 Publish Test Report
-        # Use if: always() so you get a report even when tests fail
         if: always()
         uses: dorny/test-reporter@v2
         with:
-          # Use the token from your GitHub App step
           token: ${{ steps.generate_token.outputs.token }}
-          
           name: 🚀 Unit Test Results
           path: '**/TestResults/*.trx'
           reporter: dotnet-trx
-          
-          # v2 specific: Enhanced UI options
           only-summary: 'false'      # Creates both a Check Run and a Job Summary
           list-tests: 'failed'       # Clean view: only shows what broke
           list-suites: 'failed'      # Skips passing suites to reduce noise

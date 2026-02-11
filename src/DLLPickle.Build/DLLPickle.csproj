@@ -6,7 +6,9 @@
     <ImplicitUsings>false</ImplicitUsings>
     <NoWarn>2008</NoWarn>
   </PropertyGroup>
+
   <PropertyGroup Condition="'$(TargetFramework)' == 'net8.0'">
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 
