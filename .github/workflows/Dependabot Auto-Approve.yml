@@ -16,14 +16,14 @@ jobs:
     steps:
       - name: Generate GitHub App Token
         id: generate_token
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
         with:
           app-id: ${{ secrets.APP_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
 
       - name: Fetch Dependabot metadata
         id: metadata
-        uses: dependabot/fetch-metadata@v2
+        uses: dependabot/fetch-metadata@21025c705c08248db411dc16f3619e6b5f9ea21a # v2.5.0
         with:
           # REPLACED
           github-token: "${{ steps.generate_token.outputs.token }}"
@@ -50,7 +50,7 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
 
       - name: Dependency Review
-        uses: actions/dependency-review-action@v4
+        uses: actions/dependency-review-action@3c4e3dcb1aa7874d2c16be7d79418e9b7efd6261 # v4.8.2
         if: steps.nuget_check.outputs.is_nuget_update == 'true'
 
       - name: Approve and auto-merge NuGet patch/minor updates
