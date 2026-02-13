@@ -454,7 +454,7 @@ jobs:
           }
 
           $publishResult = & ./.github/ci-scripts/Publish-ToGallery.ps1 `
-            -ModuleDirectory "$($env:MODULE_DIR)" -ApiKey "$($env:PSGALLERY_API_KEY)"
+            -Path "$($env:MODULE_DIR)" -ApiKey "$($env:PSGALLERY_API_KEY)"
 
           if (-not $publishResult.Success) {
               Write-Error "Publishing failed: $($publishResult.Message)`nError: $($publishResult.ErrorMessage)"
@@ -506,6 +506,7 @@ jobs:
           "@
 
           Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value $summary
+
 
 
 
