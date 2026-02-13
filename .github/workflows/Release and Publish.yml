@@ -453,7 +453,7 @@ jobs:
               exit 1
           }
 
-          $publishResult = & ./.github/scripts/Publish-ToGallery.ps1 `
+          $publishResult = & ./.github/ci-scripts/Publish-ToGallery.ps1 `
             -ModuleDirectory "$($env:MODULE_DIR)" -ApiKey "$($env:PSGALLERY_API_KEY)"
 
           if (-not $publishResult.Success) {
@@ -506,6 +506,7 @@ jobs:
           "@
 
           Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value $summary
+
 
 
 
