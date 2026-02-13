@@ -168,10 +168,17 @@ jobs:
         with:
           egress-policy: audit
 
+      - name: Generate GitHub App Token
+        id: generate_token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          token: ${{ secrets.PAT_TOKEN }}
+          token: ${{ steps.generate_token.outputs.token }}
           fetch-depth: 0
           ref: ${{ github.event.pull_request.merge_commit_sha || github.ref }}
 
@@ -188,6 +195,7 @@ jobs:
       - name: Commit version update
         shell: pwsh
         run: |
+          # The commit will now correctly use the App's identity and permissions
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
@@ -203,17 +211,16 @@ jobs:
       - name: Create version tag
         shell: pwsh
         env:
-          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
+          # 3. Swap PAT_TOKEN for the App Token here as well
+          GH_TOKEN: ${{ steps.generate_token.outputs.token }}
         run: |
           $version = "${{ needs.analyze.outputs.new_version }}"
           $tagName = "v$version"
 
           Write-Host "Creating tag: $tagName"
 
-          # Get the commit SHA we just created
           $commitSha = git rev-parse HEAD
 
-          # Create and push the tag
           git tag -a $tagName -m "Release $version" $commitSha
           git push origin $tagName
 
@@ -496,4 +503,5 @@ jobs:
           "@
 
           Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value $summary
+
 
