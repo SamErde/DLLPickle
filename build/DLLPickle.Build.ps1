@@ -53,7 +53,7 @@ function Test-ManifestBool ($Path) {
 [string[]]$str = 'Clean', 'ValidateRequirements', 'ImportModuleManifest'
 $str += 'FormattingCheck'
 $str += 'Analyze', 'Test'
-$str += 'CreateHelpStart'
+$str += 'CreateHelpStart', 'RestoreDependencies'
 [string[]]$str2 = $str # str2: Full build without integration tests
 $str2 += 'Build', 'Archive'
 $str += 'Build', 'IntegrationTest', 'Archive' # str: Full build
@@ -64,6 +64,9 @@ Add-BuildTask TestLocal Clean, ImportModuleManifest, Analyze, Test
 
 #Local help file creation process
 Add-BuildTask HelpLocal Clean, ImportModuleManifest, CreateHelpStart
+
+#Restore NuGet dependencies only
+Add-BuildTask RestoreDependenciesOnly RestoreDependencies
 
 #Full build without integration tests
 Add-BuildTask BuildNoIntegration -Jobs $str2
@@ -87,6 +90,11 @@ Enter-Build {
     $script:ModuleVersion = $ManifestInfo.ModuleVersion
     $script:ModuleDescription = $ManifestInfo.Description
     $script:FunctionsToExport = $ManifestInfo.FunctionsToExport
+
+    $script:CSharpProjectPath = [System.IO.Path]::Join($ProjectRoot, 'src', "$($script:ModuleName).Build")
+    $script:CSharpProjectFile = [System.IO.Path]::Join($script:CSharpProjectPath, "$($script:ModuleName).csproj")
+    $script:ModuleOutputPath = [System.IO.Path]::Join($ProjectRoot, 'module', $script:ModuleName)
+    $script:ModuleBinPath = [System.IO.Path]::Join($script:ModuleOutputPath, 'bin')
 
     $script:TestsPath = Join-Path -Path $ProjectRoot -ChildPath 'tests'
     $script:UnitTestsPath = Join-Path -Path $script:TestsPath -ChildPath 'Unit'
@@ -153,8 +161,7 @@ Add-BuildTask ImportModuleManifest {
     Write-Build White '      Attempting to load the project module.'
     try {
         Import-Module $script:ModuleManifestFile -Force -PassThru -ErrorAction Stop
-    }
-    catch {
+    } catch {
         Write-Build Red "      ...$_`n"
         throw "Unable to load the project module. $_"
     }
@@ -162,13 +169,15 @@ Add-BuildTask ImportModuleManifest {
 }
 
 
-#Synopsis: Clean and reset Artifacts/Archive Directory
+#Synopsis: Clean and reset Artifacts/Archive/Module Output directories
 Add-BuildTask Clean {
-    Write-Build White '      Clean up our Artifacts/Archive directory...'
+    Write-Build White '      Clean up our Artifacts/Archive/Module directories...'
     $null = Remove-Item $script:ArtifactsPath -Force -Recurse -ErrorAction SilentlyContinue
     $null = New-Item $script:ArtifactsPath -ItemType:Directory
     $null = Remove-Item $script:ArchivePath -Force -Recurse -ErrorAction SilentlyContinue
     $null = New-Item $script:ArchivePath -ItemType:Directory
+    $null = Remove-Item $script:ModuleOutputPath -Force -Recurse -ErrorAction SilentlyContinue
+    $null = New-Item $script:ModuleOutputPath -ItemType:Directory
     Write-Build Green '      ...Clean Complete!'
 } #Clean
 
@@ -186,8 +195,7 @@ Add-BuildTask Analyze {
     if ($ScriptAnalyzerResults) {
         $ScriptAnalyzerResults | Format-Table
         throw '      One or more PSScriptAnalyzer errors/warnings where found.'
-    }
-    else {
+    } else {
         Write-Build Green '      ...Module Analyze Complete!'
     }
 } #Analyze
@@ -208,8 +216,7 @@ Add-BuildTask AnalyzeTests -After Analyze {
         if ($ScriptAnalyzerResults) {
             $ScriptAnalyzerResults | Format-Table
             throw '      One or more PSScriptAnalyzer errors/warnings where found.'
-        }
-        else {
+        } else {
             Write-Build Green '      ...Test Analyze Complete!'
         }
     }
@@ -225,12 +232,11 @@ Add-BuildTask FormattingCheck {
         Verbose     = $false
     }
     Write-Build White '      Performing script formatting checks...'
-    $ScriptAnalyzerResults = Get-ChildItem -Path $script:ModuleSourcePath -Exclude "*.psd1" | Invoke-ScriptAnalyzer @ScriptAnalyzerParams
+    $ScriptAnalyzerResults = Get-ChildItem -Path $script:ModuleSourcePath -Exclude '*.psd1' | Invoke-ScriptAnalyzer @ScriptAnalyzerParams
     if ($ScriptAnalyzerResults) {
         $ScriptAnalyzerResults | Format-Table
         throw '      PSScriptAnalyzer code formatting check did not adhere to {0} standards' -f $ScriptAnalyzerParams.Setting
-    }
-    else {
+    } else {
         Write-Build Green '      ...Formatting Analyze Complete!'
     }
 } #FormattingCheck
@@ -295,13 +301,11 @@ Add-BuildTask Test {
 
             if ([Int]$CoveragePercent -lt $CoverageThreshold) {
                 throw ('Failed to meet code coverage threshold of {0}% with only {1}% coverage' -f $CoverageThreshold, $CoveragePercent)
-            }
-            else {
+            } else {
                 Write-Build Cyan "      $('Covered {0}% of {1} analyzed commands in {2} files.' -f $CoveragePercent, $TestResults.CodeCoverage.CommandsAnalyzedCount, $TestResults.CodeCoverage.FilesAnalyzedCount)"
                 Write-Build Green '      ...Pester Unit Tests Complete!'
             }
-        }
-        else {
+        } else {
             # account for new module build condition
             Write-Build Yellow '      Code coverage check skipped. No commands to execute...'
         }
@@ -406,7 +410,7 @@ Add-BuildTask CreateMarkdownHelp -After CreateHelpStart {
 
 
     Write-Build Gray '           Verifying GUID...'
-    $MissingGUID = Select-String -Path "$script:ProjectRoot\docs\*.md" -Pattern "(00000000-0000-0000-0000-000000000000)"
+    $MissingGUID = Select-String -Path "$script:ProjectRoot\docs\*.md" -Pattern '(00000000-0000-0000-0000-000000000000)'
     if ($MissingGUID.Count -gt 0) {
         Write-Build Yellow '             The documentation that got generated resulted in a generic GUID. Check the GUID entry of your module manifest.'
         throw 'Missing GUID in manifest. Please review and rebuild.'
@@ -414,7 +418,7 @@ Add-BuildTask CreateMarkdownHelp -After CreateHelpStart {
 
 
     Write-Build Gray '           Checking for missing documentation in md files...'
-    $MissingDocumentation = Select-String -Path "$script:ProjectRoot\docs\*.md" -Pattern "({{.*}})"
+    $MissingDocumentation = Select-String -Path "$script:ProjectRoot\docs\*.md" -Pattern '({{.*}})'
     if ($MissingDocumentation.Count -gt 0) {
         Write-Build Yellow '             The documentation that got generated resulted in missing sections which should be filled out.'
         Write-Build Yellow '             Please review the following sections in your comment based help, fill out missing information and rerun this build:'
@@ -428,7 +432,7 @@ Add-BuildTask CreateMarkdownHelp -After CreateHelpStart {
     Write-Build Gray '           Checking for missing SYNOPSIS in md files...'
     $fSynopsisOutput = @()
     # $SynopsisEval = Select-String -Path "$script:ProjectRoot\docs\*.md" -Pattern "^## SYNOPSIS$" -Context 0, 1
-    $SynopsisEval = Select-String -Path "$script:ProjectRoot\docs\*.md" -Pattern "^## SYNOPSIS$\r?\n$" -Context 0, 2
+    $SynopsisEval = Select-String -Path "$script:ProjectRoot\docs\*.md" -Pattern '^## SYNOPSIS$\r?\n$' -Context 0, 2
     $SynopsisEval | ForEach-Object {
         $chAC = $_.Context.DisplayPostContext.ToCharArray()
         if ($null -eq $chAC) {
@@ -436,7 +440,7 @@ Add-BuildTask CreateMarkdownHelp -After CreateHelpStart {
         }
     }
     if ($fSynopsisOutput) {
-        Write-Build Yellow "             The following files are missing SYNOPSIS:"
+        Write-Build Yellow '             The following files are missing SYNOPSIS:'
         $fSynopsisOutput
         throw 'SYNOPSIS information missing. Please review.'
     }
@@ -449,7 +453,7 @@ Add-BuildTask CreateMarkdownHelp -After CreateHelpStart {
 Add-BuildTask CreateExternalHelp -After CreateMarkdownHelp {
     Write-Build Gray '           Creating external XML help file...'
     #$null = New-ExternalHelp "$script:ProjectRoot\docs" -OutputPath "$script:ProjectRoot\en-US\" -Force
-    Write-Verbose "Need to update for the new PlatyPS module."
+    Write-Verbose 'Need to update for the new PlatyPS module.'
     Write-Build Gray '           ...External XML help file created!'
 } #CreateExternalHelp
 
@@ -478,8 +482,7 @@ Add-BuildTask CreateHelpComplete -After CreateExternalHelp {
                     }
                     # Toggle "inside code block" on
                     $insideCodeBlock = $true
-                }
-                else {
+                } else {
                     # We found the closing fence -> set $insideCodeBlock off
                     $insideCodeBlock = $false
                     # Do *not* modify closing fence, leave it exactly as it is
@@ -528,8 +531,128 @@ Add-BuildTask UpdateCBH -After AssetCopy {
 } #UpdateCBH
 
 
+#Synopsis: Restore and build NuGet dependencies from C# project
+Add-BuildTask RestoreDependencies {
+    Write-Build White '      Restoring and building NuGet dependencies...'
+
+    # Verify dotnet CLI is available
+    $DotnetCommand = Get-Command dotnet -ErrorAction SilentlyContinue
+    Assert-Build ($null -ne $DotnetCommand) 'dotnet CLI is required but not found in PATH. Please install .NET SDK.'
+
+    # Verify C# project file exists
+    Assert-Build (Test-Path $script:CSharpProjectFile) "C# project file not found at: $script:CSharpProjectFile"
+
+    Write-Build Gray "        Restoring packages from $script:CSharpProjectFile..."
+
+    # Restore using locked mode to respect packages.lock.json
+    $RestoreOutput = & dotnet restore $script:CSharpProjectFile --locked-mode 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        Write-Build Red "        Restore failed with exit code $LASTEXITCODE"
+        Write-Build Red ($RestoreOutput -join "`n")
+        throw 'dotnet restore failed'
+    }
+    Write-Build Gray '        ...Restore complete.'
+
+    Write-Build Gray '        Building C# project for all target frameworks...'
+    $BuildOutput = & dotnet build $script:CSharpProjectFile --no-restore --configuration Release 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        Write-Build Red "        Build failed with exit code $LASTEXITCODE"
+        Write-Build Red ($BuildOutput -join "`n")
+        throw 'dotnet build failed'
+    }
+    Write-Build Gray '        ...Build complete.'
+
+    Write-Build Gray '        Copying DLLs to module bin folder with TFM subdirectories...'
+
+    # Ensure the module bin directory exists
+    if (-not (Test-Path $script:ModuleBinPath)) {
+        $null = New-Item -Path $script:ModuleBinPath -ItemType Directory -Force
+    }
+
+    # Define target frameworks from the csproj
+    $TargetFrameworks = @('net48', 'net8.0')
+
+    foreach ($tfm in $TargetFrameworks) {
+        $TfmBinPath = [System.IO.Path]::Join($script:ModuleBinPath, $tfm)
+        $BuildOutputPath = [System.IO.Path]::Join($script:CSharpProjectPath, 'bin', 'Release', $tfm)
+
+        Write-Build Gray "        Processing $tfm..."
+
+        if (Test-Path $BuildOutputPath) {
+            # Ensure TFM subdirectory exists and is clean
+            if (-not (Test-Path $TfmBinPath)) {
+                $null = New-Item -Path $TfmBinPath -ItemType Directory -Force
+            } else {
+                # Clean existing DLLs to ensure fresh copies
+                Remove-Item -Path "$TfmBinPath\*.dll" -Force -ErrorAction SilentlyContinue
+            }
+
+            # Copy DLLs (Microsoft.* and System.* packages)
+            $DLLs = Get-ChildItem -Path $BuildOutputPath -Filter '*.dll' |
+                Where-Object { $_.Name -match '^(Microsoft\.|System\.)' }
+
+            if ($DLLs) {
+                $DLLs | Copy-Item -Destination $TfmBinPath -Force
+                $CopiedCount = $DLLs.Count
+                Write-Build Gray "          Copied $CopiedCount DLL(s) to $tfm subdirectory."
+            } else {
+                Write-Build Yellow "          No matching DLLs found in $tfm output."
+            }
+        } else {
+            Write-Build Yellow "          Warning: $tfm output path not found: $BuildOutputPath"
+        }
+    }
+
+    Write-Build Green '      ...Dependency restoration complete!'
+} #RestoreDependencies
+
+
+# Synopsis: Copies module structure from src to module folder
+Add-BuildTask CopyModuleFiles -After RestoreDependencies -Before Build {
+    Write-Build Gray '        Copying module structure to module folder...'
+
+    # Ensure the module output directory exists
+    if (-not (Test-Path $script:ModuleOutputPath)) {
+        $null = New-Item -Path $script:ModuleOutputPath -ItemType Directory -Force
+    }
+
+    # Copy all files from src module path to module output path, excluding Imports.ps1 and bin folder
+    Write-Build Gray "          Copying from: $script:ModuleSourcePath"
+    Write-Build Gray "          Copying to:   $script:ModuleOutputPath"
+
+    # Get all items to copy (excluding Imports.ps1 and bin folder which is handled by RestoreDependencies)
+    $itemsToCopy = Get-ChildItem -Path $script:ModuleSourcePath -Recurse | Where-Object {
+        $_.FullName -notmatch 'Imports\.ps1$' -and
+        $_.FullName -notmatch '\\bin\\' -and
+        $_.FullName -notmatch '\\bin$'
+    }
+
+    foreach ($item in $itemsToCopy) {
+        # Calculate relative path
+        $relativePath = $item.FullName.Substring($script:ModuleSourcePath.Length + 1)
+        $destinationPath = Join-Path -Path $script:ModuleOutputPath -ChildPath $relativePath
+
+        if ($item.PSIsContainer) {
+            # Create directory if it doesn't exist
+            if (-not (Test-Path $destinationPath)) {
+                $null = New-Item -Path $destinationPath -ItemType Directory -Force
+            }
+        } else {
+            # Copy file
+            $destinationDir = Split-Path -Path $destinationPath -Parent
+            if (-not (Test-Path $destinationDir)) {
+                $null = New-Item -Path $destinationDir -ItemType Directory -Force
+            }
+            Copy-Item -Path $item.FullName -Destination $destinationPath -Force
+        }
+    }
+
+    Write-Build Gray '        ...Module structure copy complete.'
+} #CopyModuleFiles
+
+
 # Synopsis: Copies module assets to Artifacts folder
-Add-BuildTask AssetCopy -Before Build {
+Add-BuildTask AssetCopy -After CopyModuleFiles -Before Build {
     Write-Build Gray '        Copying assets to Artifacts...'
     #Copy-Item -Path "$script:ModuleSourcePath\*" -Destination $script:ArtifactsPath -Exclude *.psd1, *.psm1 -Recurse -ErrorAction Stop
     Write-Build Gray '        ...Assets copy complete.'
