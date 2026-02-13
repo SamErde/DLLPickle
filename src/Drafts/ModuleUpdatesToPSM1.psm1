@@ -34,6 +34,7 @@ Get-ChildItem -Path $assemblyPath -Filter *.dll |
             [System.Reflection.Assembly]::LoadFrom($_.FullName) | Out-Null
         } catch {
             # Ignore already-loaded assemblies
+            continue
         }
     }
 
@@ -219,3 +220,4 @@ Get-ChildItem -Path $assemblyPath -Filter '*.dll' |
                 Write-Warning "DLLPickle failed to load $($_.Name): $_"
             }
         }
+
