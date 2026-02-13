@@ -31,7 +31,7 @@ permissions:
 
 env:
   MODULE_NAME: DLLPickle
-  MODULE_DIR: ./src/DLLPickle
+  MODULE_DIR: ./module/DLLPickle
   MANIFEST_PATH: ./src/DLLPickle/DLLPickle.psd1
 
 jobs:
@@ -506,6 +506,7 @@ jobs:
           "@
 
           Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value $summary
+
 
 
 
