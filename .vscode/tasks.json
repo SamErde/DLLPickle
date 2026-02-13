@@ -111,6 +111,18 @@
       "group": "none"
     },
     {
+      "label": "RestoreDependencies",
+      "description": "Restore and build NuGet dependencies",
+      "type": "shell",
+      "command": "Invoke-Build -Task RestoreDependenciesOnly -File ''${workspaceFolder}/build/${workspaceFolderBasename}.Build.ps1''",
+      "problemMatcher": "$msCompile",
+      "presentation": {
+        "echo": false,
+        "showReuseMessage": false
+      },
+      "group": "build"
+    },
+    {
       "label": "Analyze",
       "description": "Run PowerShell script analysis",
       "type": "shell",

@@ -1,33 +1,28 @@
 ﻿function Import-DPLibrary {
     <#
     .SYNOPSIS
-    Import DLLPickle libraries based on Packages.json configuration.
+    Import DLLPickle dependency libraries.
 
     .DESCRIPTION
-    Import all DLLs (libraries) that are tracked and marked for auto-import in the Packages.json file.
+    Import all DLL files from the appropriate target framework moniker (TFM) directory.
+    DLLs are loaded from the TFM folder based on the PowerShell edition:
+    - PowerShell Desktop Edition: bin/net48/
+    - PowerShell Core Edition: bin/net8.0/
 
-    .PARAMETER ImportAll
-    Ignore preset 'autoImport' values and attempt to import all packages.
+    The latest versions of all dependencies are automatically imported, providing
+    backwards compatibility and avoiding version conflicts.
 
     .EXAMPLE
     Import-DPLibrary
-    Imports all DLLPickle libraries marked for auto-import.
-
-    .EXAMPLE
-    Import-DPLibrary -ImportAll
-    Imports all DLLPickle libraries, ignoring auto-import settings.
+    Imports all dependency DLLs from the appropriate TFM directory.
 
     .OUTPUTS
     System.Management.Automation.PSCustomObject
-    Returns information about imported libraries.
+    Returns information about each imported DLL.
     #>
 
     [CmdletBinding()]
-    param (
-        # Ignore preset 'autoImport' values and attempt to import all packages.
-        [Parameter()]
-        [switch] $ImportAll
-    )
+    param ()
 
     # Determine module directory.
     $ModuleDirectory = if ($PSModuleRoot) {
@@ -38,75 +33,69 @@
         $PWD
     }
 
-    $LibraryDirectory = Join-Path -Path $ModuleDirectory -ChildPath 'Lib'
-    $PackagesJsonPath = Join-Path -Path $LibraryDirectory -ChildPath 'Packages.json'
-
-    if (-not (Test-Path -Path $PackagesJsonPath)) {
-        throw "Packages.json not found at: $PackagesJsonPath"
+    # Determine the appropriate target framework moniker (TFM) based on PowerShell edition
+    $TargetFramework = if ($PSEdition -eq 'Core') {
+        'net8.0'
+    } else {
+        'net48'
     }
 
-    try {
-        $Packages = Get-Content -Path $PackagesJsonPath | ConvertFrom-Json | Select-Object -ExpandProperty packages
-    } catch {
-        throw "Failed to read or parse Packages.json at: $PackagesJsonPath. Error: $_"
+    $BinDirectory = Join-Path -Path $ModuleDirectory -ChildPath 'bin'
+    $TFMDirectory = Join-Path -Path $BinDirectory -ChildPath $TargetFramework
+
+    Write-Verbose "Using target framework: $TargetFramework"
+    Write-Verbose "DLL directory: $TFMDirectory"
+
+    if (-not (Test-Path -Path $TFMDirectory)) {
+        throw "Binary directory not found for target framework '$TargetFramework' at: $TFMDirectory"
     }
 
-    # Import each package as per the autoImport setting or ImportAll flag and record the results.
-    $Results = foreach ($Package in $Packages) {
-        $FilePath = Join-Path -Path $LibraryDirectory -ChildPath "$($Package.name).dll"
+    # Get all DLL files in the TFM directory
+    $DLLFiles = @(Get-ChildItem -Path $TFMDirectory -Filter '*.dll' -ErrorAction Stop)
 
-        if ($Package.autoImport -or $ImportAll) {
-            if (-not (Test-Path -Path $FilePath)) {
-                Write-Warning "DLL not found: $FilePath"
+    if (-not $DLLFiles) {
+        Write-Verbose "No DLL files found in $TFMDirectory"
+        return
+    }
+
+    # Import each DLL and record the results.
+    $Results = foreach ($DLLFile in $DLLFiles) {
+        $FilePath = $DLLFile.FullName
+
+        try {
+            # Check if assembly is already loaded
+            $AssemblyName = [System.Reflection.AssemblyName]::GetAssemblyName($FilePath)
+            $LoadedAssembly = [System.AppDomain]::CurrentDomain.GetAssemblies() |
+                Where-Object { $_.GetName().Name -eq $AssemblyName.Name }
+
+            if ($LoadedAssembly) {
+                Write-Verbose "Assembly already loaded: $($DLLFile.BaseName)"
                 [PSCustomObject]@{
-                    PackageName = $Package.name
-                    Version     = $Package.version
-                    Status      = 'Not Found'
-                    Error       = 'File does not exist'
+                    DLLName         = $DLLFile.Name
+                    AssemblyName    = $AssemblyName.Name
+                    AssemblyVersion = $AssemblyName.Version.ToString()
+                    Status          = 'Already Loaded'
+                    Error           = $null
                 }
-                continue
-            }
-
-            try {
-                # Check if assembly is already loaded
-                $AssemblyName = [System.Reflection.AssemblyName]::GetAssemblyName($FilePath)
-                $LoadedAssembly = [System.AppDomain]::CurrentDomain.GetAssemblies() |
-                    Where-Object { $_.GetName().Name -eq $AssemblyName.Name }
-
-                if ($LoadedAssembly) {
-                    Write-Verbose "Assembly already loaded: $($Package.name)"
-                    [PSCustomObject]@{
-                        PackageName = $Package.name
-                        Version     = $Package.version
-                        Status      = 'Already Loaded'
-                        Error       = $null
-                    }
-                } else {
-                    Add-Type -Path $FilePath
-                    Write-Verbose "Successfully imported: $($Package.name)"
-                    [PSCustomObject]@{
-                        PackageName = $Package.name
-                        Version     = $Package.version
-                        Status      = 'Imported'
-                        Error       = $null
-                    }
-                }
-            } catch {
-                Write-Warning "Failed to import $($Package.name): $_"
+            } else {
+                Add-Type -Path $FilePath
+                Write-Verbose "Successfully imported: $($DLLFile.BaseName)"
                 [PSCustomObject]@{
-                    PackageName = $Package.name
-                    Version     = $Package.version
-                    Status      = 'Failed'
-                    Error       = $_.Exception.Message
+                    DLLName         = $DLLFile.Name
+                    AssemblyName    = $AssemblyName.Name
+                    AssemblyVersion = $AssemblyName.Version.ToString()
+                    Status          = 'Imported'
+                    Error           = $null
                 }
             }
-        } else {
-            Write-Verbose "Skipping auto-import for $($Package.name)."
+        } catch {
+            Write-Warning "Failed to import $($DLLFile.Name): $_"
             [PSCustomObject]@{
-                PackageName = $Package.name
-                Version     = $Package.version
-                Status      = 'Skipped'
-                Error       = $null
+                DLLName         = $DLLFile.Name
+                AssemblyName    = $null
+                AssemblyVersion = $null
+                Status          = 'Failed'
+                Error           = $_.Exception.Message
             }
         }
     }
