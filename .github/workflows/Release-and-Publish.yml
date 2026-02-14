@@ -161,10 +161,6 @@ jobs:
       contents: write
 
     steps:
-      - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@5ef0c079ce82195b2a36a210272d6b661572d83e # v2.14.2
-        with:
-          egress-policy: audit
 
       - name: Generate GitHub App Token
         id: generate_token
@@ -239,10 +235,6 @@ jobs:
       contents: read
 
     steps:
-      - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@5ef0c079ce82195b2a36a210272d6b661572d83e # v2.14.2
-        with:
-          egress-policy: audit
 
       - name: Checkout repository (with new tag)
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -288,6 +280,12 @@ jobs:
           if-no-files-found: warn
           retention-days: 30
 
+      - name: Upload module for publishing
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: module-${{ github.run_number }}
+          path: ./module/DLLPickle
+
   create-release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
@@ -298,10 +296,6 @@ jobs:
       contents: write
 
     steps:
-      - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@5ef0c079ce82195b2a36a210272d6b661572d83e # v2.14.2
-        with:
-          egress-policy: audit
 
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -402,7 +396,7 @@ jobs:
     name: Publish to PowerShell Gallery
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: [analyze, create-release]
+    needs: [analyze, build-and-test, create-release]
     environment:
       name: psgallery
       url: https://www.powershellgallery.com/packages/${{ env.MODULE_NAME }}
@@ -411,16 +405,18 @@ jobs:
       contents: read
 
     steps:
-      - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@5ef0c079ce82195b2a36a210272d6b661572d83e # v2.14.2
-        with:
-          egress-policy: audit
 
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: main
           fetch-depth: 0
+
+      - name: Download module artifact
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        with:
+          name: module-${{ github.run_number }}
+          path: ./module
 
       - name: Verify version to publish
         shell: pwsh
@@ -491,10 +487,6 @@ jobs:
       contents: read
 
     steps:
-      - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@5ef0c079ce82195b2a36a210272d6b661572d83e # v2.14.2
-        with:
-          egress-policy: audit
 
       - name: Generate summary
         shell: pwsh
