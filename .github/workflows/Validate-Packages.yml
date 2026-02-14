@@ -1,0 +1,64 @@
+name: Validate .NET Packages
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'src/DLLPickle.Build/**'
+      - 'src/DLLPickle.Build/packages.lock.json'
+      - '.github/workflows/Validate Packages.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/DLLPickle.Build/**'
+      - 'src/DLLPickle.Build/packages.lock.json'
+      - '.github/workflows/Validate Packages.yml'
+
+concurrency:
+  group: ci-build-test-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    name: Build .NET Packages
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 1
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@baa11fbfe1d6520db94683bd5c7a3818018e4309 # v5.1.0
+        with:
+          dotnet-version: '8.0.x'
+          cache: true
+          cache-dependency-path: 'src/DLLPickle.Build/packages.lock.json'
+
+      - name: Restore dependencies
+        run: dotnet restore src/DLLPickle.Build/DLLPickle.csproj --force-evaluate
+
+      - name: Build
+        run: dotnet build src/DLLPickle.Build/DLLPickle.csproj --configuration Release --no-restore
+
+  dependency-review:
+    name: Dependency Review
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+    #  - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+    #    with:
+    #      fetch-depth: 1
+
+      - name: Dependency Review
+        uses: actions/dependency-review-action@3c4e3dcb1aa7874d2c16be7d79418e9b7efd6261 # v4.8.2
+        with:
+          fail-on-severity: high
