@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Configuration>
+    <ViewDefinitions>
+        <View>
+            <Name>DLLPickle.PSResourceInfo</Name>
+            <ViewSelectedBy>
+                <TypeName>DLLPickle.PSResourceInfo</TypeName>
+            </ViewSelectedBy>
+            <TableControl>
+                <TableHeaders>
+                    <TableColumnHeader>
+                        <Label>Name</Label>
+                        <Alignment>Left</Alignment>
+                    </TableColumnHeader>
+                    <TableColumnHeader>
+                        <Label>Version</Label>
+                        <Alignment>Right</Alignment>
+                    </TableColumnHeader>
+                    <TableColumnHeader>
+                        <Label>DependencyFileName</Label>
+                        <Alignment>Left</Alignment>
+                    </TableColumnHeader>
+                    <TableColumnHeader>
+                        <Label>DependencyVersion</Label>
+                        <Alignment>Right</Alignment>
+                    </TableColumnHeader>
+                </TableHeaders>
+                <TableRowEntries>
+                    <TableRowEntry>
+                        <TableColumnItems>
+                            <TableColumnItem>
+                                <PropertyName>Name</PropertyName>
+                            </TableColumnItem>
+                            <TableColumnItem>
+                                <PropertyName>Version</PropertyName>
+                            </TableColumnItem>
+                            <TableColumnItem>
+                                <ScriptBlock>($_.DependencyPath.Split('\'))[-1]</ScriptBlock>
+                            </TableColumnItem>
+                            <TableColumnItem>
+                                <PropertyName>DependencyVersion</PropertyName>
+                            </TableColumnItem>
+                        </TableColumnItems>
+                    </TableRowEntry>
+                </TableRowEntries>
+            </TableControl>
+        </View>
+        <View>
+            <Name>DLLPickle.ModuleImportCandidate</Name>
+            <ViewSelectedBy>
+                <TypeName>DLLPickle.ModuleImportCandidate</TypeName>
+            </ViewSelectedBy>
+            <ListControl>
+                <ListEntries>
+                    <ListEntry>
+                        <ListItems>
+                            <ListItem>
+                                <Label>Name</Label>
+                                <PropertyName>Name</PropertyName>
+                            </ListItem>
+                            <ListItem>
+                                <Label>Version</Label>
+                                <PropertyName>Version</PropertyName>
+                            </ListItem>
+                            <ListItem>
+                                <Label>ModuleBase</Label>
+                                <PropertyName>ModuleBase</PropertyName>
+                            </ListItem>
+                        </ListItems>
+                    </ListEntry>
+                </ListEntries>
+            </ListControl>
+        </View>
+        <View>
+            <Name>ModuleDllInventory.Grouped</Name>
+            <ViewSelectedBy>
+                <TypeName>ModuleDllInventoryResult</TypeName>
+            </ViewSelectedBy>
+
+            <GroupBy>
+                <PropertyName>LibraryName</PropertyName>
+                <Label>Library</Label>
+            </GroupBy>
+
+            <ListControl>
+                <ListEntries>
+
+                <!-- Primary entry -->
+                <ListEntry>
+                    <ListItems>
+
+                    <!-- Library name -->
+                    <ListItem>
+                        <Label>LibraryName</Label>
+                        <PropertyName>LibraryName</PropertyName>
+                    </ListItem>
+
+                    <!-- Version -->
+                    <ListItem>
+                        <Label>LibraryVersion</Label>
+                        <PropertyName>LibraryVersion</PropertyName>
+                    </ListItem>
+
+                    <!-- VersionRaw -->
+                    <ListItem>
+                        <Label>LibraryVersionRaw</Label>
+                        <PropertyName>LibraryVersionRaw</PropertyName>
+                    </ListItem>
+
+                    <!-- Description -->
+                    <ListItem>
+                        <Label>FileDescription</Label>
+                        <PropertyName>FileDescription</PropertyName>
+                    </ListItem>
+
+                    <!-- Product name -->
+                    <ListItem>
+                        <Label>ProductName</Label>
+                        <PropertyName>ProductName</PropertyName>
+                    </ListItem>
+
+                    <!-- Indented module list -->
+                    <ListItem>
+                        <Label>Modules</Label>
+                        <ScriptBlock>
+                        <![CDATA[
+                            # Each Module entry is a PSCustomObject with:
+                            # ModuleName, ModuleVersion, ModuleBase, ManifestPath, SourceCollection, Scope, LibraryPath
+                            if ($null -eq $_.Modules) {
+                                return "(none)"
+                            }
+
+                            $sb = New-Object System.Text.StringBuilder
+
+                            foreach ($m in $_.Modules) {
+                                # Format:
+                                #     ModuleName (ModuleVersion)
+                                #         Source: RequiredAssemblies
+                                #         Scope : AllUsers
+                                #         Path  : C:\Program Files\...
+
+                                $null = $sb.AppendLine(("    {0} ({1})" -f $m.ModuleName, $m.ModuleVersion))
+
+                                # Optional details (indented)
+                                $null = $sb.AppendLine(("        Scope : {0}" -f $m.Scope))
+                                $null = $sb.AppendLine(("        Source: {0}" -f $m.SourceCollection))
+                                $null = $sb.AppendLine(("        Path  : {0}" -f $m.ModuleBase))
+                                $null = $sb.AppendLine()
+                            }
+
+                            return $sb.ToString().TrimEnd()
+                        ]]>
+                        </ScriptBlock>
+                    </ListItem>
+
+                    </ListItems>
+                </ListEntry>
+
+                </ListEntries>
+            </ListControl>
+        </View>
+        <View>
+            <Name>DLLPickle.FileVersionInfo</Name>
+            <ViewSelectedBy>
+                <TypeName>DLLPickle.FileVersionInfo</TypeName>
+            </ViewSelectedBy>
+            <TableControl>
+                <TableHeaders>
+                    <TableColumnHeader>
+                        <Label>InternalName</Label>
+                        <Alignment>Left</Alignment>
+                    </TableColumnHeader>
+                    <TableColumnHeader>
+                        <Label>Version</Label>
+                        <Alignment>Left</Alignment>
+                    </TableColumnHeader>
+                    <TableColumnHeader>
+                        <Label>Module</Label>
+                        <Alignment>Left</Alignment>
+                    </TableColumnHeader>
+                    <TableColumnHeader>
+                        <Label>FileName</Label>
+                        <Alignment>Left</Alignment>
+                    </TableColumnHeader>
+                </TableHeaders>
+                <TableRowEntries>
+                    <TableRowEntry>
+                        <TableColumnItems>
+                            <TableColumnItem>
+                                <PropertyName>InternalName</PropertyName>
+                            </TableColumnItem>
+                            <TableColumnItem>
+                                <ScriptBlock>if ([version]$_.ProductVersionRaw -ne '0.0.0.0') { $_.ProductVersionRaw } else { $_.FileVersion }</ScriptBlock>
+                            </TableColumnItem>
+                            <TableColumnItem>
+                                <ScriptBlock>$_.FileName -replace '^.*Modules[\\/]([^\\/]+)([\\/].*)?', '$1'</ScriptBlock>
+                            </TableColumnItem>
+                            <TableColumnItem>
+                                <PropertyName>FileName</PropertyName>
+                            </TableColumnItem>
+                        </TableColumnItems>
+                    </TableRowEntry>
+                </TableRowEntries>
+            </TableControl>
+        </View>
+    </ViewDefinitions>
+</Configuration>

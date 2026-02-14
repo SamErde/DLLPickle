@@ -6,7 +6,7 @@ coverage.xml
 testResults.xml
 
 # Staged Module Output
-module/
+# module/
 
 # .NET build artifacts
 **/bin/
