@@ -1,3 +1,5 @@
+# Deploy MkDocs from the `/docs` folder to GitHub Pages on the `ghpages` branch.
+
 name: 📖 Deploy MkDocs to GitHub Pages
 
 on:
@@ -10,7 +12,6 @@ on:
       - ".github/workflows/Deploy MkDocs.yml"
       - "README.md"
       - "mkdocs.yml"
-
   # Allow manual triggering of the workflow.
   workflow_dispatch:
 
@@ -19,8 +20,9 @@ permissions:
 
 jobs:
   build:
+    name: Build and Deploy Documentation Site
     permissions:
-      contents: write
+      contents: write # Needed for gh-deploy to push to 'ghpages' branch
 
     runs-on: ubuntu-latest
     concurrency:
@@ -37,7 +39,7 @@ jobs:
       - name: 🐍 Setup Python
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
-          python-version: "3.x" # specify the Python version
+          python-version: "3.x"
           cache: "pip"
           cache-dependency-path: "docs/requirements.txt"
 
@@ -50,3 +52,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: mkdocs gh-deploy --force
+
+      - name: 📋 Deployment Summary
+        if: success()
+        run: |
+          echo "✅ Documentation successfully deployed to GitHub Pages"
+          echo "🔗 View at: https://day3bits.com/DLLPickle"

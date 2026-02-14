@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   label:
-    name: Apply labels from path changes
+    name: Apply labels based on changed files
     runs-on: ubuntu-latest
     permissions:
       contents: read
