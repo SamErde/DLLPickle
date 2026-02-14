@@ -1,0 +1,48 @@
+name: CodeQL Analysis
+
+on:
+  push:
+    paths:
+      - "src/**"
+      - "tests/**"
+      - ".github/workflows/CodeQL.yml"
+  pull_request:
+    paths:
+      - "src/**"
+      - "tests/**"
+  schedule:
+    - cron: "30 2 * * 1" # Weekly on Monday at 2:30 AM UTC
+
+permissions: read-all
+
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: Analyze PowerShell
+    runs-on: ubuntu-latest
+    permissions:
+      # Required to upload SARIF files
+      security-events: write
+      contents: read
+      actions: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@45cbd0c69e560cd9e7cd7f8c32362050c9b7ded2 # v4.32.2
+        with:
+          languages: powershell
+          queries: security-and-quality
+          # For more details on CodeQL's query suites, see:
+          # https://docs.github.com/en/code-security/code-scanning-automatically-scanning-your-code-for-vulnerabilities-and-errors/about-code-scanning-with-codeql
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@45cbd0c69e560cd9e7cd7f8c32362050c9b7ded2 # v4.32.2
+        with:
+          category: "/language:powershell"
+          upload: always
