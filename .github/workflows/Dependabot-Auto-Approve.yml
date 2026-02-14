@@ -1,4 +1,10 @@
-name: 🤖 Dependabot Auto-Approve NuGet Package Updates
+# Add at the beginning for better documentation:
+# This workflow automatically approves and merges Dependabot PRs for NuGet package updates
+# Requirements:
+#   - GitHub App with PRs read/write permissions
+#   - Secrets: APP_ID and APP_PRIVATE_KEY
+
+name: 🤖 Auto-Approve Dependabot NuGet Package Updates
 on: pull_request
 
 permissions: {}
