@@ -38,6 +38,7 @@ jobs:
   analyze:
     name: Analyze and Determine Version
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     # Only run for merged PRs to main or manual dispatch
     if: |
       github.repository_owner == 'SamErde' &&
@@ -72,62 +73,55 @@ jobs:
           MANUAL_BUMP: ${{ inputs.version_bump }}
           MERGE_COMMIT: ${{ github.event.pull_request.merge_commit_sha }}
         run: |
-          # Use Get-VersionBump function to determine current and new versions.
-          Write-Host "Analyzing conventional commits..."
-          $VersionResult  = & ./.github/ci-scripts/Get-VersionBump.ps1
+          # Pass manual bump parameter to Get-VersionBump for centralized version logic
+          Write-Host "Analyzing version requirements..."
+
+          # Only pass manual bump if explicitly specified (not empty or auto)
+          $ManualBumpParam = if ([string]::IsNullOrEmpty($env:MANUAL_BUMP) -or $env:MANUAL_BUMP -eq 'auto') {
+              ''
+          } else {
+              $env:MANUAL_BUMP
+          }
+
+          if (-not [string]::IsNullOrEmpty($ManualBumpParam)) {
+              Write-Host "Manual version bump specified: $ManualBumpParam"
+              $VersionResult = & ./.github/ci-scripts/Get-VersionBump.ps1 -ManualBump $ManualBumpParam
+          } else {
+              Write-Host "Using automatic conventional commit analysis"
+              $VersionResult = & ./.github/ci-scripts/Get-VersionBump.ps1
+          }
+
           $ShouldRelease  = $VersionResult.ShouldRelease
           $NewVersionType = $VersionResult.NewVersionType
           $NewVersion     = $VersionResult.NewVersion
           $CurrentVersion = [version]$VersionResult.CurrentVersion
 
-          Write-host "`nAnalysis Results:"
+          Write-Host "`nVersion Analysis Results:"
           Write-Host "Current version: $($CurrentVersion.ToString())"
           Write-Host "Version bump type: $NewVersionType"
           Write-Host "New version: $NewVersion"
           Write-Host "Should release: $ShouldRelease"
 
-          # Determine workflow trigger (push, pr-merge, manual workflow dispatch).
-            if ($env:EVENT_NAME -eq "workflow_dispatch") {
+          # Determine workflow trigger
+          if ($env:EVENT_NAME -eq "workflow_dispatch") {
               $TriggerSource = "manual"
-            } elseif ($env:EVENT_NAME -eq "pull_request") {
+          } elseif ($env:EVENT_NAME -eq "pull_request") {
               $TriggerSource = "pr-merge"
-            } else {
+          } else {
               $TriggerSource = "push"
-            }
+          }
           Write-Host "Trigger source: $TriggerSource"
-
-          # If manual dispatch with explicit version bump type (major, minor, build, patch), increment the version explicitly.
-          if ($TriggerSource -eq "manual" -and $env:MANUAL_BUMP -ne "auto" -and -not [string]::IsNullOrEmpty($env:MANUAL_BUMP)) {
-              Write-Host "Manual version bump specified: $($env:MANUAL_BUMP)"
-              $NewVersionType = $env:MANUAL_BUMP
-              switch ($NewVersionType) {
-                "major" { $NewVersion = [version]::new($CurrentVersion.Major + 1, 0, 0) }
-                "minor" { $NewVersion = [version]::new($CurrentVersion.Major, $CurrentVersion.Minor + 1, 0) }
-                "patch" { $NewVersion = [version]::new($CurrentVersion.Major, $CurrentVersion.Minor, $CurrentVersion.Build + 1) }
-                }
-              $ShouldRelease = $true
-
-              Write-host "`nManual Version Dispatch Results:"
-              Write-Host "Current version: $($CurrentVersion.ToString())"
-              Write-Host "Version bump type: $NewVersionType"
-              Write-Host "New version: $($NewVersion.ToString())"
-              Write-Host "Should release: $ShouldRelease"
-          } #end if manual dispatch
-
-          # If we're doing semantic analysis or manual dispatch with 'auto' versioning, get the versions from the script result.
-          #if ($TriggerSource -in @("push","pr-merge") -or ($TriggerSource -eq "manual" -and $env:MANUAL_BUMP -eq "auto")) { # Not needed.
 
           if (-not $ShouldRelease) {
               Write-Host "No release needed based on commit analysis"
               "should_release=false" >> $env:GITHUB_OUTPUT
+              "version_bump=none" >> $env:GITHUB_OUTPUT
+              "current_version=$($CurrentVersion.ToString())" >> $env:GITHUB_OUTPUT
               "trigger_source=$TriggerSource" >> $env:GITHUB_OUTPUT
               exit 0
-          } # end if ShouldRelease
+          }
 
-          Write-Host "Version bump type: $NewVersionType"
-          Write-Host "Current version: $($CurrentVersion.ToString())"
-          Write-Host "New version: $NewVersion"
-
+          # Set outputs
           "should_release=true" >> $env:GITHUB_OUTPUT
           "version_bump=$NewVersionType" >> $env:GITHUB_OUTPUT
           "current_version=$($CurrentVersion.ToString())" >> $env:GITHUB_OUTPUT
@@ -159,8 +153,12 @@ jobs:
   update-version:
     name: Update Module Version
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: analyze
     if: needs.analyze.outputs.should_release == 'true'
+
+    permissions:
+      contents: write
 
     steps:
       - name: Harden the runner (Audit all outbound calls)
@@ -234,7 +232,11 @@ jobs:
   build-and-test:
     name: Build and Test Module
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     needs: update-version
+
+    permissions:
+      contents: read
 
     steps:
       - name: Harden the runner (Audit all outbound calls)
@@ -253,7 +255,9 @@ jobs:
         with:
           path: |
             ~/.local/share/powershell/Modules
-          key: ${{ runner.os }}-psmodules-${{ hashFiles('build/DLLPickle.Build.ps1') }}
+          key: ${{ runner.os }}-psmodules-${{ hashFiles('build/DLLPickle.Build.ps1', '.github/ci-scripts/Actions_Bootstrap.ps1') }}
+          restore-keys: |
+            ${{ runner.os }}-psmodules-
 
       - name: Bootstrap
         shell: pwsh
@@ -268,6 +272,11 @@ jobs:
           }
           catch {
               Write-Error "Build failed: $_"
+              Write-Error "Stack trace: $($_.ScriptStackTrace)"
+              if (Test-Path "./artifacts/testOutput/PesterTests.xml") {
+                  Write-Host "`nTest Results:"
+                  Get-Content "./artifacts/testOutput/PesterTests.xml" | Select-Object -First 50
+              }
               exit 1
           }
 
@@ -277,10 +286,12 @@ jobs:
           name: build-artifacts-${{ github.run_number }}
           path: ./archive
           if-no-files-found: warn
+          retention-days: 30
 
   create-release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: [analyze, update-version, build-and-test]
 
     permissions:
@@ -390,10 +401,14 @@ jobs:
   publish:
     name: Publish to PowerShell Gallery
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: [analyze, create-release]
     environment:
       name: psgallery
       url: https://www.powershellgallery.com/packages/${{ env.MODULE_NAME }}
+
+    permissions:
+      contents: read
 
     steps:
       - name: Harden the runner (Audit all outbound calls)
@@ -429,17 +444,18 @@ jobs:
 
           try {
               Set-PSRepository -Name PSGallery -InstallationPolicy Trusted -ErrorAction SilentlyContinue
-              # AI slop was incorrect. Will add this check later.
-              Write-Host "Could not check PSGallery, assuming not published"
-              "already_published=false" >> $env:GITHUB_OUTPUT
-          } catch {
-              if ($_.Exception.Message -match "is already published") {
+              $published = Find-Module -Name $env:MODULE_NAME -RequiredVersion $version -ErrorAction SilentlyContinue
+
+              if ($published) {
                   Write-Host "Version $version is already published to PSGallery"
                   "already_published=true" >> $env:GITHUB_OUTPUT
               } else {
-                  Write-Host "Could not check PSGallery, assuming not published"
+                  Write-Host "Version $version not found in PSGallery, proceeding with publish"
                   "already_published=false" >> $env:GITHUB_OUTPUT
               }
+          } catch {
+              Write-Host "Could not check PSGallery, assuming not published. Error: $_"
+              "already_published=false" >> $env:GITHUB_OUTPUT
           }
 
       - name: Publish to PowerShell Gallery
@@ -454,7 +470,7 @@ jobs:
           }
 
           $publishResult = & ./.github/ci-scripts/Publish-ToGallery.ps1 `
-            -Path "$($env:MODULE_DIR)" -ApiKey "$($env:PSGALLERY_API_KEY)"
+            -ModuleDirectory "$($env:MODULE_DIR)" -ApiKey "$($env:PSGALLERY_API_KEY)"
 
           if (-not $publishResult.Success) {
               Write-Error "Publishing failed: $($publishResult.Message)`nError: $($publishResult.ErrorMessage)"
@@ -467,8 +483,12 @@ jobs:
   summary:
     name: Release Summary
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     needs: [analyze, update-version, build-and-test, create-release, publish]
     if: always()
+
+    permissions:
+      contents: read
 
     steps:
       - name: Harden the runner (Audit all outbound calls)
@@ -506,10 +526,3 @@ jobs:
           "@
 
           Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value $summary
-
-
-
-
-
-
-

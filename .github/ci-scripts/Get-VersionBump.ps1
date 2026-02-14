@@ -31,7 +31,12 @@ param(
     # Path to the module manifest. Defaults to "../../src/DLLPickle/DLLPickle.psd1"
     [Parameter(Mandatory = $false)]
     [ValidateNotNullOrEmpty()]
-    [string]$ManifestPath = [System.IO.Path]::Join( (Split-Path -Path (Split-Path -Path $PSScriptRoot)), 'src', 'DLLPickle', 'DLLPickle.psd1' )
+    [string]$ManifestPath = [System.IO.Path]::Join( (Split-Path -Path (Split-Path -Path $PSScriptRoot)), 'src', 'DLLPickle', 'DLLPickle.psd1' ),
+
+    # Manual version bump type to override conventional commit analysis
+    [Parameter(Mandatory = $false)]
+    [ValidateSet('', 'auto', 'major', 'minor', 'patch')]
+    [string]$ManualBump = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -90,6 +95,13 @@ foreach ($Commit in $Commits) {
         Write-Host "Ignoring commit (not a conventional type): $Commit" -ForegroundColor DarkGray
         continue
     }
+}
+
+# Handle manual version bump override
+if (-not [string]::IsNullOrEmpty($ManualBump) -and $ManualBump -ne 'auto') {
+    Write-Host "Manual version bump specified: $ManualBump" -ForegroundColor Cyan
+    $VersionBump = $ManualBump
+    $ShouldRelease = $true
 }
 
 # Calculate new version
