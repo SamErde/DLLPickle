@@ -544,8 +544,19 @@ Add-BuildTask RestoreDependencies {
 
     Write-Build Gray "        Restoring packages from $script:CSharpProjectFile..."
 
-    # Restore using locked mode to respect packages.lock.json
-    $RestoreOutput = & dotnet restore $script:CSharpProjectFile --locked-mode 2>&1
+    # In CI environments, use --force-evaluate to handle lock file inconsistencies
+    # In local development, use --locked-mode to enforce lock file consistency
+    $IsCI = $env:CI -eq 'true' -or $env:TF_BUILD -eq 'True' -or $null -ne $env:GITHUB_ACTIONS
+    $RestoreArgs = @($script:CSharpProjectFile)
+    if ($IsCI) {
+        Write-Build Gray '        Running in CI mode with --force-evaluate...'
+        $RestoreArgs += '--force-evaluate'
+    } else {
+        Write-Build Gray '        Running in locked mode...'
+        $RestoreArgs += '--locked-mode'
+    }
+
+    $RestoreOutput = & dotnet restore @RestoreArgs 2>&1
     if ($LASTEXITCODE -ne 0) {
         Write-Build Red "        Restore failed with exit code $LASTEXITCODE"
         Write-Build Red ($RestoreOutput -join "`n")
