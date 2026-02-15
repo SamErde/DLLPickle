@@ -63,5 +63,7 @@ jobs:
         uses: github/codeql-action/upload-sarif@9e907b5e64f6b83e7804b09294d44122997950d6 # v4.32.3
         with:
           sarif_file: results.sarif
+          # Unique category to distinguish from other security scans
+          category: codacy-security-scan
           # Wait for processing to ensure results appear in Security tab
           wait-for-processing: true
