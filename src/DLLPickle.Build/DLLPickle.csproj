@@ -21,4 +21,16 @@
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.*" />
   </ItemGroup>
 
+  <!--
+    NOTE: Some transitive dependencies (System.Diagnostics.DiagnosticSource 6.x,
+    Microsoft.Identity.Client 4.x newer versions) contain types that depend on APIs
+    not available in .NET Framework 4.8 runtime, causing ReflectionTypeLoadException.
+
+    These assemblies fail to load in Windows PowerShell but don't impact core functionality.
+    Use Import-DPLibrary -SkipProblematicAssemblies to suppress warnings in Windows PowerShell.
+
+    This is a known limitation of using modern packages with net48 TFM.
+    All assemblies load successfully in PowerShell Core (net8.0).
+  -->
+
 </Project>
