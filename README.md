@@ -13,17 +13,51 @@ A PowerShell module that helps you get un-stuck from dependency version conflict
 
 <img src="https://raw.githubusercontent.com/SamErde/DLLPickle/main/assets/dllpickle.png" alt="A stressed pickle trying to explain the problem in their code to a rubber duck." width="400" />
 
+## 🧑‍💻 Getting Started
+
+### Prerequisites
+
+Any of the following PowerShell editions:
+
+- PowerShell on Linux, macOS, or Windows
+- Windows PowerShell 5.1
+
+### Installation
+
+```powershell
+Install-Module DLLPickle -Scope CurrentUser
+```
+
+Or, if you use **Microsoft.PowerShell.PSResourceGet**, run:
+
+```powershell
+Install-PSResource -Name DLLPickle -Prerelease
+```
+
+### Using
+
+All you have to do to use DLL Pickle is import it and run the `Import-DPLibrary` command. (This function will be done automatically during the module import process before the v1.0 release!)
+
+```powershell
+Import-Module DLLPickle
+Import-DPLibrary
+```
+
+This will automatically import the newest versions of the Microsoft Authentication Library (MSAL) and several transitive dependencies which support authentication for many existing Microsoft PowerShell modules. After this module is imported, you should be able to connect to any Microsoft online service without running into MSAL version conflicts.
+
+---
+
 ## 📝 Description
 
 Let's start with a few FAQs:
 
 - **What does DLL Pickle actually *do*?**
 
-  DLL Pickle pre-loads the newest version of DLLs that may be required by your other installed modules and scripts. (See the example below.)
+  DLL Pickle pre-loads the newest version of the MSAL DLLs that may be required by your other installed modules and scripts. (See the example below.)
 
 - **Why does it need to do this?**
 
-  It is common for PowerShell modules to ship with DLLs that provide precompiled functionality or dependencies. A PowerShell session cannot import two different versions of the same library (DLL). If a module imports one version of a DLL and then a different module attempts to import a second, newer version of that DLL, they will typically see an error that says, "an assembly with the same name is already loaded."
+  It is common for PowerShell modules to ship with DLLs that provide precompiled functionality or dependencies. A PowerShell session cannot import two different versions of the same library (DLL). If a module imports one version of a DLL and then a different module attempts to import a second, newer version of that DLL, they will typically see an error that says, "an assembly with the same name is already loaded" and the second module will not be able to authenticate.
 
 - **Why don't modules use Application Load Context (ALC) to solve this problem?**
 
@@ -51,35 +85,17 @@ Numerous PowerShell modules include a dependency on the Microsoft Authentication
 - ExchangeOnlineManagement
 - Microsoft.Graph.Authentication
 - MicrosoftTeams
+- ...and many more.
 
-...and many more.
-
-You can manually attempt to work around this by checking which version of the conflicting DLLs are used by each of your PowerShell modules and then *connect first* to whichever service module uses the newest version of the DLL.
-
-This works because of the "first one wins" rule and because the MSAL is designed to be backwards compatible.
-
-DLL Pickle handles this for you by automatically releasing a new version of DLL Pickle whenever a new release of the MSAL is found. As long as you keep the DLL Pickle module up to date and load it first in your PowerShell profile (or manually load it first in your session), then all other PowerShell modules should be able to use this new MSAL that is loaded by DLL Pickle.
-
-## 🧑‍💻 Getting Started
-
-### Prerequisites
-
-Any of the following PowerShell editions:
-
-- PowerShell on Linux, macOS, or Windows
-- Windows PowerShell 5.1
-
-### Installation
-
-```powershell
-Install-PSResource -Name DLLPickle -Prerelease
-```
+You could *manually* attempt to work around this by checking which version of the conflicting DLLs are used by each of your PowerShell modules and then *connect first* to whichever service module uses the newest version of the DLL. This works because of the "first one wins" rule and because the MSAL is designed to be backwards compatible. DLL Pickle handles this for you by automatically updating and releasing a new version of DLL Pickle whenever a new version of the MSAL is published. As long as you keep the DLL Pickle module up to date and load it first in your PowerShell profile, then all other PowerShell modules should be able to use this new MSAL that is loaded by DLL Pickle.
 
 ### 🥒 Using DLL Pickle
 
 The easiest way to benefit from DLL Pickle is to import the module in your PowerShell profile before any other module or assembly is loaded. Just add the line `Import-Module DLLPickle` to your profile, save it, and start a new instance of PowerShell.
 
-Alternatively, if you are starting work in a new PowerShell session in which you know you will be authenticating to multiple online services, you can run `Import-Module DLLPickle` at the beginning of your session and then proceed with the rest of your modules.
+Alternatively, if you are starting work in a new PowerShell session in which you know you will be authenticating to multiple online services, you can run `Import-Module DLLPickle` at the beginning of your session and then proceed with connecting to Microsoft's online services using their first party modules.
+
+---
 
 ## 📝 Additional Information
 
@@ -89,26 +105,21 @@ This project follows the semantic versioning model. It also packages numerous de
 
 #### Major Versions
 
-🏷️ **2.x.x.x** - The major version will only change if there is a breaking change in the DLL Pickle project.
+🏷️ **2.x.x.x** - The major version will only change if there is a breaking change in the DLL Pickle project or if an MSAL dependency is released with a new major version (potentially indicating a breaking change).
 
 #### Minor Versions
 
 🏷️ **X.1.X.X** - The minor version will change if any of the following occur:
 
 - New features are added to the project
-- New tracked assemblies are added to the project
+- New MSAL library dependencies are added to the project
+- A new version of any associated library (DLL) is automatically updated within the project
 
 #### Build Versions
 
 🏷️ **X.X.1.X** - The build version will change if any of the following occur:
 
 - Minor refactoring for performance, error handling, or logging
-- A new version of any packaged assembly is automatically updated within the project
-
-#### Revisions
-
-🏷️ **X.X.X.1234** - The revision segment of the version may change if any of the following occur:
-
 - Minor fixes for typos or formatting
 - Changes to documentation
 
