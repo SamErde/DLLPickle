@@ -1,4 +1,4 @@
-﻿function Import-DPLibrary {
+function Import-DPLibrary {
     <#
     .SYNOPSIS
     Import DLLPickle dependency libraries.
@@ -9,8 +9,8 @@
     - PowerShell Desktop Edition: bin/net48/
     - PowerShell Core Edition: bin/net8.0/
 
-    The latest versions of all dependencies are automatically imported, providing
-    backwards compatibility and avoiding version conflicts.
+    The latest versions of all dependencies are automatically imported, with any transitive
+    dependencies, providing backwards compatibility and avoiding version conflicts.
 
     .EXAMPLE
     Import-DPLibrary
@@ -51,7 +51,7 @@
     }
 
     # Get all DLL files in the TFM directory
-    $DLLFiles = @(Get-ChildItem -Path $TFMDirectory -Filter '*.dll' -ErrorAction Stop)
+    $DLLFiles = @(Get-ChildItem -Path $TFMDirectory -Filter '*.dll' -File -ErrorAction Stop)
 
     if (-not $DLLFiles) {
         Write-Verbose "No DLL files found in $TFMDirectory"
