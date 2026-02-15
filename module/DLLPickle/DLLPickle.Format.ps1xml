@@ -203,5 +203,56 @@
                 </TableRowEntries>
             </TableControl>
         </View>
+        <View>
+            <Name>DLLPickle.ImportDPLibraryResult</Name>
+            <ViewSelectedBy>
+                <TypeName>DLLPickle.ImportDPLibraryResult</TypeName>
+            </ViewSelectedBy>
+            <TableControl>
+                <TableHeaders>
+                    <TableColumnHeader>
+                        <Label>DLLName</Label>
+                        <Alignment>Left</Alignment>
+                    </TableColumnHeader>
+                    <TableColumnHeader>
+                        <Label>AssemblyName</Label>
+                        <Alignment>Left</Alignment>
+                    </TableColumnHeader>
+                    <TableColumnHeader>
+                        <Label>AssemblyVersion</Label>
+                        <Alignment>Left</Alignment>
+                    </TableColumnHeader>
+                    <TableColumnHeader>
+                        <Label>Status</Label>
+                        <Alignment>Left</Alignment>
+                    </TableColumnHeader>
+                    <TableColumnHeader>
+                        <Label>Error</Label>
+                        <Alignment>Left</Alignment>
+                    </TableColumnHeader>
+                </TableHeaders>
+                <TableRowEntries>
+                    <TableRowEntry>
+                        <TableColumnItems>
+                            <TableColumnItem>
+                                <PropertyName>DLLName</PropertyName>
+                            </TableColumnItem>
+                            <TableColumnItem>
+                                <PropertyName>AssemblyName</PropertyName>
+                            </TableColumnItem>
+                            <TableColumnItem>
+                                <PropertyName>AssemblyVersion</PropertyName>
+                            </TableColumnItem>
+                            <TableColumnItem>
+                                <PropertyName>Status</PropertyName>
+                            </TableColumnItem>
+                            <TableColumnItem>
+                                <PropertyName>Error</PropertyName>
+                            </TableColumnItem>
+                        </TableColumnItems>
+                    </TableRowEntry>
+                </TableRowEntries>
+            </TableControl>
+        </View>
     </ViewDefinitions>
 </Configuration>
