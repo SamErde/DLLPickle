@@ -244,27 +244,7 @@
                                 <PropertyName>AssemblyVersion</PropertyName>
                             </TableColumnItem>
                             <TableColumnItem>
-                                <ConditionalItem>
-                                    <ItemSelectionCondition>
-                                        <ScriptBlock>$_.Status -eq 'Imported'</ScriptBlock>
-                                    </ItemSelectionCondition>
-                                    <ForegroundColor>Green</ForegroundColor>
-                                    <PropertyName>Status</PropertyName>
-                                </ConditionalItem>
-                                <ConditionalItem>
-                                    <ItemSelectionCondition>
-                                        <ScriptBlock>$_.Status -eq 'Already Loaded'</ScriptBlock>
-                                    </ItemSelectionCondition>
-                                    <ForegroundColor>DarkYellow</ForegroundColor>
-                                    <PropertyName>Status</PropertyName>
-                                </ConditionalItem>
-                                <ConditionalItem>
-                                    <ItemSelectionCondition>
-                                        <ScriptBlock>$_.Status -eq 'Failed'</ScriptBlock>
-                                    </ItemSelectionCondition>
-                                    <ForegroundColor>Red</ForegroundColor>
-                                    <PropertyName>Status</PropertyName>
-                                </ConditionalItem>
+                                <PropertyName>Status</PropertyName>
                             </TableColumnItem>
                             <TableColumnItem>
                                 <PropertyName>Error</PropertyName>
