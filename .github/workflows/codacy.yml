@@ -85,7 +85,7 @@ jobs:
           output: results-${{ matrix.slug }}.sarif
           format: sarif
           # Run a single tool per job to avoid multiple SARIF runs per category
-          tool: ${{ matrix.tool }}
+          tool: ${{ matrix.slug }}
           # Make severity levels compatible with GitHub code scanning
           gh-code-scanning-compat: true
           # Allow all issues to be reported (control comes from GitHub side)
