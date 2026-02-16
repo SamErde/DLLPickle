@@ -5,17 +5,22 @@ cov.xml
 coverage.xml
 testResults.xml
 
-# Staged Module Output
-# module/
-
-# .NET build artifacts
-**/bin/
-**/obj/
+### Codacy ###
+.codacy/*
 
 # NuGet
 *.nupkg
 packages/
 .nuget/
+
+# .NET build artifacts
+**/DLLPickle.Build/bin/
+**/DLLPickle.Build/obj/
+
+# Staged Module Output
+# module/
+
+
 
 ### VisualStudioCode ###
 .vs/
@@ -25,9 +30,6 @@ packages/
 !.vscode/launch.json
 !.vscode/extensions.json
 !.vscode/*.code-snippets
-
-### Codacy ###
-.codacy/*
 
 ### OS ###
 Thumbs.db
