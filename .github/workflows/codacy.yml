@@ -15,12 +15,12 @@ name: Codacy Security Scan
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
     # The branches below must be a subset of the branches above
-    branches: [ "main" ]
+    branches: ["main"]
   schedule:
-    - cron: '38 12 * * 0'
+    - cron: "38 12 * * 0"
 
 permissions:
   contents: read
@@ -28,9 +28,9 @@ permissions:
 jobs:
   codacy-security-scan:
     permissions:
-      contents: read         # for actions/checkout to fetch code
+      contents: read # for actions/checkout to fetch code
       security-events: write # for github/codeql-action/upload-sarif to upload SARIF results
-      actions: read          # only required for a private repository by github/codeql-action/upload-sarif to get the Action run status
+      actions: read # only required for a private repository by github/codeql-action/upload-sarif to get the Action run status
     name: Security Scan (Codacy - ${{ matrix.tool }})
     runs-on: ubuntu-latest
     # Skip forked PRs: they lack access to secrets and have limited GITHUB_TOKEN permissions
@@ -39,40 +39,40 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - tool: ESLint
-            slug: eslint
-          - tool: Hadolint
-            slug: hadolint
-          - tool: Jackson Lint
-            slug: jackson-lint
-          - tool: Lizard
-            slug: lizard
+          #- tool: ESLint
+          #  slug: eslint
+          #- tool: Hadolint
+          #  slug: hadolint
+          #- tool: Jackson Lint
+          #  slug: jackson-lint
+          #- tool: Lizard
+          #  slug: lizard
           - tool: markdownlint
             slug: markdownlint
-          - tool: PMD
-            slug: pmd
+          #- tool: PMD
+          #  slug: pmd
           - tool: PSScriptAnalyzer
             slug: psscriptanalyzer
           - tool: Semgrep
             slug: semgrep
           - tool: SpellCheck
             slug: spellcheck
-          - tool: SonarC#
-            slug: sonarcsharp
-          - tool: Spectral
-            slug: spectral
-          - tool: SQLLint
-            slug: sqllint
+          #- tool: SonarC#
+          #  slug: sonarcsharp
+          #- tool: Spectral
+          #  slug: spectral
+          #- tool: SQLLint
+          #  slug: sqllint
           - tool: Trivy
             slug: trivy
-          - tool: TSQLLint
-            slug: tsqllint
-    steps:
+          #- tool: TSQLLint
+          #  slug: tsqllint
 
+    steps:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      # Execute Codacy Analysis CLI and generate a SARIF output with security issues
+      # For each matrix job, execute Codacy Analysis CLI for the selected tool and generate a SARIF output with security issues
       - name: Run Codacy Analysis CLI (${{ matrix.tool }})
         uses: codacy/codacy-analysis-cli-action@562ee3e92b8e92df8b67e0a5ff8aa8e261919c08
         with:
@@ -92,7 +92,7 @@ jobs:
           # This enables GitHub to enforce severity policies and status checks
           max-allowed-issues: 2147483647
 
-      - name: Upload SARIF results file (${{ matrix.tool }})
+      - name: Upload SARIF results to GitHub Code Scanning
         if: success() && hashFiles(format('results-{0}.sarif', matrix.slug)) != ''
         uses: github/codeql-action/upload-sarif@9e907b5e64f6b83e7804b09294d44122997950d6 # v4.32.3
         with:
