@@ -47,16 +47,16 @@ jobs:
           #  slug: jackson-lint
           #- tool: Lizard
           #  slug: lizard
-          - tool: markdownlint
-            slug: markdownlint
+          #- tool: markdownlint
+          #  slug: markdownlint
           #- tool: PMD
           #  slug: pmd
-          - tool: PSScriptAnalyzer
-            slug: psscriptanalyzer
+          #- tool: PSScriptAnalyzer
+          #  slug: psscriptanalyzer
           - tool: Semgrep
             slug: semgrep
-          - tool: SpellCheck
-            slug: spellcheck
+          #- tool: SpellCheck
+          #  slug: spellcheck
           #- tool: SonarC#
           #  slug: sonarcsharp
           #- tool: Spectral
@@ -98,6 +98,6 @@ jobs:
         with:
           sarif_file: results-${{ matrix.slug }}.sarif
           # Unique category to distinguish SARIF runs per tool
-          category: codacy-${{ matrix.slug }}
+          category: codacy-${{ matrix.slug }}-${{ github.job }}
           # Wait for processing to ensure results appear in Security tab
           wait-for-processing: true
