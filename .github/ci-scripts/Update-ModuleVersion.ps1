@@ -9,7 +9,7 @@
     Path to the module manifest file.
 
 .PARAMETER NewVersion
-    The new version to set in the manifest.
+    The new version (as a SemVer string) to set in the manifest.
 
 .OUTPUTS
     PSCustomObject with properties:
@@ -25,64 +25,72 @@
     }
 #>
 [CmdletBinding()]
+[OutputType([PSCustomObject])]
 param(
     [Parameter()]
     [string]$ManifestPath = [System.IO.Path]::Join( (Split-Path -Path (Split-Path -Path $PSScriptRoot)), 'src', 'DLLPickle', 'DLLPickle.psd1' ),
 
+    # Accept a string input and validate/convert to a version object in-script.
     [Parameter(Mandatory = $true)]
     [ValidateNotNullOrEmpty()]
     [string]$NewVersion
 )
 
-# Read current version before update
+# Initialize result object for consistent return behavior.
+$Result = [PSCustomObject]@{
+    Success      = $false
+    OldVersion   = $null
+    NewVersion   = $null
+    ManifestPath = $ManifestPath
+    ErrorMessage = $null
+}
+
+# Read current version from the manifest before updating.
 try {
-    $OldManifest = Import-PowerShellDataFile -Path $ManifestPath
+    $OldManifest = Import-PowerShellDataFile -Path $ManifestPath -ErrorAction Stop
     $OldVersion = $OldManifest.ModuleVersion
+    $Result.OldVersion = $OldVersion
 } catch {
-    Write-Error "Unable to read the current version from the requested module manifest path. $_"
+    $Result.ErrorMessage = "Unable to read the current version from the requested module manifest path. $_"
+    Write-Error $Result.ErrorMessage
+    return $Result
 }
 
-# Validate new version format
+# Validate new version being re-cast from a string to a version object.
 try {
-    [version]$NewVersion
+    $NewVersion = [version]$NewVersion
 } catch {
-    Write-Error "Invalid version format: $NewVersion"
+    $Result.ErrorMessage = "Invalid version format: '$NewVersion'. $_"
+    Write-Error $Result.ErrorMessage
+    return $Result
 }
 
-Write-Host "Updating module manifest: $ManifestPath" -ForegroundColor Green
-Write-Host "Current version: $OldVersion" -ForegroundColor White
-Write-Host "New version: $NewVersion" -ForegroundColor White
+Write-Verbose "Updating module manifest: $ManifestPath"
+Write-Verbose "Current version: $OldVersion"
+Write-Verbose "New version: $NewVersion"
 
 try {
     # Update the manifest
     Update-ModuleManifest -Path $ManifestPath -ModuleVersion $NewVersion -Confirm:$false -ErrorAction Stop
-    Write-Host '✓ Module manifest updated' -ForegroundColor Green
+    Write-Verbose 'Module manifest updated'
 
     # Verify the update
-    $NewManifest = Import-PowerShellDataFile -Path $ManifestPath
+    $NewManifest = Import-PowerShellDataFile -Path $ManifestPath -ErrorAction Stop
     $ActualVersion = $NewManifest.ModuleVersion
 
     if ($ActualVersion -ne $NewVersion) {
         throw "Version mismatch after update. Expected: $NewVersion, Actual: $ActualVersion"
     }
 
-    Write-Host "✓ Version verified: $ActualVersion" -ForegroundColor Green
+    Write-Verbose "Version verified: $ActualVersion"
 
-    $Result = @{
-        Success      = $true
-        OldVersion   = $OldVersion
-        NewVersion   = $ActualVersion
-        ManifestPath = (Resolve-Path $ManifestPath).Path
-    }
+    $Result.Success = $true
+    $Result.NewVersion = $ActualVersion
+    $Result.ManifestPath = (Resolve-Path $ManifestPath -ErrorAction Stop).Path
 } catch {
-    Write-Error "Failed to update module manifest: $_"
-    $Result = @{
-        Success      = $false
-        OldVersion   = $OldVersion
-        NewVersion   = $NewVersion
-        ManifestPath = $ManifestPath
-        ErrorMessage = $_.Exception.Message
-    }
+    $Result.ErrorMessage = "Failed to update module manifest: $_"
+    Write-Error $Result.ErrorMessage
+    return $Result
 }
 
 $Result
