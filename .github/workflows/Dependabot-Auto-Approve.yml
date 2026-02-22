@@ -55,9 +55,9 @@ jobs:
           GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
 
-      - name: Dependency Review
-        uses: actions/dependency-review-action@05fe4576374b728f0c523d6a13d64c25081e0803 # v4.8.3
-        if: steps.nuget_check.outputs.is_nuget_update == 'true'
+      # Note: Dependency Review is handled by the dedicated 'Dependency Review' workflow
+      # which runs on all PRs. This should be configured as a required check to ensure
+      # it completes before auto-merge happens.
 
       - name: Approve and auto-merge NuGet patch/minor updates
         if: |
@@ -72,9 +72,23 @@ jobs:
           # REPLACED
           GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}
 
-      - name: Skip major version updates
+      - name: Comment on major version updates
         if: |
           steps.nuget_check.outputs.is_nuget_update == 'true' &&
           steps.metadata.outputs.update-type == 'version-update:semver-major'
         run: |
           echo "⏭️ Skipping major version update - requires manual review"
+          gh pr comment "$PR_URL" --body "🔔 **Major version update detected**
+
+          This PR updates one or more NuGet packages to a new major version, which may include breaking changes.
+
+          **Action Required:** Manual review and approval is required before merging.
+
+          - Review the package changelog for breaking changes
+          - Test the build and functionality locally
+          - Approve and merge manually when ready
+
+          Package update type: \`${{ steps.metadata.outputs.update-type }}\`"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}

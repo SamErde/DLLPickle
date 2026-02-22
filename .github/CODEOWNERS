@@ -1,1 +1,33 @@
+# CODEOWNERS - Defines ownership and required reviewers for code changes
+
+See: <https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners>
+
+## Default Repository Owner
+
 * @SamErde
+
+## Critical Dependency Files - Require Explicit Review
+
+These control what external packages get automatically imported and resolved:
+
+/src/DLLPickle.Build/DLLPickle.csproj @SamErde
+/src/DLLPickle.Build/packages.lock.json @SamErde
+
+## PowerShell Module Manifest - Controls Module Dependencies and Exports
+
+/src/DLLPickle/DLLPickle.psd1 @SamErde
+/module/DLLPickle/DLLPickle.psd1 @SamErde
+
+## CI/CD Workflows - Critical for Automation Security
+
+/.github/workflows/ @SamErde
+
+## Supply Chain Security Configuration
+
+/.github/dependabot.yml @SamErde
+/DEPENDENCIES.md @SamErde
+/SECURITY.md @SamErde
+
+## Build System - Controls How Dependencies are Built and Tested
+
+/build/ @SamErde

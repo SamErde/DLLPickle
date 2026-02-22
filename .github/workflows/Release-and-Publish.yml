@@ -11,11 +11,10 @@ on:
   workflow_dispatch:
     inputs:
       version_bump:
-        description: "Version bump type (major, minor, patch) - overrides conventional commit analysis"
+        description: "Optionally override the automatic version bump that is automatically determined by conventional commit message analysis. (Skip for auto-detection.)"
         required: false
         type: choice
         options:
-          - auto
           - major
           - minor
           - patch
@@ -48,7 +47,7 @@ jobs:
       )
 
     permissions:
-      contents: write
+      contents: read
       pull-requests: read
 
     outputs:
@@ -56,6 +55,7 @@ jobs:
       version_bump: ${{ steps.determine_version.outputs.version_bump }}
       current_version: ${{ steps.determine_version.outputs.current_version }}
       new_version: ${{ steps.determine_version.outputs.new_version }}
+      previous_tag: ${{ steps.determine_version.outputs.previous_tag }}
       trigger_source: ${{ steps.determine_version.outputs.trigger_source }}
 
     steps:
@@ -112,11 +112,22 @@ jobs:
           }
           Write-Host "Trigger source: $TriggerSource"
 
+          # Find the previous tag for release notes generation
+          $PreviousTag = $null
+          $Tags = @(git tag --list 'v*' --sort=-v:refname 2>$null)
+          if ($LASTEXITCODE -eq 0 -and $Tags.Count -gt 0) {
+              $PreviousTag = $Tags[0]
+              Write-Host "Previous tag: $PreviousTag"
+          } else {
+              Write-Host "No previous tags found"
+          }
+
           if (-not $ShouldRelease) {
               Write-Host "No release needed based on commit analysis"
               "should_release=false" >> $env:GITHUB_OUTPUT
               "version_bump=none" >> $env:GITHUB_OUTPUT
               "current_version=$($CurrentVersion.ToString())" >> $env:GITHUB_OUTPUT
+              "previous_tag=$PreviousTag" >> $env:GITHUB_OUTPUT
               "trigger_source=$TriggerSource" >> $env:GITHUB_OUTPUT
               exit 0
           }
@@ -126,6 +137,7 @@ jobs:
           "version_bump=$NewVersionType" >> $env:GITHUB_OUTPUT
           "current_version=$($CurrentVersion.ToString())" >> $env:GITHUB_OUTPUT
           "new_version=$NewVersion" >> $env:GITHUB_OUTPUT
+          "previous_tag=$PreviousTag" >> $env:GITHUB_OUTPUT
           "trigger_source=$TriggerSource" >> $env:GITHUB_OUTPUT
 
       - name: Display release plan
@@ -227,64 +239,10 @@ jobs:
 
   build-and-test:
     name: Build and Test Module
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
+    uses: ./.github/workflows/Build Module - Windows.yml
     needs: update-version
-
-    permissions:
-      contents: read
-
-    steps:
-
-      - name: Checkout repository (with new tag)
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          ref: main
-          fetch-depth: 0
-
-      - name: Cache PowerShell modules
-        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
-        with:
-          path: |
-            ~/.local/share/powershell/Modules
-          key: ${{ runner.os }}-psmodules-${{ hashFiles('build/DLLPickle.Build.ps1', '.github/ci-scripts/Actions_Bootstrap.ps1') }}
-          restore-keys: |
-            ${{ runner.os }}-psmodules-
-
-      - name: Bootstrap
-        shell: pwsh
-        run: ./.github/ci-scripts/Actions_Bootstrap.ps1
-
-      - name: Build and Test Module
-        shell: pwsh
-        run: |
-          try {
-              Invoke-Build -File 'build/DLLPickle.Build.ps1'
-              Write-Host "✓ Build and tests passed" -ForegroundColor Green
-          }
-          catch {
-              Write-Error "Build failed: $_"
-              Write-Error "Stack trace: $($_.ScriptStackTrace)"
-              if (Test-Path "./artifacts/testOutput/PesterTests.xml") {
-                  Write-Host "`nTest Results:"
-                  Get-Content "./artifacts/testOutput/PesterTests.xml" | Select-Object -First 50
-              }
-              exit 1
-          }
-
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
-        with:
-          name: build-artifacts-${{ github.run_number }}
-          path: ./archive
-          if-no-files-found: warn
-          retention-days: 30
-
-      - name: Upload module for publishing
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
-        with:
-          name: module-${{ github.run_number }}
-          path: ./module/DLLPickle
+    with:
+      ref: main
 
   create-release:
     name: Create GitHub Release
@@ -332,12 +290,12 @@ jobs:
         shell: pwsh
         run: |
           $version = "${{ needs.analyze.outputs.new_version }}"
-          $lastTag = git describe --tags --abbrev=0 2>$null
+          $lastTag = "${{ needs.analyze.outputs.previous_tag }}"
 
           if ($lastTag) {
-              $commits = git log "$lastTag..HEAD" --oneline --no-decorate
+              $commits = git log "$lastTag..HEAD" --oneline --no-decorate 2>$null
           } else {
-              $commits = git log --oneline --no-decorate | head -20
+              $commits = git log --oneline --no-decorate 2>$null | Select-Object -First 20
           }
 
           $releaseNotes = @"
@@ -415,7 +373,7 @@ jobs:
       - name: Download module artifact
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
-          name: module-${{ github.run_number }}
+          name: module-build
           path: ./module
 
       - name: Verify version to publish
@@ -476,11 +434,109 @@ jobs:
           Write-Host "✓ Module published successfully"
           Write-Host "Gallery URL: $($publishResult.GalleryUrl)"
 
+  rollback-on-failure:
+    name: Rollback on Release Failure
+    runs-on: ubuntu-latest
+    needs: [analyze, update-version, create-release, publish]
+    if: |
+      failure() && (
+        needs.create-release.result == 'failure' ||
+        needs.publish.result == 'failure'
+      )
+
+    permissions:
+      contents: write
+
+    steps:
+
+      - name: Generate GitHub App Token
+        id: generate_token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          token: ${{ steps.generate_token.outputs.token }}
+          fetch-depth: 0
+
+      - name: Revert version bump and delete tag
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ steps.generate_token.outputs.token }}
+        run: |
+          $version = "${{ needs.analyze.outputs.new_version }}"
+          $tagName = "v$version"
+
+          Write-Host "🔄 Rolling back version $version due to release failure..."
+
+          # Delete remote tag (ignore errors if tag doesn't exist yet)
+          Write-Host "Deleting tag: $tagName"
+          git push origin --delete $tagName 2>$null
+          if ($LASTEXITCODE -eq 0) {
+              Write-Host "✓ Tag deleted"
+          } else {
+              Write-Host "⚠ Tag not found (may not have been created)"
+          }
+
+          # Revert the version bump commit (reset to the commit before the bump)
+          Write-Host "Reverting version bump commit..."
+          try {
+              $previousCommit = git rev-parse HEAD~1 -ErrorAction Stop
+              git reset --hard $previousCommit -ErrorAction Stop
+              git push origin HEAD:main --force -ErrorAction Stop
+              Write-Host "✓ Version bump reverted"
+          } catch {
+              Write-Error "Failed to revert version bump: $_"
+              exit 1
+          }
+
+      - name: Delete GitHub release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ steps.generate_token.outputs.token }}
+        continue-on-error: true
+        run: |
+          $version = "${{ needs.analyze.outputs.new_version }}"
+          $tagName = "v$version"
+
+          Write-Host "Deleting GitHub release: $tagName"
+          gh release delete $tagName --yes 2>$null
+          Write-Host "✓ GitHub release deleted (if it existed)"
+
+      - name: Rollback summary
+        shell: pwsh
+        run: |
+          $summary = @"
+          ## 🚨 Release Failed - Rollback Complete
+
+          **Module:** ${{ env.MODULE_NAME }}
+          **Version:** ${{ needs.analyze.outputs.new_version }}
+
+          The release process failed. The following have been reverted:
+
+          - ✓ Version bump commit removed from main
+          - ✓ Git tag deleted
+          - ✓ GitHub release deleted (if created)
+
+          **Build artifacts are preserved** in the workflow run for investigation.
+
+          ### Failed Steps
+          - Create Release: ${{ needs.create-release.result }}
+          - Publish: ${{ needs.publish.result }}
+
+          Please review the failed job logs, address the issue, and retry the release.
+          "@
+
+          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value $summary
+
   summary:
     name: Release Summary
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    needs: [analyze, update-version, build-and-test, create-release, publish]
+    needs: [analyze, update-version, build-and-test, create-release, publish, rollback-on-failure]
     if: always()
 
     permissions:
@@ -507,6 +563,7 @@ jobs:
           | Build & Test | ${{ needs.build-and-test.result }} |
           | Create Release | ${{ needs.create-release.result }} |
           | Publish | ${{ needs.publish.result }} |
+          | Rollback | ${{ needs.rollback-on-failure.result }} |
 
           ### Links
           - **Release:** https://github.com/${{ github.repository }}/releases/tag/v${{ needs.analyze.outputs.new_version }}

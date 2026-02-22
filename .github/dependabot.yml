@@ -43,10 +43,10 @@ updates:
     commit-message:
       prefix: "deps"
       prefix-development: "deps"
-    # Only auto-approve non-major updates (handled by workflow)
-    ignore:
-      - dependency-name: "*"
-        update-types: ["version-update:semver-major"]
+    # Note: Major version PRs ARE created but require manual approval
+    # The Dependabot-Auto-Approve workflow handles selective auto-approval:
+    # - Auto-approves: patch and minor updates
+    # - Requires manual review: major version updates
 
   - package-ecosystem: "pip"
     directory: "/docs/"

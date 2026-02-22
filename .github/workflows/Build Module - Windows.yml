@@ -7,8 +7,15 @@
 # https://github.com/actions/upload-artifact#where-does-the-upload-go
 name: Build Module (Windows)
 
+description: Builds and tests the DLLPickle PowerShell module on Windows. Can be run manually or called by other workflows.
+
 on:
   workflow_call:
+    inputs:
+      ref:
+        description: "Git reference (branch, tag, or commit SHA) to check out. Defaults to the ref that triggered the caller workflow."
+        type: string
+        required: false
   workflow_dispatch:
   #pull_request:
   #  paths:
@@ -24,23 +31,24 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: build-windows-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
 
   build:
 
-    name: Test and Build Module (Windows)
+    name: Build and test module (Windows)
     runs-on: windows-latest
     strategy:
       fail-fast: false
     steps:
 
-    - name: Harden the runner (Audit all outbound calls)
-      uses: step-security/harden-runner@5ef0c079ce82195b2a36a210272d6b661572d83e # v2.14.2
-      with:
-        egress-policy: audit
-
     - name: Check out repository
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      with:
+        ref: ${{ inputs.ref || github.ref }}
 
     - name: Cache PowerShell modules
       uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
@@ -48,7 +56,9 @@ jobs:
         path: |
           ~\Documents\PowerShell\Modules
           ~\Documents\WindowsPowerShell\Modules
-        key: ${{ runner.os }}-psmodules-${{ hashFiles('src/DLLPickle.Build.ps1', '.github/workflows/Actions_Bootstrap.ps1') }}
+        key: ${{ runner.os }}-psmodules-${{ hashFiles('build/DLLPickle.Build.ps1', '.github/ci-scripts/Actions_Bootstrap.ps1') }}
+        restore-keys: |
+          ${{ runner.os }}-psmodules-
 
     - name: Bootstrap
       shell: pwsh
@@ -71,4 +81,11 @@ jobs:
       with:
         name: zip-archive
         path: ./archive
+        if-no-files-found: warn
+
+    - name: Upload module directory
+      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+      with:
+        name: module-build
+        path: ./module/DLLPickle
         if-no-files-found: warn
