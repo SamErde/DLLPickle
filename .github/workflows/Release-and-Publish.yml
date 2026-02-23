@@ -536,7 +536,7 @@ jobs:
   rollback-on-failure:
     name: Rollback on Release Failure
     runs-on: ubuntu-latest
-    needs: [analyze, update-version, create-release, publish, sync-module-manifest]
+    needs: [analyze, update-version, build-and-test, create-release, publish, sync-module-manifest]
     if: |
       failure() && (
         needs.create-release.result == 'failure' ||
