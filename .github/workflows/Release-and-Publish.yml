@@ -83,12 +83,17 @@ jobs:
               $env:MANUAL_BUMP
           }
 
-          if (-not [string]::IsNullOrEmpty($ManualBumpParam)) {
-              Write-Host "Manual version bump specified: $ManualBumpParam"
-              $VersionResult = & ./.github/ci-scripts/Get-VersionBump.ps1 -ManualBump $ManualBumpParam
-          } else {
-              Write-Host "Using automatic conventional commit analysis"
-              $VersionResult = & ./.github/ci-scripts/Get-VersionBump.ps1
+          try {
+              if (-not [string]::IsNullOrEmpty($ManualBumpParam)) {
+                  Write-Host "Manual version bump specified: $ManualBumpParam"
+                  $VersionResult = & ./.github/ci-scripts/Get-VersionBump.ps1 -ManualBump $ManualBumpParam -ErrorAction Stop
+              } else {
+                  Write-Host "Using automatic conventional commit analysis"
+                  $VersionResult = & ./.github/ci-scripts/Get-VersionBump.ps1 -ErrorAction Stop
+              }
+          } catch {
+              Write-Error "Failed to analyze version requirements: $_"
+              exit 1
           }
 
           $ShouldRelease  = $VersionResult.ShouldRelease
@@ -172,6 +177,9 @@ jobs:
     permissions:
       contents: write
 
+    outputs:
+      new_version: ${{ needs.analyze.outputs.new_version }}
+
     steps:
 
       - name: Generate GitHub App Token
@@ -206,13 +214,24 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
           git add $env:MANIFEST_PATH
-          git commit -m "chore(release): bump version to ${{ needs.analyze.outputs.new_version }}"
-          git push origin HEAD:main
+          if ($LASTEXITCODE -ne 0) {
+              Write-Error "Failed to stage manifest file"
+              exit 1
+          }
 
+          git commit -m "chore(release): bump version to ${{ needs.analyze.outputs.new_version }}"
+          if ($LASTEXITCODE -ne 0) {
+              Write-Error "Failed to commit version update"
+              exit 1
+          }
+
+          git push origin HEAD:main
           if ($LASTEXITCODE -ne 0) {
               Write-Error "Failed to push version update to main"
               exit 1
           }
+
+          Write-Host "✓ Version update committed and pushed"
 
       - name: Create version tag
         shell: pwsh
@@ -244,11 +263,81 @@ jobs:
     with:
       ref: main
 
+  sync-module-manifest:
+    name: Sync Updated Manifest to Module Folder
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [update-version, build-and-test]
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          ref: main
+
+      - name: Download module artifact
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: module-build
+          path: ./module/DLLPickle
+
+      - name: Sync updated manifest to module folder
+        shell: pwsh
+        run: |
+          # Ensure module folder exists
+          if (-not (Test-Path ./module/DLLPickle)) {
+              New-Item -Path ./module/DLLPickle -ItemType Directory -Force | Out-Null
+          }
+
+          try {
+              # Verify source manifest exists
+              if (-not (Test-Path $env:MANIFEST_PATH)) {
+                  throw "Source manifest not found at $env:MANIFEST_PATH"
+              }
+
+              # Copy the updated manifest from src to the module folder
+              Copy-Item -Path $env:MANIFEST_PATH -Destination ./module/DLLPickle/DLLPickle.psd1 -Force -ErrorAction Stop
+              Write-Host "✓ Manifest copied to module folder"
+
+              # Verify the copy was successful
+              if (-not (Test-Path ./module/DLLPickle/DLLPickle.psd1)) {
+                  throw "Manifest not found after copying to ./module/DLLPickle/DLLPickle.psd1"
+              }
+
+              # Verify the new version is in place
+              $modulePsd1 = Import-PowerShellDataFile -Path ./module/DLLPickle/DLLPickle.psd1 -ErrorAction Stop
+              $moduleVersion = $modulePsd1.ModuleVersion
+              $expectedVersion = "${{ needs.update-version.outputs.new_version }}"
+
+              Write-Host "Module manifest version: $moduleVersion"
+              Write-Host "Expected version: $expectedVersion"
+
+              if ($moduleVersion -ne $expectedVersion) {
+                  throw "Version mismatch after sync: module has $moduleVersion but expected $expectedVersion"
+              }
+
+              Write-Host "✓ Manifest synced successfully. Module version: $moduleVersion"
+          } catch {
+              Write-Error "Manifest sync failed: $_"
+              exit 1
+          }
+
+      - name: Upload updated module
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: module-build-synced
+          path: ./module/DLLPickle
+          if-no-files-found: error
+
   create-release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: [analyze, update-version, build-and-test]
+    needs: [analyze, update-version, build-and-test, sync-module-manifest]
 
     permissions:
       contents: write
@@ -354,7 +443,7 @@ jobs:
     name: Publish to PowerShell Gallery
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: [analyze, build-and-test, create-release]
+    needs: [analyze, build-and-test, create-release, sync-module-manifest]
     environment:
       name: psgallery
       url: https://www.powershellgallery.com/packages/${{ env.MODULE_NAME }}
@@ -370,25 +459,35 @@ jobs:
           ref: main
           fetch-depth: 0
 
-      - name: Download module artifact
+      - name: Download module artifact (synced)
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
-          name: module-build
-          path: ./module
+          name: module-build-synced
+          path: ./module/DLLPickle
 
-      - name: Verify version to publish
+      - name: Verify module version before publishing
         shell: pwsh
         run: |
-          $manifest = Import-PowerShellDataFile -Path $env:MANIFEST_PATH
-          $manifestVersion = $manifest.ModuleVersion
-          $expectedVersion = "${{ needs.analyze.outputs.new_version }}"
-
-          if ($manifestVersion -ne $expectedVersion) {
-              Write-Error "Version mismatch: manifest has $manifestVersion but expected $expectedVersion"
+          $modulePath = "./module/DLLPickle/DLLPickle.psd1"
+          if (-not (Test-Path $modulePath)) {
+              Write-Error "Module manifest not found at $modulePath"
               exit 1
           }
 
-          Write-Host "✓ Version verified: $manifestVersion"
+          $moduleManifest = Import-PowerShellDataFile -Path $modulePath
+          $moduleVersion = $moduleManifest.ModuleVersion
+          $expectedVersion = "${{ needs.analyze.outputs.new_version }}"
+
+          Write-Host "Module path: $modulePath"
+          Write-Host "Module version: $moduleVersion"
+          Write-Host "Expected version: $expectedVersion"
+
+          if ($moduleVersion -ne $expectedVersion) {
+              Write-Error "Version mismatch in module artifact: has $moduleVersion but expected $expectedVersion"
+              exit 1
+          }
+
+          Write-Host "✓ Module version verified: $moduleVersion"
 
       - name: Check if version already published
         id: check_published
@@ -437,11 +536,12 @@ jobs:
   rollback-on-failure:
     name: Rollback on Release Failure
     runs-on: ubuntu-latest
-    needs: [analyze, update-version, create-release, publish]
+    needs: [analyze, update-version, build-and-test, create-release, publish, sync-module-manifest]
     if: |
       failure() && (
         needs.create-release.result == 'failure' ||
-        needs.publish.result == 'failure'
+        needs.publish.result == 'failure' ||
+        needs.sync-module-manifest.result == 'failure'
       )
 
     permissions:
@@ -484,10 +584,16 @@ jobs:
           # Revert the version bump commit (reset to the commit before the bump)
           Write-Host "Reverting version bump commit..."
           try {
-              $previousCommit = git rev-parse HEAD~1 -ErrorAction Stop
-              git reset --hard $previousCommit -ErrorAction Stop
-              git push origin HEAD:main --force -ErrorAction Stop
-              Write-Host "✓ Version bump reverted"
+              # Verify we have a previous commit
+              $commitCount = git rev-list --count HEAD -ErrorAction Stop
+              if ($commitCount -lt 2) {
+                  Write-Warning "Cannot revert: only $commitCount commit(s) exist in repository"
+              } else {
+                  $previousCommit = git rev-parse HEAD~1 -ErrorAction Stop
+                  git reset --hard $previousCommit -ErrorAction Stop
+                  git push origin HEAD:main --force -ErrorAction Stop
+                  Write-Host "✓ Version bump reverted"
+              }
           } catch {
               Write-Error "Failed to revert version bump: $_"
               exit 1
@@ -536,7 +642,7 @@ jobs:
     name: Release Summary
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    needs: [analyze, update-version, build-and-test, create-release, publish, rollback-on-failure]
+    needs: [analyze, update-version, build-and-test, create-release, publish, rollback-on-failure, sync-module-manifest]
     if: always()
 
     permissions:
@@ -561,6 +667,7 @@ jobs:
           | Analyze | ${{ needs.analyze.result }} |
           | Update Version | ${{ needs.update-version.result }} |
           | Build & Test | ${{ needs.build-and-test.result }} |
+          | Sync Manifest | ${{ needs.sync-module-manifest.result }} |
           | Create Release | ${{ needs.create-release.result }} |
           | Publish | ${{ needs.publish.result }} |
           | Rollback | ${{ needs.rollback-on-failure.result }} |
