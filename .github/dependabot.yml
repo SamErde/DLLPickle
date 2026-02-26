@@ -57,3 +57,13 @@ updates:
     commit-message:
       prefix: "docs"
       prefix-development: "docs"
+
+  - package-ecosystem: pip
+    directory: /docs
+    schedule:
+      interval: daily
+
+  - package-ecosystem: nuget
+    directory: /src/DLLPickle.Build
+    schedule:
+      interval: daily
