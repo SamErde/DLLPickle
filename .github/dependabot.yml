@@ -37,13 +37,10 @@ updates:
   - package-ecosystem: "nuget"
     directory: "/src/DLLPickle.Build/"
     schedule:
-      interval: "weekly"
-      day: "sunday"
-      time: "16:00"
+      interval: "daily"
     commit-message:
       prefix: "deps"
       prefix-development: "deps"
-    # Note: Major version PRs ARE created but require manual approval
     # The Dependabot-Auto-Approve workflow handles selective auto-approval:
     # - Auto-approves: patch and minor updates
     # - Requires manual review: major version updates
@@ -57,13 +54,3 @@ updates:
     commit-message:
       prefix: "docs"
       prefix-development: "docs"
-
-  - package-ecosystem: pip
-    directory: /docs
-    schedule:
-      interval: daily
-
-  - package-ecosystem: nuget
-    directory: /src/DLLPickle.Build
-    schedule:
-      interval: daily
