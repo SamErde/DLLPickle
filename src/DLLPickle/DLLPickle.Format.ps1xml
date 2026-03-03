@@ -215,10 +215,6 @@
                         <Alignment>Left</Alignment>
                     </TableColumnHeader>
                     <TableColumnHeader>
-                        <Label>AssemblyName</Label>
-                        <Alignment>Left</Alignment>
-                    </TableColumnHeader>
-                    <TableColumnHeader>
                         <Label>AssemblyVersion</Label>
                         <Alignment>Left</Alignment>
                     </TableColumnHeader>
@@ -236,9 +232,6 @@
                         <TableColumnItems>
                             <TableColumnItem>
                                 <PropertyName>DLLName</PropertyName>
-                            </TableColumnItem>
-                            <TableColumnItem>
-                                <PropertyName>AssemblyName</PropertyName>
                             </TableColumnItem>
                             <TableColumnItem>
                                 <PropertyName>AssemblyVersion</PropertyName>
