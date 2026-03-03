@@ -130,6 +130,11 @@
     $Results = @()
     $MaxRetries = 5
     $RetryCount = 0
+    $InitiallyLoadedAssemblyKeys = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    foreach ($Loaded in [System.AppDomain]::CurrentDomain.GetAssemblies()) {
+        $LoadedName = $Loaded.GetName()
+        [void]$InitiallyLoadedAssemblyKeys.Add("$($LoadedName.Name)|$($LoadedName.Version)")
+    }
 
     while ($DLLFileQueue.Count -gt 0 -and $RetryCount -lt $MaxRetries) {
         $UnresolvedDLLFiles = @()
@@ -140,17 +145,23 @@
             try {
                 # Check if assembly is already loaded
                 $AssemblyName = [System.Reflection.AssemblyName]::GetAssemblyName($FilePath)
+                $AssemblyKey = "$($AssemblyName.Name)|$($AssemblyName.Version)"
                 $LoadedAssembly = [System.AppDomain]::CurrentDomain.GetAssemblies() |
                     Where-Object { $_.GetName().Name -eq $AssemblyName.Name -and $_.GetName().Version -eq $AssemblyName.Version }
 
                 if ($LoadedAssembly) {
-                    Write-Verbose "Assembly already loaded: $($DLLFile.BaseName)"
+                    $Status = if ($InitiallyLoadedAssemblyKeys.Contains($AssemblyKey)) { 'Already Loaded' } else { 'Imported' }
+                    if ($Status -eq 'Already Loaded') {
+                        Write-Verbose "Assembly already loaded: $($DLLFile.BaseName)"
+                    } else {
+                        Write-Verbose "Assembly was loaded during this invocation: $($DLLFile.BaseName)"
+                    }
                     $Results += [PSCustomObject]@{
                         PSTypeName      = 'DLLPickle.ImportDPLibraryResult'
                         DLLName         = $DLLFile.Name
                         AssemblyName    = $AssemblyName.Name
                         AssemblyVersion = $AssemblyName.Version.ToString()
-                        Status          = 'Already Loaded'
+                        Status          = $Status
                         Error           = $null
                     }
                 } else {
