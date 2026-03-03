@@ -9,6 +9,11 @@
     The latest versions of all dependencies are automatically imported, providing
     backwards compatibility and avoiding version conflicts.
 
+    This function implements dependency-aware loading with automatic retry logic. Some assemblies
+    have transitive dependencies that must be loaded first. The function will retry failed
+    assemblies up to 5 times to allow for dependency resolution. This eliminates false warnings
+    on initial load attempts in Windows PowerShell when dependency load order cannot be predicted.
+
     .PARAMETER SkipProblematicAssemblies
     When running in Windows PowerShell, skip assemblies known to have compatibility issues
     with .NET Framework 4.8. This prevents warning messages while still loading all
@@ -23,18 +28,22 @@
 
     .EXAMPLE
     Import-DPLibrary
+
     Imports all dependency DLLs from the appropriate TFM directory.
 
     .EXAMPLE
     Import-DPLibrary -SkipProblematicAssemblies
+
     Imports compatible DLLs and skips known problematic assemblies in Windows PowerShell.
 
     .EXAMPLE
     Import-DPLibrary -ShowLoaderExceptions
+
     Imports DLLs and displays detailed diagnostic information for any failures.
 
     .OUTPUTS
     System.Management.Automation.PSCustomObject
+
     Returns information about each imported DLL.
 
     .NOTES
@@ -45,6 +54,11 @@
     A status of 'Imported' indicates the assembly file was successfully loaded by the runtime,
     but this does not guarantee that all types within the assembly are usable. Some types may
     remain unavailable due to unresolved transitive dependencies.
+
+    The function uses a retry strategy to handle transitive dependencies: on the first failed
+    load attempt, a verbose message is written instead of a warning. If the assembly loads
+    successfully on a retry (after dependencies are satisfied), the original verbose message
+    is suppressed. Only if the assembly fails all retry attempts is a warning message shown.
     #>
 
     [CmdletBinding()]
@@ -93,7 +107,7 @@
         'System.Diagnostics.DiagnosticSource.dll'
     )
 
-    # Get all DLL files in the TFM directory. If no DLLs are found, throw an error to alert the user about potential installation issues.
+    # Get all DLL files in the target framework moniker (TFM) directory. If no DLLs are found, throw an error to alert the user about potential installation issues.
     $DLLFiles = @(Get-ChildItem -Path $TFMDirectory -Filter '*.dll' -File -Recurse -ErrorAction Stop)
     if (-not $DLLFiles -or $DLLFiles.Count -eq 0) {
         throw "No DLL files found in '$TFMDirectory'. Ensure that the module is properly installed and the bin directory contains the expected assemblies."
@@ -109,79 +123,124 @@
         }
     }
 
-    # Import each DLL and record the results.
-    $Results = foreach ($DLLFile in $DLLFiles) {
-        $FilePath = $DLLFile.FullName
+    # Import each DLL and record the results using dependency-aware loading with retry logic.
+    # Some assemblies have transitive dependencies that must be loaded first. Retrying failed
+    # assemblies allows dependencies to be satisfied from previous attempts.
+    $DLLFileQueue = @($DLLFiles)
+    $Results = @()
+    $MaxRetries = 5
+    $RetryCount = 0
 
-        try {
-            # Check if assembly is already loaded
-            $AssemblyName = [System.Reflection.AssemblyName]::GetAssemblyName($FilePath)
-            $LoadedAssembly = [System.AppDomain]::CurrentDomain.GetAssemblies() |
-                Where-Object { $_.GetName().Name -eq $AssemblyName.Name -and $_.GetName().Version -eq $AssemblyName.Version }
+    while ($DLLFileQueue.Count -gt 0 -and $RetryCount -lt $MaxRetries) {
+        $UnresolvedDLLFiles = @()
 
-            if ($LoadedAssembly) {
-                Write-Verbose "Assembly already loaded: $($DLLFile.BaseName)"
-                [PSCustomObject]@{
+        foreach ($DLLFile in $DLLFileQueue) {
+            $FilePath = $DLLFile.FullName
+
+            try {
+                # Check if assembly is already loaded
+                $AssemblyName = [System.Reflection.AssemblyName]::GetAssemblyName($FilePath)
+                $LoadedAssembly = [System.AppDomain]::CurrentDomain.GetAssemblies() |
+                    Where-Object { $_.GetName().Name -eq $AssemblyName.Name -and $_.GetName().Version -eq $AssemblyName.Version }
+
+                if ($LoadedAssembly) {
+                    Write-Verbose "Assembly already loaded: $($DLLFile.BaseName)"
+                    $Results += [PSCustomObject]@{
+                        PSTypeName      = 'DLLPickle.ImportDPLibraryResult'
+                        DLLName         = $DLLFile.Name
+                        AssemblyName    = $AssemblyName.Name
+                        AssemblyVersion = $AssemblyName.Version.ToString()
+                        Status          = 'Already Loaded'
+                        Error           = $null
+                    }
+                } else {
+                    Add-Type -Path $FilePath
+                    Write-Verbose "Successfully imported: $($DLLFile.BaseName)"
+                    $Results += [PSCustomObject]@{
+                        PSTypeName      = 'DLLPickle.ImportDPLibraryResult'
+                        DLLName         = $DLLFile.Name
+                        AssemblyName    = $AssemblyName.Name
+                        AssemblyVersion = $AssemblyName.Version.ToString()
+                        Status          = 'Imported'
+                        Error           = $null
+                    }
+                }
+            } catch [System.Reflection.ReflectionTypeLoadException] {
+                # Assembly failed to load; dependencies may not be loaded yet. Retry later.
+                $UnresolvedDLLFiles += $DLLFile
+
+                if ($RetryCount -eq 0) {
+                    # Only show warnings on first attempt; dependencies may resolve on retry
+                    $LoaderExceptions = $_.Exception.LoaderExceptions
+                    $ErrorMessage = $_.Exception.Message
+
+                    if ($ShowLoaderExceptions -and $LoaderExceptions) {
+                        Write-Warning "Failed to import $($DLLFile.Name): $ErrorMessage`n"
+                        Write-Warning "Loader Exceptions ($($LoaderExceptions.Count) total):"
+                        foreach ($LoaderException in $LoaderExceptions | Select-Object -First 5) {
+                            Write-Warning "  - $($LoaderException.Message)"
+                        }
+                        if ($LoaderExceptions.Count -gt 5) {
+                            Write-Warning "  ... and $($LoaderExceptions.Count - 5) more exceptions"
+                        }
+                    } else {
+                        Write-Verbose "Failed to import $($DLLFile.Name) (attempt $(($RetryCount + 1))/$MaxRetries): $ErrorMessage"
+                        if (-not $ShowLoaderExceptions) {
+                            Write-Verbose 'Use -ShowLoaderExceptions to see detailed loader exception information'
+                        }
+                    }
+                }
+            } catch {
+                # Other error; do not retry
+                Write-Warning "Failed to import $($DLLFile.Name): $_"
+                $Results += [PSCustomObject]@{
                     PSTypeName      = 'DLLPickle.ImportDPLibraryResult'
                     DLLName         = $DLLFile.Name
-                    AssemblyName    = $AssemblyName.Name
-                    AssemblyVersion = $AssemblyName.Version.ToString()
-                    Status          = 'Already Loaded'
-                    Error           = $null
+                    AssemblyName    = $null
+                    AssemblyVersion = $null
+                    Status          = 'Failed'
+                    Error           = $_.Exception.Message
                 }
-            } else {
-                Add-Type -Path $FilePath
-                Write-Verbose "Successfully imported: $($DLLFile.BaseName)"
-                [PSCustomObject]@{
-                    PSTypeName      = 'DLLPickle.ImportDPLibraryResult'
-                    DLLName         = $DLLFile.Name
-                    AssemblyName    = $AssemblyName.Name
-                    AssemblyVersion = $AssemblyName.Version.ToString()
-                    Status          = 'Imported'
-                    Error           = $null
-                }
-            }
-        } catch [System.Reflection.ReflectionTypeLoadException] {
-            # Handle ReflectionTypeLoadException specifically to provide detailed diagnostics
-            $LoaderExceptions = $_.Exception.LoaderExceptions
-            $ErrorMessage = $_.Exception.Message
-
-            # Build detailed error information
-            if ($ShowLoaderExceptions -and $LoaderExceptions) {
-                Write-Warning "Failed to import $($DLLFile.Name): $ErrorMessage"
-                Write-Warning "Loader Exceptions ($($LoaderExceptions.Count) total):"
-                foreach ($LoaderException in $LoaderExceptions | Select-Object -First 5) {
-                    Write-Warning "  - $($LoaderException.Message)"
-                }
-                if ($LoaderExceptions.Count -gt 5) {
-                    Write-Warning "  ... and $($LoaderExceptions.Count - 5) more exceptions"
-                }
-            } else {
-                Write-Warning "Failed to import $($DLLFile.Name): $ErrorMessage"
-                if (-not $ShowLoaderExceptions) {
-                    Write-Verbose 'Use -ShowLoaderExceptions to see detailed loader exception information'
-                }
-            }
-
-            [PSCustomObject]@{
-                PSTypeName      = 'DLLPickle.ImportDPLibraryResult'
-                DLLName         = $DLLFile.Name
-                AssemblyName    = $null
-                AssemblyVersion = $null
-                Status          = 'Failed'
-                Error           = $ErrorMessage
-            }
-        } catch {
-            Write-Warning "Failed to import $($DLLFile.Name): $_"
-            [PSCustomObject]@{
-                PSTypeName      = 'DLLPickle.ImportDPLibraryResult'
-                DLLName         = $DLLFile.Name
-                AssemblyName    = $null
-                AssemblyVersion = $null
-                Status          = 'Failed'
-                Error           = $_.Exception.Message
             }
         }
+
+        # If all assemblies loaded successfully, exit the retry loop
+        if ($UnresolvedDLLFiles.Count -eq 0) {
+            break
+        }
+
+        # If no progress was made (same failures as last iteration), record failures and exit
+        if ($UnresolvedDLLFiles.Count -eq $DLLFileQueue.Count) {
+            $RetryCount++
+            if ($RetryCount -ge $MaxRetries) {
+                # Record remaining unresolved DLLs as failures
+                foreach ($DLLFile in $UnresolvedDLLFiles) {
+                    $FilePath = $DLLFile.FullName
+                    try {
+                        $AssemblyName = [System.Reflection.AssemblyName]::GetAssemblyName($FilePath)
+                    } catch {
+                        $AssemblyName = [PSObject]@{ Name = $DLLFile.BaseName }
+                    }
+
+                    # Only add if not already in results
+                    if ($DLLFile.Name -notin $Results.DLLName) {
+                        $Results += [PSCustomObject]@{
+                            PSTypeName      = 'DLLPickle.ImportDPLibraryResult'
+                            DLLName         = $DLLFile.Name
+                            AssemblyName    = $AssemblyName.Name
+                            AssemblyVersion = $null
+                            Status          = 'Failed'
+                            Error           = 'Unable to load one or more of the requested types. Retrieve the LoaderExceptions property for more information.'
+                        }
+                    }
+                }
+                break
+            }
+        } else {
+            $RetryCount++
+        }
+
+        $DLLFileQueue = $UnresolvedDLLFiles
     }
 
     $Results
