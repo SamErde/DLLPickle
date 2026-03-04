@@ -31,7 +31,7 @@ Install-Module DLLPickle -Scope CurrentUser
 Or, if you use **Microsoft.PowerShell.PSResourceGet**, run:
 
 ```powershell
-Install-PSResource -Name DLLPickle -Prerelease
+Install-PSResource -Name DLLPickle
 ```
 
 ### Using
@@ -42,8 +42,6 @@ All you have to do to use DLL Pickle is import it and run the `Import-DPLibrary`
 Import-Module DLLPickle
 Import-DPLibrary
 ```
-
-This will automatically import the newest versions of the Microsoft Authentication Library (MSAL) and several transitive dependencies which support authentication for many existing Microsoft PowerShell modules. After this module is imported, you should be able to connect to any Microsoft online service without running into MSAL version conflicts.
 
 ---
 
