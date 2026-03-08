@@ -1,7 +1,7 @@
 # PowerShell Coding Standards
 
 - Always use approved PowerShell verbs for function names (get, set, new, start, remove, update, etc.)
-- Use Pascal case for all function names, variables, and parameters
+- Use Pascal case for all named functions, objects, variables, and parameters
 - Follow OTBS (One True Brace Style) formatting
 - Include one blank line at the end of every script
 - Remove all trailing spaces
@@ -32,7 +32,7 @@ Generate commit messages for PowerShell projects using this format:
 
 `<type>[optional scope]: <description>`
 
-Follow the GitMoji specifications at <https://conventional-emoji-commits.site/full-specification/specification> for commit messages. Tailor commit messages for PowerShell development, using the provided types and scopes.
+Tailor commit messages for PowerShell development, using the provided types and scopes.
 
 ## PowerShell-Specific Commit Types
 
