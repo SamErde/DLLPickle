@@ -45,7 +45,7 @@ Describe 'Get-DPConfig' -Tag 'Unit' {
         }
 
         It 'Writes an error and returns defaults' {
-            $result = Get-DPConfig -ErrorVariable readError
+            $result = Get-DPConfig -ErrorAction SilentlyContinue -ErrorVariable readError
 
             $result.CheckForUpdates | Should -BeTrue
             $result.ShowLogo | Should -BeTrue
