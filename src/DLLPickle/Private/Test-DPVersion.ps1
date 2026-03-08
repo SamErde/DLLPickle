@@ -181,6 +181,9 @@
 
                 if ($null -ne $entry -and $null -ne $entry.properties -and $null -ne $entry.properties.Version) {
                     $CandidateVersionString = [string]$entry.properties.Version
+                } elseif ($null -ne $GalleryData.properties -and $null -ne $GalleryData.properties.Version) {
+                    # Some callers and tests mock the payload without feed/entry wrapping.
+                    $CandidateVersionString = [string]$GalleryData.properties.Version
                 }
             }
 
