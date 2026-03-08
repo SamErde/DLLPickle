@@ -20,7 +20,7 @@ Import DLLPickle dependency libraries.
 ### __AllParameterSets
 
 ```PowerShell
-Import-DPLibrary [-SkipProblematicAssemblies] [-ShowLoaderExceptions] [<CommonParameters>]
+Import-DPLibrary [-ShowLoaderExceptions] [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -51,43 +51,12 @@ Imports all dependency DLLs from the appropriate TFM directory.
 ### EXAMPLE 2
 
 ```powershell
-Import-DPLibrary -SkipProblematicAssemblies
-```
-
-Imports compatible DLLs and skips known problematic assemblies in Windows PowerShell.
-
-### EXAMPLE 3
-
-```powershell
 Import-DPLibrary -ShowLoaderExceptions
 ```
 
 Imports DLLs and displays detailed diagnostic information for any failures.
 
 ## PARAMETERS
-
-### -SkipProblematicAssemblies
-
-When running in Windows PowerShell, skip assemblies known to have compatibility issues
-with .NET Framework 4.8. This prevents warning messages while still loading all
-compatible dependencies.
-
-```yaml
-Type: System.Management.Automation.SwitchParameter
-DefaultValue: False
-SupportsWildcards: false
-Aliases: []
-ParameterSets:
-- Name: (All)
-  Position: Named
-  IsRequired: false
-  ValueFromPipeline: false
-  ValueFromPipelineByPropertyName: false
-  ValueFromRemainingArguments: false
-DontShow: false
-AcceptedValues: []
-HelpMessage: ''
-```
 
 ### -ShowLoaderExceptions
 
@@ -138,7 +107,6 @@ Known Issues:
 
 - Microsoft.Identity.Client.dll and System.Diagnostics.DiagnosticSource.dll may fail to load
   in Windows PowerShell due to dependencies on types not available in .NET Framework 4.8.
-- Use -SkipProblematicAssemblies to avoid warnings for known incompatibilities.
 - Use -ShowLoaderExceptions to get detailed information about why specific types failed to load.
 
 ## RELATED LINKS
