@@ -14,11 +14,6 @@
     assemblies up to 5 times to allow for dependency resolution. This eliminates false warnings
     on initial load attempts in Windows PowerShell when dependency load order cannot be predicted.
 
-    .PARAMETER SkipProblematicAssemblies
-    When running in Windows PowerShell, skip assemblies known to have compatibility issues
-    with .NET Framework 4.8. This prevents warning messages while still loading all
-    compatible dependencies.
-
     .PARAMETER ShowLoaderExceptions
     Display detailed loader exception information when an assembly fails to load.
     This is useful for diagnosing why specific types within an assembly cannot be loaded.
@@ -30,11 +25,6 @@
     Import-DPLibrary
 
     Imports all dependency DLLs from the appropriate TFM directory.
-
-    .EXAMPLE
-    Import-DPLibrary -SkipProblematicAssemblies
-
-    Imports compatible DLLs and skips known problematic assemblies in Windows PowerShell.
 
     .EXAMPLE
     Import-DPLibrary -ShowLoaderExceptions
@@ -63,10 +53,8 @@
     #>
 
     [CmdletBinding()]
+    [OutputType('DLLPickle.ImportDPLibraryResult')]
     param (
-        [Parameter()]
-        [switch]$SkipProblematicAssemblies,
-
         [Parameter()]
         [switch]$ShowLoaderExceptions
     )
@@ -77,8 +65,10 @@
     } elseif ($PSScriptRoot) {
         Split-Path -Path $PSScriptRoot -Parent
     } else {
-        $PWD
+        $PWD.Path
     }
+
+    $Settings = Get-DPConfig
 
     # Determine the appropriate target framework moniker (TFM) based on PowerShell edition.
     $TargetFramework = if ($PSEdition -eq 'Core') {
@@ -98,29 +88,21 @@
         throw "Binary directory not found for target framework '$TargetFramework' at: $TFMDirectory"
     }
 
-    <# About Problematic Assemblies in Windows PowerShell
-    There are some known problematic assemblies in Windows PowerShell (.NET Framework 4.8). These assemblies may contain
-    types that depend on APIs not available in .NET Framework 4.8, leading to loader exceptions for those types. Skipping
-    these assemblies prevents warnings while still loading all compatible dependencies.
-    #>
-    $ProblematicAssemblies = @(
-        'Microsoft.Identity.Client.dll'
-        'System.Diagnostics.DiagnosticSource.dll'
-    )
-
     # Get all DLL files in the target framework moniker (TFM) directory. If no DLLs are found, throw an error to alert the user about potential installation issues.
     $DLLFiles = @(Get-ChildItem -Path $TFMDirectory -Filter '*.dll' -File -Recurse -ErrorAction Stop)
     if (-not $DLLFiles -or $DLLFiles.Count -eq 0) {
         throw "No DLL files found in '$TFMDirectory'. Ensure that the module is properly installed and the bin directory contains the expected assemblies."
     }
 
-    # Filter out problematic assemblies if requested and if running in Windows PowerShell.
-    if ($SkipProblematicAssemblies -and $PSEdition -ne 'Core') {
+    # Skip libraries configured by the user.
+    $SkipLibraries = @($Settings.SkipLibraries | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    if ($SkipLibraries.Count -gt 0) {
         $OriginalCount = $DLLFiles.Count
-        $DLLFiles = $DLLFiles | Where-Object { $_.Name -notin $ProblematicAssemblies }
-        $SkippedCount = $OriginalCount - $DLLFiles.Count
-        if ($SkippedCount -gt 0) {
-            Write-Verbose "Skipped $SkippedCount known problematic assemblies in Windows PowerShell: $($ProblematicAssemblies -join ', ')"
+        $DLLFiles = @($DLLFiles | Where-Object { $_.Name -notin $SkipLibraries })
+        $SkippedByConfigCount = $OriginalCount - $DLLFiles.Count
+
+        if ($SkippedByConfigCount -gt 0) {
+            Write-Verbose "Skipped $SkippedByConfigCount libraries per config: $($SkipLibraries -join ', ')"
         }
     }
 
