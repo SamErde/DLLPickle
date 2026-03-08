@@ -65,7 +65,7 @@
         ConfirmImpact = 'Low'
     )]
     # Suppress warnings about PSAvoidUsingWriteHost since we want to provide user feedback on successful updates.
-    [System.Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingWriteHost', Justification = 'Provide user feedback on successful updates.')]
+    [System.Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingWriteHost', '', Justification = 'Provide user feedback on successful updates.')]
     [OutputType([PSCustomObject])]
     param(
         [Parameter(
