@@ -173,9 +173,23 @@
             Write-Verbose "Set SkipLibraries = $($CurrentSettings.SkipLibraries -join ', ')"
         }
 
+        # Normalize configuration shape to ensure expected types are always present.
+        [string[]]$NormalizedSkipLibraries = @()
+        if ($null -ne $CurrentSettings.SkipLibraries) {
+            $NormalizedSkipLibraries = @($CurrentSettings.SkipLibraries | ForEach-Object { [string]$_ })
+        }
+
+        $CurrentSettings = @{
+            CheckForUpdates = if ($null -ne $CurrentSettings.CheckForUpdates) { [bool]$CurrentSettings.CheckForUpdates } else { [bool]$DefaultSettings.CheckForUpdates }
+            ShowLogo        = if ($null -ne $CurrentSettings.ShowLogo) { [bool]$CurrentSettings.ShowLogo } else { [bool]$DefaultSettings.ShowLogo }
+            SkipLibraries   = $NormalizedSkipLibraries
+        }
+
         # Write configuration to disk with error handling
         try {
-            $CurrentSettings | ConvertTo-Json -ErrorAction Stop | Out-File -LiteralPath $ConfigFile -Force -Encoding utf8 -ErrorAction Stop
+            # Use an explicit UTF8 encoding instance to avoid provider-specific string conversion issues.
+            $Utf8Encoding = [System.Text.UTF8Encoding]::new($false)
+            $CurrentSettings | ConvertTo-Json -ErrorAction Stop | Out-File -LiteralPath $ConfigFile -Force -Encoding $Utf8Encoding -ErrorAction Stop
             Write-Verbose "Configuration saved to '$ConfigFile'."
         } catch {
             $ErrorRecord = [System.Management.Automation.ErrorRecord]::new(
