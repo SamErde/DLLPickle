@@ -1,12 +1,14 @@
 ﻿function Find-DLLInPSModulePath {
     <#
     .SYNOPSIS
-        Show a list of all DLLs in PowerShell module paths that contain the specified product name in their FileInfo property.
+        Find DLL files in module paths, filtered by product metadata.
 
     .DESCRIPTION
-        Check all installed PowerShell module locations for DLL files that have the specified product name
-        (e.g., 'Microsoft Identity') in their file's ProductName attribute. By default, searches all paths
-        in the PSModulePath environment variable. Can optionally check custom locations using the -Path parameter.
+        Searches PowerShell module paths for DLL files and returns rich objects that include both
+        file metadata and module path context. By default, searches all valid paths from PSModulePath.
+
+        Scope filtering is cross-platform and classifies each path as CurrentUser, AllUsers, or Unknown
+        based on common PowerShell module roots for Windows, Linux, and macOS.
 
     .PARAMETER ProductName
         The product name to search for in DLL ProductName properties. Supports wildcards. Defaults to 'Microsoft Identity'.
@@ -18,8 +20,14 @@
     .PARAMETER NewestVersion
         If specified, only the newest version of each matching DLL will be returned.
 
-    .PARAMETER ShowDetails
-        Display formatted output to host in addition to returning objects to the pipeline.
+    .PARAMETER Path
+        Locations to search for DLL files. Defaults to all valid directories from PSModulePath.
+
+    .PARAMETER ExcludeDirectories
+        Directory names to exclude from recursive inspection.
+
+    .PARAMETER Scope
+        Limits paths to CurrentUser, AllUsers, or Both. Unknown path classifications are included only when Scope is Both.
 
     .EXAMPLE
         Find-DLLInPSModulePath -ProductName "Microsoft Identity"
@@ -44,10 +52,21 @@
         Microsoft.IdentityModel.Tokens.dll                  8.6.0.0        ExchangeOnlineManagement
         Microsoft.IdentityModel.Validators.dll              8.6.1.0        WinTuner
         System.IdentityModel.Tokens.Jwt.dll                 8.6.0.0        ExchangeOnlineManagement
+
+    .INPUTS
+        None. This function does not accept pipeline input.
+
+    .OUTPUTS
+        DLLPickle.ModuleDllInfo
+
+        Rich result objects with file metadata and path classification details.
+
+    .NOTES
+        The output includes raw FileVersionInfo data in VersionInfo to preserve access to native metadata.
     #>
 
     [CmdletBinding()]
-    [OutputType([System.Diagnostics.FileVersionInfo])]
+    [OutputType('DLLPickle.ModuleDllInfo')]
     param (
         # The product name to search for in DLL ProductName properties. Supports wildcards. Defaults to 'Microsoft Identity'.
         [Parameter()]
@@ -73,64 +92,182 @@
         [string]$Scope = 'Both',
 
         # If specified, only the newest version of each matching DLL will be returned.
-        [switch]$NewestVersion,
-
-        # Display formatted output to host in addition to returning objects to the pipeline.
-        [switch]$ShowDetails
+        [switch]$NewestVersion
     )
 
-    # Validate that all provided paths exist
-    foreach ($pathItem in $Path) {
-        if (-not (Test-Path -LiteralPath $pathItem -PathType Container)) {
-            Write-Warning "Path does not exist or is not accessible: $pathItem"
+    $NormalizePath = {
+        param ([string]$InputPath)
+
+        if ([string]::IsNullOrWhiteSpace($InputPath)) {
+            return $null
+        }
+
+        return $InputPath.TrimEnd([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar)
+    }
+
+    $CurrentUserRoots = @(
+        (Join-Path -Path $HOME -ChildPath 'Documents\PowerShell\Modules')
+        (Join-Path -Path $HOME -ChildPath 'Documents\WindowsPowerShell\Modules')
+        (Join-Path -Path $HOME -ChildPath '.local/share/powershell/Modules')
+    ) | Where-Object { $_ }
+
+    $AllUsersRoots = @(
+        (Join-Path -Path $PSHOME -ChildPath 'Modules')
+        (Join-Path -Path '/usr/local/share' -ChildPath 'powershell/Modules')
+        (Join-Path -Path '/usr/share' -ChildPath 'powershell/Modules')
+    ) | Where-Object { $_ }
+
+    if ($env:ProgramFiles) {
+        $AllUsersRoots += Join-Path -Path $env:ProgramFiles -ChildPath 'PowerShell\Modules'
+    }
+    if ($env:ProgramFiles -and $PSVersionTable.PSVersion.Major -lt 6) {
+        $AllUsersRoots += Join-Path -Path $env:ProgramFiles -ChildPath 'WindowsPowerShell\Modules'
+    }
+    if (${env:ProgramFiles(x86)}) {
+        $AllUsersRoots += Join-Path -Path ${env:ProgramFiles(x86)} -ChildPath 'PowerShell\\Modules'
+    }
+
+    $CurrentUserRoots = @($CurrentUserRoots | ForEach-Object { & $NormalizePath $_ } | Where-Object { $_ } | Select-Object -Unique)
+    $AllUsersRoots = @($AllUsersRoots | ForEach-Object { & $NormalizePath $_ } | Where-Object { $_ } | Select-Object -Unique)
+
+    $GetPathScope = {
+        param ([string]$PathItem)
+
+        $NormalizedPath = & $NormalizePath $PathItem
+        if (-not $NormalizedPath) {
+            return 'Unknown'
+        }
+
+        foreach ($CurrentUserRoot in $CurrentUserRoots) {
+            if ($NormalizedPath.StartsWith($CurrentUserRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+                return 'CurrentUser'
+            }
+        }
+
+        foreach ($AllUsersRoot in $AllUsersRoots) {
+            if ($NormalizedPath.StartsWith($AllUsersRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+                return 'AllUsers'
+            }
+        }
+
+        return 'Unknown'
+    }
+
+    $ValidPaths = [System.Collections.Generic.List[string]]::new()
+    foreach ($PathItem in $Path) {
+        if (Test-Path -LiteralPath $PathItem -PathType Container) {
+            [void]$ValidPaths.Add($PathItem)
+        } else {
+            Write-Warning "Path does not exist or is not accessible: $PathItem"
         }
     }
 
-    # Determine the scoped paths to inspect. Defaults to all scopes.
-    if ($Scope -eq 'CurrentUser') {
-        $ScopedPath = @( $Path | Where-Object { $_ -match '\bUser(s)?\b' } )
-    } elseif ($Scope -eq 'AllUsers') {
-        $ScopedPath = @( $Path | Where-Object { $_ -notmatch '\bUser(s)?\b' } )
-    } else {
-        $ScopedPath = $Path
-    }
-
-    # Write an error and exit if none of the specified paths are found in the specified scope.
-    if (-not $ScopedPath -or $ScopedPath.Count -eq 0) {
+    if ($ValidPaths.Count -eq 0) {
         $ErrorRecord = [System.Management.Automation.ErrorRecord]::new(
-            [System.Exception]::new("Scope '$Scope' produced no valid paths."), 'ScopePathsNotFound', [System.Management.Automation.ErrorCategory]::ObjectNotFound, $Scope
+            [System.Exception]::new('No valid module paths were provided.'),
+            'NoValidModulePaths',
+            [System.Management.Automation.ErrorCategory]::ObjectNotFound,
+            $Path
         )
         $PSCmdlet.WriteError($ErrorRecord)
         return
     }
 
-    Write-Verbose "Enumerating DLLs matching file pattern '$FileName' with ProductName containing '$ProductName' under:`n - $($ScopedPath -join "`n - ")"
-    $DLLs = @(
-        Get-ChildItem -Path $ScopedPath -Filter $FileName -File -Recurse | Where-Object { $_.Directory.Name -notin $ExcludeDirectories } | ForEach-Object {
-            $VersionInfo = $_.VersionInfo
-            if ($VersionInfo.ProductName -like "*$ProductName*") {
-                $VersionInfo.PSObject.TypeNames.Insert(0, 'DLLPickle.FileVersionInfo')
-                $VersionInfo
+    $ScopedPaths = [System.Collections.Generic.List[object]]::new()
+
+    if ($Scope -eq 'CurrentUser') {
+        foreach ($PathItem in $ValidPaths) {
+            $PathScope = & $GetPathScope $PathItem
+            if ($PathScope -eq 'CurrentUser') {
+                [void]$ScopedPaths.Add([PSCustomObject]@{ Path = $PathItem; Scope = $PathScope })
             }
         }
+    } elseif ($Scope -eq 'AllUsers') {
+        foreach ($PathItem in $ValidPaths) {
+            $PathScope = & $GetPathScope $PathItem
+            if ($PathScope -eq 'AllUsers') {
+                [void]$ScopedPaths.Add([PSCustomObject]@{ Path = $PathItem; Scope = $PathScope })
+            }
+        }
+    } else {
+        foreach ($PathItem in $ValidPaths) {
+            [void]$ScopedPaths.Add([PSCustomObject]@{ Path = $PathItem; Scope = (& $GetPathScope $PathItem) })
+        }
+    }
+
+    if ($ScopedPaths.Count -eq 0) {
+        $ErrorRecord = [System.Management.Automation.ErrorRecord]::new(
+            [System.Exception]::new("Scope '$Scope' produced no valid paths."),
+            'ScopePathsNotFound',
+            [System.Management.Automation.ErrorCategory]::ObjectNotFound,
+            $Scope
+        )
+        $PSCmdlet.WriteError($ErrorRecord)
+        return
+    }
+
+    $ScopedPathValues = @($ScopedPaths | Select-Object -ExpandProperty Path -Unique)
+
+    Write-Verbose "Enumerating DLLs matching file pattern '$FileName' with ProductName containing '$ProductName' under:`n - $($ScopedPathValues -join "`n - ")"
+
+    $ProductNamePattern = if ($ProductName -match '[\*\?\[]') {
+        $ProductName
+    } else {
+        "*$ProductName*"
+    }
+
+    $Results = @(
+        Get-ChildItem -Path $ScopedPathValues -Filter $FileName -File -Recurse -ErrorAction SilentlyContinue |
+            Where-Object { $_.Directory.Name -notin $ExcludeDirectories } |
+                ForEach-Object {
+                    $VersionInfo = $_.VersionInfo
+                    if ($VersionInfo.ProductName -like $ProductNamePattern) {
+                        $PathScope = (& $GetPathScope $_.DirectoryName)
+                        [PSCustomObject]@{
+                            PSTypeName       = 'DLLPickle.ModuleDllInfo'
+                            FileName         = $_.Name
+                            FullName         = $_.FullName
+                            Directory        = $_.DirectoryName
+                            ModuleRoot       = $_.Directory.Parent.FullName
+                            PathScope        = $PathScope
+                            ProductName      = $VersionInfo.ProductName
+                            ProductVersion   = $VersionInfo.ProductVersion
+                            InternalName     = $VersionInfo.InternalName
+                            OriginalFilename = $VersionInfo.OriginalFilename
+                            FileVersion      = $VersionInfo.FileVersion
+                            VersionInfo      = $VersionInfo
+                        }
+                    }
+                }
     )
 
-    if ($DLLs.Count -eq 0) {
+    if ($Results.Count -eq 0) {
         Write-Warning "No DLLs found matching file pattern '$FileName' with ProductName containing '*$ProductName*'."
     }
 
-    # If the NewestVersion switch is specified, filter to only the newest version of each DLL.
     if ($NewestVersion) {
-        $DLLs = $DLLs | Group-Object -Property OriginalFilename | ForEach-Object {
-            $_.Group | Sort-Object -Property FileVersion -Descending | Select-Object -First 1
+        $Results = @(
+            $Results |
+                Group-Object -Property OriginalFilename |
+                    ForEach-Object {
+                        $_.Group |
+                            Sort-Object -Property @{ Expression = {
+                                    try {
+                                        [version]$_.FileVersion
+                                    } catch {
+                                        [version]'0.0.0.0'
+                                    }
+                                }
+                            } -Descending |
+                                Select-Object -First 1
+                            } |
+                                Sort-Object -Property InternalName
+        )
+    }
+
+    $Results |
+        ForEach-Object {
+            $_.PSObject.TypeNames.Insert(1, 'DLLPickle.FileVersionInfo')
+            $_
         } | Sort-Object -Property InternalName
-    }
-
-    # Display detailed output to host if the ShowDetails switch is specified.
-    if ($PSBoundParameters.ContainsKey('ShowDetails')) {
-        # Show the results as a table to the host in addition to returning to the pipeline.
-        $DLLs | Out-Host
-    }
-
-    $DLLs
 }
