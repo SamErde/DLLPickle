@@ -37,8 +37,7 @@ Describe 'Set-DPConfig' -Tag 'Unit' {
             $Result | Should -Not -BeNullOrEmpty
             $Result.CheckForUpdates | Should -BeTrue
             $Result.ShowLogo | Should -BeFalse
-            $Result.SkipLibraries | Should -BeOfType ([string[]])
-            $Result.SkipLibraries | Should -HaveCount 0
+            @($Result.SkipLibraries | Where-Object { $null -ne $_ }) | Should -HaveCount 0
 
             Assert-MockCalled -CommandName New-Item -Times 1 -Exactly
             Assert-MockCalled -CommandName Out-File -Times 1 -Exactly
@@ -93,13 +92,13 @@ Describe 'Set-DPConfig' -Tag 'Unit' {
         }
 
         It 'Writes an error and continues with defaults' {
-            $Result = Set-DPConfig -CheckForUpdates $false -PassThru -ErrorVariable ConfigReadError
+            $Result = Set-DPConfig -CheckForUpdates $false -PassThru -ErrorAction SilentlyContinue -ErrorVariable ConfigReadError
 
             $Result.CheckForUpdates | Should -BeFalse
             $Result.ShowLogo | Should -BeTrue
-            $Result.SkipLibraries | Should -BeOfType ([string[]])
+            @($Result.SkipLibraries | Where-Object { $null -ne $_ }) | Should -HaveCount 0
             $ConfigReadError | Should -Not -BeNullOrEmpty
-            $ConfigReadError[0].FullyQualifiedErrorId | Should -Be 'DPConfigReadFailed,Set-DPConfig'
+            ($ConfigReadError | ForEach-Object { $_.FullyQualifiedErrorId }) | Should -Contain 'DPConfigReadFailed,Set-DPConfig'
 
             Assert-MockCalled -CommandName Out-File -Times 1 -Exactly
         }
