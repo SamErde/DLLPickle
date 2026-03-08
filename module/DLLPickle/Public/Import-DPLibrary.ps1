@@ -53,6 +53,7 @@
     #>
 
     [CmdletBinding()]
+    [OutputType('DLLPickle.ImportDPLibraryResult')]
     param (
         [Parameter()]
         [switch]$ShowLoaderExceptions
@@ -64,8 +65,10 @@
     } elseif ($PSScriptRoot) {
         Split-Path -Path $PSScriptRoot -Parent
     } else {
-        $PWD
+        $PWD.Path
     }
+
+    $Settings = Get-DPConfig
 
     # Determine the appropriate target framework moniker (TFM) based on PowerShell edition.
     $TargetFramework = if ($PSEdition -eq 'Core') {
@@ -89,6 +92,18 @@
     $DLLFiles = @(Get-ChildItem -Path $TFMDirectory -Filter '*.dll' -File -Recurse -ErrorAction Stop)
     if (-not $DLLFiles -or $DLLFiles.Count -eq 0) {
         throw "No DLL files found in '$TFMDirectory'. Ensure that the module is properly installed and the bin directory contains the expected assemblies."
+    }
+
+    # Skip libraries configured by the user.
+    $SkipLibraries = @($Settings.SkipLibraries | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    if ($SkipLibraries.Count -gt 0) {
+        $OriginalCount = $DLLFiles.Count
+        $DLLFiles = @($DLLFiles | Where-Object { $_.Name -notin $SkipLibraries })
+        $SkippedByConfigCount = $OriginalCount - $DLLFiles.Count
+
+        if ($SkippedByConfigCount -gt 0) {
+            Write-Verbose "Skipped $SkippedByConfigCount libraries per config: $($SkipLibraries -join ', ')"
+        }
     }
 
     # Import each DLL and record the results using dependency-aware loading with retry logic.
