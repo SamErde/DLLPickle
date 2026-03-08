@@ -82,6 +82,7 @@
         }
 
         function New-DPVersionCheckResult {
+            [System.Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseShouldProcessForStateChangingFunctions', '', Justification = 'This helper only creates and returns an in-memory object and does not change system state.')]
             [CmdletBinding()]
             param(
                 [Parameter(Mandatory)]
