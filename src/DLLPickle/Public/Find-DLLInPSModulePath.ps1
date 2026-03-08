@@ -39,20 +39,6 @@ function Find-DLLInPSModulePath {
 
         Find all DLL files matching the pattern 'Microsoft.IdentityModel*.dll' that also have 'Microsoft Identity' in their ProductName.
 
-        Example Output:
-
-        InternalName                                        ProductVersion Module
-        ------------                                        -------------- ------
-        Microsoft.Identity.Abstractions.dll                 9.5.0.0        DLLPickle
-        Microsoft.IdentityModel.Abstractions.dll            0.0.0.0        Az.Accounts
-        Microsoft.IdentityModel.JsonWebTokens.dll           8.6.0.0        ExchangeOnlineManagement
-        Microsoft.IdentityModel.Logging.dll                 8.6.0.0        ExchangeOnlineManagement
-        Microsoft.IdentityModel.Protocols.dll               8.6.1.0        WinTuner
-        Microsoft.IdentityModel.Protocols.OpenIdConnect.dll 8.6.1.0        WinTuner
-        Microsoft.IdentityModel.Tokens.dll                  8.6.0.0        ExchangeOnlineManagement
-        Microsoft.IdentityModel.Validators.dll              8.6.1.0        WinTuner
-        System.IdentityModel.Tokens.Jwt.dll                 8.6.0.0        ExchangeOnlineManagement
-
     .INPUTS
         None. This function does not accept pipeline input.
 
@@ -60,9 +46,6 @@ function Find-DLLInPSModulePath {
         DLLPickle.ModuleDllInfo
 
         Rich result objects with file metadata and path classification details.
-
-    .NOTES
-        The output includes raw FileVersionInfo data in VersionInfo to preserve access to native metadata.
     #>
 
     [CmdletBinding()]
@@ -261,9 +244,5 @@ function Find-DLLInPSModulePath {
         )
     }
 
-    $Results |
-        ForEach-Object {
-            $_.PSObject.TypeNames.Insert(1, 'DLLPickle.FileVersionInfo')
-            $_
-        } | Sort-Object -Property InternalName
+    $Results | Sort-Object -Property InternalName
 }
