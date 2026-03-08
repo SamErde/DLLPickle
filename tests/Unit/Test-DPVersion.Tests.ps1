@@ -10,7 +10,7 @@ Describe 'Test-DPVersion' -Tag 'Unit' {
         }
 
         It 'Writes an error and returns a failure object' {
-            $Result = Test-DPVersion -ErrorVariable VersionError
+            $Result = Test-DPVersion -ErrorAction SilentlyContinue -ErrorVariable VersionError
 
             $Result | Should -Not -BeNullOrEmpty
             $Result.IsSuccess | Should -BeFalse
@@ -128,7 +128,7 @@ Describe 'Test-DPVersion' -Tag 'Unit' {
         }
 
         It 'Writes an error and returns a failure result object' {
-            $Result = Test-DPVersion -ErrorVariable VersionError
+            $Result = Test-DPVersion -ErrorAction SilentlyContinue -ErrorVariable VersionError
             $CapturedErrorIds = @(
                 foreach ($ErrorItem in $VersionError) {
                     if ($null -ne $ErrorItem -and $null -ne $ErrorItem.PSObject.Properties['FullyQualifiedErrorId']) {
