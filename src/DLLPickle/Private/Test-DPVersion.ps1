@@ -166,8 +166,22 @@
             $GalleryData = Invoke-RestMethod -Uri $GalleryUri -ErrorAction Stop
 
             $CandidateVersionString = $null
-            if ($null -ne $GalleryData -and $null -ne $GalleryData.properties -and $null -ne $GalleryData.properties.Version) {
-                $CandidateVersionString = [string]$GalleryData.properties.Version
+            if ($null -ne $GalleryData) {
+                # The v2 OData endpoint returns a feed/entry structure; locate the entry node first.
+                $entry = $null
+                if ($null -ne $GalleryData.entry) {
+                    $entry = $GalleryData.entry
+                } elseif ($null -ne $GalleryData.feed -and $null -ne $GalleryData.feed.entry) {
+                    $entry = $GalleryData.feed.entry
+                }
+
+                if ($entry -is [System.Array]) {
+                    $entry = $entry | Select-Object -First 1
+                }
+
+                if ($null -ne $entry -and $null -ne $entry.properties -and $null -ne $entry.properties.Version) {
+                    $CandidateVersionString = [string]$entry.properties.Version
+                }
             }
 
             $GalleryVersionInfo = Get-DPNormalizedVersionInfo -VersionString $CandidateVersionString -AllowPrerelease:$IncludePrerelease
