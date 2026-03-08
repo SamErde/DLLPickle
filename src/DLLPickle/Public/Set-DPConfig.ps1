@@ -1,65 +1,65 @@
 ﻿function Set-DPConfig {
     <#
-.SYNOPSIS
-Sets DLLPickle configuration options.
+    .SYNOPSIS
+    Sets DLLPickle configuration options.
 
-.DESCRIPTION
-Modifies DLLPickle configuration settings stored in the current user's application data folder.
-Configuration is persisted as a JSON file. If the configuration file does not exist, it is created
-with default values, then the specified settings are applied.
+    .DESCRIPTION
+    Modifies DLLPickle configuration settings stored in the current user's application data folder.
+    Configuration is persisted as a JSON file. If the configuration file does not exist, it is created
+    with default values, then the specified settings are applied.
 
-Individual parameters can be updated independently without affecting other settings. Use the -Reset
-parameter to restore all configuration to defaults.
+    Individual parameters can be updated independently without affecting other settings. Use the -Reset
+    parameter to restore all configuration to defaults.
 
-.PARAMETER CheckForUpdates
-Enable or disable automatic check for updates when importing the DLLPickle module.
-Default value is $true if not specified.
+    .PARAMETER CheckForUpdates
+    Enable or disable automatic check for updates when importing the DLLPickle module.
+    Default value is $true if not specified.
 
-.PARAMETER ShowLogo
-Show or hide the DLLPickle logo during execution.
-Default value is $true if not specified.
+    .PARAMETER ShowLogo
+    Show or hide the DLLPickle logo during execution.
+    Default value is $true if not specified.
 
-.PARAMETER SkipLibraries
-Array of library (DLL) filenames to skip during Import-DPLibrary operations (use for testing exclusions).
-Filenames should be specified without path (e.g., 'DLLPickle1.dll', 'DLLPickle2.dll').
+    .PARAMETER SkipLibraries
+    Array of library (DLL) filenames to skip during Import-DPLibrary operations (use for testing exclusions).
+    Filenames should be specified without path (e.g., 'DLLPickle1.dll', 'DLLPickle2.dll').
 
-.PARAMETER Reset
-Reset all configuration settings to defaults. When specified, all other parameters are ignored and
-the configuration file is overwritten with defaults.
+    .PARAMETER Reset
+    Reset all configuration settings to defaults. When specified, all other parameters are ignored and
+    the configuration file is overwritten with defaults.
 
-.PARAMETER PassThru
-Returns the updated configuration object. By default, no output is generated.
+    .PARAMETER PassThru
+    Returns the updated configuration object. By default, no output is generated.
 
-.EXAMPLE
-Set-DPConfig -CheckForUpdates $false
+    .EXAMPLE
+    Set-DPConfig -CheckForUpdates $false
 
-Disables automatic update checks while preserving other configuration settings.
+    Disables automatic update checks while preserving other configuration settings.
 
-.EXAMPLE
-Set-DPConfig -SkipLibraries @('DLLPickle1.dll', 'DLLPickle2.dll')
+    .EXAMPLE
+    Set-DPConfig -SkipLibraries @('DLLPickle1.dll', 'DLLPickle2.dll')
 
-Sets the list of libraries to skip during import operations.
+    Sets the list of libraries to skip during import operations.
 
-.EXAMPLE
-Set-DPConfig -Reset
+    .EXAMPLE
+    Set-DPConfig -Reset
 
-Resets all configuration to defaults.
+    Resets all configuration to defaults.
 
-.EXAMPLE
-Set-DPConfig -ShowLogo $false -PassThru
+    .EXAMPLE
+    Set-DPConfig -ShowLogo $false -PassThru
 
-Disables the DLLPickle logo and returns the updated configuration object.
+    Disables the DLLPickle logo and returns the updated configuration object.
 
-.OUTPUTS
-PSCustomObject
-When the -PassThru parameter is specified, returns a configuration object with properties:
-- CheckForUpdates [bool]
-- ShowLogo [bool]
-- SkipLibraries [string[]]
+    .OUTPUTS
+    PSCustomObject
+    When the -PassThru parameter is specified, returns a configuration object with properties:
+    - CheckForUpdates [bool]
+    - ShowLogo [bool]
+    - SkipLibraries [string[]]
 
-.NOTES
-The function follows XDG standard conventions or standard Windows locations for application data files.
-#>
+    .NOTES
+    The function follows XDG standard conventions or standard Windows locations for application data files.
+    #>
     [CmdletBinding(
         SupportsShouldProcess = $true,
         ConfirmImpact = 'Low'
