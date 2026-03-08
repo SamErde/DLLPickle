@@ -18,6 +18,9 @@
     Display detailed loader exception information when an assembly fails to load.
     This is useful for diagnosing why specific types within an assembly cannot be loaded.
 
+    .PARAMETER SuppressLogo
+    Suppress the display of the module logo during execution.
+
     .INPUTS
     None. This function does not accept pipeline input.
 
@@ -56,8 +59,16 @@
     [OutputType('DLLPickle.ImportDPLibraryResult')]
     param (
         [Parameter()]
-        [switch]$ShowLoaderExceptions
+        [switch]$ShowLoaderExceptions,
+        [Parameter()]
+        [switch]$SuppressLogo
     )
+
+    $Settings = Get-DPConfig
+
+    if ($Settings.ShowLogo -and -not $SuppressLogo) {
+        Show-DPLogo
+    }
 
     # Determine the module's base directory.
     $ModuleDirectory = if ($PSModuleRoot) {
@@ -68,7 +79,6 @@
         $PWD.Path
     }
 
-    $Settings = Get-DPConfig
 
     # Determine the appropriate target framework moniker (TFM) based on PowerShell edition.
     $TargetFramework = if ($PSEdition -eq 'Core') {
