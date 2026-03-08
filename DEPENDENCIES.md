@@ -55,7 +55,7 @@ Some transitive dependencies contain types that depend on APIs not available in 
 
 **Impact**: Assemblies fail to load in Windows PowerShell but don't impact core MSAL functionality.
 
-**Workaround**: Use `Import-DPLibrary -SkipProblematicAssemblies` to suppress warnings.
+**Workaround**: Use `Import-DPLibrary -ShowLoaderExceptions` for detailed diagnostics when loader warnings occur.
 
 **Resolution**: All assemblies load successfully in PowerShell Core (net8.0).
 
