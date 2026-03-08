@@ -29,3 +29,12 @@ foreach ($File in @($Public + $Private)) {
 
 # Export all public functions.
 Export-ModuleMember -Function $Public.Basename
+
+$Settings = Get-DPConfig
+
+if ($Settings.CheckForUpdates) {
+    $DPVersionInfo = Test-DPVersion
+    if ( $DPVersionInfo.UpdateAvailable) {
+        Write-Warning ('A new version of DLLPickle is available: {0}' -f $DPVersionInfo.LatestVersion)
+    }
+}
