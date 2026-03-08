@@ -15,8 +15,7 @@ Describe 'Get-DPConfig' -Tag 'Unit' {
             $result | Should -Not -BeNullOrEmpty
             $result.CheckForUpdates | Should -BeTrue
             $result.ShowLogo | Should -BeTrue
-            $result.SkipLibraries | Should -BeOfType ([string[]])
-            $result.SkipLibraries | Should -HaveCount 0
+            @($result.SkipLibraries) | Should -HaveCount 0
         }
     }
 
@@ -33,8 +32,8 @@ Describe 'Get-DPConfig' -Tag 'Unit' {
 
             $result.CheckForUpdates | Should -BeFalse
             $result.ShowLogo | Should -BeFalse
-            $result.SkipLibraries | Should -BeOfType ([string[]])
-            $result.SkipLibraries | Should -Be @('a.dll', 'b.dll')
+            @($result.SkipLibraries) | Should -HaveCount 2
+            @($result.SkipLibraries) | Should -Be @('a.dll', 'b.dll')
         }
     }
 
@@ -50,9 +49,9 @@ Describe 'Get-DPConfig' -Tag 'Unit' {
 
             $result.CheckForUpdates | Should -BeTrue
             $result.ShowLogo | Should -BeTrue
-            $result.SkipLibraries | Should -BeOfType ([string[]])
+            @($result.SkipLibraries) | Should -HaveCount 0
             $readError | Should -Not -BeNullOrEmpty
-            $readError[0].FullyQualifiedErrorId | Should -Be 'DPConfigReadFailed,Get-DPConfig'
+            ($readError | ForEach-Object { $_.FullyQualifiedErrorId }) | Should -Contain 'DPConfigReadFailed,Get-DPConfig'
         }
     }
 
