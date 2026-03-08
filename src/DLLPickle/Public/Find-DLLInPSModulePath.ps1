@@ -1,4 +1,4 @@
-﻿function Find-DLLInPSModulePath {
+function Find-DLLInPSModulePath {
     <#
     .SYNOPSIS
         Find DLL files in module paths, filtered by product metadata.
@@ -218,27 +218,26 @@
 
     $Results = @(
         Get-ChildItem -Path $ScopedPathValues -Filter $FileName -File -Recurse -ErrorAction SilentlyContinue |
-            Where-Object { $_.Directory.Name -notin $ExcludeDirectories } |
-                ForEach-Object {
-                    $VersionInfo = $_.VersionInfo
-                    if ($VersionInfo.ProductName -like $ProductNamePattern) {
-                        $PathScope = (& $GetPathScope $_.DirectoryName)
-                        [PSCustomObject]@{
-                            PSTypeName       = 'DLLPickle.ModuleDllInfo'
-                            FileName         = $_.Name
-                            FullName         = $_.FullName
-                            Directory        = $_.DirectoryName
-                            ModuleRoot       = $_.Directory.Parent.FullName
-                            PathScope        = $PathScope
-                            ProductName      = $VersionInfo.ProductName
-                            ProductVersion   = $VersionInfo.ProductVersion
-                            InternalName     = $VersionInfo.InternalName
-                            OriginalFilename = $VersionInfo.OriginalFilename
-                            FileVersion      = $VersionInfo.FileVersion
-                            VersionInfo      = $VersionInfo
-                        }
+            Where-Object { $_.Directory.Name -notin $ExcludeDirectories } | ForEach-Object {
+                $VersionInfo = $_.VersionInfo
+                if ($VersionInfo.ProductName -like $ProductNamePattern) {
+                    $PathScope = (& $GetPathScope $_.DirectoryName)
+                    [PSCustomObject]@{
+                        PSTypeName       = 'DLLPickle.ModuleDllInfo'
+                        FileName         = $_.Name
+                        FullName         = $_.FullName
+                        Directory        = $_.DirectoryName
+                        ModuleRoot       = $_.Directory.Parent.FullName
+                        PathScope        = $PathScope
+                        ProductName      = $VersionInfo.ProductName
+                        ProductVersion   = $VersionInfo.ProductVersion
+                        InternalName     = $VersionInfo.InternalName
+                        OriginalFilename = $VersionInfo.OriginalFilename
+                        FileVersion      = $VersionInfo.FileVersion
+                        VersionInfo      = $VersionInfo
                     }
                 }
+            }
     )
 
     if ($Results.Count -eq 0) {
@@ -248,20 +247,17 @@
     if ($NewestVersion) {
         $Results = @(
             $Results |
-                Group-Object -Property OriginalFilename |
-                    ForEach-Object {
-                        $_.Group |
-                            Sort-Object -Property @{ Expression = {
-                                    try {
-                                        [version]$_.FileVersion
-                                    } catch {
-                                        [version]'0.0.0.0'
-                                    }
+                Group-Object -Property OriginalFilename | ForEach-Object {
+                    $_.Group |
+                        Sort-Object -Property @{ Expression = {
+                                try {
+                                    [version]$_.FileVersion
+                                } catch {
+                                    [version]'0.0.0.0'
                                 }
-                            } -Descending |
-                                Select-Object -First 1
-                            } |
-                                Sort-Object -Property InternalName
+                            }
+                        } -Descending | Select-Object -First 1
+                    } | Sort-Object -Property InternalName
         )
     }
 
