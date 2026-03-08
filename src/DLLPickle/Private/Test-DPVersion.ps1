@@ -166,8 +166,22 @@
             $GalleryData = Invoke-RestMethod -Uri $GalleryUri -ErrorAction Stop
 
             $CandidateVersionString = $null
-            if ($null -ne $GalleryData -and $null -ne $GalleryData.properties -and $null -ne $GalleryData.properties.Version) {
-                $CandidateVersionString = [string]$GalleryData.properties.Version
+            if ($null -ne $GalleryData) {
+                # The v2 OData endpoint returns a feed/entry structure; locate the entry node first.
+                $entry = $null
+                if ($null -ne $GalleryData.entry) {
+                    $entry = $GalleryData.entry
+                } elseif ($null -ne $GalleryData.feed -and $null -ne $GalleryData.feed.entry) {
+                    $entry = $GalleryData.feed.entry
+                }
+
+                if ($entry -is [System.Array]) {
+                    $entry = $entry | Select-Object -First 1
+                }
+
+                if ($null -ne $entry -and $null -ne $entry.properties -and $null -ne $entry.properties.Version) {
+                    $CandidateVersionString = [string]$entry.properties.Version
+                }
             }
 
             $GalleryVersionInfo = Get-DPNormalizedVersionInfo -VersionString $CandidateVersionString -AllowPrerelease:$IncludePrerelease
@@ -188,20 +202,33 @@
         if ($null -eq $LatestVersion) {
             Write-Verbose 'Checking GitHub releases for updates.'
             try {
-                $GithubUri = 'https://api.github.com/repos/SamErde/DLLPickle/releases/latest'
+                $GithubUri = 'https://api.github.com/repos/SamErde/DLLPickle/releases'
                 $GithubData = Invoke-RestMethod -Uri $GithubUri -Headers @{ 'User-Agent' = 'DLLPickle-VersionCheck' } -ErrorAction Stop
 
-                $TagName = if ($null -ne $GithubData.tag_name) { [string]$GithubData.tag_name } else { $null }
-                $GithubVersionInfo = Get-DPNormalizedVersionInfo -VersionString $TagName -AllowPrerelease:$IncludePrerelease
+                if ($null -ne $GithubData) {
+                    foreach ($release in $GithubData) {
+                        if ($release.draft -eq $true) {
+                            continue
+                        }
 
-                if ($null -ne $GithubVersionInfo -and $null -ne $GithubVersionInfo.ParsedVersion) {
-                    $LatestVersion = $GithubVersionInfo.ParsedVersion
-                    $LatestVersionString = $GithubVersionInfo.NormalizedVersion
-                    $IsPrerelease = [bool]$GithubVersionInfo.IsPrerelease
-                    $Source = 'GitHub'
-                    Write-Verbose "GitHub returned version '$LatestVersionString'."
-                } elseif ($null -ne $GithubVersionInfo -and $GithubVersionInfo.IsIgnoredPrerelease) {
-                    Write-Verbose "GitHub returned prerelease version '$($GithubVersionInfo.NormalizedVersion)' and it was ignored."
+                        $TagName = if ($null -ne $release.tag_name) { [string]$release.tag_name } else { $null }
+                        $GithubVersionInfo = Get-DPNormalizedVersionInfo -VersionString $TagName -AllowPrerelease:$IncludePrerelease
+
+                        if ($null -ne $GithubVersionInfo -and $null -ne $GithubVersionInfo.ParsedVersion) {
+                            $LatestVersion = $GithubVersionInfo.ParsedVersion
+                            $LatestVersionString = $GithubVersionInfo.NormalizedVersion
+                            $IsPrerelease = [bool]$GithubVersionInfo.IsPrerelease
+                            $Source = 'GitHub'
+                            Write-Verbose "GitHub returned version '$LatestVersionString'."
+                            break
+                        } elseif ($null -ne $GithubVersionInfo -and $GithubVersionInfo.IsIgnoredPrerelease) {
+                            Write-Verbose "GitHub returned prerelease version '$($GithubVersionInfo.NormalizedVersion)' and it was ignored because IncludePrerelease is not specified."
+                        }
+                    }
+
+                    if ($null -eq $LatestVersion) {
+                        Write-Verbose 'No suitable GitHub release was found that matches the IncludePrerelease setting.'
+                    }
                 }
             } catch {
                 $GithubError = $_

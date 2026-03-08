@@ -65,7 +65,7 @@
         ConfirmImpact = 'Low'
     )]
     # Suppress warnings about PSAvoidUsingWriteHost since we want to provide user feedback on successful updates.
-    [System.Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingWriteHost', Justification = 'Provide user feedback on successful updates.')]
+    [System.Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingWriteHost', '', Justification = 'Provide user feedback on successful updates.')]
     [OutputType([PSCustomObject])]
     param(
         [Parameter(
@@ -175,7 +175,7 @@
 
         # Write configuration to disk with error handling
         try {
-            $CurrentSettings | ConvertTo-Json -ErrorAction Stop | Out-File -LiteralPath $ConfigFile -Force -ErrorAction Stop
+            $CurrentSettings | ConvertTo-Json -ErrorAction Stop | Out-File -LiteralPath $ConfigFile -Force -Encoding utf8 -ErrorAction Stop
             Write-Verbose "Configuration saved to '$ConfigFile'."
         } catch {
             $ErrorRecord = [System.Management.Automation.ErrorRecord]::new(
