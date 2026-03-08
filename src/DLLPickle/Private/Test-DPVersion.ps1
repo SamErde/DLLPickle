@@ -188,20 +188,33 @@
         if ($null -eq $LatestVersion) {
             Write-Verbose 'Checking GitHub releases for updates.'
             try {
-                $GithubUri = 'https://api.github.com/repos/SamErde/DLLPickle/releases/latest'
+                $GithubUri = 'https://api.github.com/repos/SamErde/DLLPickle/releases'
                 $GithubData = Invoke-RestMethod -Uri $GithubUri -Headers @{ 'User-Agent' = 'DLLPickle-VersionCheck' } -ErrorAction Stop
 
-                $TagName = if ($null -ne $GithubData.tag_name) { [string]$GithubData.tag_name } else { $null }
-                $GithubVersionInfo = Get-DPNormalizedVersionInfo -VersionString $TagName -AllowPrerelease:$IncludePrerelease
+                if ($null -ne $GithubData) {
+                    foreach ($release in $GithubData) {
+                        if ($release.draft -eq $true) {
+                            continue
+                        }
 
-                if ($null -ne $GithubVersionInfo -and $null -ne $GithubVersionInfo.ParsedVersion) {
-                    $LatestVersion = $GithubVersionInfo.ParsedVersion
-                    $LatestVersionString = $GithubVersionInfo.NormalizedVersion
-                    $IsPrerelease = [bool]$GithubVersionInfo.IsPrerelease
-                    $Source = 'GitHub'
-                    Write-Verbose "GitHub returned version '$LatestVersionString'."
-                } elseif ($null -ne $GithubVersionInfo -and $GithubVersionInfo.IsIgnoredPrerelease) {
-                    Write-Verbose "GitHub returned prerelease version '$($GithubVersionInfo.NormalizedVersion)' and it was ignored."
+                        $TagName = if ($null -ne $release.tag_name) { [string]$release.tag_name } else { $null }
+                        $GithubVersionInfo = Get-DPNormalizedVersionInfo -VersionString $TagName -AllowPrerelease:$IncludePrerelease
+
+                        if ($null -ne $GithubVersionInfo -and $null -ne $GithubVersionInfo.ParsedVersion) {
+                            $LatestVersion = $GithubVersionInfo.ParsedVersion
+                            $LatestVersionString = $GithubVersionInfo.NormalizedVersion
+                            $IsPrerelease = [bool]$GithubVersionInfo.IsPrerelease
+                            $Source = 'GitHub'
+                            Write-Verbose "GitHub returned version '$LatestVersionString'."
+                            break
+                        } elseif ($null -ne $GithubVersionInfo -and $GithubVersionInfo.IsIgnoredPrerelease) {
+                            Write-Verbose "GitHub returned prerelease version '$($GithubVersionInfo.NormalizedVersion)' and it was ignored because IncludePrerelease is not specified."
+                        }
+                    }
+
+                    if ($null -eq $LatestVersion) {
+                        Write-Verbose 'No suitable GitHub release was found that matches the IncludePrerelease setting.'
+                    }
                 }
             } catch {
                 $GithubError = $_
