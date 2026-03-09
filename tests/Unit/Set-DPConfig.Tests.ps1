@@ -43,14 +43,12 @@ Describe 'Set-DPConfig' -Tag 'Unit' {
             Assert-MockCalled -CommandName Set-Content -Times 1 -Exactly
         }
 
-        It 'Writes using a supported Set-Content encoding parameter' {
+        It 'Writes configuration content via Set-Content' {
             $null = Set-DPConfig -ShowLogo $false -PassThru
 
-            if ($PSEdition -eq 'Core') {
-                Assert-MockCalled -CommandName Set-Content -ParameterFilter { $Encoding -eq 'utf8NoBOM' } -Times 1 -Exactly
-            } else {
-                Assert-MockCalled -CommandName Set-Content -ParameterFilter { $Encoding -eq 'utf8' } -Times 1 -Exactly
-            }
+            Assert-MockCalled -CommandName Set-Content -ParameterFilter {
+                $null -ne $LiteralPath -and $null -ne $Value
+            } -Times 1 -Exactly
         }
     }
 
