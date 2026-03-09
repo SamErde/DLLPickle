@@ -27,7 +27,7 @@ Describe 'Set-DPConfig' -Tag 'Unit' {
         BeforeEach {
             Mock -CommandName Test-Path -MockWith { $false }
             Mock -CommandName New-Item -MockWith { [PSCustomObject]@{ FullName = 'mock' } }
-            Mock -CommandName Out-File -MockWith {}
+            Mock -CommandName Set-Content -MockWith {}
             Mock -CommandName Write-Host -MockWith {}
         }
 
@@ -40,7 +40,17 @@ Describe 'Set-DPConfig' -Tag 'Unit' {
             @($Result.SkipLibraries | Where-Object { $null -ne $_ }) | Should -HaveCount 0
 
             Assert-MockCalled -CommandName New-Item -Times 1 -Exactly
-            Assert-MockCalled -CommandName Out-File -Times 1 -Exactly
+            Assert-MockCalled -CommandName Set-Content -Times 1 -Exactly
+        }
+
+        It 'Writes using a supported Set-Content encoding parameter' {
+            $null = Set-DPConfig -ShowLogo $false -PassThru
+
+            if ($PSEdition -eq 'Core') {
+                Assert-MockCalled -CommandName Set-Content -ParameterFilter { $Encoding -eq 'utf8NoBOM' } -Times 1 -Exactly
+            } else {
+                Assert-MockCalled -CommandName Set-Content -ParameterFilter { $Encoding -eq 'utf8' } -Times 1 -Exactly
+            }
         }
     }
 
@@ -58,7 +68,7 @@ Describe 'Set-DPConfig' -Tag 'Unit' {
             Mock -CommandName Get-Content -MockWith {
                 '{"CheckForUpdates":false,"ShowLogo":false,"SkipLibraries":["a.dll","b.dll"]}'
             }
-            Mock -CommandName Out-File -MockWith {}
+            Mock -CommandName Set-Content -MockWith {}
             Mock -CommandName Write-Host -MockWith {}
         }
 
@@ -70,7 +80,7 @@ Describe 'Set-DPConfig' -Tag 'Unit' {
             $Result.SkipLibraries | Should -Be @('a.dll', 'b.dll')
 
             Assert-MockCalled -CommandName Get-Content -Times 1 -Exactly
-            Assert-MockCalled -CommandName Out-File -Times 1 -Exactly
+            Assert-MockCalled -CommandName Set-Content -Times 1 -Exactly
         }
     }
 
@@ -87,7 +97,7 @@ Describe 'Set-DPConfig' -Tag 'Unit' {
             }
             Mock -CommandName Get-Content -MockWith { '{invalid json}' }
             Mock -CommandName ConvertFrom-Json -MockWith { throw 'Invalid JSON' }
-            Mock -CommandName Out-File -MockWith {}
+            Mock -CommandName Set-Content -MockWith {}
             Mock -CommandName Write-Host -MockWith {}
         }
 
@@ -100,21 +110,21 @@ Describe 'Set-DPConfig' -Tag 'Unit' {
             $ConfigReadError | Should -Not -BeNullOrEmpty
             ($ConfigReadError | ForEach-Object { $_.FullyQualifiedErrorId }) | Should -Contain 'DPConfigReadFailed,Set-DPConfig'
 
-            Assert-MockCalled -CommandName Out-File -Times 1 -Exactly
+            Assert-MockCalled -CommandName Set-Content -Times 1 -Exactly
         }
     }
 
     Context 'When reset is requested with WhatIf' {
         BeforeEach {
             Mock -CommandName Test-Path -MockWith { $true }
-            Mock -CommandName Out-File -MockWith {}
+            Mock -CommandName Set-Content -MockWith {}
             Mock -CommandName Write-Host -MockWith {}
         }
 
         It 'Does not write configuration when ShouldProcess is declined' {
             $null = Set-DPConfig -Reset -WhatIf
 
-            Assert-MockCalled -CommandName Out-File -Times 0 -Exactly
+            Assert-MockCalled -CommandName Set-Content -Times 0 -Exactly
         }
     }
 
