@@ -66,11 +66,12 @@
     )]
     # Suppress warnings about PSAvoidUsingWriteHost since we want to provide user feedback on successful updates.
     [System.Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingWriteHost', '', Justification = 'Provide user feedback on successful updates.')]
+    # Suppress ShouldProcess analyzer guidance for this helper-style config writer.
+    [System.Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSShouldProcess', '', Justification = 'SupportsShouldProcess is retained for consistency, but only reset operation participates in WhatIf/Confirm semantics.')]
     [OutputType([PSCustomObject])]
     param(
         [Parameter(
             HelpMessage = 'Enable or disable automatic check for updates.'
-
         )]
         [bool]$CheckForUpdates,
 
@@ -139,8 +140,11 @@
             Write-Verbose "Loading existing configuration from '$ConfigFile'."
             try {
                 $RawContent = Get-Content -LiteralPath $ConfigFile -Raw -ErrorAction Stop
-                $ParsedConfig = $RawContent | ConvertFrom-Json -ErrorAction Stop -AsHashtable
-                $CurrentSettings = $ParsedConfig
+                $ParsedConfig = $RawContent | ConvertFrom-Json -ErrorAction Stop
+                $CurrentSettings = @{}
+                foreach ($Property in $ParsedConfig.PSObject.Properties) {
+                    $CurrentSettings[$Property.Name] = $Property.Value
+                }
             } catch {
                 $ErrorRecord = [System.Management.Automation.ErrorRecord]::new(
                     [System.InvalidOperationException]::new(
@@ -187,9 +191,12 @@
 
         # Write configuration to disk with error handling
         try {
-            # Use an explicit UTF8 encoding instance to avoid provider-specific string conversion issues.
-            $Utf8Encoding = [System.Text.UTF8Encoding]::new($false)
-            $CurrentSettings | ConvertTo-Json -ErrorAction Stop | Out-File -LiteralPath $ConfigFile -Force -Encoding $Utf8Encoding -ErrorAction Stop
+            $JsonContent = $CurrentSettings | ConvertTo-Json -ErrorAction Stop
+            if ($PSEdition -eq 'Core') {
+                Set-Content -LiteralPath $ConfigFile -Value $JsonContent -Encoding 'utf8NoBOM' -Force -ErrorAction Stop
+            } else {
+                Set-Content -LiteralPath $ConfigFile -Value $JsonContent -Encoding 'utf8' -Force -ErrorAction Stop
+            }
             Write-Verbose "Configuration saved to '$ConfigFile'."
         } catch {
             $ErrorRecord = [System.Management.Automation.ErrorRecord]::new(
