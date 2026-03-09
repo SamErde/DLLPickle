@@ -85,6 +85,7 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 ## OUTPUTS
 
 ### Microsoft.PowerShell.PSResourceGet.UtilClasses.PSResourceInfo[]
+
 An array of PSResourceInfo objects
 
 {{ Fill in the Description }}
