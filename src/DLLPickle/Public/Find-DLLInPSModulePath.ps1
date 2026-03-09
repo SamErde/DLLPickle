@@ -107,11 +107,12 @@ function Find-DLLInPSModulePath {
         $AllUsersRoots += Join-Path -Path $env:ProgramFiles -ChildPath 'WindowsPowerShell\Modules'
     }
     if (${env:ProgramFiles(x86)}) {
-        $AllUsersRoots += Join-Path -Path ${env:ProgramFiles(x86)} -ChildPath 'PowerShell\\Modules'
+        $AllUsersRoots += Join-Path -Path ${env:ProgramFiles(x86)} -ChildPath 'PowerShell\Modules'
     }
 
     $CurrentUserRoots = @($CurrentUserRoots | ForEach-Object { & $NormalizePath $_ } | Where-Object { $_ } | Select-Object -Unique)
     $AllUsersRoots = @($AllUsersRoots | ForEach-Object { & $NormalizePath $_ } | Where-Object { $_ } | Select-Object -Unique)
+    $KnownModuleBaseRoots = @($CurrentUserRoots + $AllUsersRoots)
 
     $GetPathScope = {
         param ([string]$PathItem)
@@ -134,6 +135,54 @@ function Find-DLLInPSModulePath {
         }
 
         return 'Unknown'
+    }
+
+    $GetModuleRoot = {
+        param (
+            [string]$FilePath,
+            [string[]]$SearchRoots
+        )
+
+        $NormalizedFilePath = & $NormalizePath $FilePath
+        if (-not $NormalizedFilePath) {
+            return $null
+        }
+
+        $MatchedRoot = $null
+        foreach ($RootPath in $SearchRoots) {
+            $NormalizedRootPath = & $NormalizePath $RootPath
+            if (-not $NormalizedRootPath) {
+                continue
+            }
+
+            if ($NormalizedFilePath.StartsWith($NormalizedRootPath, [System.StringComparison]::OrdinalIgnoreCase)) {
+                if (-not $MatchedRoot -or $NormalizedRootPath.Length -gt $MatchedRoot.Length) {
+                    $MatchedRoot = $NormalizedRootPath
+                }
+            }
+        }
+
+        if (-not $MatchedRoot) {
+            return $null
+        }
+
+        $RelativePath = $NormalizedFilePath.Substring($MatchedRoot.Length).TrimStart([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar)
+        if ([string]::IsNullOrWhiteSpace($RelativePath)) {
+            return $MatchedRoot
+        }
+
+        # If the matched root is already a module path supplied by the caller (not a known module base),
+        # treat it as the module root directly instead of appending child segments.
+        if ($KnownModuleBaseRoots -notcontains $MatchedRoot) {
+            return $MatchedRoot
+        }
+
+        $FirstPathSegment = ($RelativePath -split '[\\/]', 2)[0]
+        if ([string]::IsNullOrWhiteSpace($FirstPathSegment)) {
+            return $MatchedRoot
+        }
+
+        return Join-Path -Path $MatchedRoot -ChildPath $FirstPathSegment
     }
 
     $ValidPaths = [System.Collections.Generic.List[string]]::new()
@@ -203,14 +252,25 @@ function Find-DLLInPSModulePath {
         Get-ChildItem -Path $ScopedPathValues -Filter $FileName -File -Recurse -ErrorAction SilentlyContinue |
             Where-Object { $_.Directory.Name -notin $ExcludeDirectories } | ForEach-Object {
                 $VersionInfo = $_.VersionInfo
+                if ($null -eq $VersionInfo) {
+                    Write-Verbose "Skipping '$($_.FullName)' because VersionInfo metadata is missing."
+                    return
+                }
+
                 if ($VersionInfo.ProductName -like $ProductNamePattern) {
-                    $PathScope = (& $GetPathScope $_.DirectoryName)
+                    $DirectoryName = if ($_.DirectoryName) { $_.DirectoryName } else { Split-Path -Path $_.FullName -Parent }
+                    $ModuleRoot = & $GetModuleRoot $_.FullName $ScopedPathValues
+                    if (-not $ModuleRoot -and $_.Directory -and $_.Directory.Parent) {
+                        $ModuleRoot = $_.Directory.Parent.FullName
+                    }
+
+                    $PathScope = (& $GetPathScope $DirectoryName)
                     [PSCustomObject]@{
                         PSTypeName       = 'DLLPickle.ModuleDllInfo'
                         FileName         = $_.Name
                         FullName         = $_.FullName
-                        Directory        = $_.DirectoryName
-                        ModuleRoot       = $_.Directory.Parent.FullName
+                        Directory        = $DirectoryName
+                        ModuleRoot       = $ModuleRoot
                         PathScope        = $PathScope
                         ProductName      = $VersionInfo.ProductName
                         ProductVersion   = $VersionInfo.ProductVersion
