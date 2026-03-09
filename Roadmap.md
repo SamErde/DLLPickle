@@ -1,9 +1,5 @@
 # Roadmap
 
-- Add DLL import function to base PSM1 module script for automatic import.
-- Validate automated CI/CD build, validation, release, and publish workflows.
-- Add function to check for new versions.
-
 ## vNext
 
 - Add functions:

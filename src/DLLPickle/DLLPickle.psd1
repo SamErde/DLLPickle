@@ -8,127 +8,123 @@
 
 @{
 
-# Script module or binary module file associated with this manifest.
-RootModule = 'DLLPickle.psm1'
+    # Script module or binary module file associated with this manifest.
+    RootModule        = 'DLLPickle.psm1'
 
-# Version number of this module.
-ModuleVersion = '0.18.0'
+    # Version number of this module.
+    ModuleVersion     = '0.18.0'
 
-# Supported PSEditions
-# CompatiblePSEditions = @()
+    # Supported PSEditions
+    # CompatiblePSEditions = @()
 
-# ID used to uniquely identify this module
-GUID = '4676d9bf-eb37-4a1b-8582-90f7dd9ba726'
+    # ID used to uniquely identify this module
+    GUID              = '4676d9bf-eb37-4a1b-8582-90f7dd9ba726'
 
-# Author of this module
-Author = 'Sam Erde'
+    # Author of this module
+    Author            = 'Sam Erde'
 
-# Company or vendor of this module
-CompanyName = 'Day 3 Bits'
+    # Company or vendor of this module
+    CompanyName       = 'Day 3 Bits'
 
-# Copyright statement for this module
-Copyright = '(c) 2026, Sam Erde. All rights reserved.'
+    # Copyright statement for this module
+    Copyright         = '(c) 2026, Sam Erde. All rights reserved.'
 
-# Description of the functionality provided by this module
-Description = 'A PowerShell module that helps you get un-stuck from version conflicts that occur when using modules that depend on different versions of the same dependency (such as the Microsoft Authentication Library (MSAL)).'
+    # Description of the functionality provided by this module
+    Description       = 'A PowerShell module that helps you get un-stuck from dependency version conflicts that can occur when connecting to multiple Microsoft services in the same session.'
 
-# Minimum version of the PowerShell engine required by this module
-PowerShellVersion = '5.1'
+    # Minimum version of the PowerShell engine required by this module
+    PowerShellVersion = '5.1'
 
-# Name of the PowerShell host required by this module
-# PowerShellHostName = ''
+    # Minimum version of Microsoft .NET Framework required by this module. This prerequisite is valid for the PowerShell Desktop edition only.
+    # DotNetFrameworkVersion = ''
 
-# Minimum version of the PowerShell host required by this module
-# PowerShellHostVersion = ''
+    # Minimum version of the common language runtime (CLR) required by this module. This prerequisite is valid for the PowerShell Desktop edition only.
+    # ClrVersion = ''
 
-# Minimum version of Microsoft .NET Framework required by this module. This prerequisite is valid for the PowerShell Desktop edition only.
-# DotNetFrameworkVersion = ''
+    # Processor architecture (None, X86, Amd64) required by this module
+    # ProcessorArchitecture = ''
 
-# Minimum version of the common language runtime (CLR) required by this module. This prerequisite is valid for the PowerShell Desktop edition only.
-# ClrVersion = ''
+    # Modules that must be imported into the global environment prior to importing this module
+    # RequiredModules = @()
 
-# Processor architecture (None, X86, Amd64) required by this module
-# ProcessorArchitecture = ''
+    # Assemblies that must be loaded prior to importing this module
+    # RequiredAssemblies = @()
 
-# Modules that must be imported into the global environment prior to importing this module
-# RequiredModules = @()
+    # Script files (.ps1) that are run in the caller's environment prior to importing this module.
+    # ScriptsToProcess = @()
 
-# Assemblies that must be loaded prior to importing this module
-# RequiredAssemblies = @()
+    # Type files (.ps1xml) to be loaded when importing this module
+    # TypesToProcess = @()
 
-# Script files (.ps1) that are run in the caller's environment prior to importing this module.
-# ScriptsToProcess = @()
+    # Format files (.ps1xml) to be loaded when importing this module
+    FormatsToProcess  = 'DLLPickle.Format.ps1xml'
 
-# Type files (.ps1xml) to be loaded when importing this module
-# TypesToProcess = @()
+    # Modules to import as nested modules of the module specified in RootModule/ModuleToProcess
+    # NestedModules = @()
 
-# Format files (.ps1xml) to be loaded when importing this module
-FormatsToProcess = 'DLLPickle.Format.ps1xml'
+    # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
+    FunctionsToExport = @(
+        'Get-DPConfig', 'Set-DPConfig',
+        'Find-DLLInPSModulePath', 'Get-ModuleImportCandidate',
+        'Get-ModulesWithDependency', 'Get-ModulesWithVersionSortedIdentityClient',
+        'Import-DPLibrary'
+    )
 
-# Modules to import as nested modules of the module specified in RootModule/ModuleToProcess
-# NestedModules = @()
+    # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
+    CmdletsToExport   = @()
 
-# Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
-FunctionsToExport = 'Find-DLLInPSModulePath', 'Get-ModuleImportCandidate', 
-               'Get-ModulesWithDependency', 
-               'Get-ModulesWithVersionSortedIdentityClient', 'Import-DPLibrary'
+    # Variables to export from this module
+    # VariablesToExport = @()
 
-# Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
-CmdletsToExport = @()
+    # Aliases to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no aliases to export.
+    AliasesToExport   = @()
 
-# Variables to export from this module
-# VariablesToExport = @()
+    # DSC resources to export from this module
+    # DscResourcesToExport = @()
 
-# Aliases to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no aliases to export.
-AliasesToExport = @()
+    # List of all modules packaged with this module
+    # ModuleList = @()
 
-# DSC resources to export from this module
-# DscResourcesToExport = @()
+    # List of all files packaged with this module
+    # FileList = @()
 
-# List of all modules packaged with this module
-# ModuleList = @()
+    # Private data to pass to the module specified in RootModule/ModuleToProcess. This may also contain a PSData hashtable with additional module metadata used by PowerShell.
+    PrivateData       = @{
 
-# List of all files packaged with this module
-# FileList = @()
+        PSData = @{
 
-# Private data to pass to the module specified in RootModule/ModuleToProcess. This may also contain a PSData hashtable with additional module metadata used by PowerShell.
-PrivateData = @{
+            # Tags applied to this module. These help with module discovery in online galleries.
+            Tags         = 'MSAL', 'Microsoft-Graph', 'Azure', 'SharePoint', 'Teams', 'Microsoft-365', 'Exchange-Online', 'Windows', 'Linux', 'macOS'
 
-    PSData = @{
+            # A URL to the license for this module.
+            LicenseUri   = 'https://github.com/SamErde/DLLPickle/blob/main/LICENSE'
 
-        # Tags applied to this module. These help with module discovery in online galleries.
-        Tags = 'MSAL','Windows','Linux','macOS','Microsoft-Graph','Azure','SharePoint','Teams','Microsoft-365','Exchange-Online'
+            # A URL to the main website for this project.
+            ProjectUri   = 'https://github.com/SamErde/DLLPickle'
 
-        # A URL to the license for this module.
-        LicenseUri = 'https://github.com/SamErde/DLLPickle/blob/main/LICENSE'
+            # A URL to an icon representing this module.
+            # IconUri = ''
 
-        # A URL to the main website for this project.
-        ProjectUri = 'https://github.com/SamErde/DLLPickle'
+            # ReleaseNotes of this module
+            ReleaseNotes = 'https://github.com/SamErde/DLLPickle/blob/main/CHANGELOG.md'
 
-        # A URL to an icon representing this module.
-        # IconUri = ''
+            # Prerelease string of this module
+            # Prerelease = ''
 
-        # ReleaseNotes of this module
-        ReleaseNotes = 'https://github.com/SamErde/DLLPickle/blob/main/CHANGELOG.md'
+            # Flag to indicate whether the module requires explicit user acceptance for install/update/save
+            # RequireLicenseAcceptance = $false
 
-        # Prerelease string of this module
-        # Prerelease = ''
+            # External dependent modules of this module
+            # ExternalModuleDependencies = @()
 
-        # Flag to indicate whether the module requires explicit user acceptance for install/update/save
-        # RequireLicenseAcceptance = $false
+        } # End of PSData hashtable
 
-        # External dependent modules of this module
-        # ExternalModuleDependencies = @()
+    } # End of PrivateData hashtable
 
-    } # End of PSData hashtable
+    # HelpInfo URI of this module
+    HelpInfoURI       = 'https://day3bits.com/DLLPickle'
 
- } # End of PrivateData hashtable
-
-# HelpInfo URI of this module
-HelpInfoURI = 'https://day3bits.com/DLLPickle'
-
-# Default prefix for commands exported from this module. Override the default prefix using Import-Module -Prefix.
-# DefaultCommandPrefix = ''
+    # Default prefix for commands exported from this module. Override the default prefix using Import-Module -Prefix.
+    # DefaultCommandPrefix = ''
 
 }
-

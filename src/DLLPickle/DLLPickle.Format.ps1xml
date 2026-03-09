@@ -247,5 +247,49 @@
                 </TableRowEntries>
             </TableControl>
         </View>
+        <View>
+            <Name>DLLPickle.ModuleDllInfo</Name>
+            <ViewSelectedBy>
+                <TypeName>DLLPickle.ModuleDllInfo</TypeName>
+            </ViewSelectedBy>
+            <TableControl>
+                <TableHeaders>
+                    <TableColumnHeader>
+                        <Label>FileName</Label>
+                        <Alignment>Left</Alignment>
+                    </TableColumnHeader>
+                    <TableColumnHeader>
+                        <Label>ProductVersion</Label>
+                        <Alignment>Left</Alignment>
+                    </TableColumnHeader>
+                    <TableColumnHeader>
+                        <Label>PathScope</Label>
+                        <Alignment>Left</Alignment>
+                    </TableColumnHeader>
+                    <TableColumnHeader>
+                        <Label>ModuleRoot</Label>
+                        <Alignment>Left</Alignment>
+                    </TableColumnHeader>
+                </TableHeaders>
+                <TableRowEntries>
+                    <TableRowEntry>
+                        <TableColumnItems>
+                            <TableColumnItem>
+                                <PropertyName>FileName</PropertyName>
+                            </TableColumnItem>
+                            <TableColumnItem>
+                                <PropertyName>ProductVersion</PropertyName>
+                            </TableColumnItem>
+                            <TableColumnItem>
+                                <PropertyName>PathScope</PropertyName>
+                            </TableColumnItem>
+                            <TableColumnItem>
+                                <PropertyName>ModuleRoot</PropertyName>
+                            </TableColumnItem>
+                        </TableColumnItems>
+                    </TableRowEntry>
+                </TableRowEntries>
+            </TableControl>
+        </View>
     </ViewDefinitions>
 </Configuration>
