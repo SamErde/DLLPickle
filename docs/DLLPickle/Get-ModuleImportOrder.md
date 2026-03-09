@@ -8,6 +8,7 @@ schema: 2.0.0
 # Get-ModuleImportOrder
 
 ## SYNOPSIS
+
 Evaluates the import order of specified modules based on their versions and the location in PSModulePath.
 
 ## SYNTAX
@@ -17,6 +18,7 @@ Get-ModuleImportOrder [[-Name] <String[]>] [-ProgressAction <ActionPreference>] 
 ```
 
 ## DESCRIPTION
+
 This function evaluates the import order of specified modules based on their versions and the location in PSModulePath.
 It uses Get-ModuleImportCandidate to determine which version of each module would be imported by Import-Module,
 and then sorts them by the version of 'Microsoft.Identity.Client.dll' that is packaged with each module.
@@ -34,6 +36,7 @@ Returns a list of modules ordered by the version of 'Microsoft.Identity.Client.d
 ## PARAMETERS
 
 ### -Name
+
 A list of module names to evaluate for proper import order.
 Wildcards are allowed.
 
@@ -50,6 +53,7 @@ Accept wildcard characters: False
 ```
 
 ### -ProgressAction
+
 {{ Fill ProgressAction Description }}
 
 ```yaml
@@ -65,6 +69,7 @@ Accept wildcard characters: False
 ```
 
 ### CommonParameters
+
 This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable, -InformationAction, -InformationVariable, -OutVariable, -OutBuffer, -PipelineVariable, -Verbose, -WarningAction, and -WarningVariable. For more information, see [about_CommonParameters](http://go.microsoft.com/fwlink/?LinkID=113216).
 
 ## INPUTS
