@@ -193,9 +193,9 @@
         try {
             $JsonContent = $CurrentSettings | ConvertTo-Json -ErrorAction Stop
             if ($PSEdition -eq 'Core') {
-                Set-Content -LiteralPath $ConfigFile -Value $JsonContent -Encoding utf8NoBOM -Force -ErrorAction Stop
+                Set-Content -LiteralPath $ConfigFile -Value $JsonContent -Encoding 'utf8NoBOM' -Force -ErrorAction Stop
             } else {
-                Set-Content -LiteralPath $ConfigFile -Value $JsonContent -Encoding utf8 -Force -ErrorAction Stop
+                Set-Content -LiteralPath $ConfigFile -Value $JsonContent -Encoding 'utf8' -Force -ErrorAction Stop
             }
             Write-Verbose "Configuration saved to '$ConfigFile'."
         } catch {
