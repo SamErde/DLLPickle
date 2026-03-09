@@ -10,6 +10,78 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Working on updates to replace PlatyPS documentation creation with the new Microsoft.PowerShell.PlatyPS module.
 
+## [0.19.0] - 2026-03-09
+
+### Added
+
+- Implement DLL Pickle settings functionality for configuration management
+- Enhanced metadata handling in module operations
+
+### Changed
+
+- Removed `SkipProblematicAssemblies` parameter in favor of settings-based configuration
+- Workflow hardening improvements including daily Dependabot runs and pinned GitHub app token
+
+## [0.18.0] - 2026-03-03
+
+### Added
+
+- Retry logic for handling module dependencies in `Import-DPLibrary`
+
+### Changed
+
+- Updated `Import-DPLibrary` function with improved dependency handling and resilience
+
+### Fixed
+
+- Pinned checkout action to SHA of v4.2.2 for improved security
+
+## [0.17.0] - 2026-02-23
+
+### Fixed
+
+- Added version sync step to module release workflow to prevent version mismatch issues
+
+## [0.16.0] - 2026-02-22
+
+### Changed
+
+- CI/CD workflow and supply chain improvements for better build reliability
+
+## [0.15.0] - 2026-02-16
+
+### Added
+
+- Binary files now included in module path for improved .NET assembly management
+
+### Changed
+
+- Enhanced Codacy workflow to support multiple analysis tools with unique SARIF outputs
+- Updated documentation in README and Roadmap
+
+## [0.10.2] - 2026-02-13
+
+### Fixed
+
+- Fixed module path variable in publish script
+- Corrected path to publish script in release workflow
+
+## [0.10.1] - 2026-02-13
+
+### Changed
+
+- Commented out local development imports in PSM1 for cleaner module loading
+
+### Fixed
+
+- Updated workflow permissions to enable GitHub release creation
+
+## [0.10.0] - 2026-02-13
+
+### Changed
+
+- Transitioned to automated release workflow with improved version management
+
 ## [0.9.0]
 
 This release contains major refactoring that brings it very close to a true 1.0 release!
@@ -60,7 +132,15 @@ Full Changelog: [v0.2.5...v0.2.6](https://github.com/SamErde/DLLPickle/compare/v
 
 - Initial release.
 
-[Unreleased]: https://github.com/SamErde/DLLPickle/compare/latest...HEAD
-[0.2.6]: https://github.com/SamErde/DLLPickle/tag/v0.2.6
-[0.2.7]: https://github.com/SamErde/DLLPickle/tag/v0.2.7
+[Unreleased]: https://github.com/SamErde/DLLPickle/compare/v0.19.0...HEAD
+[0.19.0]: https://github.com/SamErde/DLLPickle/tag/v0.19.0
+[0.18.0]: https://github.com/SamErde/DLLPickle/tag/v0.18.0
+[0.17.0]: https://github.com/SamErde/DLLPickle/tag/v0.17.0
+[0.16.0]: https://github.com/SamErde/DLLPickle/tag/v0.16.0
+[0.15.0]: https://github.com/SamErde/DLLPickle/tag/v0.15.0
+[0.10.2]: https://github.com/SamErde/DLLPickle/tag/v0.10.2
+[0.10.1]: https://github.com/SamErde/DLLPickle/tag/v0.10.1
+[0.10.0]: https://github.com/SamErde/DLLPickle/tag/v0.10.0
 [0.9.0]: https://github.com/SamErde/DLLPickle/tag/v0.9.0
+[0.2.7]: https://github.com/SamErde/DLLPickle/tag/v0.2.7
+[0.2.6]: https://github.com/SamErde/DLLPickle/tag/v0.2.6
