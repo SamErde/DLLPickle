@@ -32,9 +32,10 @@ Export-ModuleMember -Function $Public.Basename
 
 $Settings = Get-DPConfig
 
+# Check for updates unless the user has disabled update checks in their configuration.
 if ($Settings.CheckForUpdates) {
-    $DPVersionInfo = Test-DPVersion
-    if ( $DPVersionInfo.UpdateAvailable) {
+    $DPVersionInfo = Test-DPVersion -ErrorAction SilentlyContinue
+    if ($DPVersionInfo -and $DPVersionInfo.IsSuccess -and $DPVersionInfo.IsUpdateAvailable) {
         Write-Warning ('A new version of DLLPickle is available: {0}' -f $DPVersionInfo.LatestVersion)
     }
 }
