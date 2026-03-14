@@ -157,7 +157,15 @@
         }
 
         $AlreadyLoadedAssembly = [System.AppDomain]::CurrentDomain.GetAssemblies() |
-            Where-Object { $_.GetName().Name -eq $RequestedAssemblyName.Name } | Select-Object -First 1
+            Where-Object {
+                $loadedName = $_.GetName()
+                if ($RequestedAssemblyName.Version) {
+                    ($loadedName.Name -eq $RequestedAssemblyName.Name) -and
+                    ($loadedName.Version -eq $RequestedAssemblyName.Version)
+                } else {
+                    $loadedName.Name -eq $RequestedAssemblyName.Name
+                }
+            } | Select-Object -First 1
         if ($AlreadyLoadedAssembly) {
             return $AlreadyLoadedAssembly
         }
@@ -166,9 +174,37 @@
             $ResolvedPath = $AssemblyPathBySimpleName[$RequestedAssemblyName.Name]
             if (Test-Path -Path $ResolvedPath) {
                 try {
-                    return [System.Reflection.Assembly]::LoadFrom($ResolvedPath)
+                    $CandidateAssemblyName = [System.Reflection.AssemblyName]::GetAssemblyName($ResolvedPath)
                 } catch {
                     return $null
+                }
+
+                $namesMatch = ($CandidateAssemblyName.Name -eq $RequestedAssemblyName.Name)
+
+                $culturesMatch = $true
+                if ($RequestedAssemblyName.CultureName -or $CandidateAssemblyName.CultureName) {
+                    $culturesMatch = ($RequestedAssemblyName.CultureName -eq $CandidateAssemblyName.CultureName)
+                }
+
+                $tokensMatch = $true
+                $requestedToken = $RequestedAssemblyName.GetPublicKeyToken()
+                $candidateToken = $CandidateAssemblyName.GetPublicKeyToken()
+                if ( ($requestedToken -and $requestedToken.Length -gt 0) -or
+                     ($candidateToken -and $candidateToken.Length -gt 0) ) {
+                    $tokensMatch = ([string]::Join(',', $requestedToken) -eq [string]::Join(',', $candidateToken))
+                }
+
+                $versionMatch = $true
+                if ($RequestedAssemblyName.Version) {
+                    $versionMatch = ($RequestedAssemblyName.Version -eq $CandidateAssemblyName.Version)
+                }
+
+                if ($namesMatch -and $culturesMatch -and $tokensMatch -and $versionMatch) {
+                    try {
+                        return [System.Reflection.Assembly]::LoadFrom($ResolvedPath)
+                    } catch {
+                        return $null
+                    }
                 }
             }
         }
