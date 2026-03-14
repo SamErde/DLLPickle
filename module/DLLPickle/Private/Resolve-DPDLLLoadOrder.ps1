@@ -27,7 +27,8 @@
 
             $TrustedPlatformAssemblies = [System.AppContext]::GetData('TRUSTED_PLATFORM_ASSEMBLIES')
             if ($TrustedPlatformAssemblies) {
-                foreach ($AssemblyPath in ($TrustedPlatformAssemblies -split ';')) {
+                $PathSeparatorPattern = [regex]::Escape([System.IO.Path]::PathSeparator.ToString())
+                foreach ($AssemblyPath in ($TrustedPlatformAssemblies -split $PathSeparatorPattern)) {
                     if (-not [string]::IsNullOrWhiteSpace($AssemblyPath)) {
                         [void]$ResolverPaths.Add($AssemblyPath)
                     }
