@@ -111,6 +111,13 @@ Describe 'Import-DPLibrary' -Tag 'Unit' {
                     Get-Item -Path $SecondCopyPath
                 )
             }
+            Mock -CommandName Resolve-DPDLLLoadOrder -MockWith {
+                param(
+                    [Parameter(Mandatory = $true)]
+                    $Libraries
+                )
+                ,$Libraries
+            }
 
             $Result = Import-DPLibrary -WarningAction SilentlyContinue
 
