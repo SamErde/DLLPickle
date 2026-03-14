@@ -779,7 +779,8 @@ Add-BuildTask ValidateWindowsPowerShellModuleOutput -After CopyModuleFiles -Befo
 
     Write-Build Gray '        Validating built module output in Windows PowerShell 5.1...'
 
-    $ValidationScriptPath = Join-Path -Path $env:TEMP -ChildPath "$($script:ModuleName)-ValidateBuiltModule.ps1"
+    $ValidationScriptFile = New-TemporaryFile
+    $ValidationScriptPath = $ValidationScriptFile.FullName
     @"
 Import-Module '$BuiltModuleManifestPath' -Force
 
