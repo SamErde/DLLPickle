@@ -122,7 +122,12 @@ function Resolve-DPDLLLoadOrder {
             continue
         }
 
-        if ($DLLFile.FullName -lt $AssemblyNameToFile[$AssemblySimpleName].FullName) {
+        if ([string]::Compare(
+                $DLLFile.FullName,
+                $AssemblyNameToFile[$AssemblySimpleName].FullName,
+                [System.StringComparison]::OrdinalIgnoreCase
+            ) -lt 0)
+        {
             $AssemblyNameToFile[$AssemblySimpleName] = $DLLFile
         }
 
