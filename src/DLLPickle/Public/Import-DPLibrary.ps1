@@ -158,12 +158,12 @@
 
         $AlreadyLoadedAssembly = [System.AppDomain]::CurrentDomain.GetAssemblies() |
             Where-Object {
-                $loadedName = $_.GetName()
+                $LoadedName = $_.GetName()
                 if ($RequestedAssemblyName.Version) {
-                    ($loadedName.Name -eq $RequestedAssemblyName.Name) -and
-                    ($loadedName.Version -eq $RequestedAssemblyName.Version)
+                    ($LoadedName.Name -eq $RequestedAssemblyName.Name) -and
+                    ($LoadedName.Version -eq $RequestedAssemblyName.Version)
                 } else {
-                    $loadedName.Name -eq $RequestedAssemblyName.Name
+                    $LoadedName.Name -eq $RequestedAssemblyName.Name
                 }
             } | Select-Object -First 1
         if ($AlreadyLoadedAssembly) {
@@ -179,27 +179,27 @@
                     return $null
                 }
 
-                $namesMatch = ($CandidateAssemblyName.Name -eq $RequestedAssemblyName.Name)
+                $NamesMatch = ($CandidateAssemblyName.Name -eq $RequestedAssemblyName.Name)
 
-                $culturesMatch = $true
+                $CulturesMatch = $true
                 if ($RequestedAssemblyName.CultureName -or $CandidateAssemblyName.CultureName) {
-                    $culturesMatch = ($RequestedAssemblyName.CultureName -eq $CandidateAssemblyName.CultureName)
+                    $CulturesMatch = ($RequestedAssemblyName.CultureName -eq $CandidateAssemblyName.CultureName)
                 }
 
-                $tokensMatch = $true
-                $requestedToken = $RequestedAssemblyName.GetPublicKeyToken()
-                $candidateToken = $CandidateAssemblyName.GetPublicKeyToken()
-                if ( ($requestedToken -and $requestedToken.Length -gt 0) -or
-                     ($candidateToken -and $candidateToken.Length -gt 0) ) {
-                    $tokensMatch = ([string]::Join(',', $requestedToken) -eq [string]::Join(',', $candidateToken))
+                $TokensMatch = $true
+                $RequestedToken = $RequestedAssemblyName.GetPublicKeyToken()
+                $CandidateToken = $CandidateAssemblyName.GetPublicKeyToken()
+                if ( ($RequestedToken -and $RequestedToken.Length -gt 0) -or
+                     ($CandidateToken -and $CandidateToken.Length -gt 0) ) {
+                    $TokensMatch = ([string]::Join(',', $RequestedToken) -eq [string]::Join(',', $CandidateToken))
                 }
 
-                $versionMatch = $true
+                $VersionMatch = $true
                 if ($RequestedAssemblyName.Version) {
-                    $versionMatch = ($RequestedAssemblyName.Version -eq $CandidateAssemblyName.Version)
+                    $VersionMatch = ($RequestedAssemblyName.Version -eq $CandidateAssemblyName.Version)
                 }
 
-                if ($namesMatch -and $culturesMatch -and $tokensMatch -and $versionMatch) {
+                if ($NamesMatch -and $CulturesMatch -and $TokensMatch -and $VersionMatch) {
                     try {
                         return [System.Reflection.Assembly]::LoadFrom($ResolvedPath)
                     } catch {
