@@ -5,7 +5,7 @@ BeforeAll {
 }
 
 Describe 'Built module integration validation' -Tag 'Integration' {
-    It 'imports DLL dependencies cleanly in Windows PowerShell 5.1' -Skip:(-not $IsWindows) {
+    It 'imports DLL dependencies cleanly in Windows PowerShell 5.1' -Skip:($env:OS -ne 'Windows_NT') {
         Test-Path $BuiltModuleManifestPath | Should -BeTrue
 
         $ValidationScriptPath = Join-Path $TestDrive 'Validate-BuiltModule.ps1'
