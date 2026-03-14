@@ -114,9 +114,9 @@ Describe 'Import-DPLibrary' -Tag 'Unit' {
             Mock -CommandName Resolve-DPDLLLoadOrder -MockWith {
                 param(
                     [Parameter(Mandatory = $true)]
-                    $Libraries
+                    $DLLFiles
                 )
-                ,$Libraries
+                ,$DLLFiles
             }
 
             $Result = Import-DPLibrary -WarningAction SilentlyContinue
