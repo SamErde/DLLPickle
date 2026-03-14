@@ -53,11 +53,25 @@ Some transitive dependencies contain types that depend on APIs not available in 
 - `System.Diagnostics.DiagnosticSource` 6.x
 - Newer versions of `Microsoft.Identity.Client` 4.x
 
-**Impact**: Assemblies fail to load in Windows PowerShell but don't impact core MSAL functionality.
+**Root Cause**:
 
-**Workaround**: Use `Import-DPLibrary -ShowLoaderExceptions` for detailed diagnostics when loader warnings occur.
+- .NET Framework 4.8 assembly probing can fail on first pass when transitive dependencies are not loaded in the expected order.
+- Identity stack assemblies can reference lower-level system assemblies that are not guaranteed to be resolved first in arbitrary file enumeration order.
 
-**Resolution**: All assemblies load successfully in PowerShell Core (net8.0).
+**Implemented Workaround Strategy**:
+
+- net48 build now copies lock file assemblies locally to improve dependency presence in the module `bin/net48` path.
+- `Import-DPLibrary` builds a local assembly dependency graph and applies dependency-first DLL ordering before import attempts.
+- If graph nodes are unresolved (for example due to metadata gaps), `Import-DPLibrary` appends the remaining assemblies deterministically in alphabetical order.
+- `Import-DPLibrary` registers a scoped assembly resolution fallback so .NET Framework can resolve local same-name dependencies from the module bin folder during import.
+- Existing retry logic remains in place as a safety net for unresolved transitive dependencies.
+
+**Operational Guidance**:
+
+- Use `Import-DPLibrary -SuppressLogo -ShowLoaderExceptions -Verbose` for detailed diagnostics.
+- Use `Set-DPConfig` with `SkipLibraries` only for environment-specific optional assembly incompatibilities.
+
+**Resolution**: All assemblies generally load successfully in PowerShell Core (net8.0), and net48 reliability is improved by packaging and graph-based dependency ordering with deterministic fallback.
 
 ## Supply Chain Security
 

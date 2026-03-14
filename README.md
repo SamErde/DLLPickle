@@ -36,7 +36,7 @@ Install-PSResource -Name DLLPickle
 
 ### Using
 
-All you have to do to use DLL Pickle is import it and run the `Import-DPLibrary` command. (This function will be done automatically during the module import process before the v1.0 release!)
+All you have to do to use DLL Pickle is run the `Import-DPLibrary` command.
 
 ```powershell
 Import-Module DLLPickle
@@ -51,29 +51,27 @@ Let's start with a few FAQs:
 
 - **What does DLL Pickle actually *do*?**
 
-  DLL Pickle pre-loads the newest version of the MSAL DLLs that may be required by your other installed modules and scripts. (See the example below.)
+  DLL Pickle pre-loads the newest version of the MSAL DLLs (and some of their transitive dependencies) that may be required by your other installed modules' and scripts' `Connect-*` cmdlets. (See the example below.)
 
 - **Why does it need to do this?**
 
-  It is common for PowerShell modules to ship with DLLs that provide precompiled functionality or dependencies. A PowerShell session cannot import two different versions of the same library (DLL). If a module imports one version of a DLL and then a different module attempts to import a second, newer version of that DLL, they will typically see an error that says, "an assembly with the same name is already loaded" and the second module will not be able to authenticate.
+  It is common for PowerShell modules to ship with DLLs that provide precompiled functionality or dependencies. A PowerShell session cannot import two different versions of the same library (DLL). If a module imports one version of a DLL and then a different module attempts to import a second, newer version of that DLL, they will typically see an error that says, "an assembly with the same name is already loaded" and the second module will not be able to function.
 
 - **Why don't modules use Application Load Context (ALC) to solve this problem?**
 
-  ALC can be complex to implement and is only available in PowerShell 7, so it is not commonly used in public modules.
+  ALC can be very complex to implement *and* is only available in PowerShell 7. For these reasons, it is not commonly used in public modules.
 
 - **Do these issues look familiar?**
 
-  <details>
-  <summary>Related GitHub Issues</summary>
+### Related GitHub Issues
 
-  - [Connect-MgGraph fails after Connect-ExchangeOnline](https://github.com/microsoftgraph/msgraph-sdk-powershell/issues/3394)
-  - [UUF Customer feedback: Get-EntraExtensionProperty error](https://github.com/microsoftgraph/entra-powershell/issues/1258) (Assembly with same name is already loaded)
-  - [Assembly with same name is already loaded](https://github.com/microsoftgraph/entra-powershell/issues/1083)
-  - [Design entra-powershell with ALC bridge pattern for a more robust assembly load handling](https://github.com/microsoftgraph/entra-powershell/issues/1242)
-  - [Implement proper assembly isolation to play nice with vscode-powershell](https://github.com/microsoftgraph/msgraph-sdk-powershell/issues/2978)
-  - [Conflict with the .Net dll of the Az module PowerShell/vscode-powershell#3012](https://github.com/PowerShell/vscode-powershell/issues/3012)
-  - [Unable to load Az modules - Assembly with same name is already loaded PowerShell/vscode-powershell#4727](https://github.com/PowerShell/vscode-powershell/issues/4727)
-  </details>
+- [Connect-MgGraph fails after Connect-ExchangeOnline](https://github.com/microsoftgraph/msgraph-sdk-powershell/issues/3394)
+- [UUF Customer feedback: Get-EntraExtensionProperty error](https://github.com/microsoftgraph/entra-powershell/issues/1258) (Assembly with same name is already loaded)
+- [Assembly with same name is already loaded](https://github.com/microsoftgraph/entra-powershell/issues/1083)
+- [Design entra-powershell with ALC bridge pattern for a more robust assembly load handling](https://github.com/microsoftgraph/entra-powershell/issues/1242)
+- [Implement proper assembly isolation to play nice with vscode-powershell](https://github.com/microsoftgraph/msgraph-sdk-powershell/issues/2978)
+- [Conflict with the .Net dll of the Az module PowerShell/vscode-powershell#3012](https://github.com/PowerShell/vscode-powershell/issues/3012)
+- [Unable to load Az modules - Assembly with same name is already loaded PowerShell/vscode-powershell#4727](https://github.com/PowerShell/vscode-powershell/issues/4727)
 
 ### 🧑‍💻 An Example Scenario
 
@@ -85,13 +83,26 @@ Numerous PowerShell modules include a dependency on the Microsoft Authentication
 - MicrosoftTeams
 - ...and many more.
 
-You could *manually* attempt to work around this by checking which version of the conflicting DLLs are used by each of your PowerShell modules and then *connect first* to whichever service module uses the newest version of the DLL. This works because of the "first one wins" rule and because the MSAL is designed to be backwards compatible. DLL Pickle handles this for you by automatically updating and releasing a new version of DLL Pickle whenever a new version of the MSAL is published. As long as you keep the DLL Pickle module up to date and load it first in your PowerShell profile, then all other PowerShell modules should be able to use this new MSAL that is loaded by DLL Pickle.
+You could *manually* attempt to work around this by checking which version of the conflicting DLLs are used by each of your PowerShell modules and then *connect first* to whichever service module uses the newest version of the DLL. This works because of the "first one wins" rule and because the MSAL is designed to be backwards compatible. DLL Pickle handles this for you by automatically updating and releasing a new version of DLL Pickle whenever a new version of the MSAL is published. As long as you keep the DLL Pickle module up to date run `Import-DPLibrary` before other modules, you should be able to connect to any Microsoft online service without DLL conflicts.
 
 ### 🥒 Using DLL Pickle
 
-The easiest way to benefit from DLL Pickle is to import the module in your PowerShell profile before any other module or assembly is loaded. Just add the line `Import-Module DLLPickle` to your profile, save it, and start a new instance of PowerShell.
+The easiest way to benefit from DLL Pickle is to import the module in your PowerShell profile before any other module or assembly is loaded. Just add the line `Import-DPLibrary` to your profile, save it, and start a new instance of PowerShell.
 
-Alternatively, if you are starting work in a new PowerShell session in which you know you will be authenticating to multiple online services, you can run `Import-Module DLLPickle` at the beginning of your session and then proceed with connecting to Microsoft's online services using their first party modules.
+Alternatively, if you are starting work in a new PowerShell session in which you know you will be authenticating to multiple online services, you can run `Import-DPLibrary` at the beginning of your session and then proceed with connecting to Microsoft's online services using their first party modules.
+
+### ⚙️ Platform Caveats
+
+- **PowerShell 7+ (Core, net8.0):** Full support and best overall compatibility.
+- **Windows PowerShell 5.1 (Desktop, net48):** Supported with dependency-graph-based loading order, deterministic fallback for unresolved graph nodes, local assembly resolution fallback, and retry behavior for transitive assembly resolution.
+
+If you need diagnostic details in Windows PowerShell 5.1, run:
+
+```powershell
+Import-DPLibrary -ShowLoaderExceptions -Verbose
+```
+
+For detailed cmdlet guidance, see [docs/DLLPickle/Import-DPLibrary.md](docs/DLLPickle/Import-DPLibrary.md).
 
 ---
 
@@ -119,7 +130,6 @@ This project follows the semantic versioning model. It also packages numerous de
 
 - Minor refactoring for performance, error handling, or logging
 - Minor fixes for typos or formatting
-- Changes to documentation
 
 ## External Documentation
 
@@ -127,9 +137,6 @@ All libraries tracked for pre-loading by DLL Pickle are maintained and documente
 
 - [Microsoft.Identity.Abstractions](https://www.nuget.org/packages/Microsoft.Identity.Abstractions)
 - [Microsoft.Identity.Client](https://www.nuget.org/packages/Microsoft.Identity.Client)
-- [Microsoft.Identity.Client.Broker](https://www.nuget.org/packages/Microsoft.Identity.Client.Broker)
-- [Microsoft.Identity.Client.Extensions.Msal](https://www.nuget.org/packages/Microsoft.Identity.Client.Extensions.Msal)
-- [Microsoft.Identity.Client.NativeInterop](https://www.nuget.org/packages/Microsoft.Identity.Client.NativeInterop)
 - [Microsoft.IdentityModel.Abstractions](https://www.nuget.org/packages/Microsoft.IdentityModel.Abstractions)
 - [Microsoft.IdentityModel.JsonWebTokens](https://www.nuget.org/packages/Microsoft.IdentityModel.JsonWebTokens)
 - [Microsoft.IdentityModel.Logging](https://www.nuget.org/packages/Microsoft.IdentityModel.Logging)
