@@ -83,7 +83,7 @@ Numerous PowerShell modules include a dependency on the Microsoft Authentication
 - MicrosoftTeams
 - ...and many more.
 
-You could *manually* attempt to work around this by checking which version of the conflicting DLLs are used by each of your PowerShell modules and then *connect first* to whichever service module uses the newest version of the DLL. This works because of the "first one wins" rule and because the MSAL is designed to be backwards compatible. DLL Pickle handles this for you by automatically updating and releasing a new version of DLL Pickle whenever a new version of the MSAL is published. As long as you keep the DLL Pickle module up to date run `Import-DPLibrary` before other modules, you should be able to connect to any Microsoft online service without DLL conflicts.
+You could *manually* attempt to work around this by checking which version of the conflicting DLLs are used by each of your PowerShell modules and then *connect first* to whichever service module uses the newest version of the DLL. This works because of the "first one wins" rule and because the MSAL is designed to be backwards compatible. DLL Pickle handles this for you by automatically updating and releasing a new version of DLL Pickle whenever a new version of the MSAL is published. As long as you keep the DLL Pickle module up to date and run `Import-DPLibrary` before other modules, you should be able to connect to any Microsoft online service without DLL conflicts.
 
 ### 🥒 Using DLL Pickle
 
