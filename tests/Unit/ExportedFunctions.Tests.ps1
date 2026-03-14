@@ -8,6 +8,7 @@ BeforeAll {
     $ModuleExported = Get-Command -Module $ModuleName | Select-Object -ExpandProperty Name
     $ManifestExported = ($ManifestContent.ExportedFunctions).Keys
 }
+
 BeforeDiscovery {
     Set-Location -Path $PSScriptRoot
     $ModuleName = 'DLLPickle'
@@ -16,6 +17,7 @@ BeforeDiscovery {
     $ModuleExported = Get-Command -Module $ModuleName | Select-Object -ExpandProperty Name
     $ManifestExported = ($ManifestContent.ExportedFunctions).Keys
 }
+
 Describe $ModuleName {
 
     Context 'Exported Commands' -Fixture {
@@ -38,7 +40,7 @@ Describe $ModuleName {
     } #context_ExportedCommands
 
     Context 'Command Help' -Fixture {
-        Context '<_>' -Foreach $ModuleExported {
+        Context '<_>' -ForEach $ModuleExported {
 
             BeforeEach {
                 $Help = Get-Help -Name $_ -Full
