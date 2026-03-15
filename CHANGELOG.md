@@ -10,6 +10,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Working on updates to replace PlatyPS documentation creation with the new Microsoft.PowerShell.PlatyPS module.
 
+### Added
+
+- Deterministic dependency-aware DLL load ordering and scoped local assembly resolution fallback in `Import-DPLibrary` to reduce transient first-pass assembly load failures.
+- Windows PowerShell 5.1 platform caveat guidance in README and cmdlet help.
+- Built-module validation in Windows PowerShell 5.1 and integration test coverage for the `module/DLLPickle` output path.
+- Focus VS Code tasks for refreshing the local module output and validating the built module in Windows PowerShell 5.1.
+
+### Changed
+
+- Replace manual DLL priority ordering in `Import-DPLibrary` with dependency-graph-based ordering and deterministic alphabetical fallback for unresolved graph nodes.
+- Update `Import-DPLibrary` help to document load-order behavior and troubleshooting guidance.
+- Expand dependency compatibility notes with .NET Framework 4.8 root-cause details and operational guidance.
+
+### Fixed
+
+- Enable net48 local copy of lock file assemblies in `DLLPickle.csproj` to improve transitive dependency availability during import.
+- Harden module output refresh during builds so in-use binaries do not immediately break the prepare-and-validate workflow.
+
 ## [0.19.0] - 2026-03-09
 
 ### Added

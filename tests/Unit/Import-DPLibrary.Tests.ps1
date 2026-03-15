@@ -1,6 +1,7 @@
 ﻿BeforeAll {
     Set-Location -Path $PSScriptRoot
     . (Resolve-Path ([System.IO.Path]::Combine('..', '..', 'src', 'DLLPickle', 'Public', 'Get-DPConfig.ps1')))
+    . (Resolve-Path ([System.IO.Path]::Combine('..', '..', 'src', 'DLLPickle', 'Private', 'Resolve-DPDLLLoadOrder.ps1')))
     . (Resolve-Path ([System.IO.Path]::Combine('..', '..', 'src', 'DLLPickle', 'Public', 'Import-DPLibrary.ps1')))
 }
 
@@ -42,6 +43,55 @@ Describe 'Import-DPLibrary' -Tag 'Unit' {
             Mock -CommandName Test-Path -MockWith { $true }
         }
 
+        It 'Applies dependency-graph ordering before import attempts' {
+            $LoadedAssemblyPath = [System.Text.StringBuilder].Assembly.Location
+            $UnsafePath = Join-Path -Path $TestDrive -ChildPath 'System.Runtime.CompilerServices.Unsafe.dll'
+            $AbstractionsPath = Join-Path -Path $TestDrive -ChildPath 'Microsoft.IdentityModel.Abstractions.dll'
+            $IdentityClientPath = Join-Path -Path $TestDrive -ChildPath 'Microsoft.Identity.Client.dll'
+
+            Copy-Item -Path $LoadedAssemblyPath -Destination $UnsafePath -Force
+            Copy-Item -Path $LoadedAssemblyPath -Destination $AbstractionsPath -Force
+            Copy-Item -Path $LoadedAssemblyPath -Destination $IdentityClientPath -Force
+
+            Mock -CommandName Get-DPConfig -MockWith {
+                [PSCustomObject]@{
+                    SkipLibraries = @()
+                    ShowLogo      = $false
+                }
+            }
+            Mock -CommandName Get-ChildItem -MockWith {
+                @(
+                    (Get-Item -Path $IdentityClientPath)
+                    (Get-Item -Path $UnsafePath)
+                    (Get-Item -Path $AbstractionsPath)
+                )
+            }
+
+            Mock -CommandName Resolve-DPDLLLoadOrder -MockWith {
+                param ([System.IO.FileInfo[]]$DLLFiles)
+
+                $ByName = @{}
+                foreach ($File in $DLLFiles) {
+                    $ByName[$File.Name] = $File
+                }
+
+                @(
+                    $ByName['System.Runtime.CompilerServices.Unsafe.dll']
+                    $ByName['Microsoft.IdentityModel.Abstractions.dll']
+                    $ByName['Microsoft.Identity.Client.dll']
+                )
+            }
+
+            $Result = Import-DPLibrary -SuppressLogo
+
+            Should -Invoke -CommandName Resolve-DPDLLLoadOrder -Times 1 -Exactly
+            @($Result) | Should -HaveCount 3
+            $Result[0].DLLName | Should -Be 'System.Runtime.CompilerServices.Unsafe.dll'
+            $Result[1].DLLName | Should -Be 'Microsoft.IdentityModel.Abstractions.dll'
+            $Result[2].DLLName | Should -Be 'Microsoft.Identity.Client.dll'
+            ($Result | ForEach-Object { $_.Status } | Select-Object -Unique) | Should -Be 'Already Loaded'
+        }
+
         It 'Returns rich objects and skips configured library names' {
             $LoadedAssemblyPath = [System.Text.StringBuilder].Assembly.Location
             $FirstCopyPath = Join-Path -Path $TestDrive -ChildPath 'FirstCopy.dll'
@@ -61,8 +111,15 @@ Describe 'Import-DPLibrary' -Tag 'Unit' {
                     Get-Item -Path $SecondCopyPath
                 )
             }
+            Mock -CommandName Resolve-DPDLLLoadOrder -MockWith {
+                param(
+                    [Parameter(Mandatory = $true)]
+                    $DLLFiles
+                )
+                ,$DLLFiles
+            }
 
-            $Result = Import-DPLibrary
+            $Result = Import-DPLibrary -WarningAction SilentlyContinue
 
             $Result | Should -Not -BeNullOrEmpty
             @($Result) | Should -HaveCount 1
@@ -94,6 +151,54 @@ Describe 'Import-DPLibrary' -Tag 'Unit' {
             $Result[0].DLLName | Should -Be 'InvalidLibrary.dll'
             $Result[0].Status | Should -Be 'Failed'
             $Result[0].Error | Should -Not -BeNullOrEmpty
+        }
+    }
+
+    Context 'Dependency graph helper behavior' {
+        It 'Orders dependencies before dependents and appends unresolved nodes deterministically' {
+            $AlphaPath = Join-Path -Path $TestDrive -ChildPath 'Alpha.dll'
+            $BetaPath = Join-Path -Path $TestDrive -ChildPath 'Beta.dll'
+            $GammaPath = Join-Path -Path $TestDrive -ChildPath 'Gamma.dll'
+            $DeltaPath = Join-Path -Path $TestDrive -ChildPath 'Delta.dll'
+
+            Set-Content -Path $AlphaPath -Value 'invalid assembly content' -Encoding utf8
+            Set-Content -Path $BetaPath -Value 'invalid assembly content' -Encoding utf8
+            Set-Content -Path $GammaPath -Value 'invalid assembly content' -Encoding utf8
+            Set-Content -Path $DeltaPath -Value 'invalid assembly content' -Encoding utf8
+
+            Mock -CommandName Get-DPDLLReferenceName -MockWith {
+                param (
+                    [string]$Path,
+                    [string[]]$LocalAssemblyNames
+                )
+
+                [void]$LocalAssemblyNames
+
+                switch ([System.IO.Path]::GetFileNameWithoutExtension($Path)) {
+                    'Beta' { @('Alpha') }
+                    'Gamma' { @('Beta') }
+                    default { @() }
+                }
+            }
+
+            $Ordered = Resolve-DPDLLLoadOrder -DLLFiles @(
+                (Get-Item -Path $GammaPath)
+                (Get-Item -Path $DeltaPath)
+                (Get-Item -Path $BetaPath)
+                (Get-Item -Path $AlphaPath)
+            )
+
+            @($Ordered) | Should -HaveCount 4
+
+            $Names = @($Ordered | ForEach-Object { $_.Name })
+            $AlphaIndex = $Names.IndexOf('Alpha.dll')
+            $BetaIndex = $Names.IndexOf('Beta.dll')
+            $GammaIndex = $Names.IndexOf('Gamma.dll')
+            $DeltaIndex = $Names.IndexOf('Delta.dll')
+
+            $AlphaIndex | Should -BeLessThan $BetaIndex
+            $BetaIndex | Should -BeLessThan $GammaIndex
+            $DeltaIndex | Should -BeLessThan $GammaIndex
         }
     }
 

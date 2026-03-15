@@ -53,7 +53,7 @@ function Test-ManifestBool ($Path) {
 [string[]]$str = 'Clean', 'ValidateRequirements', 'ImportModuleManifest'
 $str += 'FormattingCheck'
 $str += 'Analyze', 'Test'
-$str += 'CreateHelpStart', 'RestoreDependencies'
+$str += 'CreateHelpStart', 'RestoreDependencies', 'PrepareModuleOutput', 'ValidateWindowsPowerShellModuleOutput'
 [string[]]$str2 = $str # str2: Full build without integration tests
 $str2 += 'Build', 'Archive'
 $str += 'Build', 'IntegrationTest', 'Archive' # str: Full build
@@ -67,6 +67,9 @@ Add-BuildTask HelpLocal Clean, ImportModuleManifest, CreateHelpStart
 
 #Restore NuGet dependencies only
 Add-BuildTask RestoreDependenciesOnly RestoreDependencies
+
+#Prepare the local module output path with current source files and compiled binaries
+Add-BuildTask PrepareModuleOutput Clean, RestoreDependencies, CopyModuleFiles
 
 #Full build without integration tests
 Add-BuildTask BuildNoIntegration -Jobs $str2
@@ -107,6 +110,10 @@ Enter-Build {
 
     # SET: Ensure our builds fail until if below a minimum defined code test coverage threshold
     $script:CoverageThreshold = 0
+    $script:CoverageExclusions = @(
+        '*\Private\Show-DPLogo.ps1',
+        '*\Private\Show-DLLPickleLogo.ps1'
+    )
 
     [version]$script:MinPesterVersion = '5.2.2'
     [version]$script:MaxPesterVersion = '5.99.99'
@@ -172,12 +179,40 @@ Add-BuildTask ImportModuleManifest {
 #Synopsis: Clean and reset Artifacts/Archive/Module Output directories
 Add-BuildTask Clean {
     Write-Build White '      Clean up our Artifacts/Archive/Module directories...'
-    $null = Remove-Item $script:ArtifactsPath -Force -Recurse -ErrorAction SilentlyContinue
-    $null = New-Item $script:ArtifactsPath -ItemType:Directory
-    $null = Remove-Item $script:ArchivePath -Force -Recurse -ErrorAction SilentlyContinue
-    $null = New-Item $script:ArchivePath -ItemType:Directory
-    $null = Remove-Item $script:ModuleOutputPath -Force -Recurse -ErrorAction SilentlyContinue
-    $null = New-Item $script:ModuleOutputPath -ItemType:Directory
+
+    $ResetBuildDirectory = {
+        param (
+            [string]$Path,
+            [bool]$AllowInUseFiles = $false
+        )
+
+        if (Test-Path -LiteralPath $Path) {
+            try {
+                Remove-Item -LiteralPath $Path -Force -Recurse -ErrorAction Stop
+            } catch {
+                if (-not $AllowInUseFiles) {
+                    throw
+                }
+
+                Write-Build Yellow "      Unable to fully reset $Path because one or more files are in use. Continuing with an in-place refresh."
+
+                Get-ChildItem -LiteralPath $Path -Force -ErrorAction SilentlyContinue | ForEach-Object {
+                    try {
+                        Remove-Item -LiteralPath $_.FullName -Force -Recurse -ErrorAction Stop
+                    } catch {
+                        Write-Build Yellow "      Keeping in-use path: $($_.FullName)"
+                    }
+                }
+            }
+        }
+
+        $null = New-Item -Path $Path -ItemType Directory -Force
+        Assert-Build (Test-Path -LiteralPath $Path) "Failed to prepare directory: $Path"
+    }
+
+    & $ResetBuildDirectory $script:ArtifactsPath $false
+    & $ResetBuildDirectory $script:ArchivePath $false
+    & $ResetBuildDirectory $script:ModuleOutputPath $true
     Write-Build Green '      ...Clean Complete!'
 } #Clean
 
@@ -263,7 +298,11 @@ Add-BuildTask Test {
         $PesterConfiguration.Run.PassThru = $true
         $PesterConfiguration.Run.Exit = $false
         $PesterConfiguration.CodeCoverage.Enabled = $true
-        $PesterConfiguration.CodeCoverage.Path = "$ProjectRoot\src\$ModuleName\*\*.ps1"
+        $CoveragePaths = @(Get-ChildItem -Path "$ProjectRoot\src\$ModuleName" -Filter '*.ps1' -Recurse -File | Where-Object {
+                $FilePath = $_.FullName
+                -not ($script:CoverageExclusions | Where-Object { $FilePath -like $_ })
+            } | Select-Object -ExpandProperty FullName)
+        $PesterConfiguration.CodeCoverage.Path = $CoveragePaths
         $PesterConfiguration.CodeCoverage.CoveragePercentTarget = $script:CoverageThreshold
         $PesterConfiguration.CodeCoverage.OutputPath = "$CodeCovPath\CodeCoverage.xml"
         $PesterConfiguration.CodeCoverage.OutputFormat = 'JaCoCo'
@@ -323,7 +362,11 @@ Add-BuildTask DevCC {
     $PesterConfiguration = New-PesterConfiguration
     $PesterConfiguration.run.Path = $script:UnitTestsPath
     $PesterConfiguration.CodeCoverage.Enabled = $true
-    $PesterConfiguration.CodeCoverage.Path = "$PSScriptRoot\$ModuleName\*\*.ps1" # ############## VERIFY THIS PATH ###############
+    $CoveragePaths = @(Get-ChildItem -Path $script:ModuleSourcePath -Filter '*.ps1' -Recurse -File | Where-Object {
+            $FilePath = $_.FullName
+            -not ($script:CoverageExclusions | Where-Object { $FilePath -like $_ })
+        } | Select-Object -ExpandProperty FullName)
+    $PesterConfiguration.CodeCoverage.Path = $CoveragePaths
     $PesterConfiguration.CodeCoverage.CoveragePercentTarget = $script:CoverageThreshold
     $PesterConfiguration.CodeCoverage.OutputPath = '..\..\cov.xml'
     $PesterConfiguration.CodeCoverage.OutputFormat = 'CoverageGutters'
@@ -575,6 +618,50 @@ Add-BuildTask RestoreDependencies {
 
     Write-Build Gray '        Copying DLLs to module bin folder with TFM subdirectories...'
 
+    $CopyBinaryToModuleBin = {
+        param (
+            [System.IO.FileInfo]$SourceFile,
+            [string]$DestinationDirectory,
+            [string]$TargetFramework
+        )
+
+        $DestinationPath = Join-Path -Path $DestinationDirectory -ChildPath $SourceFile.Name
+
+        try {
+            Copy-Item -LiteralPath $SourceFile.FullName -Destination $DestinationPath -Force -ErrorAction Stop
+            return 'Copied'
+        } catch {
+            if (-not (Test-Path -LiteralPath $DestinationPath)) {
+                throw
+            }
+
+            $CanReuseExistingBinary = $false
+
+            try {
+                $SourceHash = (Get-FileHash -LiteralPath $SourceFile.FullName -Algorithm SHA256 -ErrorAction Stop).Hash
+                $DestinationHash = (Get-FileHash -LiteralPath $DestinationPath -Algorithm SHA256 -ErrorAction Stop).Hash
+                $CanReuseExistingBinary = $SourceHash -eq $DestinationHash
+            } catch {
+                try {
+                    $SourceLength = (Get-Item -LiteralPath $SourceFile.FullName -ErrorAction Stop).Length
+                    $DestinationLength = (Get-Item -LiteralPath $DestinationPath -ErrorAction Stop).Length
+                    $SourceAssemblyVersion = ([System.Reflection.AssemblyName]::GetAssemblyName($SourceFile.FullName)).Version.ToString()
+                    $DestinationAssemblyVersion = ([System.Reflection.AssemblyName]::GetAssemblyName($DestinationPath)).Version.ToString()
+                    $CanReuseExistingBinary = $SourceLength -eq $DestinationLength -and $SourceAssemblyVersion -eq $DestinationAssemblyVersion
+                } catch {
+                    $CanReuseExistingBinary = $false
+                }
+            }
+
+            if ($CanReuseExistingBinary) {
+                Write-Build Yellow "          Reusing in-use binary for ${TargetFramework}: $($SourceFile.Name)"
+                return 'Reused'
+            }
+
+            throw
+        }
+    }
+
     # Ensure the module bin directory exists
     if (-not (Test-Path $script:ModuleBinPath)) {
         $null = New-Item -Path $script:ModuleBinPath -ItemType Directory -Force
@@ -594,8 +681,14 @@ Add-BuildTask RestoreDependencies {
             if (-not (Test-Path $TfmBinPath)) {
                 $null = New-Item -Path $TfmBinPath -ItemType Directory -Force
             } else {
-                # Clean existing DLLs to ensure fresh copies
-                Remove-Item -Path "$TfmBinPath\*.dll" -Force -ErrorAction SilentlyContinue
+                # Clear what we can while tolerating in-use binaries.
+                Get-ChildItem -Path $TfmBinPath -Filter '*.dll' -ErrorAction SilentlyContinue | ForEach-Object {
+                    try {
+                        Remove-Item -LiteralPath $_.FullName -Force -ErrorAction Stop
+                    } catch {
+                        Write-Build Yellow "          Keeping in-use binary for ${tfm}: $($_.Name)"
+                    }
+                }
             }
 
             # Copy DLLs (Microsoft.* and System.* packages)
@@ -603,9 +696,21 @@ Add-BuildTask RestoreDependencies {
                 Where-Object { $_.Name -match '^(Microsoft\.|System\.)' }
 
             if ($DLLs) {
-                $DLLs | Copy-Item -Destination $TfmBinPath -Force
-                $CopiedCount = $DLLs.Count
+                $CopiedCount = 0
+                $ReusedCount = 0
+
+                foreach ($DLL in $DLLs) {
+                    $CopyDisposition = & $CopyBinaryToModuleBin $DLL $TfmBinPath $tfm
+                    switch ($CopyDisposition) {
+                        'Copied' { $CopiedCount++ }
+                        'Reused' { $ReusedCount++ }
+                    }
+                }
+
                 Write-Build Gray "          Copied $CopiedCount DLL(s) to $tfm subdirectory."
+                if ($ReusedCount -gt 0) {
+                    Write-Build Yellow "          Reused $ReusedCount in-use DLL(s) in $tfm subdirectory."
+                }
             } else {
                 Write-Build Yellow "          No matching DLLs found in $tfm output."
             }
@@ -660,6 +765,49 @@ Add-BuildTask CopyModuleFiles -After RestoreDependencies -Before Build {
 
     Write-Build Gray '        ...Module structure copy complete.'
 } #CopyModuleFiles
+
+
+# Synopsis: Validates that the built module output imports cleanly in Windows PowerShell 5.1
+Add-BuildTask ValidateWindowsPowerShellModuleOutput -After CopyModuleFiles -Before Build {
+    if (-not $IsWindows) {
+        Write-Build Yellow '        Skipping Windows PowerShell validation because the current OS is not Windows.'
+        return
+    }
+
+    $BuiltModuleManifestPath = Join-Path -Path $script:ModuleOutputPath -ChildPath "$($script:ModuleName).psd1"
+    Assert-Build (Test-Path $BuiltModuleManifestPath) "Built module manifest was not found at: $BuiltModuleManifestPath"
+
+    Write-Build Gray '        Validating built module output in Windows PowerShell 5.1...'
+
+    $ValidationScriptFile = New-TemporaryFile
+    $ValidationScriptPath = $ValidationScriptFile.FullName
+    @"
+Import-Module '$BuiltModuleManifestPath' -Force
+
+`$Result = Import-DPLibrary -SuppressLogo -ShowLoaderExceptions -Verbose 4>&1
+`$ImportResults = @(`$Result | Where-Object { `$_.PSObject.Properties.Name -contains 'Status' })
+`$FailedResults = @(`$ImportResults | Where-Object Status -eq 'Failed')
+
+if (`$FailedResults.Count -gt 0) {
+    Write-Error ('Built module import reported failed assemblies: {0}' -f ((`$FailedResults | Select-Object -ExpandProperty DLLName) -join ', '))
+    exit 1
+}
+
+if ((`$Result | Out-String) -match 'Failed to import') {
+    Write-Error 'Built module import emitted transient loader failure output.'
+    exit 1
+}
+"@ | Set-Content -Path $ValidationScriptPath -Encoding utf8
+
+    try {
+        $ValidationOutput = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $ValidationScriptPath 2>&1
+        Assert-Build ($LASTEXITCODE -eq 0) ($ValidationOutput -join [Environment]::NewLine)
+    } finally {
+        Remove-Item -Path $ValidationScriptPath -Force -ErrorAction SilentlyContinue
+    }
+
+    Write-Build Green '        ...Windows PowerShell built module validation complete.'
+} #ValidateWindowsPowerShellModuleOutput
 
 
 # Synopsis: Copies module assets to Artifacts folder

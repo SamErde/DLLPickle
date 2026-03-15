@@ -8,7 +8,7 @@ BeforeAll {
     #-------------------------------------------------------------------------
 }
 Describe 'Module Tests' -Tag Unit {
-    Context "Module Tests" {
+    Context 'Module Tests' {
         $script:manifestEval = $null
         It 'Passes Test-ModuleManifest' {
             { $script:manifestEval = Test-ModuleManifest -Path $PathToManifest } | Should -Not -Throw
@@ -20,7 +20,7 @@ Describe 'Module Tests' -Tag Unit {
         } #psm1Exists
         It 'manifest should contain DLLPickle.psm1' {
             $PathToManifest |
-            Should -FileContentMatchExactly "DLLPickle.psm1"
+                Should -FileContentMatchExactly 'DLLPickle.psm1'
         } #validPSM1
         It 'should have a matching module name in the manifest' {
             $script:manifestEval.Name | Should -BeExactly $ModuleName

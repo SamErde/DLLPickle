@@ -18,19 +18,18 @@ A PowerShell module that helps you get un-stuck from version conflicts that occu
 
 ## DLLPickle
 
-### [Get-DLLsInModulePath](Get-DLLsInModulePath.md)
+### [Get-DLLsInModulePath](DLLPickle/Get-DLLsInModulePath.md)
 
 Show a list of all DLLs in PowerShell module paths that contain the specified product name in their FileInfo property.
 
-### [Get-ModulesWithDependency](Get-ModulesWithDependency.md)
+### [Get-ModulesWithDependency](DLLPickle/Get-ModulesWithDependency.md)
 
 Finds installed PowerShell modules that have a common file dependency.
 
-### [Get-ModulesWithVersionSortedIdentityClient](Get-ModulesWithVersionSortedIdentityClient.md)
+### [Get-ModulesWithVersionSortedIdentityClient](DLLPickle/Get-ModulesWithVersionSortedIdentityClient.md)
 
 Get a list of modules with the MSAL, and which versions each have packaged.
 
-### [Import-DPLibrary](Import-DPLibrary.md)
+### [Import-DPLibrary](DLLPickle/Import-DPLibrary.md)
 
 Import DLLPickle libraries based on Packages.json configuration.
-

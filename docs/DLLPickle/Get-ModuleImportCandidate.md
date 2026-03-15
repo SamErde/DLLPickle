@@ -109,7 +109,7 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 
 ## OUTPUTS
 
-### A full [System.Management.Automation.PSModuleInfo] object with a Scope and custom type name (DLLPickle.ModuleImportCandidate) added.
+### A full [System.Management.Automation.PSModuleInfo] object with a Scope and custom type name (DLLPickle.ModuleImportCandidate) added
 
 {{ Fill in the Description }}
 

@@ -123,6 +123,30 @@
       "group": "build"
     },
     {
+      "label": "PrepareModuleOutput",
+      "description": "Refresh the local built module output path",
+      "type": "shell",
+      "command": "Invoke-Build -Task PrepareModuleOutput -File \"${workspaceFolder}/build/${workspaceFolderBasename}.Build.ps1\"",
+      "problemMatcher": "$msCompile",
+      "presentation": {
+        "echo": false,
+        "showReuseMessage": false
+      },
+      "group": "build"
+    },
+    {
+      "label": "ValidateBuiltModuleWinPS",
+      "description": "Prepare and validate the built module in Windows PowerShell 5.1",
+      "type": "shell",
+      "command": "Invoke-Build -Task PrepareModuleOutput,ValidateWindowsPowerShellModuleOutput -File \"${workspaceFolder}/build/${workspaceFolderBasename}.Build.ps1\"",
+      "problemMatcher": "$msCompile",
+      "presentation": {
+        "echo": false,
+        "showReuseMessage": false
+      },
+      "group": "test"
+    },
+    {
       "label": "Analyze",
       "description": "Run PowerShell script analysis",
       "type": "shell",
