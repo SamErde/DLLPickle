@@ -126,8 +126,7 @@ function Resolve-DPDLLLoadOrder {
                 $DLLFile.FullName,
                 $AssemblyNameToFile[$AssemblySimpleName].FullName,
                 [System.StringComparison]::OrdinalIgnoreCase
-            ) -lt 0)
-        {
+            ) -lt 0) {
             $AssemblyNameToFile[$AssemblySimpleName] = $DLLFile
         }
 
