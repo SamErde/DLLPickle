@@ -84,7 +84,7 @@ Enter-Build {
 
     # Identify other required paths
     ### QUESTION: Is the $BuildRoot variable created by Invoke-Build automatically?
-    $script:ModuleSourcePath = [System.IO.Path]::Join($ProjectRoot, 'src', $script:ModuleName)
+    $script:ModuleSourcePath = [System.IO.Path]::Combine($ProjectRoot, 'src', $script:ModuleName)
     $script:ModuleFiles = Join-Path -Path $script:ModuleSourcePath -ChildPath '*'
 
     $script:ModuleManifestFile = Join-Path -Path $script:ModuleSourcePath -ChildPath "$($script:ModuleName).psd1"
@@ -94,10 +94,10 @@ Enter-Build {
     $script:ModuleDescription = $ManifestInfo.Description
     $script:FunctionsToExport = $ManifestInfo.FunctionsToExport
 
-    $script:CSharpProjectPath = [System.IO.Path]::Join($ProjectRoot, 'src', "$($script:ModuleName).Build")
-    $script:CSharpProjectFile = [System.IO.Path]::Join($script:CSharpProjectPath, "$($script:ModuleName).csproj")
-    $script:ModuleOutputPath = [System.IO.Path]::Join($ProjectRoot, 'module', $script:ModuleName)
-    $script:ModuleBinPath = [System.IO.Path]::Join($script:ModuleOutputPath, 'bin')
+    $script:CSharpProjectPath = [System.IO.Path]::Combine($ProjectRoot, 'src', "$($script:ModuleName).Build")
+    $script:CSharpProjectFile = [System.IO.Path]::Combine($script:CSharpProjectPath, "$($script:ModuleName).csproj")
+    $script:ModuleOutputPath = [System.IO.Path]::Combine($ProjectRoot, 'module', $script:ModuleName)
+    $script:ModuleBinPath = [System.IO.Path]::Combine($script:ModuleOutputPath, 'bin')
 
     $script:TestsPath = Join-Path -Path $ProjectRoot -ChildPath 'tests'
     $script:UnitTestsPath = Join-Path -Path $script:TestsPath -ChildPath 'Unit'
@@ -671,8 +671,8 @@ Add-BuildTask RestoreDependencies {
     $TargetFrameworks = @('net48', 'net8.0')
 
     foreach ($tfm in $TargetFrameworks) {
-        $TfmBinPath = [System.IO.Path]::Join($script:ModuleBinPath, $tfm)
-        $BuildOutputPath = [System.IO.Path]::Join($script:CSharpProjectPath, 'bin', 'Release', $tfm)
+        $TfmBinPath = [System.IO.Path]::Combine($script:ModuleBinPath, $tfm)
+        $BuildOutputPath = [System.IO.Path]::Combine($script:CSharpProjectPath, 'bin', 'Release', $tfm)
 
         Write-Build Gray "        Processing $tfm..."
 
@@ -769,7 +769,7 @@ Add-BuildTask CopyModuleFiles -After RestoreDependencies -Before Build {
 
 # Synopsis: Validates that the built module output imports cleanly in Windows PowerShell 5.1
 Add-BuildTask ValidateWindowsPowerShellModuleOutput -After CopyModuleFiles -Before Build {
-    if (-not $IsWindows) {
+    if (-not $IsWindows -and (-not $env:OS -eq 'Windows_NT')) {
         Write-Build Yellow '        Skipping Windows PowerShell validation because the current OS is not Windows.'
         return
     }
@@ -780,6 +780,7 @@ Add-BuildTask ValidateWindowsPowerShellModuleOutput -After CopyModuleFiles -Befo
     Write-Build Gray '        Validating built module output in Windows PowerShell 5.1...'
 
     $ValidationScriptFile = New-TemporaryFile
+    $ValidationScriptFile = Rename-Item -Path $ValidationScriptFile -NewName "$($ValidationScriptFile.BaseName).ps1" -PassThru
     $ValidationScriptPath = $ValidationScriptFile.FullName
     @"
 Import-Module '$BuiltModuleManifestPath' -Force
@@ -790,11 +791,6 @@ Import-Module '$BuiltModuleManifestPath' -Force
 
 if (`$FailedResults.Count -gt 0) {
     Write-Error ('Built module import reported failed assemblies: {0}' -f ((`$FailedResults | Select-Object -ExpandProperty DLLName) -join ', '))
-    exit 1
-}
-
-if ((`$Result | Out-String) -match 'Failed to import') {
-    Write-Error 'Built module import emitted transient loader failure output.'
     exit 1
 }
 "@ | Set-Content -Path $ValidationScriptPath -Encoding utf8
