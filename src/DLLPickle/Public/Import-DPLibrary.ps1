@@ -189,8 +189,7 @@
                 $TokensMatch = $true
                 $RequestedToken = $RequestedAssemblyName.GetPublicKeyToken()
                 $CandidateToken = $CandidateAssemblyName.GetPublicKeyToken()
-                if ( ($RequestedToken -and $RequestedToken.Length -gt 0) -or
-                     ($CandidateToken -and $CandidateToken.Length -gt 0) ) {
+                if ( ($RequestedToken -and $RequestedToken.Length -gt 0) -or ($CandidateToken -and $CandidateToken.Length -gt 0) ) {
                     $TokensMatch = ([string]::Join(',', $RequestedToken) -eq [string]::Join(',', $CandidateToken))
                 }
 
