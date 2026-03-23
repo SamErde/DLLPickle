@@ -28,7 +28,7 @@
 [OutputType([PSCustomObject])]
 param(
     [Parameter()]
-    [string]$ManifestPath = [System.IO.Path]::Join( (Split-Path -Path (Split-Path -Path $PSScriptRoot)), 'src', 'DLLPickle', 'DLLPickle.psd1' ),
+    [string]$ManifestPath = [System.IO.Path]::Combine( (Split-Path -Path (Split-Path -Path $PSScriptRoot)), 'src', 'DLLPickle', 'DLLPickle.psd1' ),
 
     # Accept a string input and validate/convert to a version object in-script.
     [Parameter(Mandatory = $true)]

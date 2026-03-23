@@ -84,7 +84,7 @@ Enter-Build {
 
     # Identify other required paths
     ### QUESTION: Is the $BuildRoot variable created by Invoke-Build automatically?
-    $script:ModuleSourcePath = [System.IO.Path]::Join($ProjectRoot, 'src', $script:ModuleName)
+    $script:ModuleSourcePath = [System.IO.Path]::Combine($ProjectRoot, 'src', $script:ModuleName)
     $script:ModuleFiles = Join-Path -Path $script:ModuleSourcePath -ChildPath '*'
 
     $script:ModuleManifestFile = Join-Path -Path $script:ModuleSourcePath -ChildPath "$($script:ModuleName).psd1"
@@ -94,10 +94,10 @@ Enter-Build {
     $script:ModuleDescription = $ManifestInfo.Description
     $script:FunctionsToExport = $ManifestInfo.FunctionsToExport
 
-    $script:CSharpProjectPath = [System.IO.Path]::Join($ProjectRoot, 'src', "$($script:ModuleName).Build")
-    $script:CSharpProjectFile = [System.IO.Path]::Join($script:CSharpProjectPath, "$($script:ModuleName).csproj")
-    $script:ModuleOutputPath = [System.IO.Path]::Join($ProjectRoot, 'module', $script:ModuleName)
-    $script:ModuleBinPath = [System.IO.Path]::Join($script:ModuleOutputPath, 'bin')
+    $script:CSharpProjectPath = [System.IO.Path]::Combine($ProjectRoot, 'src', "$($script:ModuleName).Build")
+    $script:CSharpProjectFile = [System.IO.Path]::Combine($script:CSharpProjectPath, "$($script:ModuleName).csproj")
+    $script:ModuleOutputPath = [System.IO.Path]::Combine($ProjectRoot, 'module', $script:ModuleName)
+    $script:ModuleBinPath = [System.IO.Path]::Combine($script:ModuleOutputPath, 'bin')
 
     $script:TestsPath = Join-Path -Path $ProjectRoot -ChildPath 'tests'
     $script:UnitTestsPath = Join-Path -Path $script:TestsPath -ChildPath 'Unit'
@@ -671,8 +671,8 @@ Add-BuildTask RestoreDependencies {
     $TargetFrameworks = @('net48', 'net8.0')
 
     foreach ($tfm in $TargetFrameworks) {
-        $TfmBinPath = [System.IO.Path]::Join($script:ModuleBinPath, $tfm)
-        $BuildOutputPath = [System.IO.Path]::Join($script:CSharpProjectPath, 'bin', 'Release', $tfm)
+        $TfmBinPath = [System.IO.Path]::Combine($script:ModuleBinPath, $tfm)
+        $BuildOutputPath = [System.IO.Path]::Combine($script:CSharpProjectPath, 'bin', 'Release', $tfm)
 
         Write-Build Gray "        Processing $tfm..."
 
