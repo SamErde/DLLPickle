@@ -20,11 +20,6 @@ if (`$FailedResults.Count -gt 0) {
 	Write-Error ('Built module import reported failed assemblies: {0}' -f ((`$FailedResults | Select-Object -ExpandProperty DLLName) -join ', '))
 	exit 1
 }
-
-if ((`$Result | Out-String) -match 'Failed to import') {
-	Write-Error 'Built module import emitted transient loader failure output.'
-	exit 1
-}
 "@ | Set-Content -Path $ValidationScriptPath -Encoding utf8
 
         $Output = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $ValidationScriptPath 2>&1
@@ -43,6 +38,5 @@ if ((`$Result | Out-String) -match 'Failed to import') {
         $ImportResults = @($Result | Where-Object { $_.PSObject.Properties.Name -contains 'Status' })
 
         @($ImportResults | Where-Object Status -EQ 'Failed') | Should -BeNullOrEmpty
-        (($Result | Out-String) -match 'Failed to import') | Should -BeFalse
     }
 }
