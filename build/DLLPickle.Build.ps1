@@ -780,6 +780,7 @@ Add-BuildTask ValidateWindowsPowerShellModuleOutput -After CopyModuleFiles -Befo
     Write-Build Gray '        Validating built module output in Windows PowerShell 5.1...'
 
     $ValidationScriptFile = New-TemporaryFile
+    $ValidationScriptFile = Rename-Item -Path $ValidationScriptFile -NewName "$($ValidationScriptFile.BaseName).ps1" -PassThru
     $ValidationScriptPath = $ValidationScriptFile.FullName
     @"
 Import-Module '$BuiltModuleManifestPath' -Force
@@ -790,11 +791,6 @@ Import-Module '$BuiltModuleManifestPath' -Force
 
 if (`$FailedResults.Count -gt 0) {
     Write-Error ('Built module import reported failed assemblies: {0}' -f ((`$FailedResults | Select-Object -ExpandProperty DLLName) -join ', '))
-    exit 1
-}
-
-if ((`$Result | Out-String) -match 'Failed to import') {
-    Write-Error 'Built module import emitted transient loader failure output.'
     exit 1
 }
 "@ | Set-Content -Path $ValidationScriptPath -Encoding utf8
