@@ -96,6 +96,25 @@
 }
 
 
+function Get-DPOrdinalSortedName {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory)]
+        [string[]]$Values
+    )
+
+    $SortedValues = [System.Collections.Generic.List[string]]::new()
+    foreach ($Value in $Values) {
+        if (-not [string]::IsNullOrWhiteSpace($Value)) {
+            [void]$SortedValues.Add($Value)
+        }
+    }
+
+    $SortedValues.Sort([System.StringComparer]::OrdinalIgnoreCase)
+    return @($SortedValues)
+}
+
+
 function Resolve-DPDLLLoadOrder {
     [CmdletBinding()]
     param (
@@ -161,13 +180,13 @@ function Resolve-DPDLLLoadOrder {
     $ProcessedAssemblyNames = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
 
     while ($OrderedAssemblyNames.Count -lt $AssemblyNames.Count) {
-        $ReadyAssemblies = @(
-            $AssemblyNames |
-                Where-Object {
-                    -not $ProcessedAssemblyNames.Contains($_) -and
-                    $InDegreeByAssembly[$_] -eq 0
-                } | Sort-Object
-        )
+        $ReadyAssemblies = @(Get-DPOrdinalSortedName -Values @(
+                $AssemblyNames |
+                    Where-Object {
+                        -not $ProcessedAssemblyNames.Contains($_) -and
+                        $InDegreeByAssembly[$_] -eq 0
+                    }
+            ))
 
         if ($ReadyAssemblies.Count -eq 0) {
             break
@@ -177,17 +196,17 @@ function Resolve-DPDLLLoadOrder {
             [void]$OrderedAssemblyNames.Add($ReadyAssembly)
             [void]$ProcessedAssemblyNames.Add($ReadyAssembly)
 
-            foreach ($DependentAssembly in ($DependentsByDependency[$ReadyAssembly] | Sort-Object)) {
+            foreach ($DependentAssembly in (Get-DPOrdinalSortedName -Values @($DependentsByDependency[$ReadyAssembly]))) {
                 $InDegreeByAssembly[$DependentAssembly]--
             }
         }
     }
 
     if ($OrderedAssemblyNames.Count -lt $AssemblyNames.Count) {
-        $RemainingAssemblies = @(
-            $AssemblyNames |
-                Where-Object { -not $ProcessedAssemblyNames.Contains($_) } | Sort-Object
-        )
+        $RemainingAssemblies = @(Get-DPOrdinalSortedName -Values @(
+                $AssemblyNames |
+                    Where-Object { -not $ProcessedAssemblyNames.Contains($_) }
+            ))
 
         Write-Verbose "Dependency graph did not fully resolve for $($RemainingAssemblies.Count) assemblies. Appending unresolved nodes alphabetically."
         foreach ($RemainingAssembly in $RemainingAssemblies) {
