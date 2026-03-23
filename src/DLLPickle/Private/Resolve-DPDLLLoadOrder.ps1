@@ -99,9 +99,15 @@
 function Get-DPOrdinalSortedName {
     [CmdletBinding()]
     param (
-        [Parameter(Mandatory)]
-        [string[]]$Values
+        [Parameter()]
+        [AllowNull()]
+        [AllowEmptyCollection()]
+        [string[]]$Values = @()
     )
+
+    if (-not $Values -or $Values.Count -eq 0) {
+        return @()
+    }
 
     $SortedValues = [System.Collections.Generic.List[string]]::new()
     foreach ($Value in $Values) {
