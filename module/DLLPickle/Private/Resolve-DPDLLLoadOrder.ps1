@@ -27,8 +27,7 @@
 
             $TrustedPlatformAssemblies = [System.AppContext]::GetData('TRUSTED_PLATFORM_ASSEMBLIES')
             if ($TrustedPlatformAssemblies) {
-                $PathSeparatorPattern = [regex]::Escape([System.IO.Path]::PathSeparator.ToString())
-                foreach ($AssemblyPath in ($TrustedPlatformAssemblies -split $PathSeparatorPattern)) {
+                foreach ($AssemblyPath in ($TrustedPlatformAssemblies -split [System.IO.Path]::PathSeparator)) {
                     if (-not [string]::IsNullOrWhiteSpace($AssemblyPath)) {
                         [void]$ResolverPaths.Add($AssemblyPath)
                     }
@@ -123,9 +122,11 @@ function Resolve-DPDLLLoadOrder {
             continue
         }
 
-        if ([System.StringComparer]::OrdinalIgnoreCase.Compare(
+        if ([string]::Compare(
                 $DLLFile.FullName,
-                $AssemblyNameToFile[$AssemblySimpleName].FullName) -lt 0) {
+                $AssemblyNameToFile[$AssemblySimpleName].FullName,
+                [System.StringComparison]::OrdinalIgnoreCase
+            ) -lt 0) {
             $AssemblyNameToFile[$AssemblySimpleName] = $DLLFile
         }
 
