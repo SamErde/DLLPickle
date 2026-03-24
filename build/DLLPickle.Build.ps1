@@ -74,6 +74,15 @@ Add-BuildTask PrepareModuleOutput Clean, RestoreDependencies, CopyModuleFiles
 #Full build without integration tests
 Add-BuildTask BuildNoIntegration -Jobs $str2
 
+#Cross-platform build: full build without help generation or integration tests (Linux/macOS)
+Add-BuildTask BuildCrossPlatform -Jobs (
+    'Clean', 'ValidateRequirements', 'ImportModuleManifest',
+    'FormattingCheck', 'Analyze', 'Test',
+    'RestoreDependencies', 'PrepareModuleOutput',
+    'ValidateWindowsPowerShellModuleOutput',
+    'Build', 'Archive'
+)
+
 
 # Pre-build variables to be used by other portions of the script
 Enter-Build {
@@ -109,10 +118,10 @@ Enter-Build {
     $script:BuildModuleRootFile = Join-Path -Path $script:ArtifactsPath -ChildPath "$($script:ModuleName).psm1"
 
     # SET: Ensure our builds fail until if below a minimum defined code test coverage threshold
-    $script:CoverageThreshold = 0
+    $script:CoverageThreshold = 30
     $script:CoverageExclusions = @(
-        '*\Private\Show-DPLogo.ps1',
-        '*\Private\Show-DLLPickleLogo.ps1'
+        '*Show-DPLogo.ps1',
+        '*Show-DLLPickleLogo.ps1'
     )
 
     [version]$script:MinPesterVersion = '5.2.2'
@@ -284,8 +293,8 @@ Add-BuildTask Test {
     Remove-Module -Name Pester -Force -ErrorAction 'SilentlyContinue' # there are instances where some containers have Pester already in the session
     Import-Module -Name Pester -MinimumVersion $script:MinPesterVersion -MaximumVersion $script:MaxPesterVersion -ErrorAction 'Stop'
 
-    $CodeCovPath = "$script:ArtifactsPath\ccReport\"
-    $TestOutputPath = "$script:ArtifactsPath\testOutput\"
+    $CodeCovPath = Join-Path -Path $script:ArtifactsPath -ChildPath 'ccReport'
+    $TestOutputPath = Join-Path -Path $script:ArtifactsPath -ChildPath 'testOutput'
     if (-not(Test-Path $CodeCovPath)) {
         New-Item -Path $CodeCovPath -ItemType Directory | Out-Null
     }
@@ -298,16 +307,16 @@ Add-BuildTask Test {
         $PesterConfiguration.Run.PassThru = $true
         $PesterConfiguration.Run.Exit = $false
         $PesterConfiguration.CodeCoverage.Enabled = $true
-        $CoveragePaths = @(Get-ChildItem -Path "$ProjectRoot\src\$ModuleName" -Filter '*.ps1' -Recurse -File | Where-Object {
+        $CoveragePaths = @(Get-ChildItem -Path (Join-Path -Path $ProjectRoot -ChildPath "src/$ModuleName") -Filter '*.ps1' -Recurse -File | Where-Object {
                 $FilePath = $_.FullName
                 -not ($script:CoverageExclusions | Where-Object { $FilePath -like $_ })
             } | Select-Object -ExpandProperty FullName)
         $PesterConfiguration.CodeCoverage.Path = $CoveragePaths
         $PesterConfiguration.CodeCoverage.CoveragePercentTarget = $script:CoverageThreshold
-        $PesterConfiguration.CodeCoverage.OutputPath = "$CodeCovPath\CodeCoverage.xml"
+        $PesterConfiguration.CodeCoverage.OutputPath = Join-Path -Path $CodeCovPath -ChildPath 'CodeCoverage.xml'
         $PesterConfiguration.CodeCoverage.OutputFormat = 'JaCoCo'
         $PesterConfiguration.TestResult.Enabled = $true
-        $PesterConfiguration.TestResult.OutputPath = "$TestOutputPath\PesterTests.xml"
+        $PesterConfiguration.TestResult.OutputPath = Join-Path -Path $TestOutputPath -ChildPath 'PesterTests.xml'
         $PesterConfiguration.TestResult.OutputFormat = $script:TestOutputFormat
         $PesterConfiguration.Output.Verbosity = 'Detailed'
 
@@ -739,8 +748,8 @@ Add-BuildTask CopyModuleFiles -After RestoreDependencies -Before Build {
     # Get all items to copy (excluding Imports.ps1 and bin folder which is handled by RestoreDependencies)
     $itemsToCopy = Get-ChildItem -Path $script:ModuleSourcePath -Recurse | Where-Object {
         $_.FullName -notmatch 'Imports\.ps1$' -and
-        $_.FullName -notmatch '\\bin\\' -and
-        $_.FullName -notmatch '\\bin$'
+        $_.FullName -notmatch '[\\/]bin[\\/]' -and
+        $_.FullName -notmatch '[\\/]bin$'
     }
 
     foreach ($item in $itemsToCopy) {
