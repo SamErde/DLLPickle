@@ -120,8 +120,8 @@ Enter-Build {
     # SET: Ensure our builds fail until if below a minimum defined code test coverage threshold
     $script:CoverageThreshold = 30
     $script:CoverageExclusions = @(
-        '*Show-DPLogo.ps1',
-        '*Show-DLLPickleLogo.ps1'
+        '*[\\/]Private[\\/]Show-DPLogo.ps1',
+        '*[\\/]Private[\\/]Show-DLLPickleLogo.ps1'
     )
 
     [version]$script:MinPesterVersion = '5.2.2'
