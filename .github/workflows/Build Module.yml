@@ -49,6 +49,17 @@ jobs:
       fail-fast: false
       matrix:
         os: [windows-latest, ubuntu-latest, macos-latest]
+        include:
+          - os: windows-latest
+            module_cache_paths: |
+              ~/Documents/PowerShell/Modules
+              ~/Documents/WindowsPowerShell/Modules
+          - os: ubuntu-latest
+            module_cache_paths: |
+              ~/.local/share/powershell/Modules
+          - os: macos-latest
+            module_cache_paths: |
+              ~/.local/share/powershell/Modules
     steps:
 
     - name: Check out repository
@@ -59,10 +70,7 @@ jobs:
     - name: Cache PowerShell modules
       uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
       with:
-        path: |
-          ~/Documents/PowerShell/Modules
-          ~/Documents/WindowsPowerShell/Modules
-          ~/.local/share/powershell/Modules
+        path: ${{ matrix.module_cache_paths }}
         key: ${{ runner.os }}-psmodules-${{ hashFiles('build/DLLPickle.Build.ps1', '.github/ci-scripts/Actions_Bootstrap.ps1') }}
         restore-keys: |
           ${{ runner.os }}-psmodules-
