@@ -6,8 +6,8 @@
 # https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-powershell
 # https://github.com/actions/upload-artifact#where-does-the-upload-go
 name: Build Module
-
-description: Builds and tests the DLLPickle PowerShell module on Windows, Linux, and macOS. Can be run manually or called by other workflows.
+# Builds and tests the DLLPickle PowerShell module on Windows, Linux, and macOS.
+# Can be run manually or called by other workflows.
 
 on:
   workflow_call:
@@ -94,9 +94,9 @@ jobs:
       shell: pwsh
       run: |
         $null = New-Item -Path ./artifacts -ItemType Directory -Force
-        $Results = Invoke-ScriptAnalyzer -Path ./src/DLLPickle -Settings ./build/PSScriptAnalyzerSettings.psd1 -Recurse
+        $Results = @(Invoke-ScriptAnalyzer -Path ./src/DLLPickle -Settings ./build/PSScriptAnalyzerSettings.psd1 -Recurse)
 
-        $Rules = $Results | Group-Object RuleName | ForEach-Object {
+        $Rules = @($Results | Group-Object RuleName | ForEach-Object {
             $Item = $_.Group[0]
             $Level = switch ($Item.Severity) { 'Error' { 'error' } 'Warning' { 'warning' } default { 'note' } }
             [ordered]@{
@@ -105,10 +105,10 @@ jobs:
                 shortDescription     = @{ text = "$($Item.RuleName) violation" }
                 defaultConfiguration = @{ level = $Level }
             }
-        }
+        })
 
         $WorkDir = (Get-Location).Path
-        $SarifResults = $Results | ForEach-Object {
+        $SarifResults = @($Results | ForEach-Object {
             $Level   = switch ($_.Severity) { 'Error' { 'error' } 'Warning' { 'warning' } default { 'note' } }
             $RelPath = $_.ScriptPath.Substring($WorkDir.Length).TrimStart('\', '/') -replace '\\', '/'
             [ordered]@{
@@ -117,12 +117,12 @@ jobs:
                 message   = @{ text = $_.Message }
                 locations = @(@{
                     physicalLocation = @{
-                        artifactLocation = @{ uri = $RelPath; uriBaseId = '%SRCROOT%' }
+                        artifactLocation = @{ uri = $RelPath }
                         region           = @{ startLine = $_.Line; startColumn = $_.Column }
                     }
                 })
             }
-        }
+        })
 
         $Sarif = [ordered]@{
             '$schema' = 'https://json.schemastore.org/sarif-2.1.0.json'
@@ -131,9 +131,9 @@ jobs:
                 tool    = @{ driver = @{
                     name    = 'PSScriptAnalyzer'
                     version = (Get-Module PSScriptAnalyzer -ListAvailable | Sort-Object Version -Descending | Select-Object -First 1).Version.ToString()
-                    rules   = @($Rules)
+                    rules   = $Rules
                 }}
-                results = @($SarifResults)
+                results = $SarifResults
             })
         }
         $Sarif | ConvertTo-Json -Depth 20 | Set-Content -Path ./artifacts/psscriptanalyzer.sarif -Encoding UTF8
