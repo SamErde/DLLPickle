@@ -7,13 +7,13 @@ on:
     paths:
       - 'src/DLLPickle.Build/**'
       - 'src/DLLPickle.Build/packages.lock.json'
-      - '.github/workflows/Validate Packages.yml'
+      - '.github/workflows/Validate-Packages.yml'
   pull_request:
     branches: [main]
     paths:
       - 'src/DLLPickle.Build/**'
       - 'src/DLLPickle.Build/packages.lock.json'
-      - '.github/workflows/Validate Packages.yml'
+      - '.github/workflows/Validate-Packages.yml'
 
 concurrency:
   group: ci-build-test-${{ github.workflow }}-${{ github.ref }}
@@ -24,8 +24,16 @@ permissions:
 
 jobs:
   build-test:
-    name: Build .NET Packages
-    runs-on: windows-latest
+    name: Build .NET Packages (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows PowerShell 5.1
+            os: windows-2025
+          - name: Windows PowerShell Core
+            os: windows-2025
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -39,12 +47,22 @@ jobs:
           cache: true
           cache-dependency-path: 'src/DLLPickle.Build/packages.lock.json'
 
-      - name: Restore dependencies
-        run: dotnet restore src/DLLPickle.Build/DLLPickle.csproj --force-evaluate
+      - name: Restore dependencies (Windows PowerShell 5.1)
+        if: matrix.name == 'Windows PowerShell 5.1'
+        shell: powershell
+        run: dotnet restore src/DLLPickle.Build/DLLPickle.csproj --locked-mode
 
-      - name: Build
+      - name: Restore dependencies (PowerShell Core)
+        if: matrix.name != 'Windows PowerShell 5.1'
+        shell: pwsh
+        run: dotnet restore src/DLLPickle.Build/DLLPickle.csproj --locked-mode
+
+      - name: Build (Windows PowerShell 5.1)
+        if: matrix.name == 'Windows PowerShell 5.1'
+        shell: powershell
         run: dotnet build src/DLLPickle.Build/DLLPickle.csproj --configuration Release --no-restore
 
-      # Note: Removed redundant dependency-review job.
-      # Dependency Review is handled by the dedicated 'Dependency Review' workflow
-      # which runs on all PRs with proper configuration (comment-summary, retry logic, etc.).
+      - name: Build (PowerShell Core)
+        if: matrix.name != 'Windows PowerShell 5.1'
+        shell: pwsh
+        run: dotnet build src/DLLPickle.Build/DLLPickle.csproj --configuration Release --no-restore

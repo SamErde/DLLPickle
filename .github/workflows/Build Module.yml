@@ -1,0 +1,171 @@
+# https://help.github.com/en/actions/automating-your-workflow-with-github-actions
+# https://help.github.com/en/actions/automating-your-workflow-with-github-actions/virtual-environments-for-github-hosted-runners
+# https://help.github.com/en/actions/automating-your-workflow-with-github-actions/software-installed-on-github-hosted-runners
+# https://help.github.com/en/actions/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions#using-a-specific-shell
+# https://help.github.com/en/actions/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions
+# https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-powershell
+# https://github.com/actions/upload-artifact#where-does-the-upload-go
+name: Build Module
+# Builds and tests the DLLPickle PowerShell module on Windows, Linux, and macOS.
+# Can be run manually or called by other workflows.
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: "Git reference (branch, tag, or commit SHA) to check out. Defaults to the ref that triggered the caller workflow."
+        type: string
+        required: false
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "src/**"
+      - "build/**"
+      - "tests/**"
+      - ".github/ci-scripts/**"
+      - ".github/workflows/Build Module.yml"
+  #push:
+  #  branches:
+  #    - main
+  #  paths:
+  #    - "src/**"
+  #    - ".github/workflows/Build Module.yml"
+
+permissions:
+  contents: read
+  security-events: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ inputs.ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+
+  build:
+
+    name: Build and test module (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+        include:
+          - os: windows-latest
+            module_cache_paths: |
+              ~/Documents/PowerShell/Modules
+              ~/Documents/WindowsPowerShell/Modules
+          - os: ubuntu-latest
+            module_cache_paths: |
+              ~/.local/share/powershell/Modules
+          - os: macos-latest
+            module_cache_paths: |
+              ~/.local/share/powershell/Modules
+    steps:
+
+    - name: Check out repository
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      with:
+        ref: ${{ inputs.ref || github.ref }}
+
+    - name: Cache PowerShell modules
+      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+      with:
+        path: ${{ matrix.module_cache_paths }}
+        key: ${{ runner.os }}-psmodules-${{ hashFiles('build/DLLPickle.Build.ps1', '.github/ci-scripts/Actions_Bootstrap.ps1') }}
+        restore-keys: |
+          ${{ runner.os }}-psmodules-
+
+    - name: Bootstrap
+      shell: pwsh
+      run: ./.github/ci-scripts/Actions_Bootstrap.ps1
+
+    - name: Test and Build (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: Invoke-Build -File ./build/DLLPickle.Build.ps1
+
+    - name: Test and Build (Linux/macOS)
+      if: runner.os != 'Windows'
+      shell: pwsh
+      run: Invoke-Build -File ./build/DLLPickle.Build.ps1 -Task BuildCrossPlatform
+
+    - name: Generate PSScriptAnalyzer SARIF
+      if: always() && runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        $null = New-Item -Path ./artifacts -ItemType Directory -Force
+        $Results = @(Invoke-ScriptAnalyzer -Path ./src/DLLPickle -Settings ./build/PSScriptAnalyzerSettings.psd1 -Recurse)
+
+        $Rules = @($Results | Group-Object RuleName | ForEach-Object {
+            $Item = $_.Group[0]
+            $Level = switch ($Item.Severity) { 'Error' { 'error' } 'Warning' { 'warning' } default { 'note' } }
+            [ordered]@{
+                id                   = $Item.RuleName
+                name                 = $Item.RuleName
+                shortDescription     = @{ text = "$($Item.RuleName) violation" }
+                defaultConfiguration = @{ level = $Level }
+            }
+        })
+
+        $WorkDir = (Get-Location).Path
+        $SarifResults = @($Results | ForEach-Object {
+            $Level   = switch ($_.Severity) { 'Error' { 'error' } 'Warning' { 'warning' } default { 'note' } }
+            $RelPath = $_.ScriptPath.Substring($WorkDir.Length).TrimStart('\', '/') -replace '\\', '/'
+            [ordered]@{
+                ruleId    = $_.RuleName
+                level     = $Level
+                message   = @{ text = $_.Message }
+                locations = @(@{
+                    physicalLocation = @{
+                        artifactLocation = @{ uri = $RelPath }
+                        region           = @{ startLine = $_.Line; startColumn = $_.Column }
+                    }
+                })
+            }
+        })
+
+        $Sarif = [ordered]@{
+            '$schema' = 'https://json.schemastore.org/sarif-2.1.0.json'
+            version   = '2.1.0'
+            runs      = @([ordered]@{
+                tool    = @{ driver = @{
+                    name    = 'PSScriptAnalyzer'
+                    version = (Get-Module PSScriptAnalyzer -ListAvailable | Sort-Object Version -Descending | Select-Object -First 1).Version.ToString()
+                    rules   = $Rules
+                }}
+                results = $SarifResults
+            })
+        }
+        $Sarif | ConvertTo-Json -Depth 20 | Set-Content -Path ./artifacts/psscriptanalyzer.sarif -Encoding UTF8
+        Write-Host "SARIF written with $($Results.Count) result(s)"
+
+    - name: Upload PSScriptAnalyzer SARIF to code scanning
+      if: always() && runner.os == 'Windows' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false)
+      uses: github/codeql-action/upload-sarif@38697555549f1db7851b81482ff19f1fa5c4fedc # v4.34.1
+      with:
+        sarif_file: ./artifacts/psscriptanalyzer.sarif
+        category: psscriptanalyzer
+
+    - name: Upload pester results
+      if: always() # Ensure this step runs even if prior steps fail
+      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+      with:
+        name: pester-results-${{ runner.os }}
+        path: ./artifacts/testOutput
+        if-no-files-found: warn
+
+    - name: Upload zip module archive build
+      if: runner.os == 'Windows'
+      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+      with:
+        name: zip-archive
+        path: ./archive
+        if-no-files-found: warn
+
+    - name: Upload module directory
+      if: runner.os == 'Windows'
+      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+      with:
+        name: module-build
+        path: ./module/DLLPickle
+        if-no-files-found: warn

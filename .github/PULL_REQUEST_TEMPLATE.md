@@ -23,6 +23,14 @@ per pull request to make review and testing easier. -->
 
 
 
+## Automated Checks
+
+The following checks run automatically and must pass before this PR can be merged:
+
+- **Build Module** — matrix across Windows, Linux, and macOS; runs PSScriptAnalyzer (default rules + OTBS formatting + PS 5.1 compatibility), Pester unit tests (≥30% coverage), and full module build
+- **Dependency Review** — blocks PRs introducing dependencies with known vulnerabilities (moderate severity or higher)
+- **Validate .NET Packages** — NuGet lock file is enforced; resolved packages must match `packages.lock.json`
+
 ## Checklist
 
 - [ ] I have reviewed my code for errors and tested it.
