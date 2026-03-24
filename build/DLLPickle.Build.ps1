@@ -778,7 +778,13 @@ Add-BuildTask CopyModuleFiles -After RestoreDependencies -Before Build {
 
 # Synopsis: Validates that the built module output imports cleanly in Windows PowerShell 5.1
 Add-BuildTask ValidateWindowsPowerShellModuleOutput -After CopyModuleFiles -Before Build {
-    if (-not $IsWindows -and (-not $env:OS -eq 'Windows_NT')) {
+    $isWindowsPlatform = if (Get-Variable -Name IsWindows -ErrorAction SilentlyContinue) {
+        [bool]$IsWindows
+    } else {
+        $env:OS -eq 'Windows_NT'
+    }
+
+    if (-not $isWindowsPlatform) {
         Write-Build Yellow '        Skipping Windows PowerShell validation because the current OS is not Windows.'
         return
     }
