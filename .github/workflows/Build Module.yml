@@ -130,7 +130,7 @@ jobs:
             runs      = @([ordered]@{
                 tool    = @{ driver = @{
                     name    = 'PSScriptAnalyzer'
-                    version = (Get-Module PSScriptAnalyzer -ListAvailable | Select-Object -First 1).Version.ToString()
+                    version = (Get-Module PSScriptAnalyzer -ListAvailable | Sort-Object Version -Descending | Select-Object -First 1).Version.ToString()
                     rules   = @($Rules)
                 }}
                 results = @($SarifResults)
