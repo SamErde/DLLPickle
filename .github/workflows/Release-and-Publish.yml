@@ -258,7 +258,7 @@ jobs:
 
   build-and-test:
     name: Build and Test Module
-    uses: ./.github/workflows/Build Module - Windows.yml
+    uses: ./.github/workflows/Build Module.yml
     needs: update-version
     with:
       ref: main
