@@ -1,61 +1,82 @@
-# How to contribute
+# How to Contribute
 
-Contributions to DLLPickle are highly encouraged and desired.
-Below are some guidelines that will help make the process as smooth as possible.
+Contributions to DLLPickle are welcome. This guide explains the local workflow,
+quality checks, and pull request expectations used in this repository.
 
 ## Getting Started
 
-- Make sure you have a [GitHub account](https://github.com/signup/free)
-- Submit a new issue, assuming one does not already exist.
-  - Clearly describe the issue including steps to reproduce when it is a bug.
-  - Make sure you fill in the earliest version that you know has the issue.
-- Fork the repository on GitHub
-
-## Suggesting Enhancements
-
-I want to know what you think is missing from DLLPickle and how it can be made better.
-
-- When submitting an issue for an enhancement, please be as clear as possible about why you think the enhancement is needed and what the benefit of it would be.
-
-## Making Changes
-
-- From your fork of the repository, create a topic branch where work on your change will take place.
-- To quickly create a topic branch based on master; `git checkout -b my_contribution main`.
-  Please avoid working directly on the `main` branch.
-- Make commits of logical units.
-- Check for unnecessary whitespace with `git diff --check` before committing.
-- Please follow the prevailing code conventions in the repository.
-  Differences in style make the code harder to understand for everyone.
-- Make sure your commit messages are in the proper format.
+1. Create or find an issue describing the bug or enhancement.
+1. Fork the repository.
+1. Create a feature branch from `main`:
 
 ```powershell
-    Add more cowbell to Get-Something.ps1
-
-    The functionality of Get-Something would be greatly improved if there was a little
-    more 'pizzazz' added to it. I propose a cowbell. Adding more cowbell has been
-    shown in studies to both increase one's mojo, and cement one's status
-    as a rock legend.
+git checkout -b feature/my-change main
 ```
 
-- Make sure you have added all the necessary Pester tests for your changes.
-- Run _all_ Pester tests in the module to assure nothing else was accidentally broken.
+Avoid working directly on `main`.
 
-## Documentation
+## Local Development Workflow
 
-I am infallible and as such my documenation needs no corectoin. 😉
-In the highly unlikely event that that is _not_ the case, commits to update or add documentation are highly appreciated.
+### Prerequisites
+
+- PowerShell 7+ recommended for development
+- Windows PowerShell 5.1 for compatibility validation
+- Required modules/tools installed by build prerequisites
+
+### Common Tasks
+
+Run these via VS Code Tasks or directly with `Invoke-Build`.
+
+- `ValidateRequirements`: verify local environment requirements.
+- `TestLocal`: fast validation loop (`Clean`, `ImportModuleManifest`, `Analyze`, `Test`).
+- `Test`: run full unit test pass with coverage output.
+- `Build`: full validation and packaging workflow.
+- `BuildNoIntegration`: full build without integration tests.
+- `BuildCrossPlatform`: full build without help generation or integration tests.
+- `ValidateBuiltModuleWinPS`: validate built module output in Windows PowerShell 5.1.
+
+Example local loop:
+
+```powershell
+Invoke-Build -Task TestLocal
+```
+
+### Code Quality Gates
+
+The build enforces:
+
+- PSScriptAnalyzer checks for source and tests.
+- OTBS formatting checks.
+- Pester tests.
+- Coverage threshold (currently 30%).
+
+Before opening a PR, run:
+
+```powershell
+Invoke-Build -Task Build
+```
+
+If your changes affect compatibility behavior, also run:
+
+```powershell
+Invoke-Build -Task ValidateWindowsPowerShellModuleOutput
+```
+
+## Documentation Contributions
+
+Documentation updates are encouraged, especially when behavior or command
+surfaces change. Keep command reference pages in `docs/DLLPickle` aligned with
+the module manifest exports.
 
 ## Submitting Changes
 
-- Push your changes to a topic branch in your fork of the repository.
-- Submit a pull request to the main repository.
-- Once the pull request has been reviewed and accepted, it will be merged with the master branch.
-- Celebrate
+1. Push your feature branch to your fork.
+1. Open a pull request targeting `main`.
+1. Include a concise description, test evidence, and any relevant docs updates.
+1. Address review feedback and keep CI green.
 
 ## Additional Resources
 
-- [General GitHub documentation](https://help.github.com/)
-- [GitHub forking documentation](https://guides.github.com/activities/forking/)
-- [GitHub pull request documentation](https://help.github.com/send-pull-requests/)
-- [GitHub Flow guide](https://guides.github.com/introduction/flow/)
-- [GitHub's guide to contributing to open source projects](https://guides.github.com/activities/contributing-to-open-source/)
+- [Project README](../README.md)
+- [Dependency policy](../DEPENDENCIES.md)
+- [Security policy](../SECURITY.md)

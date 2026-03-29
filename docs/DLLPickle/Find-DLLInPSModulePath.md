@@ -9,7 +9,7 @@ PlatyPS schema version: 2024-05-01
 title: Find-DLLInPSModulePath
 ---
 
-# Find-DLLInPSModulePath
+## Find-DLLInPSModulePath
 
 ## SYNOPSIS
 
@@ -27,8 +27,7 @@ Find-DLLInPSModulePath [[-ProductName] <string>] [[-FileName] <string>] [[-Path]
 
 ## ALIASES
 
-This cmdlet has the following aliases,
-  {{Insert list of aliases}}
+None.
 
 ## DESCRIPTION
 
@@ -231,14 +230,25 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 
 ## INPUTS
 
+None. This cmdlet does not accept pipeline input.
+
 ## OUTPUTS
 
 ### System.Diagnostics.FileVersionInfo
 
-{{ Fill in the Description }}
+Returned through the `VersionInfo` property on each output object.
+
+### DLLPickle.ModuleDllInfo
+
+The primary output type. Each object includes path context and DLL metadata,
+including `ModuleRoot`, `PathScope`, `ProductVersion`, and `FileVersion`.
 
 ## NOTES
 
 ## RELATED LINKS
 
-{{ Fill in the related links here }}
+[Import-DPLibrary](Import-DPLibrary.md)
+
+[Get-ModulesWithDependency](Get-ModulesWithDependency.md)
+
+[Get-ModulesWithVersionSortedIdentityClient](Get-ModulesWithVersionSortedIdentityClient.md)

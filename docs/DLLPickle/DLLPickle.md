@@ -10,7 +10,7 @@ PlatyPS schema version: 2024-05-01
 title: DLLPickle Module
 ---
 
-# DLLPickle Module
+## DLLPickle Module
 
 ## Description
 
@@ -18,9 +18,21 @@ A PowerShell module that helps you get un-stuck from version conflicts that occu
 
 ## DLLPickle
 
-### [Get-DLLsInModulePath](Get-DLLsInModulePath.md)
+### [Get-DPConfig](Get-DPConfig.md)
 
-Show a list of all DLLs in PowerShell module paths that contain the specified product name in their FileInfo property.
+Gets the current DLLPickle configuration.
+
+### [Set-DPConfig](Set-DPConfig.md)
+
+Sets DLLPickle configuration options.
+
+### [Find-DLLInPSModulePath](Find-DLLInPSModulePath.md)
+
+Find DLL files in module paths, filtered by product metadata.
+
+### [Get-ModuleImportCandidate](Get-ModuleImportCandidate.md)
+
+Reports the version, path, and scope that would be imported for a given module name.
 
 ### [Get-ModulesWithDependency](Get-ModulesWithDependency.md)
 
@@ -28,8 +40,20 @@ Finds installed PowerShell modules that have a common file dependency.
 
 ### [Get-ModulesWithVersionSortedIdentityClient](Get-ModulesWithVersionSortedIdentityClient.md)
 
-Get a list of modules with the MSAL, and which versions each have packaged.
+Gets modules and sorts them by packaged `Microsoft.Identity.Client.dll` version.
 
 ### [Import-DPLibrary](Import-DPLibrary.md)
 
-Import DLLPickle libraries based on Packages.json configuration.
+Imports DLLPickle dependency libraries.
+
+## Archived Commands
+
+The following pages are retained for historical reference and migration guidance.
+
+### [Get-DLLsInModulePath (Archived)](Get-DLLsInModulePath.md)
+
+Replaced by `Find-DLLInPSModulePath`.
+
+### [Get-ModuleImportOrder (Archived)](Get-ModuleImportOrder.md)
+
+Replaced by `Get-ModulesWithVersionSortedIdentityClient`.
