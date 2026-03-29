@@ -17,3 +17,8 @@ Please report security bugs in third-party modules to the person or team maintai
 ## Public Disclosure
 
 Once we have either a) published a fix, or b) declined to address the vulnerability for whatever reason, you are free to publicly disclose it.
+
+## Related Policies
+
+- Dependency and supply chain policy: [DEPENDENCIES.md](DEPENDENCIES.md)
+- Contribution workflow and quality gates: [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md)

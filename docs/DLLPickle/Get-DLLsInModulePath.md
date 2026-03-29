@@ -9,11 +9,15 @@ PlatyPS schema version: 2024-05-01
 title: Get-DLLsInModulePath
 ---
 
-# Get-DLLsInModulePath
+## Get-DLLsInModulePath
+
+> [!WARNING]
+> This page is archived. `Get-DLLsInModulePath` is no longer exported by
+> DLLPickle.
 
 ## SYNOPSIS
 
-Show a list of all DLLs in PowerShell module paths that contain the specified product name in their FileInfo property.
+Archived command reference retained for migration guidance.
 
 ## SYNTAX
 
@@ -21,34 +25,39 @@ Show a list of all DLLs in PowerShell module paths that contain the specified pr
 
 ```PowerShell
 Get-DLLsInModulePath [[-ProductName] <string>] [[-Path] <string[]>]
- [[-ExcludeDirectories] <string[]>] [[-Scope] <string>] [-ShowDetails] [<CommonParameters>]
+ [[-ExcludeDirectories] <string[]>] [[-Scope] <string>] [-ShowDetails]
+ [<CommonParameters>]
 ```
 
 ## ALIASES
 
-This cmdlet has the following aliases,
-  {{Insert list of aliases}}
+None.
 
 ## DESCRIPTION
 
-Check all installed PowerShell module locations for DLL files that have the specified product name (e.g., 'Microsoft Identity') in their file's ProductName attribute.
-By default, searches all paths in the PSModulePath environment variable.
-Can optionally check custom locations using the -Path parameter.
+This command is no longer part of the exported DLLPickle command set.
+
+Use `Find-DLLInPSModulePath` instead. It supersedes this command and provides
+improved path scoping, metadata-rich output, and optional newest-version
+filtering.
 
 ## EXAMPLES
 
 ### EXAMPLE 1
 
-Get-DLLsInModulePath -ProductName "Microsoft Identity"
+```powershell
+Find-DLLInPSModulePath -ProductName "Microsoft Identity"
+```
 
-Find all Microsoft Identity-related DLLs within installed PowerShell module locations.
+Replacement for the archived command.
 
 ### EXAMPLE 2
 
-Get-DLLsInModulePath -ProductName "Microsoft Identity" | Sort-Object -Property InternalName | Format-Table InternalName, @{Label = 'ProductVersion'; Expression = { $_.ProductVersionRaw } }, @{Label = 'Module'; Expression = { $($_.FileName -replace '^.*Modules[\\/]([^\\/]+)([\\/].*)?', '$1') }}
+```powershell
+Find-DLLInPSModulePath -FileName "Microsoft.IdentityModel*.dll" -NewestVersion
+```
 
-Find all Microsoft Identity-related DLLs within installed PowerShell module locations.
-Shows the name of the module that the DLL is included in.
+Modern equivalent that narrows results and returns newest matching versions.
 
 ## PARAMETERS
 
@@ -167,38 +176,24 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 
 ## INPUTS
 
+None.
+
 ## OUTPUTS
 
 ### System.Object
 
-{{ Fill in the Description }}
+Not applicable for current module versions.
 
 ### System.Diagnostics.FileVersionInfo
 
-{{ Fill in the Description }}
+Historical output details are preserved for reference only.
 
 ## NOTES
 
-To Do:
-
-- Further reduce the number of paths inspected by (optionally) only scanning the newest version of each module in each scope's paths.
-- Fix ShowDetails logic.
-- Apply custom formatting type for output.
-
-Example Output:
-
-InternalName                                        ProductVersion Module
-------------                                        -------------- ------
-Microsoft.Identity.Abstractions.dll                 9.5.0.0        DLLPickle
-Microsoft.IdentityModel.Abstractions.dll            0.0.0.0        Az.Accounts
-Microsoft.IdentityModel.JsonWebTokens.dll           8.6.0.0        ExchangeOnlineManagement
-Microsoft.IdentityModel.Logging.dll                 8.6.0.0        ExchangeOnlineManagement
-Microsoft.IdentityModel.Protocols.dll               8.6.1.0        WinTuner
-Microsoft.IdentityModel.Protocols.OpenIdConnect.dll 8.6.1.0        WinTuner
-Microsoft.IdentityModel.Tokens.dll                  8.6.0.0        ExchangeOnlineManagement
-Microsoft.IdentityModel.Validators.dll              8.6.1.0        WinTuner
-System.IdentityModel.Tokens.Jwt.dll                 8.6.0.0        ExchangeOnlineManagement
+This page is intentionally retained to avoid breaking older external links.
 
 ## RELATED LINKS
 
-{{ Fill in the related links here }}
+[Find-DLLInPSModulePath](Find-DLLInPSModulePath.md)
+
+[Get-ModulesWithDependency](Get-ModulesWithDependency.md)

@@ -9,7 +9,7 @@ PlatyPS schema version: 2024-05-01
 title: Get-ModuleImportCandidate
 ---
 
-# Get-ModuleImportCandidate
+## Get-ModuleImportCandidate
 
 ## SYNOPSIS
 
@@ -25,8 +25,7 @@ Get-ModuleImportCandidate [-Name] <string[]> [[-Scope] <string>] [<CommonParamet
 
 ## ALIASES
 
-This cmdlet has the following aliases,
-  {{Insert list of aliases}}
+None.
 
 ## DESCRIPTION
 
@@ -105,20 +104,26 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 
 ### System.String[]
 
-{{ Fill in the Description }}
+Module names supplied through the `Name` parameter or from the pipeline.
 
 ## OUTPUTS
 
 ### A full [System.Management.Automation.PSModuleInfo] object with a Scope and custom type name (DLLPickle.ModuleImportCandidate) added
 
-{{ Fill in the Description }}
+The effective module candidate that Import-Module would load for each requested
+name, plus an added `Scope` property.
 
 ### System.Management.Automation.PSObject
 
-{{ Fill in the Description }}
+Equivalent to a decorated `PSModuleInfo` object for output formatting and
+downstream pipeline use.
 
 ## NOTES
 
 ## RELATED LINKS
 
-{{ Fill in the related links here }}
+[Get-ModulesWithVersionSortedIdentityClient](Get-ModulesWithVersionSortedIdentityClient.md)
+
+[Get-ModulesWithDependency](Get-ModulesWithDependency.md)
+
+[Find-DLLInPSModulePath](Find-DLLInPSModulePath.md)

@@ -9,7 +9,7 @@ PlatyPS schema version: 2024-05-01
 title: Get-ModulesWithVersionSortedIdentityClient
 ---
 
-# Get-ModulesWithVersionSortedIdentityClient
+## Get-ModulesWithVersionSortedIdentityClient
 
 ## SYNOPSIS
 
@@ -25,8 +25,7 @@ Get-ModulesWithVersionSortedIdentityClient [[-Name] <string[]>] [<CommonParamete
 
 ## ALIASES
 
-This cmdlet has the following aliases,
-  {{Insert list of aliases}}
+None.
 
 ## DESCRIPTION
 
@@ -73,12 +72,22 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 
 ### System.String[]
 
-{{ Fill in the Description }}
+Module names to evaluate. Supply values via the `-Name` parameter, or by piping
+objects that have a `Name` property. Plain string pipeline input is not supported.
 
 ## OUTPUTS
+
+### System.Management.Automation.PSCustomObject
+
+Returns objects with `Name`, `ModuleBase`, `ModuleVersion`, and `DLLVersion`,
+sorted by `DLLVersion` descending.
 
 ## NOTES
 
 ## RELATED LINKS
 
-{{ Fill in the related links here }}
+[Get-ModuleImportCandidate](Get-ModuleImportCandidate.md)
+
+[Get-ModulesWithDependency](Get-ModulesWithDependency.md)
+
+[Import-DPLibrary](Import-DPLibrary.md)

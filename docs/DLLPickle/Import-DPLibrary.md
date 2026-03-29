@@ -9,7 +9,7 @@ PlatyPS schema version: 2024-05-01
 title: Import-DPLibrary
 ---
 
-# Import-DPLibrary
+## Import-DPLibrary
 
 ## SYNOPSIS
 
@@ -118,6 +118,8 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 
 ## INPUTS
 
+None. You cannot pipe objects to this cmdlet.
+
 ## OUTPUTS
 
 ### System.Management.Automation.PSCustomObject
@@ -149,3 +151,11 @@ Workaround and Reliability Guidance:
   `SkipLibraries` with `Set-DPConfig`.
 
 ## RELATED LINKS
+
+[Get-DPConfig](Get-DPConfig.md)
+
+[Set-DPConfig](Set-DPConfig.md)
+
+[Find-DLLInPSModulePath](Find-DLLInPSModulePath.md)
+
+[Get-ModulesWithDependency](Get-ModulesWithDependency.md)

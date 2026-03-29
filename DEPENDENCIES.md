@@ -6,6 +6,9 @@ This document tracks the external NuGet packages used by DLLPickle and their upd
 
 DLLPickle deliberately maintains **current versions** of Microsoft authentication and identity libraries to resolve DLL version conflicts in PowerShell. This is a core feature, not a bug - we want the newest compatible versions loaded first.
 
+For usage and command guidance, see [README.md](README.md) and
+[docs/index.md](docs/index.md).
+
 ## Dependency Management Strategy
 
 | Update Type | Policy | Automation |
@@ -137,3 +140,4 @@ Connect-MgGraph -Scopes "User.Read"
 - [Package Validation Workflow](/.github/workflows/Validate-Packages.yml)
 - [CODEOWNERS](/.github/CODEOWNERS)
 - [Security Policy](/SECURITY.md)
+- [Contributing Guide](/.github/CONTRIBUTING.md)

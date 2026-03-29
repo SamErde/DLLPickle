@@ -36,12 +36,29 @@ Install-PSResource -Name DLLPickle
 
 ### Using
 
-All you have to do to use DLL Pickle is run the `Import-DPLibrary` command.
+Import the module, then run `Import-DPLibrary` before connecting to service modules.
 
 ```powershell
 Import-Module DLLPickle
 Import-DPLibrary
 ```
+
+### Core Commands
+
+DLLPickle currently exports the following commands:
+
+- `Import-DPLibrary`: preload DLLPickle-managed assemblies in dependency-aware order.
+- `Get-DPConfig`: view your current DLLPickle configuration.
+- `Set-DPConfig`: update DLLPickle configuration (for example, show logo, skip libraries).
+- `Find-DLLInPSModulePath`: inspect module paths for matching DLLs.
+- `Get-ModuleImportCandidate`: determine which installed module version would import.
+- `Get-ModulesWithDependency`: list installed modules that package a target dependency.
+- `Get-ModulesWithVersionSortedIdentityClient`: compare modules by packaged `Microsoft.Identity.Client.dll` version.
+
+For complete syntax and examples, see:
+
+- [docs index](docs/index.md)
+- [module command reference](docs/DLLPickle.md)
 
 ---
 
@@ -104,6 +121,8 @@ Import-DPLibrary -ShowLoaderExceptions -Verbose
 
 For detailed cmdlet guidance, see [docs/DLLPickle/Import-DPLibrary.md](docs/DLLPickle/Import-DPLibrary.md).
 
+For deeper compatibility and dependency details, see [DEPENDENCIES.md](DEPENDENCIES.md).
+
 ---
 
 ## 📝 Additional Information
@@ -142,3 +161,14 @@ All libraries tracked for pre-loading by DLL Pickle are maintained and documente
 - [Microsoft.IdentityModel.Logging](https://www.nuget.org/packages/Microsoft.IdentityModel.Logging)
 - [Microsoft.IdentityModel.Tokens](https://www.nuget.org/packages/Microsoft.IdentityModel.Tokens)
 - [System.IdentityModel.Tokens.Jwt](https://www.nuget.org/packages/System.IdentityModel.Tokens.Jwt)
+
+## Project Documentation Map
+
+- User guide and overview: [docs/index.md](docs/index.md)
+- Deep technical explanation: [docs/Deep-Dive.md](docs/Deep-Dive.md)
+- Full command reference: [docs/DLLPickle.md](docs/DLLPickle.md)
+- Changelog and active work: [CHANGELOG.md](CHANGELOG.md)
+- Planned work: [Roadmap.md](Roadmap.md)
+- Contribution workflow: [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md)
+- Dependency and supply chain policy: [DEPENDENCIES.md](DEPENDENCIES.md)
+- Security vulnerability reporting: [SECURITY.md](SECURITY.md)

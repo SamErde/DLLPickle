@@ -9,7 +9,7 @@ PlatyPS schema version: 2024-05-01
 title: Get-ModulesWithDependency
 ---
 
-# Get-ModulesWithDependency
+## Get-ModulesWithDependency
 
 ## SYNOPSIS
 
@@ -25,8 +25,7 @@ Get-ModulesWithDependency [-FileName] <string> [<CommonParameters>]
 
 ## ALIASES
 
-This cmdlet has the following aliases,
-  {{Insert list of aliases}}
+None.
 
 ## DESCRIPTION
 
@@ -80,7 +79,7 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 
 ### System.String
 
-{{ Fill in the Description }}
+The dependency filename to search for, such as `Microsoft.Identity.Client.dll`.
 
 ## OUTPUTS
 
@@ -88,10 +87,15 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 
 An array of PSResourceInfo objects
 
-{{ Fill in the Description }}
+Each object includes added `DependencyPath` and `DependencyVersion` properties
+for the matched file.
 
 ## NOTES
 
 ## RELATED LINKS
 
-{{ Fill in the related links here }}
+[Find-DLLInPSModulePath](Find-DLLInPSModulePath.md)
+
+[Get-ModuleImportCandidate](Get-ModuleImportCandidate.md)
+
+[Get-ModulesWithVersionSortedIdentityClient](Get-ModulesWithVersionSortedIdentityClient.md)

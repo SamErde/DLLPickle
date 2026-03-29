@@ -23,7 +23,8 @@ The second header should have no spaces.
 
 # SHORT DESCRIPTION
 
-{{ Short Description Placeholder }}
+DLLPickle helps prevent assembly version conflicts in mixed-module PowerShell
+sessions by preloading compatible identity-related dependencies.
 
 ```powershell
 ABOUT TOPIC NOTE:
@@ -34,37 +35,89 @@ The generated about topic will be encoded UTF-8.
 
 # LONG DESCRIPTION
 
-{{ Long Description Placeholder }}
+When multiple Microsoft service modules are used in the same PowerShell
+session, they can package different versions of shared identity assemblies.
+Because only one assembly identity can be loaded into the process, module
+loading order can cause authentication failures.
+
+DLLPickle addresses this with `Import-DPLibrary`, which preloads a known,
+compatible dependency set from the module's `bin` folder:
+
+- `bin/net8.0` on PowerShell 7+
+- `bin/net48` on Windows PowerShell 5.1
+
+The loader applies dependency-aware ordering, deterministic fallback ordering,
+and scoped local resolution fallback to improve reliability on .NET Framework
+assembly probing behaviors.
 
 ## Optional Subtopics
 
-{{ Optional Subtopic Placeholder }}
+### Recommended startup sequence
+
+```powershell
+Import-Module DLLPickle
+Import-DPLibrary
+```
+
+Run this before importing and connecting with Microsoft service modules.
+
+### Configuration
+
+Use the following commands to manage local DLLPickle behavior:
+
+- `Get-DPConfig`
+- `Set-DPConfig`
+
+### Diagnostics
+
+For verbose diagnostics, especially on Windows PowerShell 5.1:
+
+```powershell
+Import-DPLibrary -SuppressLogo -ShowLoaderExceptions -Verbose
+```
 
 # EXAMPLES
 
-{{ Code or descriptive examples of how to leverage the functions described. }}
+```powershell
+# Load DLLPickle dependencies first
+Import-Module DLLPickle
+Import-DPLibrary
+
+# Inspect current configuration
+Get-DPConfig
+
+# Skip an environment-specific optional DLL if needed
+Set-DPConfig -SkipLibraries @('System.Diagnostics.DiagnosticSource.dll')
+```
 
 # NOTE
 
-{{ Note Placeholder - Additional information that a user needs to know.}}
+DLLPickle focuses on assembly-preloading behavior for compatibility. It does not
+replace module-specific authentication guidance from each service module owner.
 
 # TROUBLESHOOTING NOTE
 
-{{ Troubleshooting Placeholder - Warns users of bugs}}
+If you still encounter load issues:
 
-{{ Explains behavior that is likely to change with fixes }}
+1. Confirm DLLPickle is loaded before service modules.
+1. Run `Import-DPLibrary -ShowLoaderExceptions -Verbose`.
+1. Update DLLPickle to the latest release.
+1. Use `Set-DPConfig -SkipLibraries` only for environment-specific exceptions.
 
 # SEE ALSO
 
-{{ See also placeholder }}
-
-{{ You can also list related articles, blogs, and video URLs. }}
+- [Import-DPLibrary](Import-DPLibrary.md)
+- [Get-DPConfig](Get-DPConfig.md)
+- [Set-DPConfig](Set-DPConfig.md)
+- [Find-DLLInPSModulePath](Find-DLLInPSModulePath.md)
+- [Project README](../../../README.md)
+- [Deep Dive](../../Deep-Dive.md)
 
 # KEYWORDS
 
-{{List alternate names or titles for this topic that readers might use.}}
+about_DLLPickle
 
-- {{ Keyword Placeholder }}
-- {{ Keyword Placeholder }}
-- {{ Keyword Placeholder }}
-- {{ Keyword Placeholder }}
+- MSAL
+- Assembly Load Order
+- PowerShell Module Compatibility
+- Import-DPLibrary

@@ -48,11 +48,27 @@ Any of the following PowerShell editions:
 Install-PSResource -Name DLLPickle
 ```
 
+Or, if you use traditional PowerShellGet:
+
+```powershell
+Install-Module DLLPickle -Scope CurrentUser
+```
+
 ### Using DLL Pickle
 
 The easiest way to benefit from DLL Pickle is to import the module in your PowerShell profile before any other module or assembly is loaded. Just add the line `Import-Module DLLPickle` to your profile, save it, and start a new instance of PowerShell.
 
-Alternatively, if you are starting work in a new PowerShell session in which you know you will be authenticating to multiple online services, you can run `Import-Module DLLPickle` at the beginning of your session and then proceed with the rest of your modules.
+Alternatively, if you are starting work in a new PowerShell session in which you know you will be authenticating to multiple online services, run this at the beginning of your session:
+
+```powershell
+Import-Module DLLPickle
+Import-DPLibrary
+```
+
+Additional command reference:
+
+- [Module reference landing page](DLLPickle.md)
+- [Detailed cmdlet help pages](DLLPickle/DLLPickle.md)
 
 ## Tracked Libraries
 
