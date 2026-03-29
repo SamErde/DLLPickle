@@ -72,8 +72,8 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 
 ### System.String[]
 
-Optional module names to evaluate. When omitted, supply names explicitly from
-the pipeline or parameter input.
+Module names to evaluate. Supply values via the `-Name` parameter, or by piping
+objects that have a `Name` property. Plain string pipeline input is not supported.
 
 ## OUTPUTS
 
