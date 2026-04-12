@@ -5,9 +5,6 @@ cov.xml
 coverage.xml
 testResults.xml
 
-### Codacy ###
-.codacy/*
-
 # NuGet
 *.nupkg
 packages/
@@ -18,7 +15,7 @@ packages/
 **/DLLPickle.Build/obj/
 
 # Staged Module Output
-# module/
+module/
 
 
 
@@ -31,6 +28,12 @@ packages/
 !.vscode/extensions.json
 !.vscode/*.code-snippets
 
+### AI ###
+.claude
+.codacity/*
+
+
+
 ### OS ###
 Thumbs.db
 .DS_Store
@@ -40,6 +43,3 @@ Thumbs.db
 .Trashes
 ehthumbs.db
 Desktop.ini
-
-### AI ###
-.claude
