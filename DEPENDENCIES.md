@@ -24,6 +24,8 @@ For usage and command guidance, see [README.md](README.md) and
 | Package | Current Version | Purpose | Owner | Notes |
 | --------- | ---------------- | --------- | ------- | ------- |
 | **Microsoft.Identity.Client** | 4.* | Microsoft Authentication Library (MSAL) - Core authentication | @SamErde | Primary dependency - enables auth for MS services |
+| **Microsoft.Identity.Client.Broker** | 4.* | Broker support for MSAL authentication flows | @SamErde | Direct dependency - enables brokered authentication scenarios |
+| **Microsoft.Identity.Client.NativeInterop** | 0.* | Native interop support for broker/native MSAL flows | @SamErde | Supports Broker interop; package major version is currently 0.x |
 | **Microsoft.IdentityModel.Abstractions** | 8.* | Identity model abstractions | @SamErde | Transitive - supports JWT/token handling |
 | **Microsoft.IdentityModel.Logging** | 8.* | Identity diagnostics and logging | @SamErde | Transitive - logging infrastructure |
 | **Microsoft.IdentityModel.JsonWebTokens** | 8.* | JWT token handling | @SamErde | Transitive - JWT creation/validation |
@@ -32,15 +34,31 @@ For usage and command guidance, see [README.md](README.md) and
 
 ### Version Strategy Rationale
 
-#### Wildcard Minor Versions (4.*, 8.*)
+#### Wildcard Minor Versions (0.*, 4.*, 8.*)
 
-- **Why**: We use wildcard versioning (`4.*`, `8.*`) to automatically pick up the latest minor/patch releases within each major version
+- **Why**: We use wildcard versioning (`0.*`, `4.*`, `8.*`) to automatically pick up the latest minor/patch releases within each major version
 - **Benefit**: Ensures we're always loading the newest compatible version, which is the core purpose of DLLPickle
 - **Risk Mitigation**:
   - Major version updates require manual review
   - `packages.lock.json` provides reproducible builds
   - Dependency Review workflow scans for vulnerabilities
   - Build validation runs on all updates
+
+#### Lock File Workflow (Required)
+
+- Build restore runs in `--locked-mode` in both local and CI environments.
+- When package references change in `src/DLLPickle.Build/DLLPickle.csproj`, refresh the lock file before committing:
+
+```powershell
+dotnet restore src/DLLPickle.Build/DLLPickle.csproj --force-evaluate
+```
+
+- Commit the updated `src/DLLPickle.Build/packages.lock.json` in the same change as the package reference update.
+- Validate the lock file with:
+
+```powershell
+dotnet restore src/DLLPickle.Build/DLLPickle.csproj --locked-mode
+```
 
 #### Multi-Targeting (net48 + net8.0)
 

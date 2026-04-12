@@ -1,8 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('Windows'))">net48;net8.0</TargetFrameworks>
-    <TargetFrameworks Condition="!$([MSBuild]::IsOSPlatform('Windows'))">net8.0</TargetFrameworks>
+    <TargetFrameworks>net48;net8.0</TargetFrameworks>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <ImplicitUsings>false</ImplicitUsings>
     <NoWarn>2008</NoWarn>
@@ -12,6 +11,8 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Identity.Client" Version="4.*" />
+    <PackageReference Include="Microsoft.Identity.Client.Broker" Version="4.*" />
+    <PackageReference Include="Microsoft.Identity.Client.NativeInterop" Version="0.*" />
     <PackageReference Include="Microsoft.IdentityModel.Abstractions" Version="8.*" />
     <PackageReference Include="Microsoft.IdentityModel.Logging" Version="8.*" />
     <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.*" />
