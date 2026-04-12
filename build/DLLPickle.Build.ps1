@@ -596,17 +596,11 @@ Add-BuildTask RestoreDependencies {
 
     Write-Build Gray "        Restoring packages from $script:CSharpProjectFile..."
 
-    # In CI environments, use --force-evaluate to handle lock file inconsistencies
-    # In local development, use --locked-mode to enforce lock file consistency
-    $IsCI = $env:CI -eq 'true' -or $env:TF_BUILD -eq 'True' -or $null -ne $env:GITHUB_ACTIONS
+    # Enforce lock-file consistency in all environments.
+    # Refresh the lock file explicitly with --force-evaluate only when package references change.
     $RestoreArgs = @($script:CSharpProjectFile)
-    if ($IsCI) {
-        Write-Build Gray '        Running in CI mode with --force-evaluate...'
-        $RestoreArgs += '--force-evaluate'
-    } else {
-        Write-Build Gray '        Running in locked mode...'
-        $RestoreArgs += '--locked-mode'
-    }
+    Write-Build Gray '        Running in locked mode...'
+    $RestoreArgs += '--locked-mode'
 
     $RestoreOutput = & dotnet restore @RestoreArgs 2>&1
     if ($LASTEXITCODE -ne 0) {
