@@ -27,6 +27,7 @@ concurrency:
 permissions:
   contents: read
   pull-requests: read
+  security-events: write
 
 env:
   MODULE_NAME: DLLPickle
