@@ -27,7 +27,6 @@ concurrency:
 permissions:
   contents: read
   pull-requests: read
-  security-events: write
 
 env:
   MODULE_NAME: DLLPickle
@@ -261,6 +260,9 @@ jobs:
     name: Build and Test Module
     uses: ./.github/workflows/Build Module.yml
     needs: update-version
+    permissions:
+      contents: read
+      security-events: write
     with:
       ref: main
 
