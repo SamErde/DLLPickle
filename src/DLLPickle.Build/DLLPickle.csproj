@@ -13,7 +13,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Identity.Client" Version="4.*" />
     <PackageReference Include="Microsoft.Identity.Client.Broker" Version="4.*" />
-    <PackageReference Include="Microsoft.Identity.Client.NativeInterop" Version="4.*" />
+    <PackageReference Include="Microsoft.Identity.Client.NativeInterop" Version="0.*" />
     <PackageReference Include="Microsoft.IdentityModel.Abstractions" Version="8.*" />
     <PackageReference Include="Microsoft.IdentityModel.Logging" Version="8.*" />
     <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.*" />
