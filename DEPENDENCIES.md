@@ -24,7 +24,8 @@ For usage and command guidance, see [README.md](README.md) and
 | Package | Current Version | Purpose | Owner | Notes |
 | --------- | ---------------- | --------- | ------- | ------- |
 | **Microsoft.Identity.Client** | 4.* | Microsoft Authentication Library (MSAL) - Core authentication | @SamErde | Primary dependency - enables auth for MS services |
-| **Microsoft.Identity.Client.NativeInterop** | 0.* | Native interop support used by MSAL broker flows | @SamErde | Package major version is currently 0.x |
+| **Microsoft.Identity.Client.Broker** | 4.* | Broker support for MSAL authentication flows | @SamErde | Direct dependency - enables brokered authentication scenarios |
+| **Microsoft.Identity.Client.NativeInterop** | 0.* | Native interop support for broker/native MSAL flows | @SamErde | Supports Broker interop; package major version is currently 0.x |
 | **Microsoft.IdentityModel.Abstractions** | 8.* | Identity model abstractions | @SamErde | Transitive - supports JWT/token handling |
 | **Microsoft.IdentityModel.Logging** | 8.* | Identity diagnostics and logging | @SamErde | Transitive - logging infrastructure |
 | **Microsoft.IdentityModel.JsonWebTokens** | 8.* | JWT token handling | @SamErde | Transitive - JWT creation/validation |
