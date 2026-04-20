@@ -38,7 +38,7 @@ jobs:
         id: nuget_check
         run: |
           set -e
-          MATCHING_FILES=$(gh pr view "$PR_NUMBER" --json files --jq '
+          MATCHING_FILES=$(gh pr view "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --json files --jq '
             .files[].path | select(
               . == "src/DLLPickle.Build/DLLPickle.csproj" or
               . == "src/DLLPickle.Build/packages.lock.json"
