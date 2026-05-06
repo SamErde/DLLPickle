@@ -114,6 +114,7 @@ Enter-Build {
     $script:TestsPath = Join-Path -Path $ProjectRoot -ChildPath 'tests'
     $script:UnitTestsPath = Join-Path -Path $script:TestsPath -ChildPath 'Unit'
     $script:IntegrationTestsPath = Join-Path -Path $script:TestsPath -ChildPath 'Integration'
+    $script:ToolsPath = Join-Path -Path $ProjectRoot -ChildPath 'tools'
 
     $script:ArtifactsPath = Join-Path -Path $ProjectRoot -ChildPath 'artifacts'
     $script:ArchivePath = Join-Path -Path $ProjectRoot -ChildPath 'archive'
@@ -268,6 +269,27 @@ Add-BuildTask AnalyzeTests -After Analyze {
         }
     }
 } #AnalyzeTests
+
+
+#Synopsis: Invoke Script Analyzer against repository maintenance tools if they exist
+Add-BuildTask AnalyzeTools -After AnalyzeTests {
+    if (Test-Path -Path $script:ToolsPath) {
+        $ScriptAnalyzerParams = @{
+            Path    = $script:ToolsPath
+            Setting = 'PSScriptAnalyzerSettings.psd1'
+            Recurse = $true
+            Verbose = $false
+        }
+        Write-Build White '      Performing Tool ScriptAnalyzer checks...'
+        $ScriptAnalyzerResults = Invoke-ScriptAnalyzer @ScriptAnalyzerParams
+        if ($ScriptAnalyzerResults) {
+            $ScriptAnalyzerResults | Format-Table
+            throw '      One or more PSScriptAnalyzer errors/warnings where found.'
+        } else {
+            Write-Build Green '      ...Tool Analyze Complete!'
+        }
+    }
+} #AnalyzeTools
 
 
 #Synopsis: Analyze scripts to verify if they adhere to desired coding format (Stroustrup / OTBS / Allman)

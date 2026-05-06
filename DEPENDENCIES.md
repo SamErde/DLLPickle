@@ -16,6 +16,32 @@ For usage and command guidance, see [README.md](README.md) and
 | **Patch** (x.y.Z) | Auto-merge | ✅ Dependabot + Auto-approve workflow |
 | **Minor** (x.Y.z) | Auto-merge | ✅ Dependabot + Auto-approve workflow |
 | **Major** (X.y.z) | Manual review | ⚠️ Requires explicit approval |
+| **Upstream PowerShell module drift** | Candidate PR or issue | ✅ Upstream Compatibility workflow |
+
+### Upstream Compatibility Automation
+
+Dependabot watches NuGet package releases, but DLLPickle also needs to track the
+DLLs bundled by upstream PowerShell modules. The scheduled
+**Upstream Compatibility** workflow uses `build/dependency-policy.json` and the
+PowerShell tools in `tools/` to monitor the latest PSGallery releases of:
+
+- `Microsoft.Graph.Authentication`
+- `ExchangeOnlineManagement`
+- `Az.Storage`
+- `Az.Accounts`
+- `MicrosoftTeams`
+
+The workflow downloads those modules into an artifact cache, inventories their
+bundled DLL assembly identities, compares them with DLLPickle's policy, and
+generates a candidate dependency-pin update when a safe exact pin can be
+derived. Candidate updates must still pass restore, build, and issue
+reproduction tests before the workflow opens a PR.
+
+This automation is intentionally fail-closed. It can propose a new net48
+`Azure.Core` exact pin when Graph or Teams starts shipping a newer compatible
+assembly, but it does not silently publish changed preload behavior. Blocked
+families such as OData are reported as compatibility findings instead of being
+added to the default preload set.
 
 ## NuGet Package Dependencies
 
@@ -62,6 +88,10 @@ For usage and command guidance, see [README.md](README.md) and
   its bundled assembly version. Do not convert an exact pin to a wildcard
   unless the issue repro tests and real-module probes show that both Windows
   PowerShell 5.1 and PowerShell 7+ remain compatible.
+- The Upstream Compatibility workflow keeps this review path maintainable by
+  detecting Graph and Teams `Azure.Core` drift, generating a candidate exact pin,
+  regenerating `packages.lock.json`, and validating the issue repro suite before
+  opening a PR.
 
 #### Lock File Workflow (Required)
 
@@ -138,6 +168,7 @@ processes when both modules require incompatible OData versions.
 4. ✅ **Package Lock** - `packages.lock.json` ensures reproducible builds
 5. ✅ **Automated Testing** - All updates validated by build + test workflows
 6. ✅ **CODEOWNERS** - Dependency files require explicit review
+7. ✅ **Upstream Compatibility** - Scheduled PSGallery module inventory and candidate PR generation for DLL preload policy drift
 
 ### Manual Review Required For
 

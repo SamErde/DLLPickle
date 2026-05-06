@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "DLLPickle upstream dependency compatibility policy.",
+  "monitoredModules": [
+    {
+      "name": "Microsoft.Graph.Authentication",
+      "repository": "PSGallery",
+      "purpose": "Graph authentication stack and Azure.Core compatibility source."
+    },
+    {
+      "name": "ExchangeOnlineManagement",
+      "repository": "PSGallery",
+      "purpose": "Exchange identity, broker, and OData compatibility source."
+    },
+    {
+      "name": "Az.Storage",
+      "repository": "PSGallery",
+      "purpose": "Az Storage OData compatibility source for Exchange coexistence."
+    },
+    {
+      "name": "Az.Accounts",
+      "repository": "PSGallery",
+      "purpose": "Az identity stack compatibility source."
+    },
+    {
+      "name": "MicrosoftTeams",
+      "repository": "PSGallery",
+      "purpose": "Teams identity stack compatibility source."
+    }
+  ],
+  "trackedAssemblies": [
+    "Azure.Core",
+    "Microsoft.Identity.Client",
+    "Microsoft.Identity.Client.Broker",
+    "Microsoft.Identity.Client.NativeInterop",
+    "Microsoft.IdentityModel.Abstractions",
+    "Microsoft.IdentityModel.JsonWebTokens",
+    "Microsoft.IdentityModel.Logging",
+    "Microsoft.IdentityModel.Tokens",
+    "System.IdentityModel.Tokens.Jwt",
+    "Microsoft.OData.Core",
+    "Microsoft.OData.Edm",
+    "Microsoft.Spatial"
+  ],
+  "exactPins": [
+    {
+      "packageName": "Azure.Core",
+      "assemblyName": "Azure.Core",
+      "targetFramework": "net48",
+      "versionSyntax": "exact",
+      "sourceModules": [
+        "Microsoft.Graph.Authentication",
+        "MicrosoftTeams"
+      ],
+      "updateMode": "candidatePullRequest",
+      "reason": "Windows PowerShell 5.1 requires Azure.Core to match the upstream Graph/Teams assembly identity that triggers issue #156-style type identity failures."
+    }
+  ],
+  "blockedPreloadAssemblies": [
+    {
+      "packageName": "Microsoft.OData.Core",
+      "assemblyName": "Microsoft.OData.Core",
+      "sourceModules": [
+        "ExchangeOnlineManagement",
+        "Az.Storage"
+      ],
+      "updateMode": "reportOnly",
+      "reason": "Issue #174 showed that default OData preloading can break Az.Storage when ExchangeOnlineManagement and Az.Storage require incompatible OData identities."
+    },
+    {
+      "packageName": "Microsoft.OData.Edm",
+      "assemblyName": "Microsoft.OData.Edm",
+      "sourceModules": [
+        "ExchangeOnlineManagement",
+        "Az.Storage"
+      ],
+      "updateMode": "reportOnly",
+      "reason": "Keep the OData family out of the default preload set unless a future isolation strategy is implemented."
+    },
+    {
+      "packageName": "Microsoft.Spatial",
+      "assemblyName": "Microsoft.Spatial",
+      "sourceModules": [
+        "ExchangeOnlineManagement",
+        "Az.Storage"
+      ],
+      "updateMode": "reportOnly",
+      "reason": "Keep the OData family out of the default preload set unless a future isolation strategy is implemented."
+    }
+  ]
+}
