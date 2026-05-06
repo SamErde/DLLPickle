@@ -71,6 +71,9 @@ Add-BuildTask RestoreDependenciesOnly RestoreDependencies
 #Prepare the local module output path with current source files and compiled binaries
 Add-BuildTask PrepareModuleOutput Clean, RestoreDependencies, CopyModuleFiles
 
+#Run issue reproduction integration tests with live repros excluded by default
+Add-BuildTask IssueReproTest PrepareModuleOutput, IntegrationTest
+
 #Full build without integration tests
 Add-BuildTask BuildNoIntegration -Jobs $str2
 
@@ -694,9 +697,9 @@ Add-BuildTask RestoreDependencies {
                 }
             }
 
-            # Copy DLLs (Microsoft.* and System.* packages)
+            # Copy DLLs from dependency package families managed by DLLPickle.
             $DLLs = Get-ChildItem -Path $BuildOutputPath -Filter '*.dll' |
-                Where-Object { $_.Name -match '^(Microsoft\.|System\.)' }
+                Where-Object { $_.Name -match '^(Azure\.|Microsoft\.|System\.)' }
 
             if ($DLLs) {
                 $CopiedCount = 0
@@ -882,15 +885,25 @@ Add-BuildTask IntegrationTest {
         Remove-Module -Name Pester -Force -ErrorAction SilentlyContinue # There are instances where some containers have Pester already in the session
         Import-Module -Name Pester -MinimumVersion $script:MinPesterVersion -MaximumVersion $script:MaxPesterVersion -ErrorAction 'Stop'
 
-        Write-Build White "      Performing Pester Integration Tests in $($invokePesterParams.path)"
+        Write-Build White "      Performing Pester Integration Tests in $script:IntegrationTestsPath"
 
         $PesterConfiguration = New-PesterConfiguration
         $PesterConfiguration.run.Path = $script:IntegrationTestsPath
         $PesterConfiguration.Run.PassThru = $true
         $PesterConfiguration.Run.Exit = $false
         $PesterConfiguration.CodeCoverage.Enabled = $false
-        $PesterConfiguration.TestResult.Enabled = $false
+        $TestOutputPath = Join-Path -Path $script:ArtifactsPath -ChildPath 'testOutput'
+        if (-not (Test-Path -LiteralPath $TestOutputPath -PathType Container)) {
+            $null = New-Item -Path $TestOutputPath -ItemType Directory -Force
+        }
+        $PesterConfiguration.TestResult.Enabled = $true
+        $PesterConfiguration.TestResult.OutputPath = Join-Path -Path $TestOutputPath -ChildPath 'PesterIntegrationTests.xml'
+        $PesterConfiguration.TestResult.OutputFormat = $script:TestOutputFormat
         $PesterConfiguration.Output.Verbosity = 'Detailed'
+        if ($env:DLLPICKLE_RUN_LIVE_REPRO -ne '1') {
+            $PesterConfiguration.Filter.ExcludeTag = @('LiveRepro')
+            Write-Build Gray '      Excluding LiveRepro tests. Set DLLPICKLE_RUN_LIVE_REPRO=1 to include them.'
+        }
 
         $TestResults = Invoke-Pester -Configuration $PesterConfiguration
         # This will output a nice json for each failed test (if running in CodeBuild)

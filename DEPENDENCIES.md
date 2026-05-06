@@ -23,6 +23,7 @@ For usage and command guidance, see [README.md](README.md) and
 
 | Package | Current Version | Purpose | Owner | Notes |
 | --------- | ---------------- | --------- | ------- | ------- |
+| **Azure.Core** | 1.51.1 | Azure SDK credential abstractions used by Microsoft.Graph.Authentication | @SamErde | Exact pin - matches Microsoft.Graph.Authentication 2.36.1 to avoid Windows PowerShell type identity conflicts |
 | **Microsoft.Identity.Client** | 4.* | Microsoft Authentication Library (MSAL) - Core authentication | @SamErde | Primary dependency - enables auth for MS services |
 | **Microsoft.Identity.Client.Broker** | 4.* | Broker support for MSAL authentication flows | @SamErde | Direct dependency - enables brokered authentication scenarios |
 | **Microsoft.Identity.Client.NativeInterop** | 0.* | Native interop support for broker/native MSAL flows | @SamErde | Supports Broker interop; package major version is currently 0.x |
@@ -43,6 +44,19 @@ For usage and command guidance, see [README.md](README.md) and
   - `packages.lock.json` provides reproducible builds
   - Dependency Review workflow scans for vulnerabilities
   - Build validation runs on all updates
+
+#### Exact Compatibility Pins
+
+- **Azure.Core 1.51.1** is pinned with NuGet exact-version syntax
+  (`[1.51.1]`) because Microsoft.Graph.Authentication 2.36.1 ships and
+  references that assembly version. Windows PowerShell can load a newer
+  strong-named `Azure.Core` side-by-side with Graph's 1.51.1 copy, which
+  reintroduces the `UserProvidedTokenCredential.GetTokenAsync` type identity
+  failure seen in issue #156.
+- Exact pins should be reviewed whenever the affected upstream module updates
+  its bundled assembly version. Do not convert an exact pin to a wildcard
+  unless the issue repro tests and real-module probes show that both Windows
+  PowerShell 5.1 and PowerShell 7+ remain compatible.
 
 #### Lock File Workflow (Required)
 
@@ -93,6 +107,21 @@ Some transitive dependencies contain types that depend on APIs not available in 
 - Use `Set-DPConfig` with `SkipLibraries` only for environment-specific optional assembly incompatibilities.
 
 **Resolution**: All assemblies generally load successfully in PowerShell Core (net8.0), and net48 reliability is improved by packaging and graph-based dependency ordering with deterministic fallback.
+
+### OData assembly conflict in Az.Storage + ExchangeOnlineManagement
+
+Az.Storage 9.6.0 bundles and imports `Microsoft.OData.Core` 7.6.4, while
+ExchangeOnlineManagement 3.9.2 can lazily request `Microsoft.OData.Core`
+7.22.0 when running `Get-EXO*` cmdlets. Testing showed that preloading OData
+7.22.0 from DLLPickle is not a safe default fix: Az.Storage then fails during
+module import because its 7.6.4 assembly load collides with the already-loaded
+7.22.0 assembly.
+
+DLLPickle therefore does not package the OData family by default. This keeps
+Az.Storage import compatibility intact and leaves the #174 scenario covered by
+the issue repro tests as a known in-process CLR load-context limitation. Run
+ExchangeOnlineManagement and Az.Storage workloads in separate PowerShell
+processes when both modules require incompatible OData versions.
 
 ## Supply Chain Security
 
