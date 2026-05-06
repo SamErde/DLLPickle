@@ -36,6 +36,44 @@ To improve reliability, the loader:
 This approach reduces transient first-pass load failures while keeping behavior
 predictable and diagnosable.
 
+## Dependency Maintenance Automation
+
+DLLPickle's preload set must track both NuGet package releases and the DLLs that
+upstream Microsoft PowerShell modules bundle in PSGallery releases. A package
+can be current on NuGet and still be the wrong preload candidate if Graph,
+Teams, Exchange, or Az modules reference a different strong-named assembly in
+their module folders.
+
+The repository therefore includes an upstream compatibility policy and scheduled
+workflow:
+
+- `build/dependency-policy.json` declares monitored PSGallery modules, tracked
+  assembly families, exact pins, and blocked preload families.
+- `tools/Get-DLLPickleUpstreamInventory.ps1` downloads and inventories the
+  latest monitored modules.
+- `tools/Update-DLLPickleDependencyPins.ps1` compares the inventory with the
+  policy and applies safe candidate exact-pin updates.
+- `.github/workflows/Upstream-Compatibility.yml` runs the inventory and
+  candidate update flow on a schedule or on demand.
+
+The monitored module set currently includes:
+
+- `Microsoft.Graph.Authentication`
+- `ExchangeOnlineManagement`
+- `Az.Storage`
+- `Az.Accounts`
+- `MicrosoftTeams`
+
+The workflow is fail-closed. It may open a candidate PR when a policy-supported
+pin changes, such as a Graph or Teams `Azure.Core` update for Windows
+PowerShell 5.1. It does not merge or publish changed preload behavior unless the
+candidate passes restore, build, and issue reproduction validation.
+
+Some dependency families are deliberately report-only. For example, OData
+assemblies are tracked because ExchangeOnlineManagement and Az.Storage can
+require incompatible versions in one process, but OData is not added to the
+default preload set unless a future isolation strategy makes that safe.
+
 ## Why This Helps
 
 - Preloads a coherent identity stack early in the session.

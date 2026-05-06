@@ -16,6 +16,32 @@ For usage and command guidance, see [README.md](README.md) and
 | **Patch** (x.y.Z) | Auto-merge | ✅ Dependabot + Auto-approve workflow |
 | **Minor** (x.Y.z) | Auto-merge | ✅ Dependabot + Auto-approve workflow |
 | **Major** (X.y.z) | Manual review | ⚠️ Requires explicit approval |
+| **Upstream PowerShell module drift** | Candidate PR or issue | ✅ Upstream Compatibility workflow |
+
+### Upstream Compatibility Automation
+
+Dependabot watches NuGet package releases, but DLLPickle also needs to track the
+DLLs bundled by upstream PowerShell modules. The scheduled
+**Upstream Compatibility** workflow uses `build/dependency-policy.json` and the
+PowerShell tools in `tools/` to monitor the latest PSGallery releases of:
+
+- `Microsoft.Graph.Authentication`
+- `ExchangeOnlineManagement`
+- `Az.Storage`
+- `Az.Accounts`
+- `MicrosoftTeams`
+
+The workflow downloads those modules into an artifact cache, inventories their
+bundled DLL assembly identities, compares them with DLLPickle's policy, and
+generates a candidate dependency-pin update when a safe exact pin can be
+derived. Candidate updates must still pass restore, build, and issue
+reproduction tests before the workflow opens a PR.
+
+This automation is intentionally fail-closed. It can propose a new net48
+`Azure.Core` exact pin when Graph or Teams starts shipping a newer compatible
+assembly, but it does not silently publish changed preload behavior. Blocked
+families such as OData are reported as compatibility findings instead of being
+added to the default preload set.
 
 ## NuGet Package Dependencies
 
@@ -23,6 +49,7 @@ For usage and command guidance, see [README.md](README.md) and
 
 | Package | Current Version | Purpose | Owner | Notes |
 | --------- | ---------------- | --------- | ------- | ------- |
+| **Azure.Core** | 1.51.1 | Azure SDK credential abstractions used by Microsoft.Graph.Authentication | @SamErde | net48 exact pin - matches Microsoft.Graph.Authentication 2.36.1 to avoid Windows PowerShell type identity conflicts |
 | **Microsoft.Identity.Client** | 4.* | Microsoft Authentication Library (MSAL) - Core authentication | @SamErde | Primary dependency - enables auth for MS services |
 | **Microsoft.Identity.Client.Broker** | 4.* | Broker support for MSAL authentication flows | @SamErde | Direct dependency - enables brokered authentication scenarios |
 | **Microsoft.Identity.Client.NativeInterop** | 0.* | Native interop support for broker/native MSAL flows | @SamErde | Supports Broker interop; package major version is currently 0.x |
@@ -43,6 +70,28 @@ For usage and command guidance, see [README.md](README.md) and
   - `packages.lock.json` provides reproducible builds
   - Dependency Review workflow scans for vulnerabilities
   - Build validation runs on all updates
+
+#### Exact Compatibility Pins
+
+- **Azure.Core 1.51.1** is pinned for the net48 target with NuGet exact-version
+  syntax (`[1.51.1]`) because Microsoft.Graph.Authentication 2.36.1 ships and
+  references that assembly version. Windows PowerShell can load a newer
+  strong-named `Azure.Core` side-by-side with Graph's 1.51.1 copy, which
+  reintroduces the `UserProvidedTokenCredential.GetTokenAsync` type identity
+  failure seen in issue #156.
+- Azure.Core is intentionally not packaged for the net8.0 target because the
+  current Azure.Core 1.51.1 dependency graph includes .NET 10 transitive
+  assemblies that are not safe to preload across all supported PowerShell 7
+  environments. The #156 import-order failure has only been reproduced in
+  Windows PowerShell 5.1.
+- Exact pins should be reviewed whenever the affected upstream module updates
+  its bundled assembly version. Do not convert an exact pin to a wildcard
+  unless the issue repro tests and real-module probes show that both Windows
+  PowerShell 5.1 and PowerShell 7+ remain compatible.
+- The Upstream Compatibility workflow keeps this review path maintainable by
+  detecting Graph and Teams `Azure.Core` drift, generating a candidate exact pin,
+  regenerating `packages.lock.json`, and validating the issue repro suite before
+  opening a PR.
 
 #### Lock File Workflow (Required)
 
@@ -94,6 +143,21 @@ Some transitive dependencies contain types that depend on APIs not available in 
 
 **Resolution**: All assemblies generally load successfully in PowerShell Core (net8.0), and net48 reliability is improved by packaging and graph-based dependency ordering with deterministic fallback.
 
+### OData assembly conflict in Az.Storage + ExchangeOnlineManagement
+
+Az.Storage 9.6.0 bundles and imports `Microsoft.OData.Core` 7.6.4, while
+ExchangeOnlineManagement 3.9.2 can lazily request `Microsoft.OData.Core`
+7.22.0 when running `Get-EXO*` cmdlets. Testing showed that preloading OData
+7.22.0 from DLLPickle is not a safe default fix: Az.Storage then fails during
+module import because its 7.6.4 assembly load collides with the already-loaded
+7.22.0 assembly.
+
+DLLPickle therefore does not package the OData family by default. This keeps
+Az.Storage import compatibility intact and leaves the #174 scenario covered by
+the issue repro tests as a known in-process CLR load-context limitation. Run
+ExchangeOnlineManagement and Az.Storage workloads in separate PowerShell
+processes when both modules require incompatible OData versions.
+
 ## Supply Chain Security
 
 ### Protections in Place
@@ -104,6 +168,7 @@ Some transitive dependencies contain types that depend on APIs not available in 
 4. ✅ **Package Lock** - `packages.lock.json` ensures reproducible builds
 5. ✅ **Automated Testing** - All updates validated by build + test workflows
 6. ✅ **CODEOWNERS** - Dependency files require explicit review
+7. ✅ **Upstream Compatibility** - Scheduled PSGallery module inventory and candidate PR generation for DLL preload policy drift
 
 ### Manual Review Required For
 

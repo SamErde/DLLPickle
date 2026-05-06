@@ -246,6 +246,30 @@
       "group": "test"
     },
     {
+      "label": "IssueReproTest",
+      "description": "Prepare the module and run issue reproduction tests without live repros",
+      "type": "shell",
+      "command": "Invoke-Build -Task IssueReproTest -File \"${workspaceFolder}/build/${workspaceFolderBasename}.Build.ps1\"",
+      "problemMatcher": "$msCompile",
+      "presentation": {
+        "echo": false,
+        "showReuseMessage": false
+      },
+      "group": "test"
+    },
+    {
+      "label": "IssueReproTest-Live",
+      "description": "Run issue reproduction tests including explicitly gated live repros",
+      "type": "shell",
+      "command": "$env:DLLPICKLE_RUN_LIVE_REPRO = '1'; Invoke-Build -Task IssueReproTest -File \"${workspaceFolder}/build/${workspaceFolderBasename}.Build.ps1\"; Remove-Item Env:\\DLLPICKLE_RUN_LIVE_REPRO -ErrorAction SilentlyContinue",
+      "problemMatcher": "$msCompile",
+      "presentation": {
+        "echo": false,
+        "showReuseMessage": false
+      },
+      "group": "test"
+    },
+    {
       "label": "PesterTest",
       "description": "Run Pester unit tests with detailed output",
       "type": "shell",
