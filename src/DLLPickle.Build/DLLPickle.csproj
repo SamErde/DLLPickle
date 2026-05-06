@@ -10,7 +10,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Azure.Core" Version="[1.51.1]" Condition="'$(TargetFramework)' == 'net48'" />
+    <PackageReference Include="Azure.Core" Version="[1.54.0]" Condition="'$(TargetFramework)' == 'net48'" />
     <PackageReference Include="Microsoft.Identity.Client" Version="4.*" />
     <PackageReference Include="Microsoft.Identity.Client.Broker" Version="4.*" />
     <PackageReference Include="Microsoft.Identity.Client.NativeInterop" Version="0.*" />
