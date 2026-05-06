@@ -69,12 +69,12 @@ differences by name, version, and location.
 
 ### Issue #156: Graph Authentication and ExchangeOnlineManagement
 
-DLLPickle packages an exact `Azure.Core` 1.51.1 dependency for compatibility
-with Microsoft.Graph.Authentication 2.36.1. Real Windows PowerShell validation
-showed that preloading a newer `Azure.Core` can still allow Graph's 1.51.1 copy
-to load side-by-side, which causes the `GetTokenAsync` type identity failure.
-The issue repro tests assert that the protected import path uses Azure.Core
-1.51.1.
+DLLPickle packages an exact net48 `Azure.Core` 1.51.1 dependency for
+compatibility with Microsoft.Graph.Authentication 2.36.1. Real Windows
+PowerShell validation showed that preloading a newer `Azure.Core` can still
+allow Graph's 1.51.1 copy to load side-by-side, which causes the
+`GetTokenAsync` type identity failure. The issue repro tests assert that the
+protected Windows PowerShell import path uses Azure.Core 1.51.1.
 
 ### Issue #174: Az.Storage and ExchangeOnlineManagement OData
 
@@ -87,4 +87,3 @@ The safe repro tests keep this scenario visible but do not treat OData
 preloading as a supported fix. If both modules need incompatible OData versions,
 run the Az.Storage and ExchangeOnlineManagement work in separate PowerShell
 processes so each process has its own assembly load context.
-

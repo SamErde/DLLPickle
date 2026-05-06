@@ -118,8 +118,9 @@ Describe 'Issue 156 Graph and ExchangeOnlineManagement reproduction' -Tag 'Integ
         Initialize-Issue156SyntheticModule -RootPath $SyntheticModuleRoot -Name 'Microsoft.Graph.Authentication' -Version '2.36.1'
     }
 
-    It 'captures a Graph import failure after ExchangeOnlineManagement is loaded first without DLLPickle preloading' {
+    It 'captures a Graph import failure after ExchangeOnlineManagement is loaded first without DLLPickle preloading' -Skip:($env:OS -ne 'Windows_NT') {
         $Result = Invoke-DLLPickleScenario -Name 'Issue156-ExchangeThenGraph-Synthetic' `
+            -PowerShellExecutable 'powershell.exe' `
             -ModuleManifestPath $BuiltModuleManifestPath `
             -AdditionalModulePath $SyntheticModuleRoot `
             -OutputPath (Join-Path $ScenarioOutputRoot 'Issue156-ExchangeThenGraph-Synthetic.json') `
@@ -134,8 +135,9 @@ Describe 'Issue 156 Graph and ExchangeOnlineManagement reproduction' -Tag 'Integ
         $GraphStep.Error.Message | Should -Match 'GetTokenAsync'
     }
 
-    It 'prevents the Graph import failure after ExchangeOnlineManagement is loaded first' {
+    It 'prevents the Graph import failure after ExchangeOnlineManagement is loaded first' -Skip:($env:OS -ne 'Windows_NT') {
         $Result = Invoke-DLLPickleScenario -Name 'Issue156-ExchangeThenGraph-Protected-Synthetic' `
+            -PowerShellExecutable 'powershell.exe' `
             -ModuleManifestPath $BuiltModuleManifestPath `
             -AdditionalModulePath $SyntheticModuleRoot `
             -OutputPath (Join-Path $ScenarioOutputRoot 'Issue156-ExchangeThenGraph-Protected-Synthetic.json') `
@@ -203,4 +205,3 @@ Describe 'Issue 156 Graph and ExchangeOnlineManagement reproduction' -Tag 'Integ
         $Result.Success | Should -BeTrue
     }
 }
-
