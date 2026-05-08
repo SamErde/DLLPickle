@@ -31,6 +31,9 @@ To improve reliability, the loader:
 1. Applies dependency-first ordering where possible.
 1. Appends unresolved nodes in deterministic alphabetical order.
 1. Registers a scoped local assembly resolution fallback.
+1. Adds packaged native runtime directories for the current process RID to
+   `PATH` so broker/MSAL native dependencies can be found without loading native
+   DLLs as managed assemblies.
 1. Retries failed loads and reports unresolved failures.
 
 This approach reduces transient first-pass load failures while keeping behavior
@@ -74,6 +77,34 @@ assemblies are tracked because ExchangeOnlineManagement and Az.Storage can
 require incompatible versions in one process, but OData is not added to the
 default preload set unless a future isolation strategy makes that safe.
 
+## Validated Base Profile
+
+The validated base profile for a single interactive session is:
+
+1. `ExchangeOnlineManagement`
+1. `MicrosoftTeams`
+1. `Microsoft.Graph.Authentication`
+1. `Az.Accounts`
+
+Use `Import-DPBaseProfile` to run `Import-DPLibrary` and import those modules in
+that order. PowerShell 7+ import-only testing is more tolerant of alternate
+orders, but Windows PowerShell 5.1 is not. If `Az.Accounts` is imported first,
+it can load an older Azure identity stack before Microsoft Graph and recreate
+the `UserProvidedTokenCredential.GetTokenAsync` type identity failure.
+
+`Import-DPBaseProfile` intentionally does not authenticate to any service. It
+only prepares the process and imports modules so connection commands such as
+`Connect-ExchangeOnline`, `Connect-MicrosoftTeams`, `Connect-MgGraph`, and
+`Connect-AzAccount` can run afterward using credentials and tenant choices from
+the caller's environment.
+
+Current live testing shows a Windows PowerShell 5.1 boundary for Az.Accounts:
+after Exchange or Graph loads its Azure.Identity stack, `Connect-AzAccount` can
+still fail because Az.Accounts' module-local assembly loader binds to
+incompatible Azure.Identity method contracts. PowerShell 7+ reaches the expected
+Az credential flow; use PowerShell 7+ or isolate Az authentication in a separate
+process when the full profile must connect to every service.
+
 ## Why This Helps
 
 - Preloads a coherent identity stack early in the session.
@@ -88,6 +119,13 @@ Run DLLPickle early in the session, before connecting to service modules:
 ```powershell
 Import-Module DLLPickle
 Import-DPLibrary
+```
+
+For the supported base profile, prefer:
+
+```powershell
+Import-Module DLLPickle
+Import-DPBaseProfile
 ```
 
 For diagnostics in Windows PowerShell 5.1:

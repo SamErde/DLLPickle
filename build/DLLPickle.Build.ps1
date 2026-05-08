@@ -717,6 +717,11 @@ Add-BuildTask RestoreDependencies {
                         Write-Build Yellow "          Keeping in-use binary for ${tfm}: $($_.Name)"
                     }
                 }
+
+                $RuntimeOutputPath = Join-Path -Path $TfmBinPath -ChildPath 'runtimes'
+                if (Test-Path -LiteralPath $RuntimeOutputPath) {
+                    Remove-Item -LiteralPath $RuntimeOutputPath -Recurse -Force -ErrorAction SilentlyContinue
+                }
             }
 
             # Copy DLLs from dependency package families managed by DLLPickle.
@@ -741,6 +746,26 @@ Add-BuildTask RestoreDependencies {
                 }
             } else {
                 Write-Build Yellow "          No matching DLLs found in $tfm output."
+            }
+
+            $RuntimeSourcePath = Join-Path -Path $BuildOutputPath -ChildPath 'runtimes'
+            if (Test-Path -LiteralPath $RuntimeSourcePath) {
+                $NativeRuntimeFiles = @(Get-ChildItem -Path $RuntimeSourcePath -File -Recurse -ErrorAction SilentlyContinue |
+                    Where-Object { $_.FullName -match '[\\/]native[\\/]' })
+
+                foreach ($NativeRuntimeFile in $NativeRuntimeFiles) {
+                    $RelativePath = $NativeRuntimeFile.FullName.Substring($RuntimeSourcePath.Length + 1)
+                    $DestinationPath = Join-Path -Path (Join-Path -Path $TfmBinPath -ChildPath 'runtimes') -ChildPath $RelativePath
+                    $DestinationDirectory = Split-Path -Path $DestinationPath -Parent
+                    if (-not (Test-Path -LiteralPath $DestinationDirectory)) {
+                        $null = New-Item -Path $DestinationDirectory -ItemType Directory -Force
+                    }
+                    Copy-Item -LiteralPath $NativeRuntimeFile.FullName -Destination $DestinationPath -Force
+                }
+
+                if ($NativeRuntimeFiles.Count -gt 0) {
+                    Write-Build Gray "          Copied $($NativeRuntimeFiles.Count) native runtime file(s) to $tfm subdirectory."
+                }
             }
         } else {
             Write-Build Yellow "          Warning: $tfm output path not found: $BuildOutputPath"

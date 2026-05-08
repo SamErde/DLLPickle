@@ -56,7 +56,7 @@ function Connect-ExchangeOnline {
     param()
 
     if (($global:DllPickleSyntheticImportOrder -contains 'Microsoft.Graph.Authentication') -and
-        -not (Test-DLLPickleSyntheticAssemblyVersion -Name 'Microsoft.Identity.Client.Broker' -MinimumVersion ([version]'4.83.3.0'))) {
+        -not (Test-DLLPickleSyntheticAssemblyVersion -Name 'Microsoft.Identity.Client.Broker' -MinimumVersion ([version]'4.83.1.0'))) {
         throw [System.MissingMethodException]::new('Method not found: Microsoft.Identity.Client.Broker.BrokerExtension.WithBroker(Microsoft.Identity.Client.PublicClientApplicationBuilder, Microsoft.Identity.Client.BrokerOptions).')
     }
 
@@ -152,7 +152,7 @@ Describe 'Issue 156 Graph and ExchangeOnlineManagement reproduction' -Tag 'Integ
         $GraphStep.Success | Should -BeTrue
         $FinalAssemblies = @($Result.Steps | Select-Object -Last 1 -ExpandProperty AssembliesAfter)
         $AzureCore = $FinalAssemblies | Where-Object Name -eq 'Azure.Core' | Select-Object -First 1
-        ([version]$AzureCore.Version) | Should -Be ([version]'1.51.1.0')
+        ([version]$AzureCore.Version) | Should -Be ([version]'1.55.0.0')
     }
 
     It 'captures a lazy ExchangeOnlineManagement broker failure after Graph is loaded first without DLLPickle preloading' {
@@ -189,7 +189,7 @@ Describe 'Issue 156 Graph and ExchangeOnlineManagement reproduction' -Tag 'Integ
         $ConnectStep.Success | Should -BeTrue
         $FinalAssemblies = @($Result.Steps | Select-Object -Last 1 -ExpandProperty AssembliesAfter)
         $Broker = $FinalAssemblies | Where-Object Name -eq 'Microsoft.Identity.Client.Broker' | Select-Object -First 1
-        ([version]$Broker.Version) | Should -BeGreaterOrEqual ([version]'4.83.3.0')
+        ([version]$Broker.Version) | Should -BeGreaterOrEqual ([version]'4.83.1.0')
     }
 
     It 'runs the live Graph and ExchangeOnlineManagement import matrix when explicitly enabled' -Tag 'LiveRepro' -Skip:($env:DLLPICKLE_RUN_LIVE_REPRO -ne '1') {

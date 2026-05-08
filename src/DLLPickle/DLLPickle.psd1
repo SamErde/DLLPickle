@@ -71,7 +71,8 @@ FormatsToProcess = 'DLLPickle.Format.ps1xml'
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
 FunctionsToExport = 'Get-DPConfig', 'Set-DPConfig', 'Find-DLLInPSModulePath', 
                'Get-ModuleImportCandidate', 'Get-ModulesWithDependency', 
-               'Get-ModulesWithVersionSortedIdentityClient', 'Import-DPLibrary'
+               'Get-ModulesWithVersionSortedIdentityClient', 'Import-DPLibrary',
+               'Import-DPBaseProfile'
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
 CmdletsToExport = @()
@@ -131,4 +132,3 @@ HelpInfoURI = 'https://day3bits.com/DLLPickle'
 # DefaultCommandPrefix = ''
 
 }
-
