@@ -80,13 +80,31 @@ function Import-DPBaseProfile {
         }
 
         $PreloadResult = @(Import-DPLibrary @PreloadParameters)
+        $FailedPreloadResult = @($PreloadResult | Where-Object Status -EQ 'Failed')
+        $PreloadError = if ($FailedPreloadResult.Count -eq 0) {
+            $null
+        } else {
+            @(
+                foreach ($FailedResult in $FailedPreloadResult) {
+                    if ($FailedResult.DLLName -and $FailedResult.Error) {
+                        '{0}: {1}' -f $FailedResult.DLLName, $FailedResult.Error
+                    } elseif ($FailedResult.DLLName) {
+                        '{0} failed to import.' -f $FailedResult.DLLName
+                    } elseif ($FailedResult.Error) {
+                        $FailedResult.Error
+                    } else {
+                        'An unknown DLL preload failure occurred.'
+                    }
+                }
+            ) -join [System.Environment]::NewLine
+        }
         [PSCustomObject]@{
             PSTypeName = 'DLLPickle.ImportDPBaseProfileResult'
             Name       = 'DLLPickle'
             Version    = $null
             Kind       = 'DependencyPreload'
-            Status     = if (@($PreloadResult | Where-Object Status -EQ 'Failed').Count -eq 0) { 'Imported' } else { 'Failed' }
-            Error      = $null
+            Status     = if ($FailedPreloadResult.Count -eq 0) { 'Imported' } else { 'Failed' }
+            Error      = $PreloadError
         }
 
         if ($PSVersionTable.PSEdition -eq 'Desktop' -and $ModuleName -contains 'Az.Accounts') {

@@ -48,4 +48,20 @@ Describe 'Import-DPBaseProfile' -Tag 'Unit' {
         $Result[1].Name | Should -Be 'Microsoft.Graph.Authentication'
         $Result[2].Name | Should -Be 'Az.Accounts'
     }
+
+    It 'surfaces failed preload details in the dependency preload result' {
+        Mock -CommandName Import-DPLibrary -MockWith {
+            [PSCustomObject]@{
+                DLLName = 'Azure.Core.dll'
+                Status  = 'Failed'
+                Error   = 'Could not load Azure.Core.dll'
+            }
+        }
+
+        $Result = Import-DPBaseProfile -ModuleName 'Microsoft.Graph.Authentication' -SuppressLogo
+
+        $Result[0].Kind | Should -Be 'DependencyPreload'
+        $Result[0].Status | Should -Be 'Failed'
+        $Result[0].Error | Should -Be 'Azure.Core.dll: Could not load Azure.Core.dll'
+    }
 }
