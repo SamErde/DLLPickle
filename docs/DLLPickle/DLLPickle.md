@@ -46,6 +46,10 @@ Gets modules and sorts them by packaged `Microsoft.Identity.Client.dll` version.
 
 Imports DLLPickle dependency libraries.
 
+### [Import-DPBaseProfile](Import-DPBaseProfile.md)
+
+Imports DLLPickle libraries and the validated base Microsoft service modules.
+
 ## Archived Commands
 
 The following pages are retained for historical reference and migration guidance.

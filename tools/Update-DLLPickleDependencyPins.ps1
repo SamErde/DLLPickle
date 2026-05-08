@@ -86,8 +86,14 @@ function Get-DLLPickleCurrentPackageReference {
 
     for ($Index = 0; $Index -lt $ProjectContent.Count; $Index++) {
         $Line = $ProjectContent[$Index]
-        if ($Line -match ('Include="{0}"' -f [regex]::Escape($PackageName)) -and
-            $Line -match ('TargetFramework.*{0}' -f [regex]::Escape($TargetFramework))) {
+        $MatchesPackage = $Line -match ('Include="{0}"' -f [regex]::Escape($PackageName))
+        $MatchesTargetFramework = if ([string]::IsNullOrWhiteSpace($TargetFramework) -or $TargetFramework -eq '*') {
+            $true
+        } else {
+            $Line -match ('TargetFramework.*{0}' -f [regex]::Escape($TargetFramework))
+        }
+
+        if ($MatchesPackage -and $MatchesTargetFramework) {
             $VersionMatch = [regex]::Match($Line, 'Version="([^"]+)"')
             if ($VersionMatch.Success) {
                 return [PSCustomObject]@{

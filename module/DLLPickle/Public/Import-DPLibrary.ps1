@@ -100,8 +100,54 @@
         throw "Binary directory not found for target framework '$TargetFramework' at: $TFMDirectory"
     }
 
+    $NativeRuntimeRoot = Join-Path -Path $TFMDirectory -ChildPath 'runtimes'
+    if (Test-Path -LiteralPath $NativeRuntimeRoot -PathType Container) {
+        $ProcessArchitecture = [System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString().ToLowerInvariant()
+        $IsWindowsHost = [System.Environment]::OSVersion.Platform -eq [System.PlatformID]::Win32NT
+        $RuntimePrefix = if ($IsWindowsHost) {
+            'win'
+        } elseif ($IsMacOS) {
+            'osx'
+        } else {
+            'linux'
+        }
+        $PreferredRuntimeIdentifier = '{0}-{1}' -f $RuntimePrefix, $ProcessArchitecture
+
+        $NativeRuntimeDirectories = @(
+            Microsoft.PowerShell.Management\Get-ChildItem -LiteralPath $NativeRuntimeRoot -Directory -ErrorAction SilentlyContinue |
+                Where-Object { $_.Name -eq $PreferredRuntimeIdentifier } |
+                ForEach-Object {
+                    $NativeDirectory = Join-Path -Path $_.FullName -ChildPath 'native'
+                    if (Test-Path -LiteralPath $NativeDirectory -PathType Container) {
+                        $NativeDirectory
+                    }
+                }
+        )
+
+        if ($NativeRuntimeDirectories.Count -gt 0) {
+            $PathEntries = @([string[]]($env:PATH -split [System.IO.Path]::PathSeparator) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+            $UpdatedPathEntries = [System.Collections.Generic.List[string]]::new()
+            foreach ($NativeRuntimeDirectory in $NativeRuntimeDirectories) {
+                if ($PathEntries -notcontains $NativeRuntimeDirectory) {
+                    $UpdatedPathEntries.Add($NativeRuntimeDirectory)
+                }
+            }
+            foreach ($PathEntry in $PathEntries) {
+                $UpdatedPathEntries.Add($PathEntry)
+            }
+
+            if ($UpdatedPathEntries.Count -gt $PathEntries.Count) {
+                $env:PATH = $UpdatedPathEntries -join [System.IO.Path]::PathSeparator
+                Write-Verbose "Added $($UpdatedPathEntries.Count - $PathEntries.Count) native runtime path(s) for broker dependencies."
+            }
+        }
+    }
+
     # Get all DLL files in the target framework moniker (TFM) directory. If no DLLs are found, throw an error to alert the user about potential installation issues.
-    $DLLFiles = @(Get-ChildItem -Path $TFMDirectory -Filter '*.dll' -File -Recurse -ErrorAction Stop)
+    $DLLFiles = @(
+        Get-ChildItem -Path $TFMDirectory -Filter '*.dll' -File -Recurse -ErrorAction Stop |
+            Where-Object { $_.FullName -notmatch '[\\/]runtimes[\\/].*[\\/]native[\\/]' }
+    )
     if (-not $DLLFiles -or $DLLFiles.Count -eq 0) {
         throw "No DLL files found in '$TFMDirectory'. Ensure that the module is properly installed and the bin directory contains the expected assemblies."
     }

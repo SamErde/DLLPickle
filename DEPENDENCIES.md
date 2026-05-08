@@ -49,10 +49,11 @@ added to the default preload set.
 
 | Package | Current Version | Purpose | Owner | Notes |
 | --------- | ---------------- | --------- | ------- | ------- |
-| **Azure.Core** | 1.51.1 | Azure SDK credential abstractions used by Microsoft.Graph.Authentication | @SamErde | net48 exact pin - matches Microsoft.Graph.Authentication 2.36.1 to avoid Windows PowerShell type identity conflicts |
-| **Microsoft.Identity.Client** | 4.* | Microsoft Authentication Library (MSAL) - Core authentication | @SamErde | Primary dependency - enables auth for MS services |
-| **Microsoft.Identity.Client.Broker** | 4.* | Broker support for MSAL authentication flows | @SamErde | Direct dependency - enables brokered authentication scenarios |
-| **Microsoft.Identity.Client.NativeInterop** | 0.* | Native interop support for broker/native MSAL flows | @SamErde | Supports Broker interop; package major version is currently 0.x |
+| **Azure.Core** | 1.55.0 | Azure SDK credential abstractions used by Microsoft.Graph.Authentication | @SamErde | net48 exact pin - tracks the maintained Azure.Core preload line used to avoid Windows PowerShell type identity conflicts |
+| **Microsoft.Identity.Client** | 4.83.1 | Microsoft Authentication Library (MSAL) - Core authentication | @SamErde | Exact pin - matches the highest MSAL identity currently shipped by the supported base profile modules|
+| **Microsoft.Identity.Client.Broker** | 4.83.1 | Broker support for MSAL authentication flows | @SamErde | Exact pin - kept aligned with MSAL to prevent broker extension missing-method failures|
+| **Microsoft.Identity.Client.Extensions.Msal** | 4.83.1 | MSAL token cache helper used by Az and Graph authentication flows | @SamErde | Exact pin - prevents cache helper missing-method failures after mixed module imports |
+| **Microsoft.Identity.Client.NativeInterop** | 0.20.4 | Native interop support for broker/native MSAL flows | @SamErde | Exact pin - packaged with native runtime files for broker/WAM scenarios |
 | **Microsoft.IdentityModel.Abstractions** | 8.* | Identity model abstractions | @SamErde | Transitive - supports JWT/token handling |
 | **Microsoft.IdentityModel.Logging** | 8.* | Identity diagnostics and logging | @SamErde | Transitive - logging infrastructure |
 | **Microsoft.IdentityModel.JsonWebTokens** | 8.* | JWT token handling | @SamErde | Transitive - JWT creation/validation |
@@ -73,14 +74,14 @@ added to the default preload set.
 
 #### Exact Compatibility Pins
 
-- **Azure.Core 1.51.1** is pinned for the net48 target with NuGet exact-version
-  syntax (`[1.51.1]`) because Microsoft.Graph.Authentication 2.36.1 ships and
-  references that assembly version. Windows PowerShell can load a newer
-  strong-named `Azure.Core` side-by-side with Graph's 1.51.1 copy, which
-  reintroduces the `UserProvidedTokenCredential.GetTokenAsync` type identity
-  failure seen in issue #156.
+- **Azure.Core 1.55.0** is pinned for the net48 target with NuGet exact-version
+  syntax (`[1.55.0]`) to keep the Windows PowerShell preload line explicit and
+  reviewable. Microsoft.Graph.Authentication 2.36.1 ships Azure.Core 1.51.1,
+  and Windows PowerShell can load incompatible strong-named Azure.Core copies
+  side-by-side, which reintroduces the `UserProvidedTokenCredential.GetTokenAsync`
+  type identity failure seen in issue #156.
 - Azure.Core is intentionally not packaged for the net8.0 target because the
-  current Azure.Core 1.51.1 dependency graph includes .NET 10 transitive
+  current Azure.Core dependency graph includes .NET 10 transitive
   assemblies that are not safe to preload across all supported PowerShell 7
   environments. The #156 import-order failure has only been reproduced in
   Windows PowerShell 5.1.
@@ -89,9 +90,25 @@ added to the default preload set.
   unless the issue repro tests and real-module probes show that both Windows
   PowerShell 5.1 and PowerShell 7+ remain compatible.
 - The Upstream Compatibility workflow keeps this review path maintainable by
-  detecting Graph and Teams `Azure.Core` drift, generating a candidate exact pin,
-  regenerating `packages.lock.json`, and validating the issue repro suite before
-  opening a PR.
+   detecting Graph and Teams `Azure.Core` drift, generating a candidate exact pin,
+   regenerating `packages.lock.json`, and validating the issue repro suite before
+   opening a PR.
+- **Microsoft.Identity.Client 4.83.1**, **Microsoft.Identity.Client.Broker
+  4.83.1**, and **Microsoft.Identity.Client.Extensions.Msal 4.83.1** are exact
+  pins because the supported base profile mixes Az.Accounts,
+  Microsoft.Graph.Authentication, MicrosoftTeams, and ExchangeOnlineManagement.
+  Testing showed that a lower cache-helper or broker assembly can produce
+  missing-method failures after those modules are imported in one process.
+- **Microsoft.Identity.Client.NativeInterop 0.20.4** is exact-pinned and its
+  native runtime files are packaged under `bin/<tfm>/runtimes/<rid>/native`.
+  `Import-DPLibrary` adds the current process runtime folder to `PATH` before
+  loading managed assemblies and does not call `Add-Type` for native DLLs.
+- The Upstream Compatibility workflow can now propose candidate exact-pin
+  updates for Azure.Core and the MSAL managed family when monitored PSGallery
+  modules start bundling newer compatible assemblies. Native interop updates
+  still require manual review because the NuGet package and native runtime file
+  versions do not always map directly to the assembly versions bundled by
+  upstream modules.
 
 #### Lock File Workflow (Required)
 
@@ -139,6 +156,12 @@ Some transitive dependencies contain types that depend on APIs not available in 
 **Operational Guidance**:
 
 - Use `Import-DPLibrary -SuppressLogo -ShowLoaderExceptions -Verbose` for detailed diagnostics.
+- Use `Import-DPBaseProfile` for the validated base profile import order:
+  ExchangeOnlineManagement, MicrosoftTeams, Microsoft.Graph.Authentication, and
+  Az.Accounts.
+- For Windows PowerShell 5.1, treat Az.Accounts authentication after Graph or
+  Exchange imports as a known upstream loader limitation. Use PowerShell 7+ or
+  process isolation when `Connect-AzAccount` must run in the same workflow.
 - Use `Set-DPConfig` with `SkipLibraries` only for environment-specific optional assembly incompatibilities.
 
 **Resolution**: All assemblies generally load successfully in PowerShell Core (net8.0), and net48 reliability is improved by packaging and graph-based dependency ordering with deterministic fallback.

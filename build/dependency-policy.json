@@ -30,9 +30,13 @@
   ],
   "trackedAssemblies": [
     "Azure.Core",
+    "Azure.Identity",
+    "Azure.Identity.Broker",
     "Microsoft.Identity.Client",
     "Microsoft.Identity.Client.Broker",
+    "Microsoft.Identity.Client.Extensions.Msal",
     "Microsoft.Identity.Client.NativeInterop",
+    "System.ClientModel",
     "Microsoft.IdentityModel.Abstractions",
     "Microsoft.IdentityModel.JsonWebTokens",
     "Microsoft.IdentityModel.Logging",
@@ -54,6 +58,47 @@
       ],
       "updateMode": "candidatePullRequest",
       "reason": "Windows PowerShell 5.1 requires Azure.Core to match the upstream Graph/Teams assembly identity that triggers issue #156-style type identity failures."
+    },
+    {
+      "packageName": "Microsoft.Identity.Client",
+      "assemblyName": "Microsoft.Identity.Client",
+      "targetFramework": "*",
+      "versionSyntax": "exact",
+      "sourceModules": [
+        "Az.Accounts",
+        "Microsoft.Graph.Authentication",
+        "MicrosoftTeams",
+        "ExchangeOnlineManagement"
+      ],
+      "updateMode": "candidatePullRequest",
+      "reason": "The base profile uses the highest Microsoft.Identity.Client assembly from Az, Graph, Teams, and Exchange so shared MSAL method contracts remain consistent."
+    },
+    {
+      "packageName": "Microsoft.Identity.Client.Broker",
+      "assemblyName": "Microsoft.Identity.Client.Broker",
+      "targetFramework": "*",
+      "versionSyntax": "exact",
+      "sourceModules": [
+        "Az.Accounts",
+        "Microsoft.Graph.Authentication",
+        "MicrosoftTeams",
+        "ExchangeOnlineManagement"
+      ],
+      "updateMode": "candidatePullRequest",
+      "reason": "The base profile requires the broker extension assembly to stay aligned with the selected MSAL line."
+    },
+    {
+      "packageName": "Microsoft.Identity.Client.Extensions.Msal",
+      "assemblyName": "Microsoft.Identity.Client.Extensions.Msal",
+      "targetFramework": "*",
+      "versionSyntax": "exact",
+      "sourceModules": [
+        "Az.Accounts",
+        "Microsoft.Graph.Authentication",
+        "MicrosoftTeams"
+      ],
+      "updateMode": "candidatePullRequest",
+      "reason": "Az.Accounts and Microsoft.Graph.Authentication both use the MSAL cache helper; preloading the highest compatible cache helper prevents missing-method failures after mixed imports."
     }
   ],
   "blockedPreloadAssemblies": [

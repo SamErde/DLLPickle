@@ -44,6 +44,7 @@ Describe 'Dependency automation tooling' -Tag 'Unit' {
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Azure.Core" Version="[1.51.1]" Condition="'$(TargetFramework)' == 'net48'" />
+    <PackageReference Include="Microsoft.Identity.Client" Version="[4.82.1]" />
   </ItemGroup>
 </Project>
 '@ | Set-Content -LiteralPath $ProjectPath -Encoding UTF8
@@ -59,6 +60,15 @@ Describe 'Dependency automation tooling' -Tag 'Unit' {
                     sourceModules = @('Microsoft.Graph.Authentication', 'MicrosoftTeams')
                     updateMode = 'candidatePullRequest'
                     reason = 'Synthetic exact pin test.'
+                }
+                @{
+                    packageName = 'Microsoft.Identity.Client'
+                    assemblyName = 'Microsoft.Identity.Client'
+                    targetFramework = '*'
+                    versionSyntax = 'exact'
+                    sourceModules = @('Az.Accounts', 'Microsoft.Graph.Authentication')
+                    updateMode = 'candidatePullRequest'
+                    reason = 'Synthetic unconditional exact pin test.'
                 }
             )
             blockedPreloadAssemblies = @(
@@ -83,6 +93,22 @@ Describe 'Dependency automation tooling' -Tag 'Unit' {
                             Name = 'Azure.Core'
                             Version = '1.52.0.0'
                             RelativePath = 'Dependencies\Azure.Core.dll'
+                        }
+                        @{
+                            Name = 'Microsoft.Identity.Client'
+                            Version = '4.82.1.0'
+                            RelativePath = 'Dependencies\Microsoft.Identity.Client.dll'
+                        }
+                    )
+                }
+                @{
+                    Name = 'Az.Accounts'
+                    Version = '5.4.0'
+                    TrackedAssemblies = @(
+                        @{
+                            Name = 'Microsoft.Identity.Client'
+                            Version = '4.83.1.0'
+                            RelativePath = 'Microsoft.Identity.Client.dll'
                         }
                     )
                 }
@@ -117,6 +143,7 @@ Describe 'Dependency automation tooling' -Tag 'Unit' {
         $Report.Changes[0].CandidateVersion | Should -Be '[1.53.0]'
         $Report.Changes[0].SourceModule | Should -Be 'MicrosoftTeams'
         Get-Content -LiteralPath $ProjectPath -Raw | Should -Match 'Version="\[1\.53\.0\]"'
+        Get-Content -LiteralPath $ProjectPath -Raw | Should -Match 'Include="Microsoft\.Identity\.Client" Version="\[4\.83\.1\]"'
         @($Report.BlockedFindings) | Should -HaveCount 1
         $Report.BlockedFindings[0].AssemblyName | Should -Be 'Microsoft.OData.Core'
     }
