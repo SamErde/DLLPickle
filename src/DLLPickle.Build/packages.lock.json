@@ -25,9 +25,9 @@
       },
       "Microsoft.Identity.Client": {
         "type": "Direct",
-        "requested": "[4.84.0, 4.84.0]",
-        "resolved": "4.84.0",
-        "contentHash": "Ac2pabU2W+p9yxPaILnoKhjj3HYefuJpKHcngJSljs8LVS05I19UtsJvbIrphG4fbJSdUcwpnpNzhARz/98SCA==",
+        "requested": "[4.84.1, 4.84.1]",
+        "resolved": "4.84.1",
+        "contentHash": "60+xPFQgNattMRnVksYten6wRUHNCDzjlJnerGF2C2xXpsCkUHgLE4jkaoXKuIPtmq4zubs09I6sIsWVpZBsSA==",
         "dependencies": {
           "Microsoft.IdentityModel.Abstractions": "8.14.0",
           "System.Diagnostics.DiagnosticSource": "6.0.1",
@@ -37,11 +37,11 @@
       },
       "Microsoft.Identity.Client.Broker": {
         "type": "Direct",
-        "requested": "[4.84.0, 4.84.0]",
-        "resolved": "4.84.0",
-        "contentHash": "skDaMKb5WuCkSG84CJDDkpKTazTEU9kEWKyFlwi8Fi2Fy6GByqtlvJ/15AjeVfH7pI+/IbvaFhZkdDLITeaPCA==",
+        "requested": "[4.84.1, 4.84.1]",
+        "resolved": "4.84.1",
+        "contentHash": "A5SCBuLqf/eHfgc+fx/1uBj7wBKFaWXJZ/lQ/skm+8v2L+tYe8lTeqQ0hNiTqYFjyk44KGnWD4FDLEkONN7zBg==",
         "dependencies": {
-          "Microsoft.Identity.Client": "4.84.0",
+          "Microsoft.Identity.Client": "4.84.1",
           "Microsoft.Identity.Client.NativeInterop": "0.20.4"
         }
       },
