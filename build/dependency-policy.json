@@ -52,12 +52,13 @@
       "assemblyName": "Azure.Core",
       "targetFramework": "net8.0",
       "versionSyntax": "exact",
+      "maximumPackageVersion": "1.50.0",
       "sourceModules": [
         "Microsoft.Graph.Authentication",
         "MicrosoftTeams"
       ],
       "updateMode": "candidatePullRequest",
-      "reason": "The PowerShell 7.4+ runtime profile requires Azure.Core to stay aligned with the upstream Graph/Teams assembly identity used by mixed-module sessions."
+      "reason": "The PowerShell 7.4+ runtime profile requires Azure.Core to stay on the highest .NET 8-compatible dependency line; newer Azure.Core pins currently bring .NET 10 runtime assemblies that do not load on the 7.4 baseline."
     },
     {
       "packageName": "Microsoft.Identity.Client",

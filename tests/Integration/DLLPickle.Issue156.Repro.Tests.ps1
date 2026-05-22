@@ -90,7 +90,7 @@ if (-not $global:DllPickleSyntheticImportOrder) {
 }
 
 if (($global:DllPickleSyntheticImportOrder -contains 'ExchangeOnlineManagement') -and
-    -not (Test-DLLPickleSyntheticAssemblyVersion -Name 'Azure.Core' -MinimumVersion ([version]'1.51.1.0'))) {
+    -not (Test-DLLPickleSyntheticAssemblyVersion -Name 'Azure.Core' -MinimumVersion ([version]'1.50.0.0'))) {
     throw [System.TypeLoadException]::new("Method 'GetTokenAsync' in type 'Microsoft.Graph.PowerShell.Authentication.Core.Utilities.UserProvidedTokenCredential' from assembly 'Microsoft.Graph.Authentication.Core' does not have an implementation.")
 }
 
@@ -152,7 +152,7 @@ Describe 'Issue 156 Graph and ExchangeOnlineManagement reproduction' -Tag 'Integ
         $GraphStep.Success | Should -BeTrue
         $FinalAssemblies = @($Result.Steps | Select-Object -Last 1 -ExpandProperty AssembliesAfter)
         $AzureCore = $FinalAssemblies | Where-Object Name -eq 'Azure.Core' | Select-Object -First 1
-        ([version]$AzureCore.Version) | Should -BeGreaterOrEqual ([version]'1.55.0.0')
+        ([version]$AzureCore.Version) | Should -BeGreaterOrEqual ([version]'1.50.0.0')
     }
 
     It 'captures a lazy ExchangeOnlineManagement broker failure after Graph is loaded first without DLLPickle preloading' {

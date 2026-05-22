@@ -57,6 +57,7 @@ Describe 'Dependency automation tooling' -Tag 'Unit' {
                     assemblyName = 'Azure.Core'
                     targetFramework = 'net8.0'
                     versionSyntax = 'exact'
+                    maximumPackageVersion = '1.50.0'
                     sourceModules = @('Microsoft.Graph.Authentication', 'MicrosoftTeams')
                     updateMode = 'candidatePullRequest'
                     reason = 'Synthetic exact pin test.'
@@ -140,9 +141,10 @@ Describe 'Dependency automation tooling' -Tag 'Unit' {
         $Report = & $script:UpdateScriptPath -InventoryPath $InventoryPath -PolicyPath $PolicyPath -ProjectPath $ProjectPath -OutputPath (Join-Path $TestDrive 'candidate-report.json') -Confirm:$false -WhatIf:$false
 
         $Report.ProjectChanged | Should -BeTrue
-        $Report.Changes[0].CandidateVersion | Should -Be '[1.53.0]'
+        $Report.Changes[0].CandidateVersion | Should -Be '[1.50.0]'
         $Report.Changes[0].SourceModule | Should -Be 'MicrosoftTeams'
-        Get-Content -LiteralPath $ProjectPath -Raw | Should -Match 'Version="\[1\.53\.0\]"'
+        $Report.Warnings | Should -Contain "PackageReference 'Azure.Core' candidate '1.53.0' exceeds maximum '1.50.0' for target framework 'net8.0'; using maximum version."
+        Get-Content -LiteralPath $ProjectPath -Raw | Should -Match 'Version="\[1\.50\.0\]"'
         Get-Content -LiteralPath $ProjectPath -Raw | Should -Match 'Include="Microsoft\.Identity\.Client" Version="\[4\.83\.1\]"'
         @($Report.BlockedFindings) | Should -HaveCount 1
         $Report.BlockedFindings[0].AssemblyName | Should -Be 'Microsoft.OData.Core'
