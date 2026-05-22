@@ -7,17 +7,17 @@
 
 ## Executive Summary
 
-DLLPickle has a solid foundation: pinned action SHAs, OSSF Scorecard, Dependabot, Dependency Review, CODEOWNERS, and a `packages.lock.json`. However, there are meaningful gaps between what exists and a high-trust module pipeline. The most critical gap is that **PSScriptAnalyzer results are never surfaced to GitHub's code scanning dashboard**, and **the NuGet lock file is not enforced during PR validation**. Several PR checks also have path filters that exclude important directories, meaning changes to build scripts or tests bypass validation entirely.
+DLLPickle has a solid foundation: pinned action SHAs, OSSF Scorecard, Dependabot, Dependency Review, CODEOWNERS, and a `packages.lock.json`. This review records pipeline hardening implemented in the PowerShell 7.4+ migration, including **PSScriptAnalyzer SARIF upload to GitHub code scanning** and **NuGet lock-file enforcement during PR validation**. Remaining recommendations focus on preserving those controls and continuing to close validation gaps.
 
 ---
 
 ## Findings and Recommendations
 
-### 1. PSScriptAnalyzer SARIF Upload (Critical Gap)
+### 1. PSScriptAnalyzer SARIF Upload (Implemented)
 
-**Current state:** PSScriptAnalyzer runs as the `Analyze` task inside `Invoke-Build`, but the results are only surfaced as a build failure — they are never uploaded to GitHub's Code Scanning dashboard as a SARIF report.
+**Current state:** The Build Module workflow runs PSScriptAnalyzer, exports SARIF, and uploads the report to GitHub's Code Scanning dashboard. Analyzer findings are therefore available as build failures, PR annotations, and Security tab entries.
 
-**Recommendation:** Add a step to the Build Module workflow that converts PSScriptAnalyzer output to SARIF format and uploads it using `github/codeql-action/upload-sarif`. PSScriptAnalyzer supports SARIF output natively. This surfaces violations as inline annotations on PRs and populates the Security tab.
+Implemented workflow permissions:
 
 Required workflow permissions addition:
 
@@ -27,7 +27,7 @@ permissions:
   security-events: write  # needed for SARIF upload
 ```
 
-Example step to add after the build/analyze step:
+Implemented workflow pattern:
 
 ```yaml
 - name: Run PSScriptAnalyzer and export SARIF
@@ -45,31 +45,31 @@ Example step to add after the build/analyze step:
     category: psscriptanalyzer
 ```
 
-> Note: The `ConvertTo-Sarif` cmdlet is available via the `PSScriptAnalyzer` module (v1.22+). Verify your pinned version supports it.
+> Note: Keep the pinned PSScriptAnalyzer version on a release that supports SARIF output.
 
 ---
 
-### 2. NuGet Lock File Not Enforced During PR Validation (Critical Gap)
+### 2. NuGet Lock File Enforcement During PR Validation (Implemented)
 
-**Current state:** `DLLPickle.csproj` correctly sets `<RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>`, which generates a `packages.lock.json`. However, `Validate-Packages.yml` uses `--force-evaluate` on restore:
-
-```yaml
-run: dotnet restore src/DLLPickle.Build/DLLPickle.csproj --force-evaluate
-```
-
-`--force-evaluate` **regenerates** the lock file from scratch at runtime, completely bypassing the committed `packages.lock.json`. A malicious or accidental change to `DLLPickle.csproj` package references would silently resolve to different packages without detection.
-
-**Recommendation:** Use `--locked-mode` on PR events (supply chain enforcement) and retain `--force-evaluate` for manual (`workflow_dispatch`) and push runs where a developer may intentionally be updating the lock file. This preserves full local/manual flexibility while enforcing the lock file on every PR.
+**Current state:** `DLLPickle.csproj` sets `<RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>`, the generated `packages.lock.json` is committed, and `Validate-Packages.yml` restores in locked mode during PR validation:
 
 ```yaml
-- name: Restore dependencies
-  run: dotnet restore src/DLLPickle.Build/DLLPickle.csproj ${{ github.event_name == 'pull_request' && '--locked-mode' || '--force-evaluate' }}
+run: dotnet restore src/DLLPickle.Build/DLLPickle.csproj --locked-mode
 ```
 
-With this change, behavior differs by trigger event:
+`--locked-mode` fails the build if the resolved package graph differs from the committed lock file, preventing accidental or malicious package reference drift from passing PR validation.
 
-- **PR checks** → `--locked-mode` fails the build if resolved packages differ from the committed lock file.
-- **`workflow_dispatch` / push** → `--force-evaluate` allows regeneration when updating dependencies intentionally.
+When intentionally updating dependencies, regenerate the lock file locally or in a controlled maintenance workflow with `--force-evaluate`, review the resulting lock-file diff, and commit it with the package reference change.
+
+```yaml
+- name: Restore dependencies in locked mode
+  run: dotnet restore src/DLLPickle.Build/DLLPickle.csproj --locked-mode
+```
+
+With this behavior:
+
+- **PR checks** -> `--locked-mode` fails the build if resolved packages differ from the committed lock file.
+- **Dependency maintenance** -> `--force-evaluate` is used only when intentionally regenerating and reviewing the lock file.
 
 ---
 

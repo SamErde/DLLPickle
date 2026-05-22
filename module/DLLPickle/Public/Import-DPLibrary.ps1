@@ -169,7 +169,6 @@
     $RetryCount = 0
     $LoadFailureDetailsByDLLName = @{}
     $InitiallyLoadedAssemblyKeys = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
-    $InitiallyLoadedAssemblyNames = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
     $AssemblyPathBySimpleName = @{}
     foreach ($CandidateDLL in $DLLFiles) {
         try {
@@ -180,6 +179,46 @@
         } catch {
             Write-Verbose "Skipping resolver map entry for '$($CandidateDLL.Name)' because assembly metadata could not be read."
         }
+    }
+
+    function ConvertTo-DPPublicKeyTokenText {
+        param([byte[]]$PublicKeyToken)
+
+        if ($PublicKeyToken -and $PublicKeyToken.Length -gt 0) {
+            return [string]::Join(',', $PublicKeyToken)
+        }
+
+        return ''
+    }
+
+    function Test-DPAssemblyIdentityCompatible {
+        param(
+            [Parameter(Mandatory)]
+            [System.Reflection.AssemblyName]$CandidateAssemblyName,
+
+            [Parameter(Mandatory)]
+            [System.Reflection.AssemblyName]$RequestedAssemblyName,
+
+            [Parameter()]
+            [switch]$AllowNewerVersion
+        )
+
+        $NamesMatch = $CandidateAssemblyName.Name -eq $RequestedAssemblyName.Name
+        $CulturesMatch = [string]$CandidateAssemblyName.CultureName -eq [string]$RequestedAssemblyName.CultureName
+        $CandidateTokenText = ConvertTo-DPPublicKeyTokenText -PublicKeyToken $CandidateAssemblyName.GetPublicKeyToken()
+        $RequestedTokenText = ConvertTo-DPPublicKeyTokenText -PublicKeyToken $RequestedAssemblyName.GetPublicKeyToken()
+        $TokensMatch = $CandidateTokenText -eq $RequestedTokenText
+        $VersionsMatch = if ($RequestedAssemblyName.Version) {
+            if ($AllowNewerVersion.IsPresent) {
+                $CandidateAssemblyName.Version -ge $RequestedAssemblyName.Version
+            } else {
+                $CandidateAssemblyName.Version -eq $RequestedAssemblyName.Version
+            }
+        } else {
+            $true
+        }
+
+        return $NamesMatch -and $CulturesMatch -and $TokensMatch -and $VersionsMatch
     }
 
     $AssemblyResolveHandler = [System.ResolveEventHandler] {
@@ -196,12 +235,7 @@
         $AlreadyLoadedAssembly = [System.AppDomain]::CurrentDomain.GetAssemblies() |
             Where-Object {
                 $LoadedName = $_.GetName()
-                if ($RequestedAssemblyName.Version) {
-                    ($LoadedName.Name -eq $RequestedAssemblyName.Name) -and
-                    ($LoadedName.Version -eq $RequestedAssemblyName.Version)
-                } else {
-                    $LoadedName.Name -eq $RequestedAssemblyName.Name
-                }
+                Test-DPAssemblyIdentityCompatible -CandidateAssemblyName $LoadedName -RequestedAssemblyName $RequestedAssemblyName
             } | Select-Object -First 1
         if ($AlreadyLoadedAssembly) {
             return $AlreadyLoadedAssembly
@@ -216,26 +250,7 @@
                     return $null
                 }
 
-                $NamesMatch = ($CandidateAssemblyName.Name -eq $RequestedAssemblyName.Name)
-
-                $CulturesMatch = $true
-                if ($RequestedAssemblyName.CultureName -or $CandidateAssemblyName.CultureName) {
-                    $CulturesMatch = ($RequestedAssemblyName.CultureName -eq $CandidateAssemblyName.CultureName)
-                }
-
-                $TokensMatch = $true
-                $RequestedToken = $RequestedAssemblyName.GetPublicKeyToken()
-                $CandidateToken = $CandidateAssemblyName.GetPublicKeyToken()
-                if ( ($RequestedToken -and $RequestedToken.Length -gt 0) -or ($CandidateToken -and $CandidateToken.Length -gt 0) ) {
-                    $TokensMatch = ([string]::Join(',', $RequestedToken) -eq [string]::Join(',', $CandidateToken))
-                }
-
-                $VersionMatch = $true
-                if ($RequestedAssemblyName.Version) {
-                    $VersionMatch = ($RequestedAssemblyName.Version -eq $CandidateAssemblyName.Version)
-                }
-
-                if ($NamesMatch -and $CulturesMatch -and $TokensMatch -and $VersionMatch) {
+                if (Test-DPAssemblyIdentityCompatible -CandidateAssemblyName $CandidateAssemblyName -RequestedAssemblyName $RequestedAssemblyName) {
                     try {
                         return [System.Reflection.Assembly]::LoadFrom($ResolvedPath)
                     } catch {
@@ -251,8 +266,7 @@
 
     foreach ($Loaded in [System.AppDomain]::CurrentDomain.GetAssemblies()) {
         $LoadedName = $Loaded.GetName()
-        [void]$InitiallyLoadedAssemblyKeys.Add("$($LoadedName.Name)|$($LoadedName.Version)")
-        [void]$InitiallyLoadedAssemblyNames.Add($LoadedName.Name)
+        [void]$InitiallyLoadedAssemblyKeys.Add($LoadedName.FullName)
     }
 
     $TrustedPlatformAssemblyPathByName = @{}
@@ -329,14 +343,13 @@
                     $LoadedAssembly = [System.AppDomain]::CurrentDomain.GetAssemblies() |
                         Where-Object {
                             $LoadedName = $_.GetName()
-                            $LoadedName.Name -eq $AssemblyName.Name -and $LoadedName.Version -ge $AssemblyName.Version
+                            Test-DPAssemblyIdentityCompatible -CandidateAssemblyName $LoadedName -RequestedAssemblyName $AssemblyName -AllowNewerVersion
                         } |
                         Select-Object -First 1
 
                     if ($LoadedAssembly) {
                         $LoadedAssemblyName = $LoadedAssembly.GetName()
-                        $LoadedAssemblyKey = "$($LoadedAssemblyName.Name)|$($LoadedAssemblyName.Version)"
-                        $Status = if ($InitiallyLoadedAssemblyKeys.Contains($LoadedAssemblyKey) -or $InitiallyLoadedAssemblyNames.Contains($AssemblyName.Name)) { 'Already Loaded' } else { 'Imported' }
+                        $Status = if ($InitiallyLoadedAssemblyKeys.Contains($LoadedAssemblyName.FullName)) { 'Already Loaded' } else { 'Imported' }
                         if ($Status -eq 'Already Loaded') {
                             Write-Verbose "Assembly already loaded: $($DLLFile.BaseName)"
                         } else {
@@ -361,10 +374,12 @@
                             }
 
                             if ($CandidateRuntimeAssemblyName) {
-                                $RequestedToken = $AssemblyName.GetPublicKeyToken()
-                                $CandidateToken = $CandidateRuntimeAssemblyName.GetPublicKeyToken()
-                                $TokensMatch = [string]::Join(',', $RequestedToken) -eq [string]::Join(',', $CandidateToken)
+                                $CulturesMatch = [string]$CandidateRuntimeAssemblyName.CultureName -eq [string]$AssemblyName.CultureName
+                                $CandidateTokenText = ConvertTo-DPPublicKeyTokenText -PublicKeyToken $CandidateRuntimeAssemblyName.GetPublicKeyToken()
+                                $RequestedTokenText = ConvertTo-DPPublicKeyTokenText -PublicKeyToken $AssemblyName.GetPublicKeyToken()
+                                $TokensMatch = $CandidateTokenText -eq $RequestedTokenText
                                 if (
+                                    $CulturesMatch -and
                                     $TokensMatch -and
                                     $CandidateRuntimeAssemblyName.Version.Major -ge $AssemblyName.Version.Major
                                 ) {
