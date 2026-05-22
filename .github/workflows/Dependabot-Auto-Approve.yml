@@ -20,6 +20,35 @@ jobs:
     # Permissions are now handled by the App Token, so we don't need job-level overrides
 
     steps:
+      - name: 🔍 Validate GitHub App Secrets
+        id: validate_secrets
+        shell: bash
+        run: |
+          echo "Validating required GitHub App secrets..."
+          
+          if [ -z "${{ secrets.CLIENT_ID }}" ]; then
+            echo "❌ ERROR: secrets.CLIENT_ID is not configured"
+            echo "This workflow requires GitHub App authentication to function."
+            echo ""
+            echo "Setup Instructions:"
+            echo "1. Create a GitHub App or use an existing organization app"
+            echo "2. Generate a private key for the app"
+            echo "3. Add these secrets to your repository:"
+            echo "   - secrets.CLIENT_ID: The GitHub App's Client ID"
+            echo "   - secrets.APP_PRIVATE_KEY: The GitHub App's private key"
+            echo ""
+            echo "See: https://docs.github.com/en/apps/creating-github-apps/"
+            exit 1
+          fi
+          
+          if [ -z "${{ secrets.APP_PRIVATE_KEY }}" ]; then
+            echo "❌ ERROR: secrets.APP_PRIVATE_KEY is not configured"
+            echo "This workflow requires GitHub App authentication to function."
+            exit 1
+          fi
+          
+          echo "✅ Required secrets are configured"
+
       - name: Generate GitHub App Token
         id: generate_token
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
