@@ -37,10 +37,7 @@ For more information about how this works, [read here](https://raw.githubusercon
 
 ### Prerequisites
 
-Any of the following PowerShell editions:
-
-- PowerShell on Linux, macOS, or Windows
-- PowerShell 7.4 or later
+PowerShell 7.4 or later on Linux, macOS, or Windows.
 
 ### Installation
 

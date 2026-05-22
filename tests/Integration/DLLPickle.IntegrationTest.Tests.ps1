@@ -13,18 +13,7 @@ Describe 'Built module integration validation' -Tag 'Integration' {
 
         $Result = Import-DPLibrary -SuppressLogo -ShowLoaderExceptions -Verbose 4>&1
         $ImportResults = @($Result | Where-Object { $_.PSObject.Properties.Name -contains 'Status' })
-        $AllowedFrameworkLoadFailures = @(
-            'Microsoft.Bcl.AsyncInterfaces.dll'
-            'System.Diagnostics.DiagnosticSource.dll'
-            'System.Text.Encodings.Web.dll'
-            'System.Text.Json.dll'
-        )
-        $BlockingFailures = @(
-            $ImportResults |
-                Where-Object Status -EQ 'Failed' |
-                Where-Object { $_.DLLName -notin $AllowedFrameworkLoadFailures }
-        )
 
-        $BlockingFailures | Should -BeNullOrEmpty
+        @($ImportResults | Where-Object Status -EQ 'Failed') | Should -BeNullOrEmpty
     }
 }

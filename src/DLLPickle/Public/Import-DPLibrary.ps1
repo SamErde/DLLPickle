@@ -169,6 +169,7 @@
     $RetryCount = 0
     $LoadFailureDetailsByDLLName = @{}
     $InitiallyLoadedAssemblyKeys = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    $InitiallyLoadedAssemblyNames = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
     $AssemblyPathBySimpleName = @{}
     foreach ($CandidateDLL in $DLLFiles) {
         try {
@@ -251,6 +252,30 @@
     foreach ($Loaded in [System.AppDomain]::CurrentDomain.GetAssemblies()) {
         $LoadedName = $Loaded.GetName()
         [void]$InitiallyLoadedAssemblyKeys.Add("$($LoadedName.Name)|$($LoadedName.Version)")
+        [void]$InitiallyLoadedAssemblyNames.Add($LoadedName.Name)
+    }
+
+    $TrustedPlatformAssemblyByName = @{}
+    $TrustedPlatformAssemblyPaths = [System.AppContext]::GetData('TRUSTED_PLATFORM_ASSEMBLIES')
+    if ($TrustedPlatformAssemblyPaths) {
+        foreach ($TrustedPlatformAssemblyPath in @([string]$TrustedPlatformAssemblyPaths -split [System.IO.Path]::PathSeparator)) {
+            if ([string]::IsNullOrWhiteSpace($TrustedPlatformAssemblyPath)) {
+                continue
+            }
+
+            try {
+                $TrustedPlatformAssemblyName = [System.Reflection.AssemblyName]::GetAssemblyName($TrustedPlatformAssemblyPath)
+            } catch {
+                continue
+            }
+
+            if (
+                -not $TrustedPlatformAssemblyByName.ContainsKey($TrustedPlatformAssemblyName.Name) -or
+                $TrustedPlatformAssemblyByName[$TrustedPlatformAssemblyName.Name].Version -lt $TrustedPlatformAssemblyName.Version
+            ) {
+                $TrustedPlatformAssemblyByName[$TrustedPlatformAssemblyName.Name] = $TrustedPlatformAssemblyName
+            }
+        }
     }
 
     $RecordFinalFailure = {
@@ -306,12 +331,17 @@
                 try {
                     # Check if assembly is already loaded
                     $AssemblyName = [System.Reflection.AssemblyName]::GetAssemblyName($FilePath)
-                    $AssemblyKey = "$($AssemblyName.Name)|$($AssemblyName.Version)"
                     $LoadedAssembly = [System.AppDomain]::CurrentDomain.GetAssemblies() |
-                        Where-Object { $_.GetName().Name -eq $AssemblyName.Name -and $_.GetName().Version -eq $AssemblyName.Version }
+                        Where-Object {
+                            $LoadedName = $_.GetName()
+                            $LoadedName.Name -eq $AssemblyName.Name -and $LoadedName.Version -ge $AssemblyName.Version
+                        } |
+                        Select-Object -First 1
 
                     if ($LoadedAssembly) {
-                        $Status = if ($InitiallyLoadedAssemblyKeys.Contains($AssemblyKey)) { 'Already Loaded' } else { 'Imported' }
+                        $LoadedAssemblyName = $LoadedAssembly.GetName()
+                        $LoadedAssemblyKey = "$($LoadedAssemblyName.Name)|$($LoadedAssemblyName.Version)"
+                        $Status = if ($InitiallyLoadedAssemblyKeys.Contains($LoadedAssemblyKey) -or $InitiallyLoadedAssemblyNames.Contains($AssemblyName.Name)) { 'Already Loaded' } else { 'Imported' }
                         if ($Status -eq 'Already Loaded') {
                             Write-Verbose "Assembly already loaded: $($DLLFile.BaseName)"
                         } else {
@@ -320,9 +350,24 @@
                         [void]$Results.Add([PSCustomObject]@{
                                 PSTypeName      = 'DLLPickle.ImportDPLibraryResult'
                                 DLLName         = $DLLFile.Name
-                                AssemblyName    = $AssemblyName.Name
-                                AssemblyVersion = $AssemblyName.Version.ToString()
+                                AssemblyName    = $LoadedAssemblyName.Name
+                                AssemblyVersion = $LoadedAssemblyName.Version.ToString()
                                 Status          = $Status
+                                Error           = $null
+                            })
+                        [void]$ResultDLLNames.Add($DLLFile.Name)
+                    } elseif (
+                        $TrustedPlatformAssemblyByName.ContainsKey($AssemblyName.Name) -and
+                        $TrustedPlatformAssemblyByName[$AssemblyName.Name].Version -ge $AssemblyName.Version
+                    ) {
+                        $RuntimeAssemblyName = $TrustedPlatformAssemblyByName[$AssemblyName.Name]
+                        Write-Verbose "Runtime provides compatible assembly: $($AssemblyName.Name) $($RuntimeAssemblyName.Version)"
+                        [void]$Results.Add([PSCustomObject]@{
+                                PSTypeName      = 'DLLPickle.ImportDPLibraryResult'
+                                DLLName         = $DLLFile.Name
+                                AssemblyName    = $RuntimeAssemblyName.Name
+                                AssemblyVersion = $RuntimeAssemblyName.Version.ToString()
+                                Status          = 'Already Loaded'
                                 Error           = $null
                             })
                         [void]$ResultDLLNames.Add($DLLFile.Name)

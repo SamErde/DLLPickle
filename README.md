@@ -17,10 +17,7 @@ A PowerShell module that helps you get un-stuck from dependency version conflict
 
 ### Prerequisites
 
-Any of the following PowerShell editions:
-
-- PowerShell on Linux, macOS, or Windows
-- PowerShell 7.4 or later
+PowerShell 7.4 or later on Linux, macOS, or Windows.
 
 ### Installation
 
