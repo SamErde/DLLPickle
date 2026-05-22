@@ -12,7 +12,7 @@ function Invoke-DLLPickleScenario {
     The scenario name recorded in the JSON result.
 
     .PARAMETER PowerShellExecutable
-    The PowerShell executable to run, such as pwsh or powershell.exe.
+    The PowerShell executable to run, such as pwsh.
 
     .PARAMETER ModuleManifestPath
     Path to the DLLPickle module manifest to expose to scenario steps as
@@ -347,4 +347,3 @@ exit 0
         Remove-Item -LiteralPath $ChildScriptPath -Force -ErrorAction SilentlyContinue
     }
 }
-

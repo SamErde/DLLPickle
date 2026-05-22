@@ -24,16 +24,8 @@ permissions:
 
 jobs:
   build-test:
-    name: Build .NET Packages (${{ matrix.name }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: Windows PowerShell 5.1
-            os: windows-2025
-          - name: Windows PowerShell Core
-            os: windows-2025
+    name: Build .NET Packages
+    runs-on: windows-2025
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -47,22 +39,10 @@ jobs:
           cache: true
           cache-dependency-path: 'src/DLLPickle.Build/packages.lock.json'
 
-      - name: Restore dependencies (Windows PowerShell 5.1)
-        if: matrix.name == 'Windows PowerShell 5.1'
-        shell: powershell
-        run: dotnet restore src/DLLPickle.Build/DLLPickle.csproj --locked-mode
-
-      - name: Restore dependencies (PowerShell Core)
-        if: matrix.name != 'Windows PowerShell 5.1'
+      - name: Restore dependencies
         shell: pwsh
         run: dotnet restore src/DLLPickle.Build/DLLPickle.csproj --locked-mode
 
-      - name: Build (Windows PowerShell 5.1)
-        if: matrix.name == 'Windows PowerShell 5.1'
-        shell: powershell
-        run: dotnet build src/DLLPickle.Build/DLLPickle.csproj --configuration Release --no-restore
-
-      - name: Build (PowerShell Core)
-        if: matrix.name != 'Windows PowerShell 5.1'
+      - name: Build
         shell: pwsh
         run: dotnet build src/DLLPickle.Build/DLLPickle.csproj --configuration Release --no-restore

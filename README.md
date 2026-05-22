@@ -17,10 +17,7 @@ A PowerShell module that helps you get un-stuck from dependency version conflict
 
 ### Prerequisites
 
-Any of the following PowerShell editions:
-
-- PowerShell on Linux, macOS, or Windows
-- Windows PowerShell 5.1
+PowerShell 7.4 or later on Linux, macOS, or Windows.
 
 ### Installation
 
@@ -108,12 +105,11 @@ The easiest way to benefit from DLL Pickle is to import the module in your Power
 
 Alternatively, if you are starting work in a new PowerShell session in which you know you will be authenticating to multiple online services, you can run `Import-DPLibrary` at the beginning of your session and then proceed with connecting to Microsoft's online services using their first party modules.
 
-### ⚙️ Platform Caveats
+### ⚙️ Platform Support
 
-- **PowerShell 7+ (Core, net8.0):** Full support and best overall compatibility.
-- **Windows PowerShell 5.1 (Desktop, net48):** Supported with dependency-graph-based loading order, deterministic fallback for unresolved graph nodes, local assembly resolution fallback, and retry behavior for transitive assembly resolution.
+- **PowerShell 7.4+ (Core, net8.0):** Fully supported target runtime.
 
-If you need diagnostic details in Windows PowerShell 5.1, run:
+If you need diagnostic details, run:
 
 ```powershell
 Import-DPLibrary -ShowLoaderExceptions -Verbose

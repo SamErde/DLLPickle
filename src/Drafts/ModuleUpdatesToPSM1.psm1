@@ -8,11 +8,7 @@ if ($AlreadyLoaded) {
 
 
 
-if ($PSVersionTable.PSEdition -eq 'Desktop') {
-    $Tfm = 'net48'
-} else {
-    $Tfm = 'net8.0'
-}
+$Tfm = 'net8.0'
 #endregion Check During Module Import
 
 
@@ -20,11 +16,7 @@ if ($PSVersionTable.PSEdition -eq 'Desktop') {
 #region BaseModule Example
 $basePath = Join-Path $PSScriptRoot 'bin'
 
-if ($PSVersionTable.PSVersion.Major -eq 5) {
-    $tfm = 'net48'
-} else {
-    $tfm = 'net8.0'
-}
+$tfm = 'net8.0'
 
 $assemblyPath = Join-Path $basePath $tfm
 
@@ -183,11 +175,7 @@ foreach ($name in $ExpectedAssemblies.Keys) {
 # -------------------------------
 $basePath = Join-Path $PSScriptRoot 'bin'
 
-if ($PSVersionTable.PSVersion.Major -eq 5) {
-    $tfm = 'net48'
-} else {
-    $tfm = 'net8.0'
-}
+$tfm = 'net8.0'
 
 $assemblyPath = Join-Path $basePath $tfm
 

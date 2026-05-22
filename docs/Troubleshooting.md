@@ -69,12 +69,10 @@ differences by name, version, and location.
 
 ### Issue #156: Graph Authentication and ExchangeOnlineManagement
 
-DLLPickle packages an exact net48 `Azure.Core` 1.55.0 dependency and exact MSAL
-managed-family pins for the supported base profile. Real Windows PowerShell
-validation showed that preloading a newer `Azure.Core` can still allow Graph's
-1.51.1 copy to load side-by-side, which causes the `GetTokenAsync` type identity
-failure. The issue repro tests assert that the protected Windows PowerShell
-import path uses the maintained Azure.Core preload line.
+DLLPickle packages exact `Azure.Core` and MSAL managed-family pins for the
+supported base profile. The issue repro tests assert that the protected import
+path maintains the expected `Azure.Core` preload line to avoid
+`GetTokenAsync` type identity failures.
 
 For sessions that need Exchange Online, Microsoft Teams, Microsoft Graph, and
 Az.Accounts imported together, use:
@@ -91,16 +89,15 @@ This imports the validated base profile order:
 1. `Microsoft.Graph.Authentication`
 1. `Az.Accounts`
 
-Windows PowerShell 5.1 can still fail if `Az.Accounts` is imported before
-Microsoft Graph because Az.Accounts can load older Azure identity assemblies
-first. PowerShell 7+ import-only testing is more flexible, but the same order is
-recommended for consistency.
+`Az.Accounts` can still fail if it is imported before Microsoft Graph because it
+may load older Azure identity assemblies first. The same order is recommended
+for consistency.
 
-Windows PowerShell 5.1 has a remaining Az authentication limitation even with
-the validated import order: `Connect-AzAccount` can fail after Graph or Exchange
-loads Azure.Identity because Az.Accounts uses a module-local assembly loader.
-Use PowerShell 7+ for the full connected base profile, or run Az authentication
-and Az cmdlets in a separate process from Graph/Exchange workloads.
+There is a remaining Az authentication limitation even with the validated import
+order: `Connect-AzAccount` can fail after Graph or Exchange loads Azure.Identity
+because Az.Accounts uses a module-local assembly loader. Run Az authentication
+and Az cmdlets in a separate process from Graph/Exchange workloads when this
+occurs.
 
 ### Issue #174: Az.Storage and ExchangeOnlineManagement OData
 

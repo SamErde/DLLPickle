@@ -53,7 +53,7 @@ function Test-ManifestBool ($Path) {
 [string[]]$str = 'Clean', 'ValidateRequirements', 'ImportModuleManifest'
 $str += 'FormattingCheck'
 $str += 'Analyze', 'Test'
-$str += 'CreateHelpStart', 'RestoreDependencies', 'PrepareModuleOutput', 'ValidateWindowsPowerShellModuleOutput'
+$str += 'CreateHelpStart', 'RestoreDependencies', 'PrepareModuleOutput'
 [string[]]$str2 = $str # str2: Full build without integration tests
 $str2 += 'Build', 'Archive'
 $str += 'Build', 'IntegrationTest', 'Archive' # str: Full build
@@ -82,7 +82,6 @@ Add-BuildTask BuildCrossPlatform -Jobs (
     'Clean', 'ValidateRequirements', 'ImportModuleManifest',
     'FormattingCheck', 'Analyze', 'Test',
     'RestoreDependencies', 'PrepareModuleOutput',
-    'ValidateWindowsPowerShellModuleOutput',
     'Build', 'Archive'
 )
 
@@ -695,8 +694,25 @@ Add-BuildTask RestoreDependencies {
         $null = New-Item -Path $script:ModuleBinPath -ItemType Directory -Force
     }
 
-    # Define target frameworks from the csproj
-    $TargetFrameworks = @('net48', 'net8.0')
+    # Define target frameworks from the project file
+    [xml]$ProjectXml = Get-Content -LiteralPath $script:CSharpProjectFile -Raw
+    $TargetFrameworks = @()
+    $TargetFrameworksValue = $ProjectXml.Project.PropertyGroup |
+        ForEach-Object { $_.TargetFrameworks } |
+        Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+        Select-Object -First 1
+    if (-not [string]::IsNullOrWhiteSpace($TargetFrameworksValue)) {
+        $TargetFrameworks = @($TargetFrameworksValue -split ';' | ForEach-Object { $_.Trim() } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    } else {
+        $TargetFrameworkValue = $ProjectXml.Project.PropertyGroup |
+            ForEach-Object { $_.TargetFramework } |
+            Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+            Select-Object -First 1
+        if (-not [string]::IsNullOrWhiteSpace($TargetFrameworkValue)) {
+            $TargetFrameworks = @($TargetFrameworkValue.Trim())
+        }
+    }
+    Assert-Build ($TargetFrameworks.Count -gt 0) "Unable to determine target frameworks from project file: $script:CSharpProjectFile"
 
     foreach ($tfm in $TargetFrameworks) {
         $TfmBinPath = [System.IO.Path]::Combine($script:ModuleBinPath, $tfm)
@@ -820,51 +836,6 @@ Add-BuildTask CopyModuleFiles -After RestoreDependencies -Before Build {
 } #CopyModuleFiles
 
 
-# Synopsis: Validates that the built module output imports cleanly in Windows PowerShell 5.1
-Add-BuildTask ValidateWindowsPowerShellModuleOutput -After CopyModuleFiles -Before Build {
-    $isWindowsPlatform = if (Get-Variable -Name IsWindows -ErrorAction SilentlyContinue) {
-        [bool]$IsWindows
-    } else {
-        $env:OS -eq 'Windows_NT'
-    }
-
-    if (-not $isWindowsPlatform) {
-        Write-Build Yellow '        Skipping Windows PowerShell validation because the current OS is not Windows.'
-        return
-    }
-
-    $BuiltModuleManifestPath = Join-Path -Path $script:ModuleOutputPath -ChildPath "$($script:ModuleName).psd1"
-    Assert-Build (Test-Path $BuiltModuleManifestPath) "Built module manifest was not found at: $BuiltModuleManifestPath"
-
-    Write-Build Gray '        Validating built module output in Windows PowerShell 5.1...'
-
-    $ValidationScriptFile = New-TemporaryFile
-    $ValidationScriptFile = Rename-Item -Path $ValidationScriptFile -NewName "$($ValidationScriptFile.BaseName).ps1" -PassThru
-    $ValidationScriptPath = $ValidationScriptFile.FullName
-    @"
-Import-Module '$BuiltModuleManifestPath' -Force
-
-`$Result = Import-DPLibrary -SuppressLogo -ShowLoaderExceptions -Verbose 4>&1
-`$ImportResults = @(`$Result | Where-Object { `$_.PSObject.Properties.Name -contains 'Status' })
-`$FailedResults = @(`$ImportResults | Where-Object Status -eq 'Failed')
-
-if (`$FailedResults.Count -gt 0) {
-    Write-Error ('Built module import reported failed assemblies: {0}' -f ((`$FailedResults | Select-Object -ExpandProperty DLLName) -join ', '))
-    exit 1
-}
-"@ | Set-Content -Path $ValidationScriptPath -Encoding utf8
-
-    try {
-        $ValidationOutput = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $ValidationScriptPath 2>&1
-        Assert-Build ($LASTEXITCODE -eq 0) ($ValidationOutput -join [Environment]::NewLine)
-    } finally {
-        Remove-Item -Path $ValidationScriptPath -Force -ErrorAction SilentlyContinue
-    }
-
-    Write-Build Green '        ...Windows PowerShell built module validation complete.'
-} #ValidateWindowsPowerShellModuleOutput
-
-
 # Synopsis: Copies module assets to Artifacts folder
 Add-BuildTask AssetCopy -After CopyModuleFiles -Before Build {
     Write-Build Gray '        Copying assets to Artifacts...'
@@ -983,9 +954,6 @@ Add-BuildTask Archive {
     #$ZipFileName = '{0}_{1}_{2}.{3}.zip' -f $script:ModuleName, $script:ModuleVersion, ([DateTime]::UtcNow.ToString("yyyyMMdd")), ([DateTime]::UtcNow.ToString("HHmmss"))
     #$ZipFile = Join-Path -Path $ArchivePath -ChildPath $ZipFileName
 
-    if ($PSEdition -eq 'Desktop') {
-        Add-Type -AssemblyName 'System.IO.Compression.FileSystem'
-    }
     #[System.IO.Compression.ZipFile]::CreateFromDirectory($script:ArtifactsPath, $ZipFile)
 
     Write-Build Green '        ...Archive Complete!'

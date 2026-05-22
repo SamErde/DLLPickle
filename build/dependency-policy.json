@@ -50,19 +50,20 @@
     {
       "packageName": "Azure.Core",
       "assemblyName": "Azure.Core",
-      "targetFramework": "net48",
+      "targetFramework": "net8.0",
       "versionSyntax": "exact",
+      "maximumPackageVersion": "1.50.0",
       "sourceModules": [
         "Microsoft.Graph.Authentication",
         "MicrosoftTeams"
       ],
       "updateMode": "candidatePullRequest",
-      "reason": "Windows PowerShell 5.1 requires Azure.Core to match the upstream Graph/Teams assembly identity that triggers issue #156-style type identity failures."
+      "reason": "The PowerShell 7.4+ runtime profile requires Azure.Core to stay on the highest .NET 8-compatible dependency line; newer Azure.Core pins currently bring .NET 10 runtime assemblies that do not load on the 7.4 baseline."
     },
     {
       "packageName": "Microsoft.Identity.Client",
       "assemblyName": "Microsoft.Identity.Client",
-      "targetFramework": "*",
+      "targetFramework": "net8.0",
       "versionSyntax": "exact",
       "sourceModules": [
         "Az.Accounts",
@@ -76,7 +77,7 @@
     {
       "packageName": "Microsoft.Identity.Client.Broker",
       "assemblyName": "Microsoft.Identity.Client.Broker",
-      "targetFramework": "*",
+      "targetFramework": "net8.0",
       "versionSyntax": "exact",
       "sourceModules": [
         "Az.Accounts",
@@ -90,7 +91,7 @@
     {
       "packageName": "Microsoft.Identity.Client.Extensions.Msal",
       "assemblyName": "Microsoft.Identity.Client.Extensions.Msal",
-      "targetFramework": "*",
+      "targetFramework": "net8.0",
       "versionSyntax": "exact",
       "sourceModules": [
         "Az.Accounts",

@@ -7,8 +7,7 @@ details, see [CHANGELOG.md](CHANGELOG.md).
 
 - Continue migration from legacy PlatyPS help generation to
   `Microsoft.PowerShell.PlatyPS` workflow.
-- Keep compatibility and reliability improvements for mixed PowerShell editions
-  (PowerShell 7+ and Windows PowerShell 5.1).
+- Keep compatibility and reliability improvements for PowerShell 7.4+.
 - Continue dependency lifecycle and supply chain hardening work.
 
 ## Planned Enhancements

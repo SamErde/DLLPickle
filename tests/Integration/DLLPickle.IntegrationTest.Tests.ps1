@@ -5,30 +5,7 @@ BeforeAll {
 }
 
 Describe 'Built module integration validation' -Tag 'Integration' {
-    It 'imports DLL dependencies cleanly in Windows PowerShell 5.1' -Skip:($env:OS -ne 'Windows_NT') {
-        Test-Path $BuiltModuleManifestPath | Should -BeTrue
-
-        $ValidationScriptPath = Join-Path $TestDrive 'Validate-BuiltModule.ps1'
-        @"
-Import-Module '$BuiltModuleManifestPath' -Force
-
-`$Result = Import-DPLibrary -SuppressLogo -ShowLoaderExceptions -Verbose 4>&1
-`$ImportResults = @(`$Result | Where-Object { `$_.PSObject.Properties.Name -contains 'Status' })
-`$FailedResults = @(`$ImportResults | Where-Object Status -eq 'Failed')
-
-if (`$FailedResults.Count -gt 0) {
-	Write-Error ('Built module import reported failed assemblies: {0}' -f ((`$FailedResults | Select-Object -ExpandProperty DLLName) -join ', '))
-	exit 1
-}
-"@ | Set-Content -Path $ValidationScriptPath -Encoding utf8
-
-        $Output = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $ValidationScriptPath 2>&1
-
-        $LASTEXITCODE | Should -Be 0
-        ($Output -join [Environment]::NewLine) | Should -Not -Match 'Failed to import'
-    }
-
-    It 'imports DLL dependencies cleanly in PowerShell 7+' {
+    It 'imports DLL dependencies cleanly in PowerShell 7.4+' {
         Test-Path $BuiltModuleManifestPath | Should -BeTrue
 
         Remove-Module DLLPickle -Force -ErrorAction SilentlyContinue

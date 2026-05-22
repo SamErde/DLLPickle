@@ -89,8 +89,11 @@ function Get-DLLPickleCurrentPackageReference {
         $MatchesPackage = $Line -match ('Include="{0}"' -f [regex]::Escape($PackageName))
         $MatchesTargetFramework = if ([string]::IsNullOrWhiteSpace($TargetFramework) -or $TargetFramework -eq '*') {
             $true
-        } else {
+        } elseif ($Line -match 'TargetFramework') {
             $Line -match ('TargetFramework.*{0}' -f [regex]::Escape($TargetFramework))
+        } else {
+            # In single-target projects, PackageReference entries are often unconditional.
+            $true
         }
 
         if ($MatchesPackage -and $MatchesTargetFramework) {
@@ -175,6 +178,20 @@ foreach ($Pin in @($Policy.exactPins)) {
         Sort-Object -Property { [version]$_.AssemblyVersion } -Descending |
         Select-Object -First 1
     $TargetVersion = [string]$TargetAssembly.PackageVersion
+    if (-not [string]::IsNullOrWhiteSpace([string]$Pin.maximumPackageVersion)) {
+        $MaximumPackageVersion = [string]$Pin.maximumPackageVersion
+        if ([version]$TargetVersion -gt [version]$MaximumPackageVersion) {
+            $Warnings.Add((
+                    "PackageReference '{0}' candidate '{1}' exceeds maximum '{2}' for target framework '{3}'; using maximum version." -f
+                    $Pin.packageName,
+                    $TargetVersion,
+                    $MaximumPackageVersion,
+                    $Pin.targetFramework
+                ))
+            $TargetVersion = $MaximumPackageVersion
+        }
+    }
+
     $FormattedVersion = if ([string]$Pin.versionSyntax -eq 'exact') { '[{0}]' -f $TargetVersion } else { $TargetVersion }
     $CurrentReference = Get-DLLPickleCurrentPackageReference -ProjectContent $ProjectContent -PackageName ([string]$Pin.packageName) -TargetFramework ([string]$Pin.targetFramework)
 

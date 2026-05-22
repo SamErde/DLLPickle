@@ -20,10 +20,9 @@ assemblies before other modules attempt their own assembly loads.
 ## How DLLPickle Works
 
 `Import-DPLibrary` loads DLLs from the module's packaged `bin` folder that
-matches the current host edition:
+matches the supported runtime target:
 
-- `bin/net8.0` for PowerShell 7+
-- `bin/net48` for Windows PowerShell 5.1
+- `bin/net8.0` for PowerShell 7.4+
 
 To improve reliability, the loader:
 
@@ -68,8 +67,8 @@ The monitored module set currently includes:
 - `MicrosoftTeams`
 
 The workflow is fail-closed. It may open a candidate PR when a policy-supported
-pin changes, such as a Graph or Teams `Azure.Core` update for Windows
-PowerShell 5.1. It does not merge or publish changed preload behavior unless the
+pin changes, such as a Graph or Teams `Azure.Core` update. It does not merge or
+publish changed preload behavior unless the
 candidate passes restore, build, and issue reproduction validation.
 
 Some dependency families are deliberately report-only. For example, OData
@@ -87,9 +86,8 @@ The validated base profile for a single interactive session is:
 1. `Az.Accounts`
 
 Use `Import-DPBaseProfile` to run `Import-DPLibrary` and import those modules in
-that order. PowerShell 7+ import-only testing is more tolerant of alternate
-orders, but Windows PowerShell 5.1 is not. If `Az.Accounts` is imported first,
-it can load an older Azure identity stack before Microsoft Graph and recreate
+that order. If `Az.Accounts` is imported first, it can load an older Azure
+identity stack before Microsoft Graph and recreate
 the `UserProvidedTokenCredential.GetTokenAsync` type identity failure.
 
 `Import-DPBaseProfile` intentionally does not authenticate to any service. It
@@ -98,18 +96,16 @@ only prepares the process and imports modules so connection commands such as
 `Connect-AzAccount` can run afterward using credentials and tenant choices from
 the caller's environment.
 
-Current live testing shows a Windows PowerShell 5.1 boundary for Az.Accounts:
-after Exchange or Graph loads its Azure.Identity stack, `Connect-AzAccount` can
-still fail because Az.Accounts' module-local assembly loader binds to
-incompatible Azure.Identity method contracts. PowerShell 7+ reaches the expected
-Az credential flow; use PowerShell 7+ or isolate Az authentication in a separate
-process when the full profile must connect to every service.
+Current live testing shows Az.Accounts can still hit a loader boundary after
+Exchange or Graph loads its Azure.Identity stack, because Az.Accounts'
+module-local assembly loader can bind to incompatible Azure.Identity method
+contracts. Use process isolation when the full profile must connect to every
+service.
 
 ## Why This Helps
 
 - Preloads a coherent identity stack early in the session.
 - Reduces module-to-module assembly contention.
-- Keeps PowerShell 5.1 support viable with deterministic fallback behavior.
 - Preserves normal module workflows after one initial preloading step.
 
 ## Recommended Usage Pattern
@@ -128,7 +124,7 @@ Import-Module DLLPickle
 Import-DPBaseProfile
 ```
 
-For diagnostics in Windows PowerShell 5.1:
+For diagnostics:
 
 ```powershell
 Import-DPLibrary -SuppressLogo -ShowLoaderExceptions -Verbose

@@ -50,45 +50,7 @@
 
             return @($References)
         } catch {
-            Write-Verbose "MetadataLoadContext reference discovery failed for '$Path'. Falling back to ReflectionOnly APIs when available."
-        }
-    }
-
-    # Windows PowerShell fallback for reference inspection on .NET Framework.
-    if ([System.Reflection.Assembly].GetMethods().Name -contains 'ReflectionOnlyLoadFrom') {
-        $ReflectionOnlyResolveHandler = [System.ResolveEventHandler] {
-            param ($ResolveSender, $ResolveArgs)
-
-            [void]$ResolveSender
-
-            try {
-                $RequestedName = ([System.Reflection.AssemblyName]::new($ResolveArgs.Name)).Name
-                $CandidatePath = Join-Path -Path $DirectoryPath -ChildPath "$RequestedName.dll"
-                if (Test-Path -Path $CandidatePath) {
-                    return [System.Reflection.Assembly]::ReflectionOnlyLoadFrom($CandidatePath)
-                }
-            } catch {
-                return $null
-            }
-
-            return $null
-        }
-
-        try {
-            [System.AppDomain]::CurrentDomain.add_ReflectionOnlyAssemblyResolve($ReflectionOnlyResolveHandler)
-            $Assembly = [System.Reflection.Assembly]::ReflectionOnlyLoadFrom($Path)
-            foreach ($Reference in $Assembly.GetReferencedAssemblies()) {
-                if ($LocalAssemblyLookup.Contains($Reference.Name)) {
-                    [void]$References.Add($Reference.Name)
-                }
-            }
-
-            return @($References)
-        } catch {
-            Write-Verbose "ReflectionOnly reference discovery failed for '$Path'."
-            return @()
-        } finally {
-            [System.AppDomain]::CurrentDomain.remove_ReflectionOnlyAssemblyResolve($ReflectionOnlyResolveHandler)
+            Write-Verbose "MetadataLoadContext reference discovery failed for '$Path'. Continuing without discovered dependency edges for this assembly."
         }
     }
 

@@ -26,16 +26,14 @@ service modules used in the validated base profile:
 1. `Microsoft.Graph.Authentication`
 1. `Az.Accounts`
 
-Windows PowerShell 5.1 is sensitive to this order. `Az.Accounts` can load its
-older Azure identity assemblies before Microsoft Graph if imported first, which
-can reintroduce the `UserProvidedTokenCredential.GetTokenAsync` type identity
-failure. PowerShell 7+ is less sensitive in import-only testing, but the same
+`Az.Accounts` can load older Azure identity assemblies before Microsoft Graph
+if imported first, which can reintroduce the
+`UserProvidedTokenCredential.GetTokenAsync` type identity failure. The same
 order is recommended for consistency.
 
-In Windows PowerShell 5.1, `Connect-AzAccount` can still fail after Graph or
-Exchange has loaded its own Azure.Identity assemblies. Use PowerShell 7+ or
-isolate Az authentication in a separate process when the full base profile must
-connect to all services.
+`Connect-AzAccount` can still fail after Graph or Exchange has loaded its own
+Azure.Identity assemblies. Isolate Az authentication in a separate process when
+the full base profile must connect to all services.
 
 ## Examples
 
