@@ -43,7 +43,7 @@ loading order can cause authentication failures.
 DLLPickle addresses this with `Import-DPLibrary`, which preloads a known,
 compatible dependency set from the module's `bin` folder:
 
-- `bin/net8.0` on PowerShell 7+
+- `bin/net8.0` on PowerShell 7.4+
 
 The loader applies dependency-aware ordering, deterministic fallback ordering,
 and scoped local resolution fallback to improve reliability during assembly

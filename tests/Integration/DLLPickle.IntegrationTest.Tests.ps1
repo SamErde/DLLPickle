@@ -5,7 +5,7 @@ BeforeAll {
 }
 
 Describe 'Built module integration validation' -Tag 'Integration' {
-    It 'imports DLL dependencies cleanly in PowerShell 7+' {
+    It 'imports DLL dependencies cleanly in PowerShell 7.4+' {
         Test-Path $BuiltModuleManifestPath | Should -BeTrue
 
         Remove-Module DLLPickle -Force -ErrorAction SilentlyContinue

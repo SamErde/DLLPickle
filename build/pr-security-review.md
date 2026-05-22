@@ -114,21 +114,19 @@ Rules = @{
     }
     PSUseCompatibleCmdlets = @{
         Compatibility = @(
-            'desktop-5.1.14393.206-windows',
             'core-7.4.0-windows'
         )
     }
     PSUseCompatibleCommands = @{
         Enable         = $true
         TargetProfiles = @(
-            'win-8_x64_10.0.17763.0_5.1.17763.316_x64_4.0.30319.42000_framework',
             'win-8_x64_10.0.17763.0_7.4.0_x64_4.0.30319.42000_core'
         )
     }
 }
 ```
 
-This catches cases where PS 7-only cmdlets or syntax are used in code that must run on PS 5.1.
+This catches cases where syntax or cmdlets drift from the supported PowerShell 7.4+ baseline.
 
 ---
 

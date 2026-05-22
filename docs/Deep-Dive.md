@@ -22,7 +22,7 @@ assemblies before other modules attempt their own assembly loads.
 `Import-DPLibrary` loads DLLs from the module's packaged `bin` folder that
 matches the supported runtime target:
 
-- `bin/net8.0` for PowerShell 7+
+- `bin/net8.0` for PowerShell 7.4+
 
 To improve reliability, the loader:
 

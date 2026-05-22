@@ -50,7 +50,7 @@
 
             return @($References)
         } catch {
-            Write-Verbose "MetadataLoadContext reference discovery failed for '$Path'. Falling back to ReflectionOnly APIs when available."
+            Write-Verbose "MetadataLoadContext reference discovery failed for '$Path'. Continuing without discovered dependency edges for this assembly."
         }
     }
 

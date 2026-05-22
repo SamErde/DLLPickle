@@ -25,8 +25,8 @@ Import-DPLibrary [-ShowLoaderExceptions] [-SuppressLogo] [<CommonParameters>]
 
 ## DESCRIPTION
 
-Import all DLL files from the appropriate target framework moniker (TFM) directory.
-DLLs are loaded from the TFM folder based on the PowerShell edition:
+Import all DLL files from the module's supported target framework moniker (TFM) directory.
+DLLs are loaded from:
 
 - PowerShell Core Edition: bin/net8.0/
 
