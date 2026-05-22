@@ -697,11 +697,17 @@ Add-BuildTask RestoreDependencies {
     # Define target frameworks from the project file
     [xml]$ProjectXml = Get-Content -LiteralPath $script:CSharpProjectFile -Raw
     $TargetFrameworks = @()
-    $TargetFrameworksValue = $ProjectXml.Project.PropertyGroup.TargetFrameworks | Select-Object -First 1
+    $TargetFrameworksValue = $ProjectXml.Project.PropertyGroup |
+        ForEach-Object { $_.TargetFrameworks } |
+        Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+        Select-Object -First 1
     if (-not [string]::IsNullOrWhiteSpace($TargetFrameworksValue)) {
         $TargetFrameworks = @($TargetFrameworksValue -split ';' | ForEach-Object { $_.Trim() } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
     } else {
-        $TargetFrameworkValue = $ProjectXml.Project.PropertyGroup.TargetFramework | Select-Object -First 1
+        $TargetFrameworkValue = $ProjectXml.Project.PropertyGroup |
+            ForEach-Object { $_.TargetFramework } |
+            Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+            Select-Object -First 1
         if (-not [string]::IsNullOrWhiteSpace($TargetFrameworkValue)) {
             $TargetFrameworks = @($TargetFrameworkValue.Trim())
         }
