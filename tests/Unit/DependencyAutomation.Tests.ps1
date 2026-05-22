@@ -40,10 +40,10 @@ Describe 'Dependency automation tooling' -Tag 'Unit' {
         @'
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFrameworks>net48;net8.0</TargetFrameworks>
+    <TargetFramework>net8.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Azure.Core" Version="[1.51.1]" Condition="'$(TargetFramework)' == 'net48'" />
+    <PackageReference Include="Azure.Core" Version="[1.51.1]" />
     <PackageReference Include="Microsoft.Identity.Client" Version="[4.82.1]" />
   </ItemGroup>
 </Project>
@@ -55,7 +55,7 @@ Describe 'Dependency automation tooling' -Tag 'Unit' {
                 @{
                     packageName = 'Azure.Core'
                     assemblyName = 'Azure.Core'
-                    targetFramework = 'net48'
+                    targetFramework = 'net8.0'
                     versionSyntax = 'exact'
                     sourceModules = @('Microsoft.Graph.Authentication', 'MicrosoftTeams')
                     updateMode = 'candidatePullRequest'
@@ -64,7 +64,7 @@ Describe 'Dependency automation tooling' -Tag 'Unit' {
                 @{
                     packageName = 'Microsoft.Identity.Client'
                     assemblyName = 'Microsoft.Identity.Client'
-                    targetFramework = '*'
+                    targetFramework = 'net8.0'
                     versionSyntax = 'exact'
                     sourceModules = @('Az.Accounts', 'Microsoft.Graph.Authentication')
                     updateMode = 'candidatePullRequest'
@@ -137,7 +137,7 @@ Describe 'Dependency automation tooling' -Tag 'Unit' {
             )
         } | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $InventoryPath -Encoding UTF8
 
-        $Report = & $script:UpdateScriptPath -InventoryPath $InventoryPath -PolicyPath $PolicyPath -ProjectPath $ProjectPath -OutputPath (Join-Path $TestDrive 'candidate-report.json')
+        $Report = & $script:UpdateScriptPath -InventoryPath $InventoryPath -PolicyPath $PolicyPath -ProjectPath $ProjectPath -OutputPath (Join-Path $TestDrive 'candidate-report.json') -Confirm:$false -WhatIf:$false
 
         $Report.ProjectChanged | Should -BeTrue
         $Report.Changes[0].CandidateVersion | Should -Be '[1.53.0]'

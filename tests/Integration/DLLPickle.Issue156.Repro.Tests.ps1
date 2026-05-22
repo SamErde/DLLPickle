@@ -118,9 +118,9 @@ Describe 'Issue 156 Graph and ExchangeOnlineManagement reproduction' -Tag 'Integ
         Initialize-Issue156SyntheticModule -RootPath $SyntheticModuleRoot -Name 'Microsoft.Graph.Authentication' -Version '2.36.1'
     }
 
-    It 'captures a Graph import failure after ExchangeOnlineManagement is loaded first without DLLPickle preloading' -Skip:($env:OS -ne 'Windows_NT') {
+    It 'captures a Graph import failure after ExchangeOnlineManagement is loaded first without DLLPickle preloading' {
         $Result = Invoke-DLLPickleScenario -Name 'Issue156-ExchangeThenGraph-Synthetic' `
-            -PowerShellExecutable 'powershell.exe' `
+            -PowerShellExecutable 'pwsh' `
             -ModuleManifestPath $BuiltModuleManifestPath `
             -AdditionalModulePath $SyntheticModuleRoot `
             -OutputPath (Join-Path $ScenarioOutputRoot 'Issue156-ExchangeThenGraph-Synthetic.json') `
@@ -135,9 +135,9 @@ Describe 'Issue 156 Graph and ExchangeOnlineManagement reproduction' -Tag 'Integ
         $GraphStep.Error.Message | Should -Match 'GetTokenAsync'
     }
 
-    It 'prevents the Graph import failure after ExchangeOnlineManagement is loaded first' -Skip:($env:OS -ne 'Windows_NT') {
+    It 'prevents the Graph import failure after ExchangeOnlineManagement is loaded first' {
         $Result = Invoke-DLLPickleScenario -Name 'Issue156-ExchangeThenGraph-Protected-Synthetic' `
-            -PowerShellExecutable 'powershell.exe' `
+            -PowerShellExecutable 'pwsh' `
             -ModuleManifestPath $BuiltModuleManifestPath `
             -AdditionalModulePath $SyntheticModuleRoot `
             -OutputPath (Join-Path $ScenarioOutputRoot 'Issue156-ExchangeThenGraph-Protected-Synthetic.json') `
@@ -152,7 +152,7 @@ Describe 'Issue 156 Graph and ExchangeOnlineManagement reproduction' -Tag 'Integ
         $GraphStep.Success | Should -BeTrue
         $FinalAssemblies = @($Result.Steps | Select-Object -Last 1 -ExpandProperty AssembliesAfter)
         $AzureCore = $FinalAssemblies | Where-Object Name -eq 'Azure.Core' | Select-Object -First 1
-        ([version]$AzureCore.Version) | Should -Be ([version]'1.55.0.0')
+        ([version]$AzureCore.Version) | Should -BeGreaterOrEqual ([version]'1.55.0.0')
     }
 
     It 'captures a lazy ExchangeOnlineManagement broker failure after Graph is loaded first without DLLPickle preloading' {

@@ -40,7 +40,7 @@ For more information about how this works, [read here](https://raw.githubusercon
 Any of the following PowerShell editions:
 
 - PowerShell on Linux, macOS, or Windows
-- Windows PowerShell 5.1
+- PowerShell 7.4 or later
 
 ### Installation
 

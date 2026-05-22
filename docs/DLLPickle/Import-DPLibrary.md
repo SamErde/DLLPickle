@@ -28,7 +28,6 @@ Import-DPLibrary [-ShowLoaderExceptions] [-SuppressLogo] [<CommonParameters>]
 Import all DLL files from the appropriate target framework moniker (TFM) directory.
 DLLs are loaded from the TFM folder based on the PowerShell edition:
 
-- PowerShell Desktop Edition: bin/net48/
 - PowerShell Core Edition: bin/net8.0/
 
 The latest versions of all dependencies are automatically imported, providing
@@ -36,11 +35,10 @@ backwards compatibility and avoiding version conflicts.
 
 Import-DPLibrary uses dependency-graph-based load ordering, a local assembly
 resolution fallback, and retry logic to reduce transient assembly load failures
-in Windows PowerShell 5.1 (.NET Framework 4.8).
 This approach derives dependency-first ordering from local assembly metadata,
 appends unresolved graph nodes deterministically in alphabetical order, and
 resolves same-name assemblies from the module's local bin folder when .NET
-Framework probing does not resolve them on the first pass.
+runtime probing does not resolve them on the first pass.
 
 If an assembly still fails due to unresolved transitive dependencies or platform limitations,
 Import-DPLibrary retries the failed assembly set and returns detailed diagnostics for
@@ -134,21 +132,14 @@ Returns information about each imported DLL including:
 
 ## NOTES
 
-Known Issues:
+Use `Import-DPLibrary -SuppressLogo -ShowLoaderExceptions -Verbose` to view
+dependency resolution details.
 
-- Windows PowerShell 5.1 uses .NET Framework 4.8 assembly probing behavior. Some transitive
-  dependencies can fail on an initial load if prerequisite assemblies are not loaded first.
-- Certain identity and diagnostic assemblies may also depend on APIs with limited support in
-  .NET Framework 4.8, which can produce ReflectionTypeLoadException details.
+Keep DLLPickle updated so dependency ordering and local assembly resolution
+improvements are available.
 
-Workaround and Reliability Guidance:
-
-- Use `Import-DPLibrary -SuppressLogo -ShowLoaderExceptions -Verbose` to view dependency
-  resolution details.
-- Keep DLLPickle updated so net48 dependency copies, ordering improvements, and
-  local assembly resolution fallback are available.
-- If a specific optional assembly is still incompatible in your environment, add it to
-  `SkipLibraries` with `Set-DPConfig`.
+If a specific optional assembly is still incompatible in your environment, add
+it to `SkipLibraries` with `Set-DPConfig`.
 
 ## RELATED LINKS
 

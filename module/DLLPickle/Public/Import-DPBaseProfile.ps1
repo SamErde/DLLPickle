@@ -5,18 +5,10 @@ function Import-DPBaseProfile {
 
     .DESCRIPTION
     Imports DLLPickle's dependency libraries, then imports the base profile modules
-    in the order validated for module import on Windows PowerShell 5.1 and
-    PowerShell 7+.
+    in a validated import order for mixed Microsoft service module sessions.
 
     The default base profile order is ExchangeOnlineManagement, MicrosoftTeams,
-    Microsoft.Graph.Authentication, and Az.Accounts. Windows PowerShell 5.1 is
-    sensitive to this order because Az.Accounts can load an older Azure.Core
-    identity before Microsoft.Graph.Authentication.
-
-    In Windows PowerShell 5.1, Az.Accounts can still fail during
-    Connect-AzAccount after Graph or Exchange has loaded its own Azure.Identity
-    assemblies. Use PowerShell 7+ or process isolation for Az authentication when
-    the full base profile must connect to all services.
+    Microsoft.Graph.Authentication, and Az.Accounts.
 
     .PARAMETER ModuleName
     The modules to import after DLLPickle preloads its dependency libraries.
@@ -105,10 +97,6 @@ function Import-DPBaseProfile {
             Kind       = 'DependencyPreload'
             Status     = if ($FailedPreloadResult.Count -eq 0) { 'Imported' } else { 'Failed' }
             Error      = $PreloadError
-        }
-
-        if ($PSVersionTable.PSEdition -eq 'Desktop' -and $ModuleName -contains 'Az.Accounts') {
-            Write-Warning ('Windows PowerShell can import the base profile order, but Connect-AzAccount may still fail after Graph or Exchange loads Azure.Identity. Use PowerShell 7+ or isolate Az.Accounts authentication in a separate process when this occurs.')
         }
 
         foreach ($Module in $ModuleName) {

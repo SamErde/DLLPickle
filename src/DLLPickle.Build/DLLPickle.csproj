@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net48;net8.0</TargetFrameworks>
+    <TargetFramework>net8.0</TargetFramework>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <ImplicitUsings>false</ImplicitUsings>
     <NoWarn>2008</NoWarn>
@@ -10,7 +10,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Azure.Core" Version="[1.56.0]" Condition="'$(TargetFramework)' == 'net48'" />
+    <PackageReference Include="Azure.Core" Version="[1.56.0]" />
     <PackageReference Include="Microsoft.Identity.Client" Version="[4.84.0]" />
     <PackageReference Include="Microsoft.Identity.Client.Broker" Version="[4.84.0]" />
     <PackageReference Include="Microsoft.Identity.Client.Extensions.Msal" Version="[4.84.0]" />
@@ -20,7 +20,6 @@
     <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.*" />
     <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.*" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.*" />
-    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" Condition="'$(TargetFramework)' == 'net48'" />
   </ItemGroup>
 
 </Project>

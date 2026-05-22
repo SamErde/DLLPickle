@@ -44,11 +44,10 @@ DLLPickle addresses this with `Import-DPLibrary`, which preloads a known,
 compatible dependency set from the module's `bin` folder:
 
 - `bin/net8.0` on PowerShell 7+
-- `bin/net48` on Windows PowerShell 5.1
 
 The loader applies dependency-aware ordering, deterministic fallback ordering,
-and scoped local resolution fallback to improve reliability on .NET Framework
-assembly probing behaviors.
+and scoped local resolution fallback to improve reliability during assembly
+probing.
 
 ## Optional Subtopics
 
@@ -70,7 +69,7 @@ Use the following commands to manage local DLLPickle behavior:
 
 ### Diagnostics
 
-For verbose diagnostics, especially on Windows PowerShell 5.1:
+For verbose diagnostics:
 
 ```powershell
 Import-DPLibrary -SuppressLogo -ShowLoaderExceptions -Verbose

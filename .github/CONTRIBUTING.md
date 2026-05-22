@@ -19,8 +19,7 @@ Avoid working directly on `main`.
 
 ### Prerequisites
 
-- PowerShell 7+ recommended for development
-- Windows PowerShell 5.1 for compatibility validation
+- PowerShell 7.4+ for development and validation
 - Required modules/tools installed by build prerequisites
 
 ### Common Tasks
@@ -33,7 +32,6 @@ Run these via VS Code Tasks or directly with `Invoke-Build`.
 - `Build`: full validation and packaging workflow.
 - `BuildNoIntegration`: full build without integration tests.
 - `BuildCrossPlatform`: full build without help generation or integration tests.
-- `ValidateBuiltModuleWinPS`: validate built module output in Windows PowerShell 5.1.
 
 Example local loop:
 
@@ -54,12 +52,6 @@ Before opening a PR, run:
 
 ```powershell
 Invoke-Build -Task Build
-```
-
-If your changes affect compatibility behavior, also run:
-
-```powershell
-Invoke-Build -Task ValidateWindowsPowerShellModuleOutput
 ```
 
 ## Documentation Contributions

@@ -13,20 +13,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Deterministic dependency-aware DLL load ordering and scoped local assembly resolution fallback in `Import-DPLibrary` to reduce transient first-pass assembly load failures.
-- Windows PowerShell 5.1 platform caveat guidance in README and cmdlet help.
-- Built-module validation in Windows PowerShell 5.1 and integration test coverage for the `module/DLLPickle` output path.
-- Focus VS Code tasks for refreshing the local module output and validating the built module in Windows PowerShell 5.1.
+- PowerShell 7.4+ runtime baseline and net8.0-only dependency pipeline.
 
 ### Changed
 
 - Replace manual DLL priority ordering in `Import-DPLibrary` with dependency-graph-based ordering and deterministic alphabetical fallback for unresolved graph nodes.
-- Update `Import-DPLibrary` help to document load-order behavior and troubleshooting guidance.
-- Expand dependency compatibility notes with .NET Framework 4.8 root-cause details and operational guidance.
+- Update `Import-DPLibrary` help to document load-order behavior and troubleshooting guidance for the PowerShell 7.4+ baseline.
+- Simplify build/test/workflow matrix and module metadata to remove Desktop/.NET Framework compatibility paths.
 
 ### Fixed
 
-- Enable net48 local copy of lock file assemblies in `DLLPickle.csproj` to improve transitive dependency availability during import.
 - Harden module output refresh during builds so in-use binaries do not immediately break the prepare-and-validate workflow.
+
+### Removed
+
+- Windows PowerShell 5.1 and .NET Framework compatibility dependencies, branching, validation tasks, and workflow paths.
 
 ## [0.19.0] - 2026-03-09
 

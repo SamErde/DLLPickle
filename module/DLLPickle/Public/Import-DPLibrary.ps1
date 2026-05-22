@@ -4,15 +4,14 @@
     Import DLLPickle dependency libraries.
 
     .DESCRIPTION
-    Import all relevant DLL files for the appropriate target framework and PowerShell edition.
+    Import all relevant DLL files for the supported target framework.
 
     The latest versions of all dependencies are automatically imported, providing
     backwards compatibility and avoiding version conflicts.
 
     This function implements dependency-aware loading with automatic retry logic. Some assemblies
     have transitive dependencies that must be loaded first. The function will retry failed
-    assemblies up to 5 times to allow for dependency resolution. This eliminates false warnings
-    on initial load attempts in Windows PowerShell when dependency load order cannot be predicted.
+    assemblies up to 5 times to allow for dependency resolution.
     The initial load order is derived from a local assembly dependency graph; if a complete graph
     cannot be resolved, remaining assemblies are appended deterministically in alphabetical order.
 
@@ -42,10 +41,6 @@
     Returns information about each imported DLL.
 
     .NOTES
-    Some assemblies may have partial compatibility issues in Windows PowerShell due to
-    dependencies on types not available in .NET Framework 4.8. The function will continue
-    loading other assemblies and provide detailed diagnostic information about failures.
-
     A status of 'Imported' indicates the assembly file was successfully loaded by the runtime,
     but this does not guarantee that all types within the assembly are usable. Some types may
     remain unavailable due to unresolved transitive dependencies.
@@ -82,17 +77,12 @@
     }
 
 
-    # Determine the appropriate target framework moniker (TFM) based on PowerShell edition.
-    $TargetFramework = if ($PSEdition -eq 'Core') {
-        'net8.0'
-    } else {
-        'net48'
-    }
+    # DLLPickle supports PowerShell 7.4+ with a single modern target framework.
+    $TargetFramework = 'net8.0'
 
     $BinDirectory = Join-Path -Path $ModuleDirectory -ChildPath 'bin'
     $TFMDirectory = Join-Path -Path $BinDirectory -ChildPath $TargetFramework
 
-    Write-Verbose "Using PowerShell edition: $PSEdition"
     Write-Verbose "Using target framework: $TargetFramework"
     Write-Verbose "DLL directory: $TFMDirectory"
 

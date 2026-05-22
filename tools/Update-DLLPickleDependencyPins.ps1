@@ -89,8 +89,11 @@ function Get-DLLPickleCurrentPackageReference {
         $MatchesPackage = $Line -match ('Include="{0}"' -f [regex]::Escape($PackageName))
         $MatchesTargetFramework = if ([string]::IsNullOrWhiteSpace($TargetFramework) -or $TargetFramework -eq '*') {
             $true
-        } else {
+        } elseif ($Line -match 'TargetFramework') {
             $Line -match ('TargetFramework.*{0}' -f [regex]::Escape($TargetFramework))
+        } else {
+            # In single-target projects, PackageReference entries are often unconditional.
+            $true
         }
 
         if ($MatchesPackage -and $MatchesTargetFramework) {

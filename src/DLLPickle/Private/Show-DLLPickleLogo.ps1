@@ -22,37 +22,6 @@ Generated: 2026-02-01 20:13:01
     [System.Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingWriteHost', '', Justification = 'This function is specifically designed to render a colorful ASCII art logo using ANSI escape codes, which requires Write-Host for proper color rendering.')]
     param ()
 
-    # Don't [attempt to] show the logo in the Windows PowerShell ISE.
-    if ($Host.Name -eq 'Windows PowerShell ISE Host') { return }
-
-    # Enable Virtual Terminal Processing for ANSI colors (Windows PowerShell 5.1 compatibility)
-    if ($PSVersionTable.PSVersion.Major -le 5 -and $env:OS -eq 'Windows_NT') {
-        try {
-            Add-Type -TypeDefinition @'
-using System;
-using System.Runtime.InteropServices;
-public class VTConsole {
-    [DllImport("kernel32.dll", SetLastError = true)]
-    public static extern IntPtr GetStdHandle(int nStdHandle);
-    [DllImport("kernel32.dll", SetLastError = true)]
-    public static extern bool GetConsoleMode(IntPtr hConsoleHandle, out uint lpMode);
-    [DllImport("kernel32.dll", SetLastError = true)]
-    public static extern bool SetConsoleMode(IntPtr hConsoleHandle, uint dwMode);
-    public static void EnableVT() {
-        IntPtr handle = GetStdHandle(-11);
-        uint mode;
-        GetConsoleMode(handle, out mode);
-        SetConsoleMode(handle, mode | 0x4);
-    }
-}
-'@ -ErrorAction SilentlyContinue
-            [VTConsole]::EnableVT()
-        } catch {
-            Write-Verbose "Failed to enable Virtual Terminal Processing: $_. This may affect color rendering, but the logo will still be displayed. If you are using Windows PowerShell, consider upgrading to PowerShell 7 or later for improved ANSI support."
-            # VT processing may already be enabled or not available
-        }
-    }
-
     $ESC = [char]27
     $LowerHalfBlock = [char]0x2584
 

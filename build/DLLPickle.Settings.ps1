@@ -1,2 +1,2 @@
 # Specify the minimum required major PowerShell version that the build script should validate.
-[version]$script:RequiredPSVersion = '5.1.0'
+[version]$script:RequiredPSVersion = '7.4.0'

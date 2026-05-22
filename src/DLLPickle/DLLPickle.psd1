@@ -15,7 +15,7 @@ RootModule = 'DLLPickle.psm1'
 ModuleVersion = '1.3.1'
 
 # Supported PSEditions
-# CompatiblePSEditions = @()
+CompatiblePSEditions = @('Core')
 
 # ID used to uniquely identify this module
 GUID = '4676d9bf-eb37-4a1b-8582-90f7dd9ba726'
@@ -33,7 +33,7 @@ Copyright = '(c) 2026, Sam Erde. All rights reserved.'
 Description = 'A PowerShell module that helps you get un-stuck from dependency version conflicts that can occur when connecting to multiple Microsoft services in the same session.'
 
 # Minimum version of the PowerShell engine required by this module
-PowerShellVersion = '5.1'
+PowerShellVersion = '7.4'
 
 # Name of the PowerShell host required by this module
 # PowerShellHostName = ''
@@ -41,10 +41,10 @@ PowerShellVersion = '5.1'
 # Minimum version of the PowerShell host required by this module
 # PowerShellHostVersion = ''
 
-# Minimum version of Microsoft .NET Framework required by this module. This prerequisite is valid for the PowerShell Desktop edition only.
+# Minimum version of .NET required by this module.
 # DotNetFrameworkVersion = ''
 
-# Minimum version of the common language runtime (CLR) required by this module. This prerequisite is valid for the PowerShell Desktop edition only.
+# Minimum version of the common language runtime (CLR) required by this module.
 # ClrVersion = ''
 
 # Processor architecture (None, X86, Amd64) required by this module
@@ -132,4 +132,3 @@ HelpInfoURI = 'https://day3bits.com/DLLPickle'
 # DefaultCommandPrefix = ''
 
 }
-

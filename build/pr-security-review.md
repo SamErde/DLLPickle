@@ -102,7 +102,7 @@ pull_request:
 
 ### 4. PSScriptAnalyzer Settings Do Not Enable Compatibility Rules
 
-**Current state:** `build/PSScriptAnalyzerSettings.psd1` enables default rules at Error and Warning severity, but `PSUseCompatibleSyntax` and `PSUseCompatibleCmdlets` are commented out. The module explicitly supports PowerShell 5.1 (`PowerShellVersion = '5.1'` in the manifest).
+**Current state:** `build/PSScriptAnalyzerSettings.psd1` enables default rules at Error and Warning severity, but `PSUseCompatibleSyntax` and `PSUseCompatibleCmdlets` are commented out. The module explicitly targets PowerShell 7.4+.
 
 **Recommendation:** Enable compatibility rules targeting the supported runtime versions. Add to `PSScriptAnalyzerSettings.psd1`:
 
@@ -110,7 +110,7 @@ pull_request:
 Rules = @{
     PSUseCompatibleSyntax = @{
         Enable         = $true
-        TargetVersions = @('5.1', '7.2', '7.4')
+        TargetVersions = @('7.4')
     }
     PSUseCompatibleCmdlets = @{
         Compatibility = @(
