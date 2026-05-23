@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Working on updates to replace PlatyPS documentation creation with the new Microsoft.PowerShell.PlatyPS module.
 
+## [2.0.0] - 2026-05-23
+
+This major release drops Windows PowerShell 5.1 and .NET Framework support to simplify runtime compatibility, align to modern PowerShell, and reduce maintenance overhead across build/test/release pipelines.
+
 ### Added
 
 - Deterministic dependency-aware DLL load ordering and scoped local assembly resolution fallback in `Import-DPLibrary` to reduce transient first-pass assembly load failures.
@@ -151,7 +155,8 @@ Full Changelog: [v0.2.5...v0.2.6](https://github.com/SamErde/DLLPickle/compare/v
 
 - Initial release.
 
-[Unreleased]: https://github.com/SamErde/DLLPickle/compare/v0.19.0...HEAD
+[Unreleased]: https://github.com/SamErde/DLLPickle/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/SamErde/DLLPickle/tag/v2.0.0
 [0.19.0]: https://github.com/SamErde/DLLPickle/tag/v0.19.0
 [0.18.0]: https://github.com/SamErde/DLLPickle/tag/v0.18.0
 [0.17.0]: https://github.com/SamErde/DLLPickle/tag/v0.17.0
