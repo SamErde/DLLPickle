@@ -65,18 +65,18 @@ jobs:
           Write-Host "📋 Release Workflow Diagnostics"
           Write-Host "================================"
           Write-Host ""
-          
+
           # Check for required secrets
           $missingSecrets = @()
-          
+
           if ([string]::IsNullOrWhiteSpace("${{ secrets.APP_ID }}")) {
             $missingSecrets += "APP_ID"
           }
-          
+
           if ([string]::IsNullOrWhiteSpace("${{ secrets.APP_PRIVATE_KEY }}")) {
             $missingSecrets += "APP_PRIVATE_KEY"
           }
-          
+
           if ($missingSecrets.Count -gt 0) {
             Write-Host "❌ ERROR: Missing required secrets for version update:"
             $missingSecrets | ForEach-Object { Write-Host "   - secrets.$_" }
@@ -91,7 +91,7 @@ jobs:
             Write-Host "Reference: https://docs.github.com/en/apps/creating-github-apps/"
             exit 1
           }
-          
+
           Write-Host "✅ GitHub App secrets configured"
           Write-Host "✅ Release workflow diagnostics passed"
 
@@ -498,7 +498,7 @@ jobs:
           Write-Host "📋 PowerShell Gallery Publishing Diagnostics"
           Write-Host "=============================================="
           Write-Host ""
-          
+
           # Check for required API key
           if ([string]::IsNullOrWhiteSpace("${{ secrets.PSGALLERY_API_KEY }}")) {
             Write-Host "❌ ERROR: secrets.PSGALLERY_API_KEY is not configured"
@@ -514,9 +514,9 @@ jobs:
             Write-Host "Reference: https://docs.microsoft.com/en-us/powershell/gallery/how-to/publishing-packages/managing-account"
             exit 1
           }
-          
+
           Write-Host "✅ PowerShell Gallery API key configured"
-          
+
           # Test connectivity to PSGallery
           Write-Host ""
           Write-Host "Testing connectivity to PowerShell Gallery..."
@@ -532,7 +532,7 @@ jobs:
             Write-Host "   This may indicate network issues or PSGallery service problems"
             Write-Host "   Error: $_"
           }
-          
+
           Write-Host ""
           Write-Host "✅ Publishing diagnostics passed"
 

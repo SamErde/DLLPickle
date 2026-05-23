@@ -25,7 +25,7 @@ jobs:
         shell: bash
         run: |
           echo "Validating required GitHub App secrets..."
-          
+
           if [ -z "${{ secrets.CLIENT_ID }}" ]; then
             echo "❌ ERROR: secrets.CLIENT_ID is not configured"
             echo "This workflow requires GitHub App authentication to function."
@@ -40,13 +40,13 @@ jobs:
             echo "See: https://docs.github.com/en/apps/creating-github-apps/"
             exit 1
           fi
-          
+
           if [ -z "${{ secrets.APP_PRIVATE_KEY }}" ]; then
             echo "❌ ERROR: secrets.APP_PRIVATE_KEY is not configured"
             echo "This workflow requires GitHub App authentication to function."
             exit 1
           fi
-          
+
           echo "✅ Required secrets are configured"
 
       - name: Generate GitHub App Token
