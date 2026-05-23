@@ -59,6 +59,42 @@ jobs:
       trigger_source: ${{ steps.determine_version.outputs.trigger_source }}
 
     steps:
+      - name: 🔍 Validate Release Configuration
+        shell: pwsh
+        run: |
+          Write-Host "📋 Release Workflow Diagnostics"
+          Write-Host "================================"
+          Write-Host ""
+
+          # Check for required secrets
+          $missingSecrets = @()
+
+          if ([string]::IsNullOrWhiteSpace("${{ secrets.APP_ID }}")) {
+            $missingSecrets += "APP_ID"
+          }
+
+          if ([string]::IsNullOrWhiteSpace("${{ secrets.APP_PRIVATE_KEY }}")) {
+            $missingSecrets += "APP_PRIVATE_KEY"
+          }
+
+          if ($missingSecrets.Count -gt 0) {
+            Write-Host "❌ ERROR: Missing required secrets for version update:"
+            $missingSecrets | ForEach-Object { Write-Host "   - secrets.$_" }
+            Write-Host ""
+            Write-Host "Setup Instructions:"
+            Write-Host "1. Create a GitHub App (or use existing org app)"
+            Write-Host "2. Generate a private key"
+            Write-Host "3. Add these repository secrets:"
+            Write-Host "   - APP_ID: The GitHub App ID"
+            Write-Host "   - APP_PRIVATE_KEY: The private key"
+            Write-Host ""
+            Write-Host "Reference: https://docs.github.com/en/apps/creating-github-apps/"
+            exit 1
+          }
+
+          Write-Host "✅ GitHub App secrets configured"
+          Write-Host "✅ Release workflow diagnostics passed"
+
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -455,6 +491,50 @@ jobs:
       contents: read
 
     steps:
+
+      - name: 🔍 Validate PowerShell Gallery Configuration
+        shell: pwsh
+        run: |
+          Write-Host "📋 PowerShell Gallery Publishing Diagnostics"
+          Write-Host "=============================================="
+          Write-Host ""
+
+          # Check for required API key
+          if ([string]::IsNullOrWhiteSpace("${{ secrets.PSGALLERY_API_KEY }}")) {
+            Write-Host "❌ ERROR: secrets.PSGALLERY_API_KEY is not configured"
+            Write-Host ""
+            Write-Host "This workflow requires a PowerShell Gallery API key to publish modules."
+            Write-Host ""
+            Write-Host "Setup Instructions:"
+            Write-Host "1. Sign in to PowerShell Gallery (https://www.powershellgallery.com)"
+            Write-Host "2. Navigate to 'API Keys' in account settings"
+            Write-Host "3. Create a new API key with scope: 'Push new packages and package versions'"
+            Write-Host "4. Add to repository secrets as 'PSGALLERY_API_KEY'"
+            Write-Host ""
+            Write-Host "Reference: https://docs.microsoft.com/en-us/powershell/gallery/how-to/publishing-packages/managing-account"
+            exit 1
+          }
+
+          Write-Host "✅ PowerShell Gallery API key configured"
+
+          # Test connectivity to PSGallery
+          Write-Host ""
+          Write-Host "Testing connectivity to PowerShell Gallery..."
+          try {
+            $testResponse = Invoke-WebRequest -Uri "https://www.powershellgallery.com/api/v2" -Method Get -TimeoutSec 10 -ErrorAction Stop
+            if ($testResponse.StatusCode -eq 200) {
+              Write-Host "✅ PowerShell Gallery is reachable"
+            } else {
+              Write-Host "⚠️  Unexpected response from PowerShell Gallery (HTTP $($testResponse.StatusCode))"
+            }
+          } catch {
+            Write-Host "⚠️  Warning: Could not verify PowerShell Gallery connectivity"
+            Write-Host "   This may indicate network issues or PSGallery service problems"
+            Write-Host "   Error: $_"
+          }
+
+          Write-Host ""
+          Write-Host "✅ Publishing diagnostics passed"
 
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
