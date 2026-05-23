@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
     inputs:
       version_bump:
-        description: "Choose the release bump type for manual runs. Select auto to use conventional commit analysis."
+        description: "Choose release bump for manual runs. Select auto to analyze commit messages (BREAKING/feat/fix patterns) and determine the bump automatically."
         required: true
         type: choice
         default: auto
@@ -116,12 +116,23 @@ jobs:
           Write-Host "Analyzing version requirements..."
 
           # Normalize manual bump input from both supported workflow_dispatch contexts.
-          $ManualBumpParam = @($env:MANUAL_BUMP_INPUT, $env:MANUAL_BUMP_EVENT) |
-              Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
-              Select-Object -First 1
+          $ManualBumpInput = if ([string]::IsNullOrWhiteSpace($env:MANUAL_BUMP_INPUT)) { '' } else { $env:MANUAL_BUMP_INPUT.Trim().ToLowerInvariant() }
+          $ManualBumpEvent = if ([string]::IsNullOrWhiteSpace($env:MANUAL_BUMP_EVENT)) { '' } else { $env:MANUAL_BUMP_EVENT.Trim().ToLowerInvariant() }
 
-          if (-not [string]::IsNullOrWhiteSpace($ManualBumpParam)) {
-              $ManualBumpParam = $ManualBumpParam.Trim().ToLowerInvariant()
+          if (-not [string]::IsNullOrWhiteSpace($ManualBumpInput) -and
+              -not [string]::IsNullOrWhiteSpace($ManualBumpEvent) -and
+              $ManualBumpInput -ne $ManualBumpEvent) {
+              Write-Warning "Conflicting manual bump inputs detected (inputs: '$ManualBumpInput', event.inputs: '$ManualBumpEvent'). Using inputs value."
+          }
+
+          if (-not [string]::IsNullOrWhiteSpace($ManualBumpInput)) {
+              $ManualBumpParam = $ManualBumpInput
+              Write-Host "Manual bump source: inputs.version_bump"
+          } elseif (-not [string]::IsNullOrWhiteSpace($ManualBumpEvent)) {
+              $ManualBumpParam = $ManualBumpEvent
+              Write-Host "Manual bump source: github.event.inputs.version_bump"
+          } else {
+              $ManualBumpParam = ''
           }
 
           if ([string]::IsNullOrWhiteSpace($ManualBumpParam) -or $ManualBumpParam -eq 'auto') {
