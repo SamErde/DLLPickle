@@ -116,26 +116,28 @@ jobs:
           Write-Host "Analyzing version requirements..."
 
           # Normalize manual bump input from both supported workflow_dispatch contexts.
-          $ManualBumpInput = if ([string]::IsNullOrWhiteSpace($env:MANUAL_BUMP_INPUT)) { '' } else { $env:MANUAL_BUMP_INPUT.Trim().ToLowerInvariant() }
-          $ManualBumpEvent = if ([string]::IsNullOrWhiteSpace($env:MANUAL_BUMP_EVENT)) { '' } else { $env:MANUAL_BUMP_EVENT.Trim().ToLowerInvariant() }
+          $ManualBumpFromInputsContext = if ([string]::IsNullOrWhiteSpace($env:MANUAL_BUMP_INPUT)) { '' } else { $env:MANUAL_BUMP_INPUT.Trim().ToLowerInvariant() }
+          $ManualBumpFromEventInputsContext = if ([string]::IsNullOrWhiteSpace($env:MANUAL_BUMP_EVENT)) { '' } else { $env:MANUAL_BUMP_EVENT.Trim().ToLowerInvariant() }
 
-          if (-not [string]::IsNullOrWhiteSpace($ManualBumpInput) -and
-              -not [string]::IsNullOrWhiteSpace($ManualBumpEvent) -and
-              $ManualBumpInput -ne $ManualBumpEvent) {
-              Write-Warning "Conflicting manual bump inputs detected (inputs: '$ManualBumpInput', event.inputs: '$ManualBumpEvent'). Using inputs value."
+          if (-not [string]::IsNullOrWhiteSpace($ManualBumpFromInputsContext) -and
+              -not [string]::IsNullOrWhiteSpace($ManualBumpFromEventInputsContext) -and
+              $ManualBumpFromInputsContext -ne $ManualBumpFromEventInputsContext) {
+              Write-Error "Conflicting workflow_dispatch inputs detected. inputs.version_bump='$ManualBumpFromInputsContext' and github.event.inputs.version_bump='$ManualBumpFromEventInputsContext'."
+              exit 1
           }
 
-          if (-not [string]::IsNullOrWhiteSpace($ManualBumpInput)) {
-              $ManualBumpParam = $ManualBumpInput
+          if (-not [string]::IsNullOrWhiteSpace($ManualBumpFromInputsContext)) {
+              $ManualBumpParam = $ManualBumpFromInputsContext
               Write-Host "Manual bump source: inputs.version_bump"
-          } elseif (-not [string]::IsNullOrWhiteSpace($ManualBumpEvent)) {
-              $ManualBumpParam = $ManualBumpEvent
+          } elseif (-not [string]::IsNullOrWhiteSpace($ManualBumpFromEventInputsContext)) {
+              $ManualBumpParam = $ManualBumpFromEventInputsContext
               Write-Host "Manual bump source: github.event.inputs.version_bump"
           } else {
-              $ManualBumpParam = ''
+              $ManualBumpParam = 'auto'
+              Write-Host "Manual bump source: default auto"
           }
 
-          if ([string]::IsNullOrWhiteSpace($ManualBumpParam) -or $ManualBumpParam -eq 'auto') {
+          if ($ManualBumpParam -eq 'auto') {
               $ManualBumpParam = ''
           }
 
