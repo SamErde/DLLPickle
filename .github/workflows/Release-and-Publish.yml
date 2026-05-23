@@ -11,10 +11,12 @@ on:
   workflow_dispatch:
     inputs:
       version_bump:
-        description: "Optionally override the automatic version bump that is automatically determined by conventional commit message analysis. (Skip for auto-detection.)"
-        required: false
+        description: "Choose the release bump type for manual runs. Select auto to use conventional commit analysis."
+        required: true
         type: choice
+        default: auto
         options:
+          - auto
           - major
           - minor
           - patch
@@ -106,17 +108,24 @@ jobs:
         shell: pwsh
         env:
           EVENT_NAME: ${{ github.event_name }}
-          MANUAL_BUMP: ${{ inputs.version_bump }}
+          MANUAL_BUMP_INPUT: ${{ inputs.version_bump }}
+          MANUAL_BUMP_EVENT: ${{ github.event.inputs.version_bump }}
           MERGE_COMMIT: ${{ github.event.pull_request.merge_commit_sha }}
         run: |
           # Pass manual bump parameter to Get-VersionBump for centralized version logic
           Write-Host "Analyzing version requirements..."
 
-          # Only pass manual bump if explicitly specified (not empty or auto)
-          $ManualBumpParam = if ([string]::IsNullOrEmpty($env:MANUAL_BUMP) -or $env:MANUAL_BUMP -eq 'auto') {
-              ''
-          } else {
-              $env:MANUAL_BUMP
+          # Normalize manual bump input from both supported workflow_dispatch contexts.
+          $ManualBumpParam = @($env:MANUAL_BUMP_INPUT, $env:MANUAL_BUMP_EVENT) |
+              Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+              Select-Object -First 1
+
+          if (-not [string]::IsNullOrWhiteSpace($ManualBumpParam)) {
+              $ManualBumpParam = $ManualBumpParam.Trim().ToLowerInvariant()
+          }
+
+          if ([string]::IsNullOrWhiteSpace($ManualBumpParam) -or $ManualBumpParam -eq 'auto') {
+              $ManualBumpParam = ''
           }
 
           try {
