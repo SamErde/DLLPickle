@@ -11,10 +11,12 @@ on:
   workflow_dispatch:
     inputs:
       version_bump:
-        description: "Optionally override the automatic version bump that is automatically determined by conventional commit message analysis. (Skip for auto-detection.)"
-        required: false
+        description: "Choose release bump for manual runs. Select auto to analyze commit messages (BREAKING/feat/fix patterns) and determine the bump automatically."
+        required: true
         type: choice
+        default: auto
         options:
+          - auto
           - major
           - minor
           - patch
@@ -106,17 +108,37 @@ jobs:
         shell: pwsh
         env:
           EVENT_NAME: ${{ github.event_name }}
-          MANUAL_BUMP: ${{ inputs.version_bump }}
+          MANUAL_BUMP_INPUT: ${{ inputs.version_bump }}
+          MANUAL_BUMP_EVENT: ${{ github.event.inputs.version_bump }}
           MERGE_COMMIT: ${{ github.event.pull_request.merge_commit_sha }}
         run: |
           # Pass manual bump parameter to Get-VersionBump for centralized version logic
           Write-Host "Analyzing version requirements..."
 
-          # Only pass manual bump if explicitly specified (not empty or auto)
-          $ManualBumpParam = if ([string]::IsNullOrEmpty($env:MANUAL_BUMP) -or $env:MANUAL_BUMP -eq 'auto') {
-              ''
+          # Normalize manual bump input from both supported workflow_dispatch contexts.
+          $ManualBumpFromInputsContext = if ([string]::IsNullOrWhiteSpace($env:MANUAL_BUMP_INPUT)) { '' } else { $env:MANUAL_BUMP_INPUT.Trim().ToLowerInvariant() }
+          $ManualBumpFromEventInputsContext = if ([string]::IsNullOrWhiteSpace($env:MANUAL_BUMP_EVENT)) { '' } else { $env:MANUAL_BUMP_EVENT.Trim().ToLowerInvariant() }
+
+          if (-not [string]::IsNullOrWhiteSpace($ManualBumpFromInputsContext) -and
+              -not [string]::IsNullOrWhiteSpace($ManualBumpFromEventInputsContext) -and
+              $ManualBumpFromInputsContext -ne $ManualBumpFromEventInputsContext) {
+              Write-Error "Conflicting workflow_dispatch inputs detected. inputs.version_bump='$ManualBumpFromInputsContext' and github.event.inputs.version_bump='$ManualBumpFromEventInputsContext'."
+              exit 1
+          }
+
+          if (-not [string]::IsNullOrWhiteSpace($ManualBumpFromInputsContext)) {
+              $ManualBumpParam = $ManualBumpFromInputsContext
+              Write-Host "Manual bump source: inputs.version_bump"
+          } elseif (-not [string]::IsNullOrWhiteSpace($ManualBumpFromEventInputsContext)) {
+              $ManualBumpParam = $ManualBumpFromEventInputsContext
+              Write-Host "Manual bump source: github.event.inputs.version_bump"
           } else {
-              $env:MANUAL_BUMP
+              $ManualBumpParam = 'auto'
+              Write-Host "Manual bump source: default auto"
+          }
+
+          if ($ManualBumpParam -eq 'auto') {
+              $ManualBumpParam = ''
           }
 
           try {
