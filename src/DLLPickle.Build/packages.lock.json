@@ -46,9 +46,9 @@
       },
       "Microsoft.Identity.Client.NativeInterop": {
         "type": "Direct",
-        "requested": "[0.20.4, 0.20.4]",
-        "resolved": "0.20.4",
-        "contentHash": "JHlfJ8oolxj20sNlwdIh8H8MZtzVQ55MyOjrIrQCtD/KJL5x8EOjQxafYu8AEYZOCSW+09DQnRogGk+J37BURA=="
+        "requested": "[0.20.6, 0.20.6]",
+        "resolved": "0.20.6",
+        "contentHash": "noyfdMfVxyWpM6xUDmlW6gUvZ5ci24z7Qoy15JvynTQfZV5vTD2NEdsnT5Gy4ngViwgdIp5iRjRy10jAKXFAgw=="
       },
       "Microsoft.IdentityModel.Abstractions": {
         "type": "Direct",
