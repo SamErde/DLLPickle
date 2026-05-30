@@ -1,7 +1,5 @@
 # CODEOWNERS - Defines ownership and required reviewers for code changes
 
-See: <https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners>
-
 ## Default Repository Owner
 
 * @SamErde
@@ -15,6 +13,8 @@ These control what external packages get automatically imported and resolved:
 
 ## PowerShell Module Manifest - Controls Module Dependencies and Exports
 
+# Note: under tag-driven versioning the ModuleVersion in these files is a 0.0.0 placeholder; the
+# real release version is stamped from the Git tag at build time (see Release-and-Publish.yml).
 /src/DLLPickle/DLLPickle.psd1 @SamErde
 /module/DLLPickle/DLLPickle.psd1 @SamErde
 
