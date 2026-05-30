@@ -1,5 +1,5 @@
 <!--- Provide a general summary of the issue in the title above. -->
-<!-- markdownlint-disable MD041 -->
+<!-- markdownlint-disable MD041 --> <!-- markdownlint-disable MD012 -->
 ## Expected Behavior
 <!--- If you're describing a bug, tell us what should happen. If you're suggesting a change/improvement, tell us how it should work -->
 
@@ -17,6 +17,7 @@
 
 ## Steps to Reproduce (for bugs)
 <!--- Provide a link to a live example, or an unambiguous set of steps to reproduce this bug. Include code to reproduce, if relevant. -->
+
 1.
 2.
 3.
