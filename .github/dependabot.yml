@@ -41,6 +41,13 @@ updates:
         update-types:
           - "minor"
           - "patch"
+    ignore:
+      # Azure.Core 1.51.0+ takes a dependency on the .NET 10 BCL (System.Text.Json /
+      # System.Diagnostics.DiagnosticSource / Microsoft.Bcl.AsyncInterfaces 10.x), which cannot load
+      # under PowerShell 7.4 (.NET 8). Pin at 1.50.x until the module multi-targets newer runtimes.
+      # Patch updates within 1.50.x stay net8-safe and remain allowed.
+      - dependency-name: "Azure.Core"
+        update-types: ["version-update:semver-minor", "version-update:semver-major"]
     commit-message:
       prefix: "deps"
       prefix-development: "deps"

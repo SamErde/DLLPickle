@@ -10,7 +10,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Azure.Core" Version="[1.57.0]" />
+    <!-- Azure.Core is capped at 1.50.0 for PowerShell 7.4 support. 1.51.0+ takes a dependency on the
+         .NET 10 BCL (System.Text.Json / System.Diagnostics.DiagnosticSource / Microsoft.Bcl.AsyncInterfaces
+         10.x), which fails to load in PowerShell 7.4 (.NET 8). Do not bump until the module multi-targets
+         newer .NET runtimes. A matching Dependabot ignore is set in .github/dependabot.yml. -->
+    <PackageReference Include="Azure.Core" Version="[1.50.0]" />
     <PackageReference Include="Microsoft.Identity.Client" Version="[4.84.1]" />
     <PackageReference Include="Microsoft.Identity.Client.Broker" Version="[4.84.1]" />
     <PackageReference Include="Microsoft.Identity.Client.Extensions.Msal" Version="[4.84.1]" />
