@@ -1,14 +1,24 @@
-# Add at the beginning for better documentation:
-# This workflow automatically approves and merges Dependabot PRs for NuGet package updates
+# Auto-approves and auto-merges Dependabot pull requests that update the NuGet packages in src/DLLPickle.Build (patch/minor only).
+# Major updates are left for manual review with an explanatory comment.
+#
 # Requirements:
-#   - GitHub App with PRs read/write permissions
-#   - Secrets: APP_ID and APP_PRIVATE_KEY
+#
+#   - A GitHub App installed on this repository with repository permissions:
+#       Pull requests: Read & write, Contents: Read & write
+#
+#   - Repository *Dependabot* secrets (Settings > Secrets and variables > Dependabot):
+#       CLIENT_ID        the GitHub App's Client ID
+#       APP_PRIVATE_KEY  the GitHub App's private key (PEM)
+#
+#     NOTE: Dependabot-triggered runs read Dependabot secrets, NOT Actions secrets.
+#
+#   - Branch protection rules requiring the "Dependency Review" and build/test checks, so `--auto` merge cannot complete until those checks pass.
+#   - "Allow auto-merge" enabled under Settings > General > Pull Requests.
 
 name: 🤖 Auto-Approve Dependabot NuGet Package Updates
+
 on: pull_request
-
 permissions: {}
-
 concurrency:
   group: dependabot-approve-${{ github.event.pull_request.number }}
   cancel-in-progress: false
@@ -16,57 +26,69 @@ concurrency:
 jobs:
   dependabot:
     runs-on: ubuntu-latest
-    if: github.actor == 'dependabot[bot]'
-    # Permissions are now handled by the App Token, so we don't need job-level overrides
+    timeout-minutes: 10
+    # Gate on both the triggering actor AND the PR author, so a commit pushed by a different account onto a Dependabot branch cannot ride this write-scoped token.
+    if: >-
+      github.actor == 'dependabot[bot]' &&
+      github.event.pull_request.user.login == 'dependabot[bot]'
 
     steps:
-      - name: 🔍 Validate GitHub App Secrets
+
+      - name: 🔍 Validate GitHub App secrets
         id: validate_secrets
         shell: bash
+        env:
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
         run: |
+          set -euo pipefail
           echo "Validating required GitHub App secrets..."
 
-          if [ -z "${{ secrets.CLIENT_ID }}" ]; then
-            echo "❌ ERROR: secrets.CLIENT_ID is not configured"
+          if [ -z "${CLIENT_ID:-}" ]; then
+            echo "❌ ERROR: CLIENT_ID is not configured"
             echo "This workflow requires GitHub App authentication to function."
             echo ""
-            echo "Setup Instructions:"
-            echo "1. Create a GitHub App or use an existing organization app"
-            echo "2. Generate a private key for the app"
-            echo "3. Add these secrets to your repository:"
-            echo "   - secrets.CLIENT_ID: The GitHub App's Client ID"
-            echo "   - secrets.APP_PRIVATE_KEY: The GitHub App's private key"
+            echo "Add these as repository Dependabot secrets"
+            echo "(Settings > Secrets and variables > Dependabot):"
+            echo "  - CLIENT_ID:       the GitHub App's Client ID"
+            echo "  - APP_PRIVATE_KEY: the GitHub App's private key (PEM)"
             echo ""
             echo "See: https://docs.github.com/en/apps/creating-github-apps/"
             exit 1
           fi
 
-          if [ -z "${{ secrets.APP_PRIVATE_KEY }}" ]; then
-            echo "❌ ERROR: secrets.APP_PRIVATE_KEY is not configured"
+          if [ -z "${APP_PRIVATE_KEY:-}" ]; then
+            echo "❌ ERROR: APP_PRIVATE_KEY is not configured"
             echo "This workflow requires GitHub App authentication to function."
             exit 1
           fi
 
           echo "✅ Required secrets are configured"
 
-      - name: Generate GitHub App Token
+      - name: 🔐 Generate GitHub App token
         id: generate_token
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         with:
           client-id: ${{ secrets.CLIENT_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          # Least-privilege: mint a token with only the scopes approve + auto-merge need, rather than the App's full granted permission set.
+          permission-contents: write
+          permission-pull-requests: write
 
-      - name: Fetch Dependabot metadata
+      - name: 🤖 Fetch Dependabot metadata
         id: metadata
         uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
         with:
-          # REPLACED
-          github-token: "${{ steps.generate_token.outputs.token }}"
+          github-token: ${{ steps.generate_token.outputs.token }}
 
-      - name: Check if NuGet packages were updated
+      - name: 📦 Check whether NuGet manifests were updated
         id: nuget_check
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          set -e
+          set -euo pipefail
           MATCHING_FILES=$(gh pr view "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --json files --jq '
             .files[].path | select(
               . == "src/DLLPickle.Build/DLLPickle.csproj" or
@@ -79,33 +101,35 @@ jobs:
           else
             echo "is_nuget_update=false" >> "$GITHUB_OUTPUT"
           fi
-        env:
-          # REPLACED
-          GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
 
-      # Note: Dependency Review is handled by the dedicated 'Dependency Review' workflow
-      # which runs on all PRs. This should be configured as a required check to ensure
-      # it completes before auto-merge happens.
+      # Dependency Review runs as its own workflow on every PR. Configure it (plus the build/test checks) as required
+      # status checks so `--auto` waits for them to pass before this PR can merge.
 
-      - name: Approve and auto-merge NuGet patch/minor updates
+      - name: ✅ Approve and auto-merge NuGet patch/minor updates
         if: |
           steps.nuget_check.outputs.is_nuget_update == 'true' &&
           steps.metadata.outputs.update-type != 'version-update:semver-major'
-        run: |
-          set -e
-          gh pr review --approve "$PR_URL" --body "✅ Auto-approved: NuGet ${{ steps.metadata.outputs.update-type }} update"
-          gh pr merge --auto --squash "$PR_URL"
+        shell: bash
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
-          # REPLACED
+          UPDATE_TYPE: ${{ steps.metadata.outputs.update-type }}
           GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}
+        run: |
+          set -euo pipefail
+          gh pr review --approve "$PR_URL" --body "✅ Auto-approved: NuGet ${UPDATE_TYPE} update"
+          gh pr merge --auto --squash "$PR_URL"
 
-      - name: Comment on major version updates
+      - name: 💬 Comment on major version updates
         if: |
           steps.nuget_check.outputs.is_nuget_update == 'true' &&
           steps.metadata.outputs.update-type == 'version-update:semver-major'
+        shell: bash
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          UPDATE_TYPE: ${{ steps.metadata.outputs.update-type }}
+          GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}
         run: |
+          set -euo pipefail
           echo "⏭️ Skipping major version update - requires manual review"
           gh pr comment "$PR_URL" --body "🔔 **Major version update detected**
 
@@ -117,7 +141,4 @@ jobs:
           - Test the build and functionality locally
           - Approve and merge manually when ready
 
-          Package update type: \`${{ steps.metadata.outputs.update-type }}\`"
-        env:
-          PR_URL: ${{ github.event.pull_request.html_url }}
-          GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}
+          Package update type: \`${UPDATE_TYPE}\`"
