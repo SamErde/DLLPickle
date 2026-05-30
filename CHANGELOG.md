@@ -8,7 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-- Working on updates to replace PlatyPS documentation creation with the new Microsoft.PowerShell.PlatyPS module.
+- Working on updates to replace PlatyPS documentation creation with the new Microsoft.PowerShell.PlatyPS module. (PRs and other help would be welcomed!)
+
+## [2.0.0] - 2026-05-30
+
+> **Breaking change:** DLLPickle 2.0 requires **PowerShell 7.4 or later** (running on .NET 8). Windows PowerShell 5.1 and .NET Framework 4.8 are not  supported yet on this major version.
 
 ### Added
 
@@ -18,16 +22,95 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Replace manual DLL priority ordering in `Import-DPLibrary` with dependency-graph-based ordering and deterministic alphabetical fallback for unresolved graph nodes.
+- Make runtime assembly detection lazy in `Import-DPLibrary` to avoid unnecessary work during import.
 - Update `Import-DPLibrary` help to document load-order behavior and troubleshooting guidance for the PowerShell 7.4+ baseline.
-- Simplify build/test/workflow matrix and module metadata to remove Desktop/.NET Framework compatibility paths.
+- Simplify the build/test/workflow matrix and module metadata to remove Desktop/.NET Framework compatibility paths.
 
 ### Fixed
 
+- Cap `Azure.Core` at 1.50.0 to keep the bundled dependency graph on the .NET 8 BCL. Azure.Core 1.51.0+ takes a dependency on the .NET 10 BCL (`System.Text.Json` / `System.Diagnostics.DiagnosticSource` / `Microsoft.Bcl.AsyncInterfaces` 10.x), which fails to load under PowerShell 7.4 (.NET 8).
 - Harden module output refresh during builds so in-use binaries do not immediately break the prepare-and-validate workflow.
 
 ### Removed
 
-- Windows PowerShell 5.1 and .NET Framework compatibility dependencies, branching, validation tasks, and workflow paths.
+- **Windows PowerShell 5.1 and .NET Framework (net48) support** — including the associated dependencies, conditional branching, validation tasks, and CI workflow paths.
+
+### Dependencies
+
+- Update `Microsoft.Identity.Client`, `Microsoft.Identity.Client.Broker`, and `Microsoft.Identity.Client.Extensions.Msal` to 4.84.1, and `Microsoft.Identity.Client.NativeInterop` to 0.20.6.
+- Pin `Azure.Core` to 1.50.0 (capped for the PowerShell 7.4 / .NET 8 baseline — see Fixed).
+- Refresh upstream compatibility dependency pins.
+
+### Internal
+
+- Move releases to a tag-driven versioning pipeline: the published version is derived from the Git tag and stamped into the build artifact, nothing is committed to `main`, and a failed release rolls back by deleting only the tag and GitHub release.
+- Pin the .NET SDK to 8.0.x via `global.json` and install it explicitly in the build workflow.
+- Harden the Dependabot auto-approve workflow (least-privilege GitHub App token, Dependabot-scoped secrets), group and schedule NuGet updates, and ignore `Azure.Core` updates that would cross the .NET 8 baseline.
+- Remove the release GitHub App from the branch-protection bypass list.
+
+## [1.3.1] - 2026-05-08
+
+### Added
+
+- Base profile preload helper supporting `Import-DPBaseProfile`.
+
+### Fixed
+
+- Surface base profile preload errors instead of failing silently.
+
+### Dependencies
+
+- Bump `Azure.Core` from 1.51.1 to 1.55.0 (#185).
+
+## [1.3.0] - 2026-05-06
+
+### Fixed
+
+- Resolve a Microsoft Graph / `Azure.Core` assembly preload conflict (#183).
+
+### Internal
+
+- Improve the Dependabot workflow and add supporting documentation (#178); update the GitHub App token action and its identifier (#176).
+
+## [1.2.0] - 2026-04-12
+
+### Added
+
+- Bundle MSAL (`Microsoft.Identity.Client`) packages and update the .NET restore strategy (#170).
+
+### Changed
+
+- Refine project documentation (#167).
+
+### Security
+
+- Workflow hardening: move permissions to the job level and add the `security-events` permission (#171); cross-platform security and validation improvements (#166).
+
+## [1.1.2] - 2026-03-23
+
+### Fixed
+
+- Fix library import on Windows PowerShell 5.1 (#165), reverting the 1.1.1 `Resolve-DPDLLLoadOrder` refactor (#163) that introduced the regression.
+
+## [1.1.1] - 2026-03-15
+
+### Changed
+
+- Streamline conditional logic in `Resolve-DPDLLLoadOrder` (#160). _(Reverted in 1.1.2 — it caused a Windows PowerShell 5.1 import regression.)_
+
+## [1.1.0] - 2026-03-15
+
+### Added
+
+- Windows PowerShell 5.1 compatibility handling for `Import-DPLibrary` (#157).
+
+## [1.0.0] - 2026-03-09
+
+First stable release.
+
+### Changed
+
+- Documentation updates (#155).
 
 ## [0.19.0] - 2026-03-09
 
@@ -152,6 +235,14 @@ Full Changelog: [v0.2.5...v0.2.6](https://github.com/SamErde/DLLPickle/compare/v
 - Initial release.
 
 [Unreleased]: https://github.com/SamErde/DLLPickle/compare/v0.19.0...HEAD
+[2.0.0]: https://github.com/SamErde/DLLPickle/tag/v2.0.0
+[1.3.1]: https://github.com/SamErde/DLLPickle/tag/v1.3.1
+[1.3.0]: https://github.com/SamErde/DLLPickle/tag/v1.3.0
+[1.2.0]: https://github.com/SamErde/DLLPickle/tag/v1.2.0
+[1.1.2]: https://github.com/SamErde/DLLPickle/tag/v1.1.2
+[1.1.1]: https://github.com/SamErde/DLLPickle/tag/v1.1.1
+[1.1.0]: https://github.com/SamErde/DLLPickle/tag/v1.1.0
+[1.0.0]: https://github.com/SamErde/DLLPickle/tag/v1.0.0
 [0.19.0]: https://github.com/SamErde/DLLPickle/tag/v0.19.0
 [0.18.0]: https://github.com/SamErde/DLLPickle/tag/v0.18.0
 [0.17.0]: https://github.com/SamErde/DLLPickle/tag/v0.17.0
