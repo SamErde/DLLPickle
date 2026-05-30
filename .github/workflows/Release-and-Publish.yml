@@ -216,17 +216,22 @@ jobs:
 
           ### Steps
           1. ✓ Analyzed version requirements
-          2. → Update module manifest
+          2. → Create Git tag (vX.Y.Z) on the current main HEAD
           3. → Build and test
-          4. → Create GitHub release
-          5. → Publish to PSGallery
+          4. → Stamp release version into the module artifact
+          5. → Create GitHub release
+          6. → Publish to PSGallery
           "@
 
           Write-Host $summary
           Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value $summary
 
+  # NOTE: Job id kept as "update-version" to preserve downstream `needs:` references.
+  # Under tag-driven versioning this job no longer commits a version bump to main; it only
+  # creates the release tag (vX.Y.Z) on the existing main HEAD. Tags are not covered by the
+  # "Protect Main" branch ruleset, so no branch-protection bypass is required.
   update-version:
-    name: Update Module Version
+    name: Create Release Tag
     runs-on: ubuntu-latest
     timeout-minutes: 10
     needs: analyze
@@ -254,54 +259,18 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.merge_commit_sha || github.ref }}
 
-      - name: Update module manifest version
-        shell: pwsh
-        run: |
-          $updateResult = & ./.github/ci-scripts/Update-ModuleVersion.ps1 -ManifestPath "$($env:MANIFEST_PATH)" -NewVersion "${{ needs.analyze.outputs.new_version }}"
-
-          if (-not $updateResult.Success) {
-              Write-Error "Failed to update module manifest: $($updateResult.ErrorMessage)"
-              exit 1
-          }
-
-      - name: Commit version update
-        shell: pwsh
-        run: |
-          # The commit will now correctly use the App's identity and permissions
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-          git add $env:MANIFEST_PATH
-          if ($LASTEXITCODE -ne 0) {
-              Write-Error "Failed to stage manifest file"
-              exit 1
-          }
-
-          git commit -m "chore(release): bump version to ${{ needs.analyze.outputs.new_version }}"
-          if ($LASTEXITCODE -ne 0) {
-              Write-Error "Failed to commit version update"
-              exit 1
-          }
-
-          git push origin HEAD:main
-          if ($LASTEXITCODE -ne 0) {
-              Write-Error "Failed to push version update to main"
-              exit 1
-          }
-
-          Write-Host "✓ Version update committed and pushed"
-
       - name: Create version tag
         shell: pwsh
         env:
-          # 3. Swap PAT_TOKEN for the App Token here as well
           GH_TOKEN: ${{ steps.generate_token.outputs.token }}
         run: |
           $version = "${{ needs.analyze.outputs.new_version }}"
           $tagName = "v$version"
 
-          Write-Host "Creating tag: $tagName"
+          Write-Host "Creating tag: $tagName on the current main HEAD (no version-bump commit)"
 
+          # Tag-driven versioning: tag the existing main HEAD. We intentionally do NOT create or push
+          # a version-bump commit; the release version is stamped into the build artifact downstream.
           $commitSha = git rev-parse HEAD
 
           git tag -a $tagName -m "Release $version" $commitSha
@@ -325,7 +294,7 @@ jobs:
       ref: main
 
   sync-module-manifest:
-    name: Sync Updated Manifest to Module Folder
+    name: Stamp Release Version into Module
     runs-on: ubuntu-latest
     timeout-minutes: 10
     needs: [update-version, build-and-test]
@@ -346,44 +315,40 @@ jobs:
           name: module-build
           path: ./module/DLLPickle
 
-      - name: Sync updated manifest to module folder
+      - name: Stamp release version into module manifest
         shell: pwsh
+        env:
+          NEW_VERSION: ${{ needs.update-version.outputs.new_version }}
         run: |
-          # Ensure module folder exists
-          if (-not (Test-Path ./module/DLLPickle)) {
-              New-Item -Path ./module/DLLPickle -ItemType Directory -Force | Out-Null
-          }
+          $ErrorActionPreference = 'Stop'
+          $ModuleManifest = './module/DLLPickle/DLLPickle.psd1'
 
           try {
-              # Verify source manifest exists
-              if (-not (Test-Path $env:MANIFEST_PATH)) {
-                  throw "Source manifest not found at $env:MANIFEST_PATH"
+              if (-not (Test-Path $ModuleManifest)) {
+                  throw "Module manifest not found in build artifact at $ModuleManifest"
               }
 
-              # Copy the updated manifest from src to the module folder
-              Copy-Item -Path $env:MANIFEST_PATH -Destination ./module/DLLPickle/DLLPickle.psd1 -Force -ErrorAction Stop
-              Write-Host "✓ Manifest copied to module folder"
-
-              # Verify the copy was successful
-              if (-not (Test-Path ./module/DLLPickle/DLLPickle.psd1)) {
-                  throw "Manifest not found after copying to ./module/DLLPickle/DLLPickle.psd1"
+              # Tag-driven versioning: the source manifest carries a 0.0.0 placeholder, so stamp the
+              # real release version into the built artifact here (workspace only; nothing is committed).
+              $stampResult = & ./.github/ci-scripts/Update-ModuleVersion.ps1 -ManifestPath $ModuleManifest -NewVersion $env:NEW_VERSION
+              if (-not $stampResult.Success) {
+                  throw "Failed to stamp module version: $($stampResult.ErrorMessage)"
               }
 
-              # Verify the new version is in place
-              $modulePsd1 = Import-PowerShellDataFile -Path ./module/DLLPickle/DLLPickle.psd1 -ErrorAction Stop
+              # Verify the stamped version is in place
+              $modulePsd1 = Import-PowerShellDataFile -Path $ModuleManifest -ErrorAction Stop
               $moduleVersion = $modulePsd1.ModuleVersion
-              $expectedVersion = "${{ needs.update-version.outputs.new_version }}"
 
               Write-Host "Module manifest version: $moduleVersion"
-              Write-Host "Expected version: $expectedVersion"
+              Write-Host "Expected version: $env:NEW_VERSION"
 
-              if ($moduleVersion -ne $expectedVersion) {
-                  throw "Version mismatch after sync: module has $moduleVersion but expected $expectedVersion"
+              if ($moduleVersion -ne $env:NEW_VERSION) {
+                  throw "Version mismatch after stamping: module has $moduleVersion but expected $env:NEW_VERSION"
               }
 
-              Write-Host "✓ Manifest synced successfully. Module version: $moduleVersion"
+              Write-Host "✓ Release version stamped into module artifact: $moduleVersion"
           } catch {
-              Write-Error "Manifest sync failed: $_"
+              Write-Error "Version stamping failed: $_"
               exit 1
           }
 
@@ -667,7 +632,7 @@ jobs:
           token: ${{ steps.generate_token.outputs.token }}
           fetch-depth: 0
 
-      - name: Revert version bump and delete tag
+      - name: Delete release tag
         shell: pwsh
         env:
           GH_TOKEN: ${{ steps.generate_token.outputs.token }}
@@ -675,33 +640,17 @@ jobs:
           $version = "${{ needs.analyze.outputs.new_version }}"
           $tagName = "v$version"
 
-          Write-Host "🔄 Rolling back version $version due to release failure..."
+          Write-Host "🔄 Rolling back $tagName due to release failure..."
 
-          # Delete remote tag (ignore errors if tag doesn't exist yet)
+          # Tag-driven versioning: rollback only deletes the tag (and the GitHub release below).
+          # There is no version-bump commit on main to revert, so NO branch history is rewritten
+          # and no force-push is performed.
           Write-Host "Deleting tag: $tagName"
           git push origin --delete $tagName 2>$null
           if ($LASTEXITCODE -eq 0) {
               Write-Host "✓ Tag deleted"
           } else {
               Write-Host "⚠ Tag not found (may not have been created)"
-          }
-
-          # Revert the version bump commit (reset to the commit before the bump)
-          Write-Host "Reverting version bump commit..."
-          try {
-              # Verify we have a previous commit
-              $commitCount = git rev-list --count HEAD -ErrorAction Stop
-              if ($commitCount -lt 2) {
-                  Write-Warning "Cannot revert: only $commitCount commit(s) exist in repository"
-              } else {
-                  $previousCommit = git rev-parse HEAD~1 -ErrorAction Stop
-                  git reset --hard $previousCommit -ErrorAction Stop
-                  git push origin HEAD:main --force -ErrorAction Stop
-                  Write-Host "✓ Version bump reverted"
-              }
-          } catch {
-              Write-Error "Failed to revert version bump: $_"
-              exit 1
           }
 
       - name: Delete GitHub release
@@ -726,11 +675,12 @@ jobs:
           **Module:** ${{ env.MODULE_NAME }}
           **Version:** ${{ needs.analyze.outputs.new_version }}
 
-          The release process failed. The following have been reverted:
+          The release process failed. The following have been rolled back:
 
-          - ✓ Version bump commit removed from main
           - ✓ Git tag deleted
           - ✓ GitHub release deleted (if created)
+
+          No changes were made to the `main` branch (tag-driven versioning commits nothing to main).
 
           **Build artifacts are preserved** in the workflow run for investigation.
 
@@ -770,7 +720,7 @@ jobs:
           | Step | Status |
           |------|--------|
           | Analyze | ${{ needs.analyze.result }} |
-          | Update Version | ${{ needs.update-version.result }} |
+          | Create Tag | ${{ needs.update-version.result }} |
           | Build & Test | ${{ needs.build-and-test.result }} |
           | Sync Manifest | ${{ needs.sync-module-manifest.result }} |
           | Create Release | ${{ needs.create-release.result }} |
