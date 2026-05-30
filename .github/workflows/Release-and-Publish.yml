@@ -101,7 +101,10 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
-          ref: ${{ github.event.pull_request.merge_commit_sha || github.ref }}
+          # Releases always target main (create-tag, build, and publish all use main), so analyze the
+          # commit history on main too. This keeps the bump calculation consistent with the released
+          # commit even for manual workflow_dispatch runs started from a non-main branch.
+          ref: main
 
       - name: Determine version and bump type
         id: determine_version
@@ -110,7 +113,6 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
           MANUAL_BUMP_INPUT: ${{ inputs.version_bump }}
           MANUAL_BUMP_EVENT: ${{ github.event.inputs.version_bump }}
-          MERGE_COMMIT: ${{ github.event.pull_request.merge_commit_sha }}
         run: |
           # Pass manual bump parameter to Get-VersionBump for centralized version logic
           Write-Host "Analyzing version requirements..."
