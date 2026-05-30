@@ -56,9 +56,7 @@ Invoke-Build -Task Build
 
 ## Documentation Contributions
 
-Documentation updates are encouraged, especially when behavior or command
-surfaces change. Keep command reference pages in `docs/DLLPickle` aligned with
-the module manifest exports.
+Documentation updates are encouraged, especially when behavior or command surfaces change. Keep command reference pages in `docs/DLLPickle` aligned with the module manifest exports.
 
 ## Submitting Changes
 
