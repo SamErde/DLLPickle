@@ -5,7 +5,9 @@
 .DESCRIPTION
     Examines conventional commit messages to determine if a major, minor, or patch version bump
     is needed. The base version is the higher of the module manifest version and the highest
-    Git tag in the format "vX.Y.Z". Returns the bump type and the new version number.
+    Git tag in the format "vX.Y.Z". Under tag-driven versioning the in-source manifest is a 0.0.0
+    placeholder, so the highest Git tag is effectively the source of truth. Returns the bump type
+    and the new version number.
 
 .PARAMETER ManifestPath
     Path to the module manifest file. If not provided, uses "./src/DLLPickle/DLLPickle.psd1".

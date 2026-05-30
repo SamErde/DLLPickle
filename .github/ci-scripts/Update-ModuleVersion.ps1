@@ -5,6 +5,10 @@
 .DESCRIPTION
     Updates the ModuleVersion in a PowerShell module manifest (.psd1) file and verifies the change was applied successfully.
 
+    Under tag-driven versioning, CI uses this script to stamp the release version (derived from the
+    Git tag) into the built module artifact in the workspace. It does NOT commit changes to source:
+    the in-source manifest carries a 0.0.0 placeholder and the Git tag (vX.Y.Z) is the source of truth.
+
 .PARAMETER ManifestPath
     Path to the module manifest file.
 
