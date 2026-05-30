@@ -10,11 +10,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Azure.Core" Version="[1.50.0]" />
-    <PackageReference Include="Microsoft.Identity.Client" Version="[4.83.1]" />
-    <PackageReference Include="Microsoft.Identity.Client.Broker" Version="[4.83.1]" />
-    <PackageReference Include="Microsoft.Identity.Client.Extensions.Msal" Version="[4.83.1]" />
-    <PackageReference Include="Microsoft.Identity.Client.NativeInterop" Version="[0.20.4]" />
+    <PackageReference Include="Azure.Core" Version="[1.57.0]" />
+    <PackageReference Include="Microsoft.Identity.Client" Version="[4.84.1]" />
+    <PackageReference Include="Microsoft.Identity.Client.Broker" Version="[4.84.1]" />
+    <PackageReference Include="Microsoft.Identity.Client.Extensions.Msal" Version="[4.84.1]" />
+    <PackageReference Include="Microsoft.Identity.Client.NativeInterop" Version="[0.20.6]" />
     <PackageReference Include="Microsoft.IdentityModel.Abstractions" Version="8.*" />
     <PackageReference Include="Microsoft.IdentityModel.Logging" Version="8.*" />
     <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.*" />
