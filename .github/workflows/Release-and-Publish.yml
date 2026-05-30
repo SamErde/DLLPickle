@@ -257,7 +257,10 @@ jobs:
         with:
           token: ${{ steps.generate_token.outputs.token }}
           fetch-depth: 0
-          ref: ${{ github.event.pull_request.merge_commit_sha || github.ref }}
+          # Build, sync, and publish all operate on `main`, so tag `main` too. This keeps the tag,
+          # the built artifact, and the published package pointing at the same commit — including
+          # manual `workflow_dispatch` runs started from a non-main branch.
+          ref: main
 
       - name: Create version tag
         shell: pwsh
@@ -271,6 +274,10 @@ jobs:
 
           # Tag-driven versioning: tag the existing main HEAD. We intentionally do NOT create or push
           # a version-bump commit; the release version is stamped into the build artifact downstream.
+          # Annotated tags require a tagger identity, which a clean GitHub-hosted runner does not set.
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+
           $commitSha = git rev-parse HEAD
 
           git tag -a $tagName -m "Release $version" $commitSha
