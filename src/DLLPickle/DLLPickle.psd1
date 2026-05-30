@@ -12,7 +12,10 @@
 RootModule = 'DLLPickle.psm1'
 
 # Version number of this module.
-ModuleVersion = '1.3.1'
+# NOTE: Tag-driven versioning. The real release version is stamped from the Git tag (vX.Y.Z)
+# at build/publish time by the Release and Publish workflow; the Git tag is the source of truth.
+# This in-source value is an intentional placeholder and is NOT updated per release.
+ModuleVersion = '0.0.0'
 
 # Supported PSEditions
 CompatiblePSEditions = @('Core')
