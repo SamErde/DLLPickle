@@ -59,6 +59,7 @@ jobs:
       new_version: ${{ steps.determine_version.outputs.new_version }}
       previous_tag: ${{ steps.determine_version.outputs.previous_tag }}
       trigger_source: ${{ steps.determine_version.outputs.trigger_source }}
+      release_sha: ${{ steps.determine_version.outputs.release_sha }}
 
     steps:
       - name: 🔍 Validate Release Configuration
@@ -197,13 +198,17 @@ jobs:
               exit 0
           }
 
-          # Set outputs
+          # Set outputs. Capture the resolved main commit so every downstream job (tag, build,
+          # sync, release, publish) operates on exactly this SHA, even if main advances mid-release.
+          $ReleaseSha = (git rev-parse HEAD).Trim()
           "should_release=true" >> $env:GITHUB_OUTPUT
           "version_bump=$NewVersionType" >> $env:GITHUB_OUTPUT
           "current_version=$($CurrentVersion.ToString())" >> $env:GITHUB_OUTPUT
           "new_version=$NewVersion" >> $env:GITHUB_OUTPUT
           "previous_tag=$PreviousTag" >> $env:GITHUB_OUTPUT
           "trigger_source=$TriggerSource" >> $env:GITHUB_OUTPUT
+          "release_sha=$ReleaseSha" >> $env:GITHUB_OUTPUT
+          Write-Host "Release SHA (main HEAD at analyze time): $ReleaseSha"
 
       - name: Display release plan
         if: steps.determine_version.outputs.should_release == 'true'
@@ -259,10 +264,9 @@ jobs:
         with:
           token: ${{ steps.generate_token.outputs.token }}
           fetch-depth: 0
-          # Build, sync, and publish all operate on `main`, so tag `main` too. This keeps the tag,
-          # the built artifact, and the published package pointing at the same commit — including
-          # manual `workflow_dispatch` runs started from a non-main branch.
-          ref: main
+          # Check out the exact commit analyze resolved on main so the tag, the built artifact, and
+          # the published package all reference one commit even if main advances mid-release.
+          ref: ${{ needs.analyze.outputs.release_sha }}
 
       - name: Create version tag
         shell: pwsh
@@ -295,18 +299,18 @@ jobs:
   build-and-test:
     name: Build and Test Module
     uses: ./.github/workflows/Build Module.yml
-    needs: update-version
+    needs: [analyze, update-version]
     permissions:
       contents: read
       security-events: write
     with:
-      ref: main
+      ref: ${{ needs.analyze.outputs.release_sha }}
 
   sync-module-manifest:
     name: Stamp Release Version into Module
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: [update-version, build-and-test]
+    needs: [analyze, update-version, build-and-test]
 
     permissions:
       contents: read
@@ -316,7 +320,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
-          ref: main
+          ref: ${{ needs.analyze.outputs.release_sha }}
 
       - name: Download module artifact
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
@@ -383,6 +387,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
+          ref: ${{ needs.analyze.outputs.release_sha }}
 
       - name: Check if release already exists
         id: check_release
@@ -535,7 +540,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          ref: main
+          ref: ${{ needs.analyze.outputs.release_sha }}
           fetch-depth: 0
 
       - name: Download module artifact (synced)
