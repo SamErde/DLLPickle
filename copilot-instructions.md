@@ -47,7 +47,7 @@ Tailor commit messages for PowerShell development, using the provided types and 
 - chore: Module organization, file cleanup
 - perf: Performance improvements in cmdlets or functions
 - revert: Reverting changes in PowerShell scripts or modules
-- packaging: Packaging changes, module version updates
+- packaging: Packaging and module manifest metadata changes (ModuleVersion is stamped from the Git tag at release time, not committed)
 - security: Security-related changes, input validation, authentication
 
 ## PowerShell Commit Scopes

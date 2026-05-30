@@ -181,6 +181,8 @@ Additionally enable:
 
 These cannot be configured via workflow files; they must be set in GitHub repository Settings → Branches.
 
+> **Update (tag-driven versioning):** The release GitHub App has been removed from the "Protect Main" ruleset bypass list, since the release workflow no longer pushes directly to `main` (only the Admin role retains `always` bypass). Required status checks remain recommended — and are now load-bearing, since the App can no longer bypass them.
+
 ---
 
 ### 8. Dependabot Auto-Merge Scope
@@ -255,7 +257,7 @@ The following practices are already well-implemented and should be maintained:
 | Least-privilege permissions | Most workflows declare `permissions: contents: read` |
 | Dependabot configured | Updates github-actions, nuget, pip, devcontainers, docker |
 | Conventional commits | `Get-VersionBump.ps1` enforces semantic versioning from commit messages |
-| Rollback on failure | Release workflow reverts commits and deletes tags/releases on failure |
+| Rollback on failure | Release workflow deletes the tag and GitHub release on failure; tag-driven versioning makes no commits to `main`, so none need reverting |
 | PSScriptAnalyzer | Runs during every build (Analyze task) at Error+Warning severity |
 
 ---
