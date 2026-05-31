@@ -42,6 +42,8 @@
     "Microsoft.IdentityModel.Logging",
     "Microsoft.IdentityModel.Tokens",
     "System.IdentityModel.Tokens.Jwt",
+    "Microsoft.Extensions.DependencyInjection.Abstractions",
+    "Microsoft.Extensions.Logging.Abstractions",
     "Microsoft.OData.Core",
     "Microsoft.OData.Edm",
     "Microsoft.Spatial"
@@ -74,9 +76,10 @@
       "Az.Accounts": "5.4.0",
       "Microsoft.Graph.Authentication": "2.37.0",
       "ExchangeOnlineManagement": "3.9.2",
-      "MicrosoftTeams": "7.8.0"
+      "MicrosoftTeams": "7.8.0",
+      "Az.Storage": "9.6.1"
     },
-    "conflictSurfaceFingerprint": "6a0ea4e7b401c8d3debb081b534d63bb7edf7c5ee61eea21a50ab126feae13ca"
+    "conflictSurfaceFingerprint": "b9fd2e1c135ecc76438f43eb56ce6db368999240fc25ab0140c40b1ab18359cd"
   },
   "preload": [
     {

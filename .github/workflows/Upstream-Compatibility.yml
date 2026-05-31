@@ -36,6 +36,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
 
       - name: Setup .NET
         uses: actions/setup-dotnet@9a946fdbd5fb07b82b2f5a4466058b876ab72bb2 # v5.3.0
@@ -57,6 +59,42 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           Invoke-Build -File ./build/DLLPickle.Build.ps1 -Task Analyze,Test
+
+      - name: Detect dependency change
+        id: depchange
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $Changed = git diff --name-only "origin/${{ github.base_ref }}...HEAD" -- src/DLLPickle.Build/packages.lock.json src/DLLPickle.Build/DLLPickle.csproj
+          $IsDependencyChange = -not [string]::IsNullOrWhiteSpace(($Changed | Out-String))
+          "is_dependency_change=$($IsDependencyChange.ToString().ToLowerInvariant())" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+      - name: Drift gate for dependency PRs
+        if: steps.depchange.outputs.is_dependency_change == 'true'
+        shell: pwsh
+        run: |
+          # A dependency PR (Dependabot bump of the lock/csproj) can change the bundled preload set.
+          # Recompute the upstream conflict surface and block the PR if it drifted from the recorded
+          # baseline, so an auto-merge cannot advance a bundle change before the preload decision is
+          # re-adjudicated. Non-dependency PRs skip this (and its module-download cost).
+          $ErrorActionPreference = 'Stop'
+          ./tools/Get-DLLPickleUpstreamInventory.ps1 `
+            -PolicyPath ./build/dependency-policy.json `
+            -ModuleCachePath ./artifacts/upstreamCompatibility/modules `
+            -OutputPath ./artifacts/upstreamCompatibility/upstream-inventory.json `
+            -Force
+          ./tools/New-DLLPickleConflictMatrix.ps1 `
+            -InventoryPath ./artifacts/upstreamCompatibility/upstream-inventory.json `
+            -OutputPath ./artifacts/upstreamCompatibility/conflict-matrix.json | Out-Null
+          $policy = Get-Content ./build/dependency-policy.json -Raw | ConvertFrom-Json
+          $current = Get-Content ./artifacts/upstreamCompatibility/conflict-matrix.json -Raw | ConvertFrom-Json
+          $fingerprint = [string]$current.Fingerprint
+          $baseline = [string]$policy.baseline.conflictSurfaceFingerprint
+          if ($fingerprint -ne $baseline) {
+            Write-Host "::error::Conflict surface changed (baseline '$baseline' -> '$fingerprint') on a dependency PR. Do not auto-merge: re-adjudicate the preload decision and update build/dependency-policy.json (classification + evidence + baseline) per docs/Architecture.md section 8."
+            throw 'Conflict-surface drift detected on a dependency PR; blocking auto-merge.'
+          }
+          Write-Host "Conflict surface unchanged (fingerprint '$fingerprint'); dependency bump is safe to merge."
 
   scheduled-upstream-compatibility:
     name: Validate latest upstream module compatibility
@@ -107,8 +145,10 @@ jobs:
           $policy = Get-Content ./build/dependency-policy.json -Raw | ConvertFrom-Json
           $current = Get-Content ./artifacts/upstreamCompatibility/conflict-matrix.json -Raw | ConvertFrom-Json
           $surface = @($current.ConflictSurface | Sort-Object)
-          $bytes = [System.Text.Encoding]::UTF8.GetBytes(($surface -join '|'))
-          $fingerprint = [System.BitConverter]::ToString([System.Security.Cryptography.SHA256]::HashData($bytes)).Replace('-', '').ToLowerInvariant()
+          # Versions-aware fingerprint produced by New-DLLPickleConflictMatrix (single source of the
+          # algorithm) so a within-major version move on a still-conflicting assembly is detected,
+          # not just name-set changes. (ALC-ownership drift is the runtime-probe / maintainer tier.)
+          $fingerprint = [string]$current.Fingerprint
           $baseline = [string]$policy.baseline.conflictSurfaceFingerprint
           if ($fingerprint -ne $baseline) {
             Write-Host "::warning::Conflict surface changed (baseline '$baseline' -> '$fingerprint'). The preload decision in build/dependency-policy.json needs human review."
@@ -134,6 +174,7 @@ jobs:
           }
 
       - name: Generate candidate dependency updates
+        if: steps.drift.outputs.drift != 'true'
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
@@ -145,6 +186,7 @@ jobs:
             -Restore
 
       - name: Validate candidate update
+        if: steps.drift.outputs.drift != 'true'
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
@@ -152,6 +194,7 @@ jobs:
           Invoke-Build -File ./build/DLLPickle.Build.ps1 -Task IssueReproTest
 
       - name: Detect generated changes
+        if: steps.drift.outputs.drift != 'true'
         id: generated_changes
         shell: pwsh
         run: |
@@ -160,7 +203,7 @@ jobs:
           "has_changes=$($Changed.ToString().ToLowerInvariant())" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
 
       - name: Create candidate pull request
-        if: steps.generated_changes.outputs.has_changes == 'true' && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.create_pull_request))
+        if: steps.drift.outputs.drift != 'true' && steps.generated_changes.outputs.has_changes == 'true' && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.create_pull_request))
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}

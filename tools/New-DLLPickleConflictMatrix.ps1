@@ -64,10 +64,25 @@ $AssemblyRows = foreach ($Name in ($ByAssembly.Keys | Sort-Object)) {
     }
 }
 
+# Versions-aware fingerprint over the conflict surface. Each diverging assembly contributes its
+# name AND its sorted distinct versions, so a material change where the same assemblies stay in
+# conflict but their versions move (e.g. an upstream module bumps within-major) changes the hash.
+# This is the single source of the drift fingerprint consumed by the Upstream-Compatibility workflow
+# and the recorded baseline in build/dependency-policy.json. (ALC ownership is not included: it is
+# null in the static inventory and is only known from the runtime probe / maintainer adjudication.)
+$SurfaceRows = @(
+    $AssemblyRows | Where-Object Diverges | Sort-Object Name | ForEach-Object {
+        '{0}={1}' -f $_.Name, (@($_.Versions | Sort-Object) -join ',')
+    }
+)
+$FingerprintBytes = [System.Text.Encoding]::UTF8.GetBytes(($SurfaceRows -join '|'))
+$Fingerprint = [System.BitConverter]::ToString([System.Security.Cryptography.SHA256]::HashData($FingerprintBytes)).Replace('-', '').ToLowerInvariant()
+
 $Matrix = [PSCustomObject]@{
     GeneratedAtUtc  = $null   # stamped by the caller; avoids non-deterministic test output
     Assemblies      = @($AssemblyRows)
     ConflictSurface = @($AssemblyRows | Where-Object Diverges | ForEach-Object Name)
+    Fingerprint     = $Fingerprint
 }
 
 if ($OutputPath) {
