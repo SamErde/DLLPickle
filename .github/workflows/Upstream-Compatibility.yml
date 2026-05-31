@@ -94,6 +94,45 @@ jobs:
             -OutputPath ./artifacts/upstreamCompatibility/upstream-inventory.json `
             -Force
 
+      - name: Detect conflict-surface drift
+        id: drift
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          ./tools/New-DLLPickleConflictMatrix.ps1 `
+            -InventoryPath ./artifacts/upstreamCompatibility/upstream-inventory.json `
+            -OutputPath ./artifacts/upstreamCompatibility/conflict-matrix.json | Out-Null
+          $policy = Get-Content ./build/dependency-policy.json -Raw | ConvertFrom-Json
+          $current = Get-Content ./artifacts/upstreamCompatibility/conflict-matrix.json -Raw | ConvertFrom-Json
+          $surface = @($current.ConflictSurface | Sort-Object)
+          $bytes = [System.Text.Encoding]::UTF8.GetBytes(($surface -join '|'))
+          $fingerprint = [System.BitConverter]::ToString([System.Security.Cryptography.SHA256]::HashData($bytes)).Replace('-', '').ToLowerInvariant()
+          $baseline = [string]$policy.baseline.conflictSurfaceFingerprint
+          if ($fingerprint -ne $baseline) {
+            Write-Host "::warning::Conflict surface changed (baseline '$baseline' -> '$fingerprint'). The preload decision in build/dependency-policy.json needs human review."
+            "drift=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+            $Title = 'Conflict-surface drift detected'
+            $Body = @(
+              'The DLLPickle conflict surface changed versus the recorded baseline.'
+              ''
+              "Baseline fingerprint: ``$baseline``"
+              "Current fingerprint: ``$fingerprint``"
+              ''
+              'Current conflict surface:'
+              ($surface | ForEach-Object { "- $_" })
+              ''
+              'Re-run the runtime ALC adjudication and update build/dependency-policy.json (classification + evidence + baseline) per docs/Architecture.md section 8.'
+            ) -join [System.Environment]::NewLine
+            $Existing = gh issue list --state open --search "$Title in:title" --json number --jq '.[0].number'
+            if ([string]::IsNullOrWhiteSpace($Existing)) { gh issue create --title $Title --body $Body }
+            else { gh issue comment $Existing --body $Body }
+          } else {
+            Write-Host "Conflict surface unchanged (fingerprint '$fingerprint')."
+            "drift=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          }
+
       - name: Generate candidate dependency updates
         shell: pwsh
         run: |
