@@ -10,6 +10,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Working on updates to replace PlatyPS documentation creation with the new Microsoft.PowerShell.PlatyPS module. (PRs and other help would be welcomed!)
 
+## [2.1.0] - 2026-05-31
+
+> The bundled assembly versions are **unchanged** from 2.0.2 (the floating ranges resolve to the same MSAL 4.84.1 / NativeInterop 0.20.6 — the current latest within their majors). This release is about **how dependencies are managed and validated going forward**, not a runtime change.
+
+### Changed
+
+- The MSAL/broker dependency pins are now **major-locked floating** (`Microsoft.Identity.Client` and friends `[4.84.1]` → `4.*`, `NativeInterop` `[0.20.6]` → `0.*`), so Dependabot manages minor/patch updates within the major (gated by the upstream-compatibility checks); major bumps remain a manual, reviewed edit.
+
+### Added
+
+- A **conflict-surface drift gate** in the Upstream-Compatibility workflow: it builds the cross-module conflict matrix, compares its fingerprint to a recorded baseline in `build/dependency-policy.json`, and opens an issue when the surface changes so the preload decision is re-adjudicated.
+- New analysis tooling under `tools/` — `New-DLLPickleConflictMatrix`, `Compare-DLLPickleConflictMatrix`, and `Get-DLLPickleRuntimeAssemblySnapshot` (runtime AssemblyLoadContext probe) — plus unit tests.
+- `docs/Architecture.md` — a durable, agent-oriented architecture blueprint (runtime/ALC model, preload/block taxonomy, invariants and their enforcing gates, source-of-truth map, and a Windows PowerShell 5.1 / net48 re-introduction checklist).
+
+### Fixed
+
+- The Release-and-Publish workflow now also triggers on `src/DLLPickle.Build/**` and `build/**` changes; previously a dependency-only change (like the 2.0.2 fix) would not auto-trigger a release on merge.
+
+### Internal
+
+- `build/dependency-policy.json` records the full, evidence-backed preload/block classification for every tracked assembly (Azure SDK stack and the `Microsoft.Extensions.*` transitives are `block`; the MSAL + IdentityModel stack is `preload`), the four-module target scenario, and the drift baseline. Documents the runtime finding that both Az.Accounts and Microsoft.Graph.Authentication now self-isolate their Azure SDK stack in private ALCs.
+
 ## [2.0.2] - 2026-05-31
 
 ### Fixed
@@ -259,7 +281,8 @@ Full Changelog: [v0.2.5...v0.2.6](https://github.com/SamErde/DLLPickle/compare/v
 
 - Initial release.
 
-[Unreleased]: https://github.com/SamErde/DLLPickle/compare/v2.0.2...HEAD
+[Unreleased]: https://github.com/SamErde/DLLPickle/compare/v2.1.0...HEAD
+[2.1.0]: https://github.com/SamErde/DLLPickle/tag/v2.1.0
 [2.0.2]: https://github.com/SamErde/DLLPickle/tag/v2.0.2
 [2.0.1]: https://github.com/SamErde/DLLPickle/tag/v2.0.1
 [2.0.0]: https://github.com/SamErde/DLLPickle/tag/v2.0.0
