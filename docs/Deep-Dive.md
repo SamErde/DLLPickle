@@ -77,11 +77,20 @@ require incompatible versions in one process, but OData is not added to the
 default preload set unless a future isolation strategy makes that safe.
 
 `Azure.Core` is also report-only. It is intentionally not preloaded on the
-PowerShell 7.4+ profile: Az.Accounts 5.x isolates its Azure SDK stack in a
-private `AssemblyLoadContext`, so preloading `Azure.Core` into the default load
-context splits the identity of `Azure.Core.TokenRequestContext` across load
-contexts and breaks `Connect-AzAccount`. Graph, Exchange, and Teams resolve a
-compatible `Azure.Core` themselves on .NET 8, so the preload is unnecessary.
+PowerShell 7.4+ profile: both `Az.Accounts` (`AzSharedAssemblyLoadContext`) and
+`Microsoft.Graph.Authentication` (`msgraph-load-context`) isolate their Azure SDK
+stack in private `AssemblyLoadContext`s — they even run different `Azure.Core`
+versions side-by-side without conflict. Preloading `Azure.Core` into the default
+load context splits the identity of `Azure.Core.TokenRequestContext` across that
+boundary and breaks `Connect-AzAccount`. Because the modules self-manage it, the
+preload is unnecessary on .NET 8.
+
+> **Windows PowerShell 5.1 caveat:** this module self-isolation relies on
+> `AssemblyLoadContext`, which only exists on .NET (Core) 5+. Windows PowerShell
+> 5.1 (.NET Framework 4.8) has no ALC, so modules cannot self-isolate there. If
+> net48 support is ever re-added, the Azure SDK stack would need to be preloaded
+> again for that target — see the re-introduction checklist in
+> [Architecture.md](Architecture.md).
 
 ## Validated Base Profile
 
