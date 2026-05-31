@@ -46,12 +46,39 @@
     "Microsoft.OData.Edm",
     "Microsoft.Spatial"
   ],
-  "exactPins": [
+  "targetScenario": {
+    "modules": [
+      "Az.Accounts",
+      "Microsoft.Graph.Authentication",
+      "ExchangeOnlineManagement",
+      "MicrosoftTeams"
+    ],
+    "importOrders": [
+      [
+        "ExchangeOnlineManagement",
+        "MicrosoftTeams",
+        "Microsoft.Graph.Authentication",
+        "Az.Accounts"
+      ],
+      [
+        "Az.Accounts",
+        "Microsoft.Graph.Authentication",
+        "ExchangeOnlineManagement",
+        "MicrosoftTeams"
+      ]
+    ]
+  },
+  "baseline": {
+    "moduleVersions": {},
+    "conflictSurfaceFingerprint": null
+  },
+  "preload": [
     {
       "packageName": "Microsoft.Identity.Client",
       "assemblyName": "Microsoft.Identity.Client",
       "targetFramework": "net8.0",
-      "versionSyntax": "exact",
+      "classification": "preload",
+      "versionPolicy": "minorPatchFloat",
       "sourceModules": [
         "Az.Accounts",
         "Microsoft.Graph.Authentication",
@@ -65,7 +92,8 @@
       "packageName": "Microsoft.Identity.Client.Broker",
       "assemblyName": "Microsoft.Identity.Client.Broker",
       "targetFramework": "net8.0",
-      "versionSyntax": "exact",
+      "classification": "preload",
+      "versionPolicy": "minorPatchFloat",
       "sourceModules": [
         "Az.Accounts",
         "Microsoft.Graph.Authentication",
@@ -79,7 +107,8 @@
       "packageName": "Microsoft.Identity.Client.Extensions.Msal",
       "assemblyName": "Microsoft.Identity.Client.Extensions.Msal",
       "targetFramework": "net8.0",
-      "versionSyntax": "exact",
+      "classification": "preload",
+      "versionPolicy": "minorPatchFloat",
       "sourceModules": [
         "Az.Accounts",
         "Microsoft.Graph.Authentication",
