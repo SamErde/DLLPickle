@@ -69,8 +69,14 @@
     ]
   },
   "baseline": {
-    "moduleVersions": {},
-    "conflictSurfaceFingerprint": null
+    "capturedOn": "2026-05-31",
+    "moduleVersions": {
+      "Az.Accounts": "5.4.0",
+      "Microsoft.Graph.Authentication": "2.37.0",
+      "ExchangeOnlineManagement": "3.9.2",
+      "MicrosoftTeams": "7.8.0"
+    },
+    "conflictSurfaceFingerprint": "6a0ea4e7b401c8d3debb081b534d63bb7edf7c5ee61eea21a50ab126feae13ca"
   },
   "preload": [
     {
@@ -86,7 +92,12 @@
         "ExchangeOnlineManagement"
       ],
       "updateMode": "candidatePullRequest",
-      "reason": "The base profile uses the highest Microsoft.Identity.Client assembly from Az, Graph, Teams, and Exchange so shared MSAL method contracts remain consistent."
+      "reason": "The base profile uses the highest Microsoft.Identity.Client assembly from Az, Graph, Teams, and Exchange so shared MSAL method contracts remain consistent.",
+      "evidence": {
+        "alcOwner": "Default",
+        "basis": "In the cross-module conflict surface; default-ALC-shared. Preloading the MSAL line is validated by the 2.0.1/2.0.2 four-module connect and underpins the #156 broker fix.",
+        "decidedOn": "2026-05-31"
+      }
     },
     {
       "packageName": "Microsoft.Identity.Client.Broker",
@@ -101,7 +112,12 @@
         "ExchangeOnlineManagement"
       ],
       "updateMode": "candidatePullRequest",
-      "reason": "The base profile requires the broker extension assembly to stay aligned with the selected MSAL line."
+      "reason": "The base profile requires the broker extension assembly to stay aligned with the selected MSAL line.",
+      "evidence": {
+        "alcOwner": "Default",
+        "basis": "Default-ALC-shared; the #156 reproduction is a WithBroker missing-method failure when the broker line is misaligned. Validated by the 2.0.1/2.0.2 four-module connect.",
+        "decidedOn": "2026-05-31"
+      }
     },
     {
       "packageName": "Microsoft.Identity.Client.Extensions.Msal",
@@ -115,20 +131,230 @@
         "MicrosoftTeams"
       ],
       "updateMode": "candidatePullRequest",
-      "reason": "Az.Accounts and Microsoft.Graph.Authentication both use the MSAL cache helper; preloading the highest compatible cache helper prevents missing-method failures after mixed imports."
+      "reason": "Az.Accounts and Microsoft.Graph.Authentication both use the MSAL cache helper; preloading the highest compatible cache helper prevents missing-method failures after mixed imports.",
+      "evidence": {
+        "alcOwner": "Default",
+        "basis": "Block CANDIDATE by ALC ownership (observed in Az's AzSharedAssemblyLoadContext), but runtime decides PRELOAD: preloading the MSAL/cache-helper line is proven safe by the 2.0.1/2.0.2 four-module connect. Only the Azure SDK stack breaks when preloaded.",
+        "decidedOn": "2026-05-31"
+      }
+    },
+    {
+      "packageName": "Microsoft.Identity.Client.NativeInterop",
+      "assemblyName": "Microsoft.Identity.Client.NativeInterop",
+      "targetFramework": "net8.0",
+      "classification": "preload",
+      "versionPolicy": "minorPatchFloat",
+      "sourceModules": [
+        "Az.Accounts",
+        "MicrosoftTeams"
+      ],
+      "updateMode": "candidatePullRequest",
+      "reason": "Broker native-interop dependency; bundled so the broker's native runtime files (added to PATH by Import-DPLibrary) are available. Floats with the MSAL/broker line.",
+      "evidence": {
+        "alcOwner": "Default",
+        "basis": "Ships native runtime DLLs that Import-DPLibrary surfaces on PATH. Tracks the broker requirement; validated by the 2.0.1/2.0.2 four-module connect.",
+        "decidedOn": "2026-05-31"
+      }
+    },
+    {
+      "packageName": "Microsoft.IdentityModel.Abstractions",
+      "assemblyName": "Microsoft.IdentityModel.Abstractions",
+      "targetFramework": "net8.0",
+      "classification": "preload",
+      "versionPolicy": "minorPatchFloat",
+      "sourceModules": [
+        "Az.Accounts",
+        "Microsoft.Graph.Authentication",
+        "MicrosoftTeams",
+        "ExchangeOnlineManagement"
+      ],
+      "updateMode": "candidatePullRequest",
+      "reason": "Shared IdentityModel token stack; preload a coherent 8.x line so mixed imports agree.",
+      "evidence": {
+        "alcOwner": "Default",
+        "basis": "Default-ALC-shared token-handling stack in the conflict surface; preloading a coherent 8.x line keeps mixed imports consistent (validated 2.0.1/2.0.2).",
+        "decidedOn": "2026-05-31"
+      }
+    },
+    {
+      "packageName": "Microsoft.IdentityModel.JsonWebTokens",
+      "assemblyName": "Microsoft.IdentityModel.JsonWebTokens",
+      "targetFramework": "net8.0",
+      "classification": "preload",
+      "versionPolicy": "minorPatchFloat",
+      "sourceModules": [
+        "Az.Accounts",
+        "Microsoft.Graph.Authentication",
+        "MicrosoftTeams",
+        "ExchangeOnlineManagement"
+      ],
+      "updateMode": "candidatePullRequest",
+      "reason": "Shared IdentityModel token stack; preload a coherent 8.x line so mixed imports agree.",
+      "evidence": {
+        "alcOwner": "Default",
+        "basis": "Default-ALC-shared token-handling stack in the conflict surface; coherent 8.x preload validated 2.0.1/2.0.2.",
+        "decidedOn": "2026-05-31"
+      }
+    },
+    {
+      "packageName": "Microsoft.IdentityModel.Logging",
+      "assemblyName": "Microsoft.IdentityModel.Logging",
+      "targetFramework": "net8.0",
+      "classification": "preload",
+      "versionPolicy": "minorPatchFloat",
+      "sourceModules": [
+        "Az.Accounts",
+        "Microsoft.Graph.Authentication",
+        "MicrosoftTeams",
+        "ExchangeOnlineManagement"
+      ],
+      "updateMode": "candidatePullRequest",
+      "reason": "Shared IdentityModel token stack; preload a coherent 8.x line so mixed imports agree.",
+      "evidence": {
+        "alcOwner": "Default",
+        "basis": "Default-ALC-shared token-handling stack in the conflict surface; coherent 8.x preload validated 2.0.1/2.0.2.",
+        "decidedOn": "2026-05-31"
+      }
+    },
+    {
+      "packageName": "Microsoft.IdentityModel.Tokens",
+      "assemblyName": "Microsoft.IdentityModel.Tokens",
+      "targetFramework": "net8.0",
+      "classification": "preload",
+      "versionPolicy": "minorPatchFloat",
+      "sourceModules": [
+        "Az.Accounts",
+        "Microsoft.Graph.Authentication",
+        "MicrosoftTeams",
+        "ExchangeOnlineManagement"
+      ],
+      "updateMode": "candidatePullRequest",
+      "reason": "Shared IdentityModel token stack; preload a coherent 8.x line so mixed imports agree.",
+      "evidence": {
+        "alcOwner": "Default",
+        "basis": "Default-ALC-shared token-handling stack in the conflict surface; coherent 8.x preload validated 2.0.1/2.0.2. Its incidental Microsoft.Extensions.* transitives are excluded from the bundle (see blockedPreloadAssemblies / #193).",
+        "decidedOn": "2026-05-31"
+      }
+    },
+    {
+      "packageName": "System.IdentityModel.Tokens.Jwt",
+      "assemblyName": "System.IdentityModel.Tokens.Jwt",
+      "targetFramework": "net8.0",
+      "classification": "preload",
+      "versionPolicy": "minorPatchFloat",
+      "sourceModules": [
+        "Az.Accounts",
+        "Microsoft.Graph.Authentication",
+        "MicrosoftTeams",
+        "ExchangeOnlineManagement"
+      ],
+      "updateMode": "candidatePullRequest",
+      "reason": "Shared JWT handler aligned with the IdentityModel 8.x line.",
+      "evidence": {
+        "alcOwner": "Default",
+        "basis": "Default-ALC-shared; aligned with the IdentityModel 8.x preload. Validated 2.0.1/2.0.2.",
+        "decidedOn": "2026-05-31"
+      }
     }
   ],
   "blockedPreloadAssemblies": [
     {
       "packageName": "Azure.Core",
       "assemblyName": "Azure.Core",
+      "classification": "block",
       "sourceModules": [
         "Az.Accounts",
         "Microsoft.Graph.Authentication",
         "MicrosoftTeams"
       ],
       "updateMode": "reportOnly",
-      "reason": "Azure.Core is intentionally not preloaded on the PowerShell 7.4+ (net8.0) profile. Az.Accounts 5.x isolates its Azure SDK stack in a private AssemblyLoadContext; preloading Azure.Core into the default load context splits Azure.Core.TokenRequestContext across load contexts and breaks Connect-AzAccount with a MissingMethodException on InteractiveBrowserCredential.AuthenticateAsync. Graph, Exchange, and Teams resolve a compatible Azure.Core themselves on .NET 8, so the preload is unnecessary for them. The original net48-only Azure.Core preload (#183) does not apply to the net8.0 baseline."
+      "reason": "Azure.Core is intentionally not preloaded on the PowerShell 7.4+ (net8.0) profile. Az.Accounts 5.x isolates its Azure SDK stack in a private AssemblyLoadContext; preloading Azure.Core into the default load context splits Azure.Core.TokenRequestContext across load contexts and breaks Connect-AzAccount with a MissingMethodException on InteractiveBrowserCredential.AuthenticateAsync. Graph, Exchange, and Teams resolve a compatible Azure.Core themselves on .NET 8, so the preload is unnecessary for them. The original net48-only Azure.Core preload (#183) does not apply to the net8.0 baseline.",
+      "evidence": {
+        "alcOwner": "AzSharedAssemblyLoadContext / msgraph-load-context",
+        "basis": "Runtime probe 2026-05-31: Az.Accounts and Microsoft.Graph.Authentication both self-isolate Azure.Core in private ALCs and run different versions side-by-side (1.50 vs 1.51.1). Preloading into the default ALC splits TokenRequestContext -> Connect-AzAccount MissingMethodException. Removed from the bundle in 2.0.1.",
+        "decidedOn": "2026-05-31"
+      }
+    },
+    {
+      "packageName": "Azure.Identity",
+      "assemblyName": "Azure.Identity",
+      "classification": "block",
+      "sourceModules": [
+        "Az.Accounts"
+      ],
+      "updateMode": "reportOnly",
+      "reason": "Azure SDK stack self-isolated by Az.Accounts (and Graph); not preloaded on the net8.0 profile.",
+      "evidence": {
+        "alcOwner": "AzSharedAssemblyLoadContext",
+        "basis": "Runtime probe 2026-05-31: loaded into Az's private ALC (1.13.0). Belongs to the Azure SDK stack that breaks when preloaded (Azure.Core class). Not bundled by DLLPickle.",
+        "decidedOn": "2026-05-31"
+      }
+    },
+    {
+      "packageName": "Azure.Identity.Broker",
+      "assemblyName": "Azure.Identity.Broker",
+      "classification": "block",
+      "sourceModules": [
+        "Az.Accounts"
+      ],
+      "updateMode": "reportOnly",
+      "reason": "Azure SDK broker stack self-managed by Az; not preloaded on the net8.0 profile.",
+      "evidence": {
+        "alcOwner": "AzSharedAssemblyLoadContext",
+        "basis": "In the conflict surface; part of the Az-self-isolated Azure SDK stack. Not bundled by DLLPickle.",
+        "decidedOn": "2026-05-31"
+      }
+    },
+    {
+      "packageName": "System.ClientModel",
+      "assemblyName": "System.ClientModel",
+      "classification": "block",
+      "sourceModules": [
+        "Microsoft.Graph.Authentication"
+      ],
+      "updateMode": "reportOnly",
+      "reason": "Azure SDK transitive (Azure.Core dependency) self-managed by Graph/Az; not preloaded on the net8.0 profile.",
+      "evidence": {
+        "alcOwner": "msgraph-load-context",
+        "basis": "Runtime probe 2026-05-31: loaded into Graph's private ALC (1.9.0) alongside Azure.Core. Transitive of the blocked Azure.Core. Not bundled by DLLPickle.",
+        "decidedOn": "2026-05-31"
+      }
+    },
+    {
+      "packageName": "Microsoft.Extensions.DependencyInjection.Abstractions",
+      "assemblyName": "Microsoft.Extensions.DependencyInjection.Abstractions",
+      "classification": "block",
+      "sourceModules": [
+        "Az.Accounts",
+        "Az.Resources",
+        "Microsoft.Graph.Authentication"
+      ],
+      "updateMode": "reportOnly",
+      "reason": "#193: incidental transitive of Microsoft.IdentityModel.Tokens, not part of DLLPickle's identity-coordination purpose and not host-provided. Excluded from the bundle (ExcludeAssets=runtime) so it does not collide with modules that bundle their own copy (Az.Resources).",
+      "evidence": {
+        "alcOwner": "Default (collision)",
+        "basis": "Diagnostic 2026-05-31: DLLPickle preloaded 8.0.0 into the default ALC; PowerShell ships only Microsoft.Extensions.ObjectPool (not this); Az.Resources 9.x bundles its own copy -> 'assembly with same name is already loaded' on Import-Module Az.Resources. Fixed in 2.0.2.",
+        "decidedOn": "2026-05-31",
+        "issue": "193"
+      }
+    },
+    {
+      "packageName": "Microsoft.Extensions.Logging.Abstractions",
+      "assemblyName": "Microsoft.Extensions.Logging.Abstractions",
+      "classification": "block",
+      "sourceModules": [
+        "Az.Accounts",
+        "Az.Resources",
+        "Microsoft.Graph.Authentication"
+      ],
+      "updateMode": "reportOnly",
+      "reason": "#193: paired with DependencyInjection.Abstractions (depends on it); same incidental-transitive collision with Az modules. Excluded from the bundle (ExcludeAssets=runtime).",
+      "evidence": {
+        "alcOwner": "Default (collision)",
+        "basis": "Excluded alongside DependencyInjection.Abstractions in 2.0.2. Microsoft.IdentityModel.Tokens still loads without it bundled (resolves lazily / supplied by the consuming service modules).",
+        "decidedOn": "2026-05-31",
+        "issue": "193"
+      }
     },
     {
       "packageName": "Microsoft.OData.Core",
