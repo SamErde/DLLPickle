@@ -10,6 +10,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Working on updates to replace PlatyPS documentation creation with the new Microsoft.PowerShell.PlatyPS module. (PRs and other help would be welcomed!)
 
+## [2.0.2] - 2026-05-31
+
+### Fixed
+
+- `Import-Module Az.Resources` (and other Az.* modules) failing with `Could not load file or assembly 'Microsoft.Extensions.DependencyInjection.Abstractions, Version=8.0.0.0 ...'. Assembly with same name is already loaded` after `Import-DPLibrary` (#193). DLLPickle was preloading the `Microsoft.Extensions.DependencyInjection.Abstractions` and `Microsoft.Extensions.Logging.Abstractions` BCL transitives (pulled by `Microsoft.IdentityModel.Tokens`) into the default load context, where they collided with the copies Az modules bundle. `Microsoft.IdentityModel.Tokens` still loads correctly without them preloaded.
+
+### Removed
+
+- `Microsoft.Extensions.DependencyInjection.Abstractions` and `Microsoft.Extensions.Logging.Abstractions` from the bundled preload set (via `ExcludeAssets="runtime"`). They are incidental transitives, not part of DLLPickle's identity-coordination purpose, and PowerShell does not host-provide them — so preloading DLLPickle's own copies only caused conflicts with consuming modules. The service modules that need them supply them at runtime.
+
 ## [2.0.1] - 2026-05-31
 
 ### Fixed
@@ -249,7 +259,8 @@ Full Changelog: [v0.2.5...v0.2.6](https://github.com/SamErde/DLLPickle/compare/v
 
 - Initial release.
 
-[Unreleased]: https://github.com/SamErde/DLLPickle/compare/v2.0.1...HEAD
+[Unreleased]: https://github.com/SamErde/DLLPickle/compare/v2.0.2...HEAD
+[2.0.2]: https://github.com/SamErde/DLLPickle/tag/v2.0.2
 [2.0.1]: https://github.com/SamErde/DLLPickle/tag/v2.0.1
 [2.0.0]: https://github.com/SamErde/DLLPickle/tag/v2.0.0
 [1.3.1]: https://github.com/SamErde/DLLPickle/tag/v1.3.1

@@ -36,4 +36,27 @@ Describe 'Built module integration validation' -Tag 'Integration' {
         @($ImportResults | Where-Object AssemblyName -EQ 'Azure.Core') | Should -BeNullOrEmpty
         @($ImportResults | Where-Object DLLName -EQ 'Azure.Core.dll') | Should -BeNullOrEmpty
     }
+
+    It 'does not preload the Microsoft.Extensions.* BCL transitives (regression guard for #193 / Az.Resources)' {
+        # These are incidental transitives of Microsoft.IdentityModel.Tokens, not part of DLLPickle's
+        # identity-coordination purpose. PowerShell does not host-provide them, and preloading our own
+        # copies into the default ALC collides with modules that bundle their own (Az.Resources 9.x ->
+        # "Microsoft.Extensions.DependencyInjection.Abstractions ... assembly with same name is already
+        # loaded"). They are excluded from the bundle via ExcludeAssets in DLLPickle.csproj.
+        $BinPath = Join-Path (Split-Path -Path $BuiltModuleManifestPath -Parent) 'bin\net8.0'
+
+        # Packaging invariant: the Extensions BCL transitives must not be shipped.
+        Join-Path $BinPath 'Microsoft.Extensions.DependencyInjection.Abstractions.dll' | Should -Not -Exist
+        Join-Path $BinPath 'Microsoft.Extensions.Logging.Abstractions.dll' | Should -Not -Exist
+
+        Remove-Module DLLPickle -Force -ErrorAction SilentlyContinue
+        Import-Module $BuiltModuleManifestPath -Force
+
+        # Behavioral invariant: Import-DPLibrary must not report them among preloaded assemblies,
+        # and Microsoft.IdentityModel.Tokens must still load successfully without them bundled.
+        $ImportResults = @(Import-DPLibrary -SuppressLogo)
+        @($ImportResults | Where-Object DLLName -Like 'Microsoft.Extensions.*') | Should -BeNullOrEmpty
+        $Tokens = $ImportResults | Where-Object DLLName -EQ 'Microsoft.IdentityModel.Tokens.dll'
+        $Tokens.Status | Should -Not -Be 'Failed'
+    }
 }
