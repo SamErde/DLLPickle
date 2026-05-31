@@ -7,6 +7,8 @@ on:
       - main
     paths:
       - "src/DLLPickle/**"
+      - "src/DLLPickle.Build/**"
+      - "build/**"
       - "module/**"
   workflow_dispatch:
     inputs:

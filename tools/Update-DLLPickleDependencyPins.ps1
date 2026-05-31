@@ -4,9 +4,11 @@
 
 .DESCRIPTION
     Reads an upstream compatibility inventory and dependency policy, compares
-    exact-pin rules with src/DLLPickle.Build/DLLPickle.csproj, updates supported
+    preload rules with src/DLLPickle.Build/DLLPickle.csproj, updates supported
     package references when upstream module assembly identities require it, and
-    writes a JSON candidate report. Blocked preload families are reported but not
+    writes a JSON candidate report. A preload entry whose versionPolicy is
+    'minorPatchFloat' is written as a floating 'N.*' reference; otherwise an exact
+    '[x.y.z]' reference is written. Blocked preload families are reported but not
     applied.
 
 .PARAMETER InventoryPath
@@ -142,7 +144,7 @@ $ProjectChanged = $false
 $Changes = New-Object System.Collections.Generic.List[object]
 $Warnings = New-Object System.Collections.Generic.List[string]
 
-foreach ($Pin in @($Policy.exactPins)) {
+foreach ($Pin in @($Policy.preload)) {
     $SourceModuleLookup = @{}
     foreach ($SourceModule in @($Pin.sourceModules)) {
         $SourceModuleLookup[[string]$SourceModule] = $true
@@ -192,7 +194,11 @@ foreach ($Pin in @($Policy.exactPins)) {
         }
     }
 
-    $FormattedVersion = if ([string]$Pin.versionSyntax -eq 'exact') { '[{0}]' -f $TargetVersion } else { $TargetVersion }
+    $VersionPolicy = if ($Pin.versionPolicy) { [string]$Pin.versionPolicy } else { 'exact' }
+    $FormattedVersion = switch ($VersionPolicy) {
+        'minorPatchFloat' { '{0}.*' -f ([version]$TargetVersion).Major }
+        default { '[{0}]' -f $TargetVersion }
+    }
     $CurrentReference = Get-DLLPickleCurrentPackageReference -ProjectContent $ProjectContent -PackageName ([string]$Pin.packageName) -TargetFramework ([string]$Pin.targetFramework)
 
     if (-not $CurrentReference) {

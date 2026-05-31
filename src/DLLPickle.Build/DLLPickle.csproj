@@ -19,10 +19,15 @@
          compatible Azure.Core themselves on .NET 8, so the preload is unnecessary for them.
          The original net48-only Azure.Core preload (#183) does not apply to the net8.0 baseline.
          Tracked as report-only in build/dependency-policy.json. -->
-    <PackageReference Include="Microsoft.Identity.Client" Version="[4.84.1]" />
-    <PackageReference Include="Microsoft.Identity.Client.Broker" Version="[4.84.1]" />
-    <PackageReference Include="Microsoft.Identity.Client.Extensions.Msal" Version="[4.84.1]" />
-    <PackageReference Include="Microsoft.Identity.Client.NativeInterop" Version="[0.20.6]" />
+    <!-- MSAL + broker line: major-locked floating (N.*) so Dependabot manages minor/patch updates
+         within the major (gated by the upstream-compatibility checks); major bumps stay a manual,
+         reviewed edit. The lock file pins the concrete resolved version. NativeInterop floats 0.*
+         so it tracks whatever the resolved broker requires. See build/dependency-policy.json
+         (versionPolicy: minorPatchFloat) and docs/Architecture.md. -->
+    <PackageReference Include="Microsoft.Identity.Client" Version="4.*" />
+    <PackageReference Include="Microsoft.Identity.Client.Broker" Version="4.*" />
+    <PackageReference Include="Microsoft.Identity.Client.Extensions.Msal" Version="4.*" />
+    <PackageReference Include="Microsoft.Identity.Client.NativeInterop" Version="0.*" />
     <PackageReference Include="Microsoft.IdentityModel.Abstractions" Version="8.*" />
     <PackageReference Include="Microsoft.IdentityModel.Logging" Version="8.*" />
     <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.*" />

@@ -24,7 +24,7 @@ Describe 'Dependency automation tooling' -Tag 'Unit' {
                 }
             )
             trackedAssemblies = @($AssemblyName)
-            exactPins = @()
+            preload = @()
             blockedPreloadAssemblies = @()
         } | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $PolicyPath -Encoding UTF8
 
@@ -43,33 +43,35 @@ Describe 'Dependency automation tooling' -Tag 'Unit' {
     <TargetFramework>net8.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Contoso.CappedLibrary" Version="[1.51.1]" />
-    <PackageReference Include="Microsoft.Identity.Client" Version="[4.82.1]" />
+    <PackageReference Include="Contoso.CappedLibrary" Version="1.0.0" />
+    <PackageReference Include="Microsoft.Identity.Client" Version="4.0.0" />
   </ItemGroup>
 </Project>
 '@ | Set-Content -LiteralPath $ProjectPath -Encoding UTF8
 
         $PolicyPath = Join-Path -Path $TestDrive -ChildPath 'policy.json'
         @{
-            exactPins = @(
+            preload = @(
                 @{
                     packageName = 'Contoso.CappedLibrary'
                     assemblyName = 'Contoso.CappedLibrary'
                     targetFramework = 'net8.0'
-                    versionSyntax = 'exact'
+                    classification = 'preload'
+                    versionPolicy = 'minorPatchFloat'
                     maximumPackageVersion = '1.50.0'
                     sourceModules = @('Microsoft.Graph.Authentication', 'MicrosoftTeams')
                     updateMode = 'candidatePullRequest'
-                    reason = 'Synthetic exact pin test.'
+                    reason = 'Synthetic capped preload test.'
                 }
                 @{
                     packageName = 'Microsoft.Identity.Client'
                     assemblyName = 'Microsoft.Identity.Client'
                     targetFramework = 'net8.0'
-                    versionSyntax = 'exact'
+                    classification = 'preload'
+                    versionPolicy = 'minorPatchFloat'
                     sourceModules = @('Az.Accounts', 'Microsoft.Graph.Authentication')
                     updateMode = 'candidatePullRequest'
-                    reason = 'Synthetic unconditional exact pin test.'
+                    reason = 'Synthetic floating preload test.'
                 }
             )
             blockedPreloadAssemblies = @(
@@ -141,11 +143,11 @@ Describe 'Dependency automation tooling' -Tag 'Unit' {
         $Report = & $script:UpdateScriptPath -InventoryPath $InventoryPath -PolicyPath $PolicyPath -ProjectPath $ProjectPath -OutputPath (Join-Path $TestDrive 'candidate-report.json') -Confirm:$false -WhatIf:$false
 
         $Report.ProjectChanged | Should -BeTrue
-        $Report.Changes[0].CandidateVersion | Should -Be '[1.50.0]'
+        $Report.Changes[0].CandidateVersion | Should -Be '1.*'
         $Report.Changes[0].SourceModule | Should -Be 'MicrosoftTeams'
         $Report.Warnings | Should -Contain "PackageReference 'Contoso.CappedLibrary' candidate '1.53.0' exceeds maximum '1.50.0' for target framework 'net8.0'; using maximum version."
-        Get-Content -LiteralPath $ProjectPath -Raw | Should -Match 'Version="\[1\.50\.0\]"'
-        Get-Content -LiteralPath $ProjectPath -Raw | Should -Match 'Include="Microsoft\.Identity\.Client" Version="\[4\.83\.1\]"'
+        Get-Content -LiteralPath $ProjectPath -Raw | Should -Match 'Include="Contoso\.CappedLibrary" Version="1\.\*"'
+        Get-Content -LiteralPath $ProjectPath -Raw | Should -Match 'Include="Microsoft\.Identity\.Client" Version="4\.\*"'
         @($Report.BlockedFindings) | Should -HaveCount 1
         $Report.BlockedFindings[0].AssemblyName | Should -Be 'Microsoft.OData.Core'
     }
