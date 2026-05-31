@@ -178,3 +178,15 @@ The blueprint is produced as part of Stage 1 implementation and updated by every
 - **A1:** Live validation depends on the real modules being installed locally; the auth tier needs a tenant. Accepted (two-tier validation; Stage 2b optional).
 - **A2:** The verdict on `M.E.DI.Abstractions` (block vs coherent-version preload) is determined by the first runtime adjudication, not pre-judged here; either way it must close #193.
 - **A3:** `docs/Architecture.md` is the chosen blueprint location; adjust if a different path is preferred.
+
+## 14. Session findings (runtime evidence — 2026-05-31)
+
+Adjudication evidence gathered by running the new tooling against the real four modules. These update the design's assumptions:
+
+- **Both Az and Graph now self-isolate.** `Az.Accounts` loads its Azure SDK stack into `AzSharedAssemblyLoadContext`; `Microsoft.Graph.Authentication` loads its into `msgraph-load-context`. They run **different `Azure.Core` versions side-by-side** (Az `1.50`, Graph `1.51.1`) without conflict. Graph self-isolating is new since #183.
+- **Adjudicated verdicts (net8.0):** `block` the Azure SDK stack (`Azure.Core`, `Azure.Identity`, `Azure.Identity.Broker`, `System.ClientModel`); `preload` the MSAL + IdentityModel stack; `block` (report-only) the OData family (#174). The current 2.0.1 bundle already matches this, so recording it is not a behavior change.
+- **Static narrows, runtime decides — confirmed.** `Microsoft.Identity.Client.Extensions.Msal` is owned by Az's private ALC (a `block` *candidate*) yet preloading the MSAL/IdentityModel stack is proven safe (2.0.1). Only the Azure SDK stack breaks when preloaded.
+- **DLLPickle's scope shrinks on PS 7.4+.** As modules self-isolate, the only assemblies that still need a shared preload are MSAL/IdentityModel (for default-ALC consumers EXO/Teams + the #156 broker fix).
+- **The `block` verdicts are ALC-conditional, not universal.** Windows PowerShell 5.1 / .NET Framework 4.8 has **no `AssemblyLoadContext`**, so modules cannot self-isolate there. If net48 / WinPS 5.1 support is re-added, the Azure SDK stack must be **preloaded again, conditionally per-TFM (net48 only)** — the inverse of the net8 verdict. See the re-introduction checklist in `docs/Architecture.md` §9. (The 2.0 regression was exactly an unconditional application of the net48-era preload to net8.)
+- **#193 methodology gap:** `Microsoft.Extensions.DependencyInjection.Abstractions` is a DLLPickle *transitive* not in `trackedAssemblies`, so the conflict matrix can't see it. Fix: track DLLPickle's full bundled set, re-run inventory, confirm the Az.Resources repro on current `main`, then decide/validate exclusion.
+- **EXO/Teams ALC ownership not yet captured** — bare `Import-Module` doesn't eager-load their identity assemblies; the probe needs a representative `-ProbeCommand`.
