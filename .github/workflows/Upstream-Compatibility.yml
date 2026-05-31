@@ -65,7 +65,10 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $Changed = git diff --name-only "origin/${{ github.base_ref }}...HEAD" -- src/DLLPickle.Build/packages.lock.json src/DLLPickle.Build/DLLPickle.csproj
+          # Compare against the PR base SHA from the event context (always present in fetch-depth:0
+          # history); avoids relying on origin/<base> being fetched as a named ref or on a merge-base.
+          $BaseSha = '${{ github.event.pull_request.base.sha }}'
+          $Changed = git diff --name-only $BaseSha HEAD -- src/DLLPickle.Build/packages.lock.json src/DLLPickle.Build/DLLPickle.csproj
           $IsDependencyChange = -not [string]::IsNullOrWhiteSpace(($Changed | Out-String))
           "is_dependency_change=$($IsDependencyChange.ToString().ToLowerInvariant())" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
 
