@@ -67,32 +67,15 @@ Export-ModuleMember -Function Connect-ExchangeOnline
 '@ | Set-Content -LiteralPath $ModuleFile -Encoding UTF8
         } else {
             @'
-function Test-DLLPickleSyntheticAssemblyVersion {
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory)]
-        [string]$Name,
-
-        [Parameter(Mandatory)]
-        [version]$MinimumVersion
-    )
-
-    $LoadedAssembly = [System.AppDomain]::CurrentDomain.GetAssemblies() |
-        Where-Object { $_.GetName().Name -eq $Name } |
-        Sort-Object -Property { $_.GetName().Version } -Descending |
-        Select-Object -First 1
-
-    return $LoadedAssembly -and $LoadedAssembly.GetName().Version -ge $MinimumVersion
-}
-
 if (-not $global:DllPickleSyntheticImportOrder) {
     $global:DllPickleSyntheticImportOrder = [System.Collections.Generic.List[string]]::new()
 }
 
-if (($global:DllPickleSyntheticImportOrder -contains 'ExchangeOnlineManagement') -and
-    -not (Test-DLLPickleSyntheticAssemblyVersion -Name 'Azure.Core' -MinimumVersion ([version]'1.50.0.0'))) {
-    throw [System.TypeLoadException]::new("Method 'GetTokenAsync' in type 'Microsoft.Graph.PowerShell.Authentication.Core.Utilities.UserProvidedTokenCredential' from assembly 'Microsoft.Graph.Authentication.Core' does not have an implementation.")
-}
+# Note: On the net8.0 baseline DLLPickle does not preload Azure.Core, and real
+# Microsoft.Graph.Authentication and ExchangeOnlineManagement resolve a compatible
+# Azure.Core themselves, so there is no GetTokenAsync failure to reproduce here.
+# The remaining #156 reproduction is the Microsoft.Identity.Client.Broker (WithBroker)
+# contract exercised by the ExchangeOnlineManagement synthetic module below.
 
 $global:DllPickleSyntheticImportOrder.Add('Microsoft.Graph.Authentication')
 
@@ -116,43 +99,6 @@ Describe 'Issue 156 Graph and ExchangeOnlineManagement reproduction' -Tag 'Integ
         $SyntheticModuleRoot = Join-Path -Path $TestDrive -ChildPath 'Modules'
         Initialize-Issue156SyntheticModule -RootPath $SyntheticModuleRoot -Name 'ExchangeOnlineManagement' -Version '3.9.2'
         Initialize-Issue156SyntheticModule -RootPath $SyntheticModuleRoot -Name 'Microsoft.Graph.Authentication' -Version '2.36.1'
-    }
-
-    It 'captures a Graph import failure after ExchangeOnlineManagement is loaded first without DLLPickle preloading' {
-        $Result = Invoke-DLLPickleScenario -Name 'Issue156-ExchangeThenGraph-Synthetic' `
-            -PowerShellExecutable 'pwsh' `
-            -ModuleManifestPath $BuiltModuleManifestPath `
-            -AdditionalModulePath $SyntheticModuleRoot `
-            -OutputPath (Join-Path $ScenarioOutputRoot 'Issue156-ExchangeThenGraph-Synthetic.json') `
-            -Step @(
-                @{ Name = 'Import ExchangeOnlineManagement'; Script = 'Import-Module ExchangeOnlineManagement -Force' }
-                @{ Name = 'Import Microsoft.Graph.Authentication'; Script = 'Import-Module Microsoft.Graph.Authentication -Force' }
-            )
-
-        $Result.Success | Should -BeFalse
-        $GraphStep = $Result.Steps | Where-Object Name -eq 'Import Microsoft.Graph.Authentication'
-        $GraphStep.Success | Should -BeFalse
-        $GraphStep.Error.Message | Should -Match 'GetTokenAsync'
-    }
-
-    It 'prevents the Graph import failure after ExchangeOnlineManagement is loaded first' {
-        $Result = Invoke-DLLPickleScenario -Name 'Issue156-ExchangeThenGraph-Protected-Synthetic' `
-            -PowerShellExecutable 'pwsh' `
-            -ModuleManifestPath $BuiltModuleManifestPath `
-            -AdditionalModulePath $SyntheticModuleRoot `
-            -OutputPath (Join-Path $ScenarioOutputRoot 'Issue156-ExchangeThenGraph-Protected-Synthetic.json') `
-            -Step @(
-                @{ Name = 'Import DLLPickle'; Script = 'Import-Module $ScenarioModuleManifestPath -Force; Import-DPLibrary -SuppressLogo -ShowLoaderExceptions' }
-                @{ Name = 'Import ExchangeOnlineManagement'; Script = 'Import-Module ExchangeOnlineManagement -Force' }
-                @{ Name = 'Import Microsoft.Graph.Authentication'; Script = 'Import-Module Microsoft.Graph.Authentication -Force' }
-            )
-
-        $Result.Success | Should -BeTrue
-        $GraphStep = $Result.Steps | Where-Object Name -eq 'Import Microsoft.Graph.Authentication'
-        $GraphStep.Success | Should -BeTrue
-        $FinalAssemblies = @($Result.Steps | Select-Object -Last 1 -ExpandProperty AssembliesAfter)
-        $AzureCore = $FinalAssemblies | Where-Object Name -eq 'Azure.Core' | Select-Object -First 1
-        ([version]$AzureCore.Version) | Should -BeGreaterOrEqual ([version]'1.50.0.0')
     }
 
     It 'captures a lazy ExchangeOnlineManagement broker failure after Graph is loaded first without DLLPickle preloading' {

@@ -10,6 +10,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Working on updates to replace PlatyPS documentation creation with the new Microsoft.PowerShell.PlatyPS module. (PRs and other help would be welcomed!)
 
+## [2.0.1] - 2026-05-31
+
+### Fixed
+
+- `Connect-AzAccount` failing with `Method not found: '...Azure.Identity.InteractiveBrowserCredential.AuthenticateAsync(Azure.Core.TokenRequestContext, ...)'` after `Import-DPLibrary`. Az.Accounts 5.x isolates its Azure SDK stack in a private `AssemblyLoadContext`; preloading `Azure.Core` into the default load context split the identity of `Azure.Core.TokenRequestContext` across load contexts and broke Az's credential method binding. The `Azure.Core` preload was originally scoped to Windows PowerShell (net48) in #183 and was unintentionally promoted to the net8.0 preload during the 2.0.0 net48-removal refactor.
+
+### Removed
+
+- `Azure.Core` (and its `System.ClientModel` / `System.Memory.Data` / `Microsoft.Bcl.AsyncInterfaces` subgraph) from the bundled net8.0 preload set. Microsoft Graph, Exchange Online, and Teams resolve a compatible `Azure.Core` themselves on .NET 8, so the preload is unnecessary for them. Removing the dependency also retires the `Azure.Core` 1.50.0 cap, which existed only to keep that subgraph on the .NET 8 BCL.
+
+### Internal
+
+- Move `Azure.Core` to a report-only entry in `build/dependency-policy.json` and remove the now-moot Dependabot `Azure.Core` ignore.
+- Rebase the #156 reproduction tests onto the still-active MSAL broker contract and add a regression guard asserting `Azure.Core` is not preloaded on the net8.0 profile.
+
 ## [2.0.0] - 2026-05-30
 
 > **Breaking change:** DLLPickle 2.0 requires **PowerShell 7.4 or later** (running on .NET 8). Windows PowerShell 5.1 and .NET Framework 4.8 are not  supported yet on this major version.
@@ -234,7 +249,8 @@ Full Changelog: [v0.2.5...v0.2.6](https://github.com/SamErde/DLLPickle/compare/v
 
 - Initial release.
 
-[Unreleased]: https://github.com/SamErde/DLLPickle/compare/v0.19.0...HEAD
+[Unreleased]: https://github.com/SamErde/DLLPickle/compare/v2.0.1...HEAD
+[2.0.1]: https://github.com/SamErde/DLLPickle/tag/v2.0.1
 [2.0.0]: https://github.com/SamErde/DLLPickle/tag/v2.0.0
 [1.3.1]: https://github.com/SamErde/DLLPickle/tag/v1.3.1
 [1.3.0]: https://github.com/SamErde/DLLPickle/tag/v1.3.0

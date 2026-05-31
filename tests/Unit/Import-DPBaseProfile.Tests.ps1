@@ -52,9 +52,9 @@ Describe 'Import-DPBaseProfile' -Tag 'Unit' {
     It 'surfaces failed preload details in the dependency preload result' {
         Mock -CommandName Import-DPLibrary -MockWith {
             [PSCustomObject]@{
-                DLLName = 'Azure.Core.dll'
+                DLLName = 'Microsoft.Identity.Client.dll'
                 Status  = 'Failed'
-                Error   = 'Could not load Azure.Core.dll'
+                Error   = 'Could not load Microsoft.Identity.Client.dll'
             }
         }
 
@@ -62,6 +62,6 @@ Describe 'Import-DPBaseProfile' -Tag 'Unit' {
 
         $Result[0].Kind | Should -Be 'DependencyPreload'
         $Result[0].Status | Should -Be 'Failed'
-        $Result[0].Error | Should -Be 'Azure.Core.dll: Could not load Azure.Core.dll'
+        $Result[0].Error | Should -Be 'Microsoft.Identity.Client.dll: Could not load Microsoft.Identity.Client.dll'
     }
 }

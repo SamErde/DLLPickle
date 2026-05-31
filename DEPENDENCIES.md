@@ -49,7 +49,6 @@ candidate generation, restore, build, and issue reproduction tests pass.
 
 | Package | Version Strategy | Notes |
 | ------- | ---------------- | ----- |
-| `Azure.Core` | Exact pin | Tracks supported Graph/Teams identity line |
 | `Microsoft.Identity.Client` | Exact pin | Aligns base profile MSAL line |
 | `Microsoft.Identity.Client.Broker` | Exact pin | Kept aligned with MSAL |
 | `Microsoft.Identity.Client.Extensions.Msal` | Exact pin | Kept aligned with MSAL cache helper line |
@@ -62,10 +61,21 @@ candidate generation, restore, build, and issue reproduction tests pass.
 
 ## Exact Pin Rationale
 
-- Exact pins are used for the Azure/MSAL managed family because mixed-module
-  sessions can fail when one module binds to a lower, incompatible assembly.
+- Exact pins are used for the MSAL managed family (`Microsoft.Identity.Client`
+  and friends) because mixed-module sessions can fail when one module binds to a
+  lower, incompatible assembly.
 - Candidate exact-pin updates are generated from upstream module inventories and
   still require full validation before publication.
+- `Azure.Core` is intentionally **not** preloaded on the PowerShell 7.4+
+  (net8.0) profile. Az.Accounts 5.x isolates its Azure SDK stack in a private
+  `AssemblyLoadContext`; preloading `Azure.Core` into the default load context
+  splits the identity of `Azure.Core.TokenRequestContext` across load contexts
+  and breaks `Connect-AzAccount` with a `MissingMethodException` on
+  `InteractiveBrowserCredential.AuthenticateAsync`. Graph, Exchange, and Teams
+  resolve a compatible `Azure.Core` themselves on .NET 8, so the preload is
+  unnecessary. `Azure.Core` remains report-only in policy for monitoring. The
+  original net48-only `Azure.Core` preload (#183) does not apply to the net8.0
+  baseline.
 - OData families remain report-only in policy because preloading them by
   default can break compatibility when upstream modules require different OData
   identities.

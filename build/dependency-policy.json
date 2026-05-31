@@ -48,19 +48,6 @@
   ],
   "exactPins": [
     {
-      "packageName": "Azure.Core",
-      "assemblyName": "Azure.Core",
-      "targetFramework": "net8.0",
-      "versionSyntax": "exact",
-      "maximumPackageVersion": "1.50.0",
-      "sourceModules": [
-        "Microsoft.Graph.Authentication",
-        "MicrosoftTeams"
-      ],
-      "updateMode": "candidatePullRequest",
-      "reason": "The PowerShell 7.4+ runtime profile requires Azure.Core to stay on the highest .NET 8-compatible dependency line; newer Azure.Core pins currently bring .NET 10 runtime assemblies that do not load on the 7.4 baseline."
-    },
-    {
       "packageName": "Microsoft.Identity.Client",
       "assemblyName": "Microsoft.Identity.Client",
       "targetFramework": "net8.0",
@@ -103,6 +90,17 @@
     }
   ],
   "blockedPreloadAssemblies": [
+    {
+      "packageName": "Azure.Core",
+      "assemblyName": "Azure.Core",
+      "sourceModules": [
+        "Az.Accounts",
+        "Microsoft.Graph.Authentication",
+        "MicrosoftTeams"
+      ],
+      "updateMode": "reportOnly",
+      "reason": "Azure.Core is intentionally not preloaded on the PowerShell 7.4+ (net8.0) profile. Az.Accounts 5.x isolates its Azure SDK stack in a private AssemblyLoadContext; preloading Azure.Core into the default load context splits Azure.Core.TokenRequestContext across load contexts and breaks Connect-AzAccount with a MissingMethodException on InteractiveBrowserCredential.AuthenticateAsync. Graph, Exchange, and Teams resolve a compatible Azure.Core themselves on .NET 8, so the preload is unnecessary for them. The original net48-only Azure.Core preload (#183) does not apply to the net8.0 baseline."
+    },
     {
       "packageName": "Microsoft.OData.Core",
       "assemblyName": "Microsoft.OData.Core",

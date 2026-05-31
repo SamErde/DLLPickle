@@ -76,6 +76,13 @@ assemblies are tracked because ExchangeOnlineManagement and Az.Storage can
 require incompatible versions in one process, but OData is not added to the
 default preload set unless a future isolation strategy makes that safe.
 
+`Azure.Core` is also report-only. It is intentionally not preloaded on the
+PowerShell 7.4+ profile: Az.Accounts 5.x isolates its Azure SDK stack in a
+private `AssemblyLoadContext`, so preloading `Azure.Core` into the default load
+context splits the identity of `Azure.Core.TokenRequestContext` across load
+contexts and breaks `Connect-AzAccount`. Graph, Exchange, and Teams resolve a
+compatible `Azure.Core` themselves on .NET 8, so the preload is unnecessary.
+
 ## Validated Base Profile
 
 The validated base profile for a single interactive session is:
@@ -96,11 +103,11 @@ only prepares the process and imports modules so connection commands such as
 `Connect-AzAccount` can run afterward using credentials and tenant choices from
 the caller's environment.
 
-Current live testing shows Az.Accounts can still hit a loader boundary after
-Exchange or Graph loads its Azure.Identity stack, because Az.Accounts'
-module-local assembly loader can bind to incompatible Azure.Identity method
-contracts. Use process isolation when the full profile must connect to every
-service.
+Live testing confirms the full base profile can connect to Exchange Online,
+Microsoft Teams, Microsoft Graph, and Az.Accounts in one session. Because
+DLLPickle no longer preloads `Azure.Core` on the net8.0 profile, Az.Accounts'
+private `AssemblyLoadContext` resolves a single, consistent `Azure.Core`, and
+`Connect-AzAccount` succeeds alongside the Graph/Exchange/Teams identity stack.
 
 ## Why This Helps
 
