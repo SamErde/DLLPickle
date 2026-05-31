@@ -479,6 +479,20 @@ jobs:
 
           Write-Host "✓ GitHub release created: $tagName"
 
+          # Create zip with custom filename
+          $zipName = "DLLPickle-v$version.zip"
+          $zipSource = "./module/DLLPickle"
+          Write-Host "Zipping $zipSource to $zipName"
+          Compress-Archive -Path $zipSource -DestinationPath $zipName -Force
+
+          # Upload zip as release asset
+          gh release upload $tagName $zipName --clobber
+          if ($LASTEXITCODE -ne 0) {
+              Write-Error "Failed to upload zip asset"
+              exit 1
+          }
+          Write-Host "✓ Zip asset uploaded: $zipName"
+
   publish:
     name: Publish to PowerShell Gallery
     runs-on: ubuntu-latest
