@@ -69,10 +69,16 @@ differences by name, version, and location.
 
 ### Issue #156: Graph Authentication and ExchangeOnlineManagement
 
-DLLPickle packages exact `Azure.Core` and MSAL managed-family pins for the
-supported base profile. The issue repro tests assert that the protected import
-path maintains the expected `Azure.Core` preload line to avoid
-`GetTokenAsync` type identity failures.
+DLLPickle packages exact MSAL managed-family pins (`Microsoft.Identity.Client`
+and friends) for the supported base profile. The issue repro tests assert that
+the protected import path keeps the broker/MSAL line aligned to avoid
+`WithBroker` missing-method failures across mixed imports.
+
+`Azure.Core` is intentionally not preloaded on the PowerShell 7.4+ (net8.0)
+profile. The original `Azure.Core` preload (#183) was scoped to Windows
+PowerShell (net48), which 2.0 no longer supports. On .NET 8, Graph, Exchange,
+and Teams resolve a compatible `Azure.Core` themselves, and preloading it breaks
+`Connect-AzAccount` (see the Az.Accounts note below).
 
 For sessions that need Exchange Online, Microsoft Teams, Microsoft Graph, and
 Az.Accounts imported together, use:
@@ -89,15 +95,28 @@ This imports the validated base profile order:
 1. `Microsoft.Graph.Authentication`
 1. `Az.Accounts`
 
-`Az.Accounts` can still fail if it is imported before Microsoft Graph because it
-may load older Azure identity assemblies first. The same order is recommended
-for consistency.
+### Connect-AzAccount and the Azure.Core load context
 
-There is a remaining Az authentication limitation even with the validated import
-order: `Connect-AzAccount` can fail after Graph or Exchange loads Azure.Identity
-because Az.Accounts uses a module-local assembly loader. Run Az authentication
-and Az cmdlets in a separate process from Graph/Exchange workloads when this
-occurs.
+Earlier 2.0 builds preloaded `Azure.Core` into the default load context, which
+broke `Connect-AzAccount` with:
+
+```text
+Method not found: 'System.Threading.Tasks.Task`1<Azure.Identity.AuthenticationRecord>
+Azure.Identity.InteractiveBrowserCredential.AuthenticateAsync(Azure.Core.TokenRequestContext,
+System.Threading.CancellationToken)'.
+```
+
+Az.Accounts 5.x isolates its Azure SDK stack in a private
+`AssemblyLoadContext` (`AzSharedAssemblyLoadContext`). A preloaded `Azure.Core`
+in the default context splits the identity of `Azure.Core.TokenRequestContext`
+across the two load contexts, so Az's `InteractiveBrowserCredential` method
+signature no longer matches its caller.
+
+DLLPickle no longer preloads `Azure.Core` on the net8.0 profile, so Az.Accounts
+resolves a single, consistent `Azure.Core` and `Connect-AzAccount` succeeds
+alongside the Graph/Exchange/Teams stack. If you still see this error, confirm
+no other module or profile script preloaded `Azure.Core` into the session, or
+add `Azure.Core.dll` to `Set-DPConfig -SkipLibraries` as a safeguard.
 
 ### Issue #174: Az.Storage and ExchangeOnlineManagement OData
 

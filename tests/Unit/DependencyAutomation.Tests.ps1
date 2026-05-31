@@ -43,7 +43,7 @@ Describe 'Dependency automation tooling' -Tag 'Unit' {
     <TargetFramework>net8.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Azure.Core" Version="[1.51.1]" />
+    <PackageReference Include="Contoso.CappedLibrary" Version="[1.51.1]" />
     <PackageReference Include="Microsoft.Identity.Client" Version="[4.82.1]" />
   </ItemGroup>
 </Project>
@@ -53,8 +53,8 @@ Describe 'Dependency automation tooling' -Tag 'Unit' {
         @{
             exactPins = @(
                 @{
-                    packageName = 'Azure.Core'
-                    assemblyName = 'Azure.Core'
+                    packageName = 'Contoso.CappedLibrary'
+                    assemblyName = 'Contoso.CappedLibrary'
                     targetFramework = 'net8.0'
                     versionSyntax = 'exact'
                     maximumPackageVersion = '1.50.0'
@@ -91,9 +91,9 @@ Describe 'Dependency automation tooling' -Tag 'Unit' {
                     Version = '2.37.0'
                     TrackedAssemblies = @(
                         @{
-                            Name = 'Azure.Core'
+                            Name = 'Contoso.CappedLibrary'
                             Version = '1.52.0.0'
-                            RelativePath = 'Dependencies\Azure.Core.dll'
+                            RelativePath = 'Dependencies\Contoso.CappedLibrary.dll'
                         }
                         @{
                             Name = 'Microsoft.Identity.Client'
@@ -118,9 +118,9 @@ Describe 'Dependency automation tooling' -Tag 'Unit' {
                     Version = '7.2.0'
                     TrackedAssemblies = @(
                         @{
-                            Name = 'Azure.Core'
+                            Name = 'Contoso.CappedLibrary'
                             Version = '1.53.0.0'
-                            RelativePath = 'Azure.Core.dll'
+                            RelativePath = 'Contoso.CappedLibrary.dll'
                         }
                     )
                 }
@@ -143,7 +143,7 @@ Describe 'Dependency automation tooling' -Tag 'Unit' {
         $Report.ProjectChanged | Should -BeTrue
         $Report.Changes[0].CandidateVersion | Should -Be '[1.50.0]'
         $Report.Changes[0].SourceModule | Should -Be 'MicrosoftTeams'
-        $Report.Warnings | Should -Contain "PackageReference 'Azure.Core' candidate '1.53.0' exceeds maximum '1.50.0' for target framework 'net8.0'; using maximum version."
+        $Report.Warnings | Should -Contain "PackageReference 'Contoso.CappedLibrary' candidate '1.53.0' exceeds maximum '1.50.0' for target framework 'net8.0'; using maximum version."
         Get-Content -LiteralPath $ProjectPath -Raw | Should -Match 'Version="\[1\.50\.0\]"'
         Get-Content -LiteralPath $ProjectPath -Raw | Should -Match 'Include="Microsoft\.Identity\.Client" Version="\[4\.83\.1\]"'
         @($Report.BlockedFindings) | Should -HaveCount 1
