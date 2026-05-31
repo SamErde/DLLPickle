@@ -51,11 +51,15 @@ foreach ($Module in $Inventory.Modules) {
 $AssemblyRows = foreach ($Name in ($ByAssembly.Keys | Sort-Object)) {
     $Entries = $ByAssembly[$Name]
     $DistinctVersions = @($Entries.Version | Sort-Object -Unique)
+    $DistinctModules = @($Entries.Module | Sort-Object -Unique)
     [PSCustomObject]@{
         Name      = $Name
-        ShippedBy = @($Entries.Module | Sort-Object -Unique)
+        ShippedBy = $DistinctModules
         Versions  = $DistinctVersions
-        Diverges  = ($Entries.Module.Count -ge 2 -and $DistinctVersions.Count -ge 2)
+        # Diverges only when >=2 DISTINCT modules ship >=2 distinct versions. Counting distinct
+        # modules (not raw entries) avoids a false positive when one module ships the same
+        # assembly more than once (e.g. nested folders / multiple RIDs) at differing versions.
+        Diverges  = ($DistinctModules.Count -ge 2 -and $DistinctVersions.Count -ge 2)
         AlcOwner  = $null   # filled by the runtime probe / adjudication
     }
 }

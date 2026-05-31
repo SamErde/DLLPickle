@@ -43,4 +43,23 @@ Describe 'New-DLLPickleConflictMatrix' -Tag 'Unit' {
         $Matrix = & $ScriptPath -Inventory (New-TestInventory)
         @($Matrix.ConflictSurface) | Should -Be @('Azure.Core')
     }
+
+    It 'does not flag divergence when a single module ships one assembly at two versions' {
+        $Inventory = [PSCustomObject]@{
+            Modules = @(
+                [PSCustomObject]@{
+                    Name              = 'Az.Accounts'
+                    TrackedAssemblies = @(
+                        [PSCustomObject]@{ Name = 'Azure.Core'; Version = '1.50.0.0' }
+                        [PSCustomObject]@{ Name = 'Azure.Core'; Version = '1.46.0.0' }
+                    )
+                }
+            )
+        }
+        $Matrix = & $ScriptPath -Inventory $Inventory
+        $AzureCore = $Matrix.Assemblies | Where-Object Name -EQ 'Azure.Core'
+        $AzureCore.Diverges | Should -BeFalse
+        @($AzureCore.ShippedBy).Count | Should -Be 1
+        @($Matrix.ConflictSurface) | Should -BeNullOrEmpty
+    }
 }
