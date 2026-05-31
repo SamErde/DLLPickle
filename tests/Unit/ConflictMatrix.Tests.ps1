@@ -1,7 +1,7 @@
 BeforeAll {
     $ScriptPath = Join-Path (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path 'tools\New-DLLPickleConflictMatrix.ps1'
 
-    function New-TestInventory {
+    function Get-TestInventory {
         # Two modules; Azure.Core diverges (1.50 vs 1.46), MSAL agrees (4.84.1).
         [PSCustomObject]@{
             Modules = @(
@@ -26,7 +26,7 @@ BeforeAll {
 
 Describe 'New-DLLPickleConflictMatrix' -Tag 'Unit' {
     It 'flags an assembly shipped by >=2 modules at diverging versions' {
-        $Matrix = & $ScriptPath -Inventory (New-TestInventory)
+        $Matrix = & $ScriptPath -Inventory (Get-TestInventory)
         $AzureCore = $Matrix.Assemblies | Where-Object Name -EQ 'Azure.Core'
         $AzureCore.Diverges | Should -BeTrue
         @($AzureCore.Versions).Count | Should -Be 2
@@ -34,13 +34,13 @@ Describe 'New-DLLPickleConflictMatrix' -Tag 'Unit' {
     }
 
     It 'does not flag an assembly all modules ship at the same version' {
-        $Matrix = & $ScriptPath -Inventory (New-TestInventory)
+        $Matrix = & $ScriptPath -Inventory (Get-TestInventory)
         $Msal = $Matrix.Assemblies | Where-Object Name -EQ 'Microsoft.Identity.Client'
         $Msal.Diverges | Should -BeFalse
     }
 
     It 'returns a ConflictSurface limited to diverging assemblies' {
-        $Matrix = & $ScriptPath -Inventory (New-TestInventory)
+        $Matrix = & $ScriptPath -Inventory (Get-TestInventory)
         @($Matrix.ConflictSurface) | Should -Be @('Azure.Core')
     }
 
