@@ -41,8 +41,12 @@ jobs:
         uses: actions/setup-dotnet@9a946fdbd5fb07b82b2f5a4466058b876ab72bb2 # v5.3.0
         with:
           dotnet-version: "8.0.x"
-          cache: true
-          cache-dependency-path: "src/DLLPickle.Build/packages.lock.json"
+          # This job runs only Analyze,Test (PowerShell) and performs no `dotnet restore`, so the
+          # NuGet global-packages folder is never created. Enabling the setup-dotnet cache makes its
+          # post-job save step fail ("Cache folder path ... doesn't exist on disk") on any cache miss
+          # (e.g. when packages.lock.json changes). The job needs no restored packages, so caching is
+          # disabled rather than worked around.
+          cache: false
 
       - name: Bootstrap
         shell: pwsh
