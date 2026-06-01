@@ -10,6 +10,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Working on updates to replace PlatyPS documentation creation with the new Microsoft.PowerShell.PlatyPS module. (PRs and other help would be welcomed!)
 
+## [2.1.1] - 2026-05-31
+
+> Addresses the Codex review of 2.1.0. Repo-side hardening of the drift gate and dependency tooling — **no change to the published module bundle**.
+
+### Fixed
+
+- **Drift gate halts the candidate pipeline.** When the scheduled Upstream-Compatibility run detects a changed conflict surface, it now skips candidate-update generation and the automated dependency PR (flagging for human re-adjudication) instead of advancing preload changes against a stale baseline.
+- **`maximumPackageVersion` caps are preserved.** A capped `minorPatchFloat` preload entry is now written as an exact `[x.y.z]` pinned at the cap, instead of an unbounded `N.*` that would let restore resolve above the maximum.
+- **Versions-aware drift fingerprint.** The fingerprint is computed by `New-DLLPickleConflictMatrix` from each conflicting assembly's name **and** versions, so a within-major version move on a still-conflicting assembly is detected — not just name-set changes. (ALC-ownership drift remains the runtime-probe / maintainer tier.)
+- **Drift gate runs on dependency PRs.** Dependabot lock/csproj bumps now recompute the conflict surface and block auto-merge if it drifted from the baseline, instead of the gate only running on the scheduled job.
+- **Blocked `Microsoft.Extensions.*` transitives are tracked.** They are added to `trackedAssemblies` so the inventory/automation surfaces them; the drift baseline is recomputed accordingly.
+
 ## [2.1.0] - 2026-05-31
 
 > The bundled assembly versions are **unchanged** from 2.0.2 (the floating ranges resolve to the same MSAL 4.84.1 / NativeInterop 0.20.6 — the current latest within their majors). This release is about **how dependencies are managed and validated going forward**, not a runtime change.
@@ -281,7 +293,8 @@ Full Changelog: [v0.2.5...v0.2.6](https://github.com/SamErde/DLLPickle/compare/v
 
 - Initial release.
 
-[Unreleased]: https://github.com/SamErde/DLLPickle/compare/v2.1.0...HEAD
+[Unreleased]: https://github.com/SamErde/DLLPickle/compare/v2.1.1...HEAD
+[2.1.1]: https://github.com/SamErde/DLLPickle/tag/v2.1.1
 [2.1.0]: https://github.com/SamErde/DLLPickle/tag/v2.1.0
 [2.0.2]: https://github.com/SamErde/DLLPickle/tag/v2.0.2
 [2.0.1]: https://github.com/SamErde/DLLPickle/tag/v2.0.1

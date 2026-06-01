@@ -62,4 +62,35 @@ Describe 'New-DLLPickleConflictMatrix' -Tag 'Unit' {
         @($AzureCore.ShippedBy).Count | Should -Be 1
         @($Matrix.ConflictSurface) | Should -BeNullOrEmpty
     }
+
+    It 'produces a deterministic, versions-aware Fingerprint over the conflict surface' {
+        $Matrix = & $ScriptPath -Inventory (Get-TestInventory)
+        $Matrix.Fingerprint | Should -Not -BeNullOrEmpty
+        # Deterministic: same input -> same fingerprint.
+        ($Matrix.Fingerprint) | Should -Be (& $ScriptPath -Inventory (Get-TestInventory)).Fingerprint
+    }
+
+    It 'changes the Fingerprint when a surface assembly version moves but the names do not' {
+        # Same conflict-surface NAMES (Azure.Core diverges in both), but one version differs.
+        # A names-only hash would collide; the versions-aware fingerprint must differ.
+        $MakeInventory = {
+            param($GraphAzureCoreVersion)
+            [PSCustomObject]@{
+                Modules = @(
+                    [PSCustomObject]@{
+                        Name              = 'Az.Accounts'
+                        TrackedAssemblies = @([PSCustomObject]@{ Name = 'Azure.Core'; Version = '1.50.0.0' })
+                    }
+                    [PSCustomObject]@{
+                        Name              = 'Microsoft.Graph.Authentication'
+                        TrackedAssemblies = @([PSCustomObject]@{ Name = 'Azure.Core'; Version = $GraphAzureCoreVersion })
+                    }
+                )
+            }
+        }
+        $base = & $ScriptPath -Inventory (& $MakeInventory '1.46.0.0')
+        $moved = & $ScriptPath -Inventory (& $MakeInventory '1.51.1.0')
+        @($base.ConflictSurface) | Should -Be @($moved.ConflictSurface)   # same names
+        $base.Fingerprint | Should -Not -Be $moved.Fingerprint            # different fingerprint
+    }
 }

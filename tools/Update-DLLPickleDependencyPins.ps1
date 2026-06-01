@@ -180,7 +180,8 @@ foreach ($Pin in @($Policy.preload)) {
         Sort-Object -Property { [version]$_.AssemblyVersion } -Descending |
         Select-Object -First 1
     $TargetVersion = [string]$TargetAssembly.PackageVersion
-    if (-not [string]::IsNullOrWhiteSpace([string]$Pin.maximumPackageVersion)) {
+    $IsCapped = -not [string]::IsNullOrWhiteSpace([string]$Pin.maximumPackageVersion)
+    if ($IsCapped) {
         $MaximumPackageVersion = [string]$Pin.maximumPackageVersion
         if ([version]$TargetVersion -gt [version]$MaximumPackageVersion) {
             $Warnings.Add((
@@ -195,9 +196,13 @@ foreach ($Pin in @($Policy.preload)) {
     }
 
     $VersionPolicy = if ($Pin.versionPolicy) { [string]$Pin.versionPolicy } else { 'exact' }
-    $FormattedVersion = switch ($VersionPolicy) {
-        'minorPatchFloat' { '{0}.*' -f ([version]$TargetVersion).Major }
-        default { '[{0}]' -f $TargetVersion }
+    # A minorPatchFloat rule normally writes a floating 'N.*' reference. But when the entry also
+    # declares maximumPackageVersion, a floating reference would let restore resolve ABOVE the cap,
+    # so a capped entry is written as an exact '[x.y.z]' pinned at the capped target to enforce it.
+    $FormattedVersion = if ($VersionPolicy -eq 'minorPatchFloat' -and -not $IsCapped) {
+        '{0}.*' -f ([version]$TargetVersion).Major
+    } else {
+        '[{0}]' -f $TargetVersion
     }
     $CurrentReference = Get-DLLPickleCurrentPackageReference -ProjectContent $ProjectContent -PackageName ([string]$Pin.packageName) -TargetFramework ([string]$Pin.targetFramework)
 
