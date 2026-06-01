@@ -46,7 +46,11 @@ jobs:
           $Relevant = $true
           try {
               $ErrorActionPreference = 'Stop'
-              $Files = gh api "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" --paginate --jq '.[].filename'
+              # Project previous_filename too, so a rename moving a tracked file OUT of a matched tree
+              # (reported as the new path in .filename, old path in .previous_filename) is still seen.
+              $Files = gh api "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" --paginate --jq '.[] | .filename, (.previous_filename // empty)'
+              # Native non-zero exits don't reliably throw in pwsh, so check explicitly -> fail-safe.
+              if ($LASTEXITCODE -ne 0) { throw "gh api exited $LASTEXITCODE while listing PR files" }
               $Patterns = @('^build/', '^src/DLLPickle\.Build/', '^tests/', '^tools/', '^\.github/workflows/Upstream-Compatibility\.yml$')
               $Relevant = $false
               foreach ($File in $Files) {
