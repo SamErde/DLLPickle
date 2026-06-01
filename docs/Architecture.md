@@ -51,6 +51,7 @@ Every tracked assembly is classified into exactly one of:
 | `Microsoft.Identity.Client` (+ `.Broker`, `.Extensions.Msal`, `.NativeInterop`); `Microsoft.IdentityModel.*`; `System.IdentityModel.Tokens.Jwt` | **preload** | Default-ALC consumers (EXO/Teams) + the #156 broker fix; 2.0.1-validated. |
 | `Azure.Core`, `Azure.Identity`, `Azure.Identity.Broker`, `System.ClientModel` | **block** | Az + Graph self-isolate these privately; preloading splits type identity (the `Connect-AzAccount` break). **ALC-capable runtimes only** — would flip to `preload` on net48 (see §2 caveat / §9). |
 | `Microsoft.OData.Core`, `Microsoft.OData.Edm`, `Microsoft.Spatial` | **block** (report-only) | #174 — preloading breaks Az.Storage. |
+| `Microsoft.Extensions.DependencyInjection.Abstractions`, `Microsoft.Extensions.Logging.Abstractions` | **block** | #193 — incidental `Microsoft.IdentityModel.Tokens` transitives, not host-provided. Preloading DLLPickle's own copies into the default ALC collided with the copies `Az.Resources` bundles (`assembly with same name is already loaded`). Excluded via `ExcludeAssets="runtime"` (shipped 2.0.2); `Microsoft.IdentityModel.Tokens` still loads without them. |
 
 ## 4. Component map (authoritative paths)
 
@@ -79,7 +80,7 @@ Every tracked assembly is classified into exactly one of:
 
 ## 6. Invariants (and the gate that enforces each)
 
-- **No `block` assembly appears in `module/DLLPickle/bin/net8.0`.** → `tests/Integration/DLLPickle.IntegrationTest.Tests.ps1` (Azure.Core guard; extend per newly-blocked assembly).
+- **No `block` assembly appears in `module/DLLPickle/bin/net8.0`.** → `tests/Integration/DLLPickle.IntegrationTest.Tests.ps1` (Azure.Core guard + the #193 `Microsoft.Extensions.*` guard; extend per newly-blocked assembly).
 - **No preloaded assembly is loaded into two ALCs at once** in the four-module scenario. → integration ALC-split guard (runtime tier; maintainer-run with real modules).
 - **The bundled `preload` set equals `dependency-policy.json`'s `preload` entries.** → planned realization guard (Task A6); until then, verified by review.
 - **Runtime-provided BCL assemblies (e.g. `System.Text.Json`) are never preloaded.** → conflict-matrix `AlcOwner` = `Default`/runtime + the split guard.
@@ -92,13 +93,15 @@ Every tracked assembly is classified into exactly one of:
 - **Issue reproduction + composition:** `Invoke-Build -Task IssueReproTest` (synthetic modules; deterministic).
 - **Runtime adjudication — non-auth tier (CI-capable):** per-module ALC snapshots + the four-module import/composition smoke.
 - **Runtime adjudication — auth tier (maintainer-run; future Stage 2b automatable via GitHub OIDC + Entra federated credential):** real `Connect-*` to a dev tenant. This is the sign-off for any change to the bundled set.
+- **Publish trigger:** `Release-and-Publish` auto-runs **only on bundle-affecting paths** (`src/DLLPickle/**`, `src/DLLPickle.Build/DLLPickle.csproj`, `packages.lock.json`). CI-, policy-, docs-, test-, and tooling-only changes do **not** publish a new gallery version; `workflow_dispatch` is the deliberate-release escape hatch.
+- **Dependency PRs (Dependabot):** the bumped *bundle* is validated by **Build Module** (full build under `--locked-mode` + the #193/Azure.Core repro guards), bounded by the csproj floating-with-cap constraints. The Upstream-Compatibility `pr-smoke` adds an **upstream conflict-surface freshness check** — explicitly *not* a bundle validation, since a self-bump does not move the upstream fingerprint. **Enforcement caveat:** these signals only block `gh pr merge --auto` if the build + Dependency Review checks are configured as **required status checks** (see §9).
 
 ## 8. Agent workstream conventions
 
 When changing the preload contract, follow this loop:
 
 1. **Inventory** the monitored modules (`Get-DLLPickleUpstreamInventory.ps1`).
-2. **Build the conflict matrix** (`New-DLLPickleConflictMatrix.ps1`) to find candidates.
+2. **Build the conflict matrix** (`New-DLLPickleConflictMatrix.ps1`) to find candidates. It also emits the drift `Fingerprint` — a SHA-256 over each diverging assembly's name, sorted versions, **and** contributing-module set (`ShippedBy`) — which the Upstream-Compatibility gate compares to `baseline.conflictSurfaceFingerprint`. A version move *or* a change in which modules contribute to a conflict trips drift.
 3. **Probe runtime ALC ownership** (`Get-DLLPickleRuntimeAssemblySnapshot.ps1`) — private-ALC ownership is a `block` *candidate*, not an automatic verdict.
 4. **Adjudicate** with the runtime differential (does preloading help without breaking?). Record the verdict + evidence in `build/dependency-policy.json`.
 5. **Realize** in `DLLPickle.csproj` (preload = bundled reference; block = excluded, incl. `ExcludeAssets` for blocked transitives), regenerate `packages.lock.json`.
@@ -114,8 +117,8 @@ When changing the preload contract, follow this loop:
 
 ## 9. Known gaps / follow-ups
 
-- **#193 (`Microsoft.Extensions.DependencyInjection.Abstractions` vs Az.Resources):** the culprit is a DLLPickle *transitive* not in `trackedAssemblies`, so the conflict matrix can't currently see it. Fix the methodology by tracking DLLPickle's **full bundled set**, re-run inventory, confirm the Az.Resources repro on current `main`, then decide/validate exclusion.
+- **Required status checks not configured.** The "Protect Main" ruleset requires a PR, Copilot review, code scanning, and code quality — but **no required *status* checks**. So the Build Module / Dependency Review / Upstream-Compatibility signals do not block `gh pr merge --auto` (Dependabot auto-approve): a dependency PR can merge before they pass. Configure the build + Dependency Review checks as required status checks to close this (the `Dependabot-Auto-Approve.yml` header already assumes it).
+- **`Az.Resources` is not in `monitoredModules`.** It is the observed #193 collision source, but the drift inventory only sees the `Microsoft.Extensions.*` transitives via the monitored `Az.Accounts` / `Microsoft.Graph.Authentication` that also bundle them (recorded as `trackingScope` on the blocked entries). Az.Resources' own copy and future version drift are **not** inventoried — re-adjudicate manually if an Az.Resources change is suspected, or add it to `monitoredModules` to track it directly.
 - **EXO/Teams ALC ownership** is not yet captured — a bare `Import-Module` doesn't eager-load their identity assemblies; the probe needs a representative `-ProbeCommand`.
-- **Stage 2 drift gate wiring** into the Upstream-Compatibility workflow (Task B2) and the policy-schema migration (Task A4) are pending.
-- **Multi-TFM (net9.0/net10.0):** deferred; the methodology is TFM-parameterizable. net9.0/net10.0 are ALC-capable, so the `block` verdicts in §3 carry over to them.
+- **Multi-TFM (net9.0/net10.0):** deferred; the methodology is TFM-parameterizable. net9.0/net10.0 are ALC-capable, so the `block` verdicts in §3 carry over to them. The `net8.0` bundle is confirmed to load on **PS 7.6 / .NET 10 via roll-forward** (Az.Resources import verified, no #193 regression) — a positive signal that multi-TFM is mostly a packaging exercise, not a behavioral one, on ALC-capable runtimes.
 - **Re-introducing Windows PowerShell 5.1 / net48 (no ALC) — checklist if attempted:** because net48 has no `AssemblyLoadContext`, modules cannot self-isolate and the §3 `block` verdicts for the Azure SDK stack **invert**. Re-support would require: (1) multi-targeting the build to `net48` alongside `net8.0`; (2) **conditionally preloading the Azure SDK stack** (`Azure.Core` + `Azure.Identity`/`Broker` + `System.ClientModel`) for net48 only — pinned to the highest version the WinPS-supported module set agrees on, as #183 did; (3) restoring net48-specific dependency conditions in `DLLPickle.csproj` (e.g. `Condition="'$(TargetFramework)' == 'net48'"`); (4) restoring `CompatiblePSEditions = @('Core','Desktop')` and lowering the manifest `PowerShellVersion`, plus per-edition guards in `Import-DPLibrary`; (5) adding WinPS 5.1 to the CI test matrix and re-validating the #156/#165-class scenarios. The 2.0 refactor's mistake was applying the net48-era Azure.Core preload to net8 unconditionally — any re-introduction must keep it **strictly TFM-conditional**.
