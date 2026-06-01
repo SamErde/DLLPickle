@@ -51,31 +51,22 @@ Get-DLLPickleLoadedTrackedAssembly.ps1
 
 ## 5. Component C — live-probe runbook (maintainer runs, pastes output)
 
-Recorded in the spec and surfaced to the maintainer as **self-contained** commands (no dependency on the new files, so they can run immediately). Each scenario runs in a **fresh `pwsh`** to avoid cross-contamination. `$RepoRoot` is the local clone path; `Connect-ExchangeOnline` uses the maintainer's dev tenant.
+Each scenario runs in a **fresh `pwsh`** to avoid cross-contamination; `Connect-ExchangeOnline` uses the maintainer's dev tenant. The runbook **calls the Component A script** after each step rather than pasting a function — a multi-line function does not paste reliably into an interactive pwsh session (confirmed: the `Show-Loaded` paste produced a `ParserError`), whereas a single-line script call is robust. **Therefore Component A is built first** and the runbook depends on it:
 
-Per-session dump function (paste once at the top of each fresh session):
 ```powershell
-$RepoRoot = '<path-to-DLLPickle-clone>'
-$TrackedNames = (Get-Content "$RepoRoot/build/dependency-policy.json" -Raw | ConvertFrom-Json).trackedAssemblies
-function Show-Loaded([string]$Step) {
-    [System.AppDomain]::CurrentDomain.GetAssemblies() |
-        Where-Object { $_.GetName().Name -in $TrackedNames } |
-        ForEach-Object {
-            $Alc = [System.Runtime.Loader.AssemblyLoadContext]::GetLoadContext($_)
-            [pscustomobject]@{ Step = $Step; Name = $_.GetName().Name; Version = $_.GetName().Version.ToString(); Alc = $(if ($Alc.Name) { $Alc.Name } else { 'Default' }) }
-        } |
-        Where-Object { $_.Name -like 'Microsoft.OData*' -or $_.Name -eq 'Microsoft.Spatial' } |
-        Sort-Object Name | Format-Table -AutoSize
-}
+$RepoRoot = 'C:/Users/SamErde/Code/Public/DLLPickle'   # local clone
+function probe { & "$RepoRoot/tools/Get-DLLPickleLoadedTrackedAssembly.ps1" -NameLike 'Microsoft.OData*','Microsoft.Spatial' | Format-Table -AutoSize }
 ```
 
-**Scenarios** (each = a fresh session; capture `Show-Loaded` output after each step):
+`probe` is a one-line alias the maintainer pastes once (single line = no paste-parse issues); call it after each step. Note: the probe reads `[AppDomain]::CurrentDomain.GetAssemblies()` and `AssemblyLoadContext` — under PowerShell **Constrained Language Mode** these .NET calls are restricted (the maintainer's session showed CLM **audit** mode, which permits them); the runbook assumes a session where these APIs are allowed.
 
-1. **Az.Storage alone:** `Import-Module Az.Storage`; `Show-Loaded 'after-import'`; run a non-network storage cmdlet that touches OData (e.g. `New-AzStorageContext -StorageAccountName x -Anonymous` or `Get-Command -Module Az.Storage | Out-Null`); `Show-Loaded 'after-cmdlet'`.
-2. **EXO alone:** `Import-Module ExchangeOnlineManagement`; `Show-Loaded 'after-import'`; `Connect-ExchangeOnline`; `Get-EXOMailbox -ResultSize 1`; `Show-Loaded 'after-getexo'`.
-3. **Az.Storage → EXO (failing order):** import Az.Storage, `Show-Loaded`; import EXO + `Connect-ExchangeOnline` + `Get-EXOMailbox -ResultSize 1` (record success/error); `Show-Loaded 'after-getexo'`.
-4. **EXO → Az.Storage (candidate workaround order):** import EXO + `Connect-ExchangeOnline` + `Get-EXOMailbox -ResultSize 1`; `Show-Loaded`; then import Az.Storage + a storage cmdlet (record whether Az.Storage works); `Show-Loaded 'after-azstorage'`.
-5. **With DLLPickle preloading the candidate OData version** (only if scenarios 1–4 suggest a coherent version exists): `Import-Module $RepoRoot/module/DLLPickle/DLLPickle.psd1`; `Import-DPLibrary`; then repeat scenario 3's imports/cmdlets.
+**Scenarios** (each = a fresh session; capture `probe` output after each step):
+
+1. **Az.Storage alone:** `Import-Module Az.Storage`; `probe` (after-import); run a non-network storage cmdlet that touches OData (e.g. `New-AzStorageContext -StorageAccountName x -Anonymous` or `Get-Command -Module Az.Storage | Out-Null`); `probe` (after-cmdlet).
+2. **EXO alone:** `Import-Module ExchangeOnlineManagement`; `probe` (after-import); `Connect-ExchangeOnline`; `Get-EXOMailbox -ResultSize 1`; `probe` (after-getexo).
+3. **Az.Storage → EXO (failing order):** import Az.Storage, `probe`; import EXO + `Connect-ExchangeOnline` + `Get-EXOMailbox -ResultSize 1` (record success/error); `probe` (after-getexo).
+4. **EXO → Az.Storage (candidate workaround order):** import EXO + `Connect-ExchangeOnline` + `Get-EXOMailbox -ResultSize 1`; `probe`; then import Az.Storage + a storage cmdlet (record whether Az.Storage works); `probe` (after-azstorage).
+5. **With DLLPickle preloading the candidate OData version** (only if scenarios 1–4 suggest a coherent version exists): `Import-Module $RepoRoot/module/DLLPickle/DLLPickle.psd1`; `Import-DPLibrary`; then repeat scenario 3's imports/cmdlets, capturing `probe` at each step.
 
 **Captured per scenario:** the `OData.*` version(s) loaded, each one's ALC (Default vs a private name), and whether each module's representative cmdlet succeeded.
 
