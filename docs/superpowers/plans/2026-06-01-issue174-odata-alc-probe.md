@@ -352,7 +352,7 @@ The probe is now usable. Surface the §5 runbook from the spec to the maintainer
 One-line `probe` binding to paste once per session:
 
 ```powershell
-$RepoRoot = 'C:/Users/SamErde/Code/Public/DLLPickle'
+$RepoRoot = (git rev-parse --show-toplevel)   # run from inside your DLLPickle clone
 function probe { & "$RepoRoot/tools/Get-DLLPickleLoadedTrackedAssembly.ps1" -NameLike 'Microsoft.OData*','Microsoft.Spatial' | Format-Table -AutoSize }
 ```
 

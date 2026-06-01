@@ -44,7 +44,7 @@ Get-DLLPickleLoadedTrackedAssembly.ps1
 
 ## 4. Component B — refactor `Get-DLLPickleRuntimeAssemblySnapshot.ps1`
 
-- Add `-PolicyPath` (default `./build/dependency-policy.json`). The parent reads `trackedAssemblies` and passes the names to the child instead of the hardcoded regex.
+- Add `-PolicyPath` (default: `build/dependency-policy.json` resolved **relative to the repo root via `$PSScriptRoot`** — same as Component A — not the caller's working directory). The parent reads `trackedAssemblies` and passes the names to the child instead of the hardcoded regex.
 - The child filters loaded assemblies by membership in that tracked-name set (replacing the `$Pattern` regex). This automatically includes `Microsoft.OData.Core/Edm/Spatial`.
 - `-ProbeCommand`, `-PreloadDllPickleManifest`, `-ModuleName`, and the spawn-clean-child design are unchanged.
 - Trade-off (accepted): the old regex also captured incidental BCL assemblies (`System.Text.Json`, `System.Memory.Data`, `Microsoft.Bcl.AsyncInterfaces`) that are not in `trackedAssemblies`; those are runtime-provided and not conflict sources, so dropping them is fine. If diagnostic breadth is ever needed, an optional `-AdditionalName <string[]>` can be added later (YAGNI for now).
@@ -54,7 +54,7 @@ Get-DLLPickleLoadedTrackedAssembly.ps1
 Each scenario runs in a **fresh `pwsh`** to avoid cross-contamination; `Connect-ExchangeOnline` uses the maintainer's dev tenant. The runbook **calls the Component A script** after each step rather than pasting a function — a multi-line function does not paste reliably into an interactive pwsh session (confirmed: the `Show-Loaded` paste produced a `ParserError`), whereas a single-line script call is robust. **Therefore Component A is built first** and the runbook depends on it:
 
 ```powershell
-$RepoRoot = 'C:/Users/SamErde/Code/Public/DLLPickle'   # local clone
+$RepoRoot = (git rev-parse --show-toplevel)   # run from inside your DLLPickle clone
 function probe { & "$RepoRoot/tools/Get-DLLPickleLoadedTrackedAssembly.ps1" -NameLike 'Microsoft.OData*','Microsoft.Spatial' | Format-Table -AutoSize }
 ```
 
