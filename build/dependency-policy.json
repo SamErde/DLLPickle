@@ -328,9 +328,8 @@
       "assemblyName": "Microsoft.Extensions.DependencyInjection.Abstractions",
       "classification": "block",
       "sourceModules": [
-        "Az.Accounts",
-        "Az.Resources",
-        "Microsoft.Graph.Authentication"
+        "MicrosoftTeams",
+        "Az.Resources"
       ],
       "updateMode": "reportOnly",
       "reason": "#193: incidental transitive of Microsoft.IdentityModel.Tokens, not part of DLLPickle's identity-coordination purpose and not host-provided. Excluded from the bundle (ExcludeAssets=runtime) so it does not collide with modules that bundle their own copy (Az.Resources).",
@@ -339,7 +338,7 @@
         "basis": "Diagnostic 2026-05-31: DLLPickle preloaded 8.0.0 into the default ALC; PowerShell ships only Microsoft.Extensions.ObjectPool (not this); Az.Resources 9.x bundles its own copy -> 'assembly with same name is already loaded' on Import-Module Az.Resources. Fixed in 2.0.2.",
         "decidedOn": "2026-05-31",
         "issue": "193",
-        "trackingScope": "Az.Resources is the observed #193 collision trigger but is NOT in monitoredModules, so the drift inventory does not see its copy or future version drift. This assembly is tracked because the monitored Az.Accounts and Microsoft.Graph.Authentication also bundle it (see sourceModules); the baseline therefore surfaces it via those modules, not via Az.Resources. Re-adjudicate manually if a future Az.Resources change is suspected, or add Az.Resources to monitoredModules to inventory it directly."
+        "trackingScope": "Az.Resources is the observed #193 collision trigger but is NOT in monitoredModules, so the drift inventory does not see its copy or future drift. Among the monitored modules, the current inventory observes this assembly only in MicrosoftTeams (a single shipper, so it does not diverge cross-module and is not in the conflict surface). #193 was a DLLPickle-bundle-vs-consumer collision, not a cross-module version split, so the cross-module drift gate does not model it; the regression guard against re-bundling this transitive lives in tests/Integration/DLLPickle.IntegrationTest.Tests.ps1. Re-adjudicate manually if a future Az.Resources change is suspected, or add Az.Resources to monitoredModules to inventory it directly."
       }
     },
     {
@@ -347,9 +346,8 @@
       "assemblyName": "Microsoft.Extensions.Logging.Abstractions",
       "classification": "block",
       "sourceModules": [
-        "Az.Accounts",
-        "Az.Resources",
-        "Microsoft.Graph.Authentication"
+        "MicrosoftTeams",
+        "Az.Resources"
       ],
       "updateMode": "reportOnly",
       "reason": "#193: paired with DependencyInjection.Abstractions (depends on it); same incidental-transitive collision with Az modules. Excluded from the bundle (ExcludeAssets=runtime).",
@@ -358,7 +356,7 @@
         "basis": "Excluded alongside DependencyInjection.Abstractions in 2.0.2. Microsoft.IdentityModel.Tokens still loads without it bundled (resolves lazily / supplied by the consuming service modules).",
         "decidedOn": "2026-05-31",
         "issue": "193",
-        "trackingScope": "Az.Resources is the observed #193 collision trigger but is NOT in monitoredModules, so the drift inventory does not see its copy or future version drift. This assembly is tracked because the monitored Az.Accounts and Microsoft.Graph.Authentication also bundle it (see sourceModules); the baseline therefore surfaces it via those modules, not via Az.Resources. Re-adjudicate manually if a future Az.Resources change is suspected, or add Az.Resources to monitoredModules to inventory it directly."
+        "trackingScope": "Az.Resources is the observed #193 collision trigger but is NOT in monitoredModules, so the drift inventory does not see its copy or future drift. Among the monitored modules, the current inventory observes this assembly only in MicrosoftTeams (a single shipper, so it does not diverge cross-module and is not in the conflict surface). #193 was a DLLPickle-bundle-vs-consumer collision, not a cross-module version split, so the cross-module drift gate does not model it; the regression guard against re-bundling this transitive lives in tests/Integration/DLLPickle.IntegrationTest.Tests.ps1. Re-adjudicate manually if a future Az.Resources change is suspected, or add Az.Resources to monitoredModules to inventory it directly."
       }
     },
     {
