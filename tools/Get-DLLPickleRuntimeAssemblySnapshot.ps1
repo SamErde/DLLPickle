@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
     Snapshots which tracked assemblies a module loads, and into which AssemblyLoadContext.
 .DESCRIPTION
@@ -7,7 +7,7 @@
     policy's trackedAssemblies, with its version, path, and ALC name. The set of tracked names (and the
     ALC capture) is sourced from build/dependency-policy.json via Get-DLLPickleLoadedTrackedAssembly.ps1,
     so this tool and the live-probe runbook share one filter. A private ALC (name other than 'Default')
-    indicates the module self-manages that assembly — a strong signal that DLLPickle must NOT preload it.
+    indicates the module self-manages that assembly - a strong signal that DLLPickle must NOT preload it.
 .PARAMETER ModuleName
     One or more modules to import, in order.
 .PARAMETER PreloadDllPickleManifest
