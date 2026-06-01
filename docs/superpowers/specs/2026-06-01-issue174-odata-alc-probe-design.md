@@ -26,6 +26,8 @@
 
 **Out of scope:** Stage 2b secretless auth automation (deferred; the live probe stays maintainer-run for now).
 
+> **Placement (A & B):** both live in **`tools/`** as maintainer/analysis scripts — the same family as `New-DLLPickleConflictMatrix`, `Compare-DLLPickleConflictMatrix`, `Get-DLLPickleUpstreamInventory`, and `Update-DLLPickleDependencyPins` (`docs/Architecture.md` §4), kept analyzer-clean by the `AnalyzeTools` build task. They are **not** module code (`src/DLLPickle/`) — they run at adjudication time, not at `Import-DPLibrary` time, so shipping them to the Gallery would bloat the module and turn dev tooling into public API. They are **not** `.github/ci-scripts/` (CI glue: bootstrap, version bump, publish); like the other `tools/` scripts they may be *invoked* by CI but live in `tools/`. (If Phase 2's resolution is a built-in assist, that would be **module** code — a Private function callable from `Import-DPLibrary` — which is a separate decision from these probe tools.)
+
 ## 3. Component A — `tools/Get-DLLPickleLoadedTrackedAssembly.ps1` (new, in-session dump)
 
 A small helper that reports, **for the current session**, every loaded assembly whose name is in the policy's `trackedAssemblies`, with version + ALC. This is the shared core used both by the live runbook (interactive, where `Connect-ExchangeOnline` auth cannot run inside a spawned child) and by the snapshot tool's child process.
