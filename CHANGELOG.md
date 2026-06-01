@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 - Working on updates to replace PlatyPS documentation creation with the new Microsoft.PowerShell.PlatyPS module. (PRs and other help would be welcomed!)
+- CI: Release-and-Publish now auto-triggers only on changes to the published module bundle (`src/DLLPickle/**`, `src/DLLPickle.Build/DLLPickle.csproj`, `src/DLLPickle.Build/packages.lock.json`). CI-, policy-, docs-, test-, and tooling-only changes no longer publish a new PowerShell Gallery version; release a genuine packaging-logic change via a manual `workflow_dispatch` run.
 
 ## [2.1.2] - 2026-06-01
 

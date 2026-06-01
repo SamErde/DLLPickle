@@ -5,11 +5,21 @@ on:
     types: [closed]
     branches:
       - main
+    # Auto-trigger a release+publish ONLY when the change affects the PUBLISHED module bundle.
+    # CI, policy, docs, tests, tooling, and build-script-only changes must NOT publish a new gallery
+    # version (they leave the shipped DLLs + module source byte-identical). The paths below are exactly
+    # the inputs that change the published artifact:
+    #   src/DLLPickle/**                       - module source (manifest, public/private functions)
+    #   src/DLLPickle.Build/DLLPickle.csproj   - declares the bundled DLL package references
+    #   src/DLLPickle.Build/packages.lock.json - the resolved bundled DLL versions
+    # Deliberately excluded: build/** (build scripts + dependency-policy.json), .github/** (CI),
+    # tests/**, tools/**, docs/**, *.md, and src/DLLPickle.Build/DLLPickle.sln - none change the bundle.
+    # Rare genuine packaging-logic changes (build/DLLPickle.Build.ps1) should be released with a
+    # manual workflow_dispatch run.
     paths:
       - "src/DLLPickle/**"
-      - "src/DLLPickle.Build/**"
-      - "build/**"
-      - "module/**"
+      - "src/DLLPickle.Build/DLLPickle.csproj"
+      - "src/DLLPickle.Build/packages.lock.json"
   workflow_dispatch:
     inputs:
       version_bump:
