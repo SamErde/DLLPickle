@@ -59,15 +59,24 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $ErrorActionPreference = 'Stop'
-          $Files = gh pr view ${{ github.event.pull_request.number }} --repo ${{ github.repository }} --json files --jq '.files[].path'
-          $Patterns = @('^src/', '^build/', '^tests/', '^tools/', '^\.github/ci-scripts/', '^\.github/workflows/Build Module\.yml$')
-          $Relevant = $false
-          foreach ($File in $Files) {
-              foreach ($Pattern in $Patterns) {
-                  if ($File -match $Pattern) { $Relevant = $true; break }
+          # Fail-safe: default to relevant=true so any error enumerating changed files runs the build
+          # rather than silently skipping it. Use the PAGINATED REST files endpoint -- gh pr view
+          # --json files caps at 100 files and could miss a later src/ change on a large PR.
+          $Relevant = $true
+          try {
+              $ErrorActionPreference = 'Stop'
+              $Files = gh api "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" --paginate --jq '.[].filename'
+              $Patterns = @('^src/', '^build/', '^tests/', '^tools/', '^\.github/ci-scripts/', '^\.github/workflows/Build Module\.yml$')
+              $Relevant = $false
+              foreach ($File in $Files) {
+                  foreach ($Pattern in $Patterns) {
+                      if ($File -match $Pattern) { $Relevant = $true; break }
+                  }
+                  if ($Relevant) { break }
               }
-              if ($Relevant) { break }
+          } catch {
+              Write-Host "::warning::Changed-file detection failed; defaulting to relevant=true (fail-safe). $_"
+              $Relevant = $true
           }
           "relevant=$($Relevant.ToString().ToLowerInvariant())" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           Write-Host "Build-relevant change detected: $Relevant"
@@ -215,3 +224,27 @@ jobs:
         name: module-build
         path: ./module/DLLPickle
         if-no-files-found: warn
+
+  build-gate:
+    name: Build gate
+    # Aggregate required-check target. GitHub evaluates a matrix job's `if` BEFORE expanding the
+    # matrix, so skipping the `build` job does NOT create the per-OS "Build and test module (...)"
+    # check contexts -- requiring those directly would leave non-bundle PRs stuck "Expected - waiting
+    # for status". This single, always-running job is the stable check to require instead: it passes
+    # when the matrix build succeeded OR was skipped (no build-relevant changes) and fails when the
+    # build failed or was cancelled.
+    needs: build
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Aggregate build result
+        shell: pwsh
+        run: |
+          $Result = '${{ needs.build.result }}'
+          Write-Host "build job result: $Result"
+          if ($Result -eq 'success' -or $Result -eq 'skipped') {
+              Write-Host 'Build gate passed.'
+              exit 0
+          }
+          Write-Host "::error::Build gate failed (build result: $Result)."
+          exit 1

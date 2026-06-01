@@ -40,15 +40,24 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $ErrorActionPreference = 'Stop'
-          $Files = gh pr view ${{ github.event.pull_request.number }} --repo ${{ github.repository }} --json files --jq '.files[].path'
-          $Patterns = @('^build/', '^src/DLLPickle\.Build/', '^tests/', '^tools/', '^\.github/workflows/Upstream-Compatibility\.yml$')
-          $Relevant = $false
-          foreach ($File in $Files) {
-              foreach ($Pattern in $Patterns) {
-                  if ($File -match $Pattern) { $Relevant = $true; break }
+          # Fail-safe: default relevant=true so any error enumerating changed files runs the
+          # validation rather than silently skipping a required check. Paginated REST files endpoint
+          # (gh pr view --json files caps at 100 files and could miss a later build/ or tools/ change).
+          $Relevant = $true
+          try {
+              $ErrorActionPreference = 'Stop'
+              $Files = gh api "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" --paginate --jq '.[].filename'
+              $Patterns = @('^build/', '^src/DLLPickle\.Build/', '^tests/', '^tools/', '^\.github/workflows/Upstream-Compatibility\.yml$')
+              $Relevant = $false
+              foreach ($File in $Files) {
+                  foreach ($Pattern in $Patterns) {
+                      if ($File -match $Pattern) { $Relevant = $true; break }
+                  }
+                  if ($Relevant) { break }
               }
-              if ($Relevant) { break }
+          } catch {
+              Write-Host "::warning::Changed-file detection failed; defaulting to relevant=true (fail-safe). $_"
+              $Relevant = $true
           }
           "relevant=$($Relevant.ToString().ToLowerInvariant())" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           Write-Host "Upstream-compatibility-relevant change detected: $Relevant"
@@ -56,8 +65,11 @@ jobs:
   pr-smoke-validation:
     name: Validate upstream compatibility tooling
     needs: pr-changes
-    # Runs on PRs that touch the tooling/policy paths; skipped (== passing required check) otherwise.
-    if: github.event_name == 'pull_request' && needs.pr-changes.outputs.relevant == 'true'
+    # Runs on PRs that touch the tooling/policy paths; skipped (== passing required check) only when
+    # detection conclusively says false. always() + `!= 'false'` makes it FAIL-SAFE: if pr-changes
+    # fails or its output is unknown, the validation still runs rather than being skipped (which would
+    # otherwise satisfy the required check without actually validating a relevant PR).
+    if: ${{ always() && github.event_name == 'pull_request' && needs.pr-changes.outputs.relevant != 'false' }}
     runs-on: windows-2025
     permissions:
       contents: read
