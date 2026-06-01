@@ -53,18 +53,40 @@ jobs:
     outputs:
       relevant: ${{ steps.detect.outputs.relevant }}
     steps:
-      - name: Check out repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Detect whether build-relevant paths changed
         id: detect
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          ./.github/ci-scripts/Get-DLLPickleChangedPathRelevance.ps1 `
-            -Repository '${{ github.repository }}' `
-            -PullNumber ${{ github.event.pull_request.number }} `
-            -Pattern '^src/', '^build/', '^tests/', '^tools/', '^\.github/ci-scripts/', '^\.github/workflows/Build Module\.yml$'
+          # Detection is intentionally INLINE (not a shared .github/ci-scripts script): keeping the
+          # merge-gate logic in the workflow file benefits from GitHub's stricter workflow-edit review,
+          # so a PR can't relocate it to a less-scrutinized script and tamper the skip decision (#228).
+          # Fail-safe: default to relevant=true so any error enumerating changed files runs the build
+          # rather than silently skipping it. Use the PAGINATED REST files endpoint -- gh pr view
+          # --json files caps at 100 files and could miss a later src/ change on a large PR.
+          $Relevant = $true
+          try {
+              $ErrorActionPreference = 'Stop'
+              # Project previous_filename too, so a rename moving a tracked file OUT of a matched tree
+              # (reported as the new path in .filename, old path in .previous_filename) is still seen.
+              $Files = gh api "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" --paginate --jq '.[] | .filename, (.previous_filename // empty)'
+              # Native non-zero exits don't reliably throw in pwsh, so check explicitly -> fail-safe.
+              if ($LASTEXITCODE -ne 0) { throw "gh api exited $LASTEXITCODE while listing PR files" }
+              $Patterns = @('^src/', '^build/', '^tests/', '^tools/', '^\.github/ci-scripts/', '^\.github/workflows/Build Module\.yml$')
+              $Relevant = $false
+              foreach ($File in $Files) {
+                  foreach ($Pattern in $Patterns) {
+                      if ($File -match $Pattern) { $Relevant = $true; break }
+                  }
+                  if ($Relevant) { break }
+              }
+          } catch {
+              Write-Host "::warning::Changed-file detection failed; defaulting to relevant=true (fail-safe). $_"
+              $Relevant = $true
+          }
+          "relevant=$($Relevant.ToString().ToLowerInvariant())" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          Write-Host "Build-relevant change detected: $Relevant"
 
   build:
 
