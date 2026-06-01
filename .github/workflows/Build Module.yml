@@ -18,13 +18,12 @@ on:
         required: false
   workflow_dispatch:
   pull_request:
-    paths:
-      - "src/**"
-      - "build/**"
-      - "tests/**"
-      - "tools/**"
-      - ".github/ci-scripts/**"
-      - ".github/workflows/Build Module.yml"
+    # No path filter: this workflow always triggers on PRs to main so its "Build and test module"
+    # checks always REPORT (a required status check from a path-filtered workflow that never triggers
+    # stays Pending and blocks the PR forever). The expensive matrix build is gated below by the
+    # `changes` job — on a PR that doesn't touch build-relevant paths the build job is skipped, and a
+    # skipped job satisfies the required check, so docs-/CI-only PRs are never blocked.
+    branches: [main]
   #push:
   #  branches:
   #    - main
@@ -42,9 +41,47 @@ concurrency:
 
 jobs:
 
+  changes:
+    name: Detect build-relevant changes
+    # Only meaningful for a directly-triggered PR. workflow_call (release) passes inputs.ref and must
+    # always build; workflow_dispatch must always build. Both skip this job (handled in build's `if`).
+    if: github.event_name == 'pull_request' && inputs.ref == ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      relevant: ${{ steps.detect.outputs.relevant }}
+    steps:
+      - name: Detect whether build-relevant paths changed
+        id: detect
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $Files = gh pr view ${{ github.event.pull_request.number }} --repo ${{ github.repository }} --json files --jq '.files[].path'
+          $Patterns = @('^src/', '^build/', '^tests/', '^tools/', '^\.github/ci-scripts/', '^\.github/workflows/Build Module\.yml$')
+          $Relevant = $false
+          foreach ($File in $Files) {
+              foreach ($Pattern in $Patterns) {
+                  if ($File -match $Pattern) { $Relevant = $true; break }
+              }
+              if ($Relevant) { break }
+          }
+          "relevant=$($Relevant.ToString().ToLowerInvariant())" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          Write-Host "Build-relevant change detected: $Relevant"
+
   build:
 
     name: Build and test module (${{ matrix.os }})
+    needs: changes
+    # Always build for workflow_call (release; inputs.ref set) and workflow_dispatch. For a direct PR,
+    # build only when build-relevant paths changed; otherwise skip (a skipped job still satisfies the
+    # required "Build and test module" check). always() stops the skip of `changes` in the
+    # call/dispatch paths from cascading into a skip of build; the `!= 'false'` guard errs toward
+    # building on any ambiguity, so the release path is never accidentally skipped.
+    if: ${{ always() && (inputs.ref != '' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.relevant != 'false') }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
