@@ -79,7 +79,7 @@
       "MicrosoftTeams": "7.8.0",
       "Az.Storage": "9.6.1"
     },
-    "conflictSurfaceFingerprint": "b9fd2e1c135ecc76438f43eb56ce6db368999240fc25ab0140c40b1ab18359cd"
+    "conflictSurfaceFingerprint": "b04622cba725f5cb9c1cee4bb928879564ff6e700b574f92f744673151b90798"
   },
   "preload": [
     {
@@ -338,7 +338,8 @@
         "alcOwner": "Default (collision)",
         "basis": "Diagnostic 2026-05-31: DLLPickle preloaded 8.0.0 into the default ALC; PowerShell ships only Microsoft.Extensions.ObjectPool (not this); Az.Resources 9.x bundles its own copy -> 'assembly with same name is already loaded' on Import-Module Az.Resources. Fixed in 2.0.2.",
         "decidedOn": "2026-05-31",
-        "issue": "193"
+        "issue": "193",
+        "trackingScope": "Az.Resources is the observed #193 collision trigger but is NOT in monitoredModules, so the drift inventory does not see its copy or future version drift. This assembly is tracked because the monitored Az.Accounts and Microsoft.Graph.Authentication also bundle it (see sourceModules); the baseline therefore surfaces it via those modules, not via Az.Resources. Re-adjudicate manually if a future Az.Resources change is suspected, or add Az.Resources to monitoredModules to inventory it directly."
       }
     },
     {
@@ -356,7 +357,8 @@
         "alcOwner": "Default (collision)",
         "basis": "Excluded alongside DependencyInjection.Abstractions in 2.0.2. Microsoft.IdentityModel.Tokens still loads without it bundled (resolves lazily / supplied by the consuming service modules).",
         "decidedOn": "2026-05-31",
-        "issue": "193"
+        "issue": "193",
+        "trackingScope": "Az.Resources is the observed #193 collision trigger but is NOT in monitoredModules, so the drift inventory does not see its copy or future version drift. This assembly is tracked because the monitored Az.Accounts and Microsoft.Graph.Authentication also bundle it (see sourceModules); the baseline therefore surfaces it via those modules, not via Az.Resources. Re-adjudicate manually if a future Az.Resources change is suspected, or add Az.Resources to monitoredModules to inventory it directly."
       }
     },
     {

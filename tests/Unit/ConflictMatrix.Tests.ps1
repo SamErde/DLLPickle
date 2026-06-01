@@ -93,4 +93,31 @@ Describe 'New-DLLPickleConflictMatrix' -Tag 'Unit' {
         @($base.ConflictSurface) | Should -Be @($moved.ConflictSurface)   # same names
         $base.Fingerprint | Should -Not -Be $moved.Fingerprint            # different fingerprint
     }
+
+    It 'changes the Fingerprint when the contributing modules change but the version set does not' {
+        # Same conflict-surface NAME (Azure.Core) and same VERSION SET {1.50, 1.46}, but a different
+        # set of contributing modules. A name+versions-only hash would collide; the contributor-aware
+        # fingerprint (ShippedBy) must differ because the preload/block adjudication is module-specific.
+        $MakeInventory = {
+            param($SecondModule)
+            [PSCustomObject]@{
+                Modules = @(
+                    [PSCustomObject]@{
+                        Name              = 'Az.Accounts'
+                        TrackedAssemblies = @([PSCustomObject]@{ Name = 'Azure.Core'; Version = '1.50.0.0' })
+                    }
+                    [PSCustomObject]@{
+                        Name              = $SecondModule
+                        TrackedAssemblies = @([PSCustomObject]@{ Name = 'Azure.Core'; Version = '1.46.0.0' })
+                    }
+                )
+            }
+        }
+        $viaGraph = & $ScriptPath -Inventory (& $MakeInventory 'Microsoft.Graph.Authentication')
+        $viaTeams = & $ScriptPath -Inventory (& $MakeInventory 'MicrosoftTeams')
+        @($viaGraph.ConflictSurface) | Should -Be @($viaTeams.ConflictSurface)   # same names
+        @($viaGraph.Assemblies | Where-Object Name -EQ 'Azure.Core').Versions |
+            Should -Be @($viaTeams.Assemblies | Where-Object Name -EQ 'Azure.Core').Versions   # same version set
+        $viaGraph.Fingerprint | Should -Not -Be $viaTeams.Fingerprint            # different contributors
+    }
 }
