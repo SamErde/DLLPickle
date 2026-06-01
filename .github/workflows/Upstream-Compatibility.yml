@@ -72,14 +72,23 @@ jobs:
           $IsDependencyChange = -not [string]::IsNullOrWhiteSpace(($Changed | Out-String))
           "is_dependency_change=$($IsDependencyChange.ToString().ToLowerInvariant())" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
 
-      - name: Drift gate for dependency PRs
+      - name: Upstream conflict-surface freshness check for dependency PRs
         if: steps.depchange.outputs.is_dependency_change == 'true'
         shell: pwsh
         run: |
-          # A dependency PR (Dependabot bump of the lock/csproj) can change the bundled preload set.
-          # Recompute the upstream conflict surface and block the PR if it drifted from the recorded
-          # baseline, so an auto-merge cannot advance a bundle change before the preload decision is
-          # re-adjudicated. Non-dependency PRs skip this (and its module-download cost).
+          # Freshness check, NOT a bundle validation. When a dependency PR (Dependabot bump of the
+          # lock/csproj) is open, recompute the UPSTREAM module conflict surface and block the PR if it
+          # drifted from the recorded baseline: a stale baseline means the preload/block decision the
+          # bundle is built against may no longer hold and must be re-adjudicated before merge.
+          #
+          # This step does NOT validate the bumped bundle itself. A self-bump of DLLPickle's own NuGet
+          # references does not change what the upstream modules ship, so it will not move this
+          # fingerprint. The bumped bundle is validated separately by the "Build Module" workflow, which
+          # on every PR touching src/** runs the full build under --locked-mode plus the #193 / Azure.Core
+          # integration repro guards, bounded by the csproj floating-with-cap constraints. For auto-merge
+          # to actually wait on those signals, the Build Module and Dependency Review checks must be
+          # configured as required status checks (see Dependabot-Auto-Approve.yml).
+          # Non-dependency PRs skip this step (and its module-download cost).
           $ErrorActionPreference = 'Stop'
           ./tools/Get-DLLPickleUpstreamInventory.ps1 `
             -PolicyPath ./build/dependency-policy.json `
@@ -94,10 +103,10 @@ jobs:
           $fingerprint = [string]$current.Fingerprint
           $baseline = [string]$policy.baseline.conflictSurfaceFingerprint
           if ($fingerprint -ne $baseline) {
-            Write-Host "::error::Conflict surface changed (baseline '$baseline' -> '$fingerprint') on a dependency PR. Do not auto-merge: re-adjudicate the preload decision and update build/dependency-policy.json (classification + evidence + baseline) per docs/Architecture.md section 8."
-            throw 'Conflict-surface drift detected on a dependency PR; blocking auto-merge.'
+            Write-Host "::error::Upstream conflict surface changed (baseline '$baseline' -> '$fingerprint') while a dependency PR is open. The preload/block decision this bundle is built against may be stale: re-adjudicate and update build/dependency-policy.json (classification + evidence + baseline) per docs/Architecture.md section 8 before merging."
+            throw 'Upstream conflict-surface drift detected on a dependency PR; blocking auto-merge until re-adjudicated.'
           }
-          Write-Host "Conflict surface unchanged (fingerprint '$fingerprint'); dependency bump is safe to merge."
+          Write-Host "Upstream conflict surface unchanged (fingerprint '$fingerprint'); the recorded preload/block baseline still holds. (Bundle correctness is validated separately by the Build Module workflow.)"
 
   scheduled-upstream-compatibility:
     name: Validate latest upstream module compatibility

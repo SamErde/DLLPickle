@@ -10,6 +10,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Working on updates to replace PlatyPS documentation creation with the new Microsoft.PowerShell.PlatyPS module. (PRs and other help would be welcomed!)
 
+## [2.1.2] - 2026-06-01
+
+> Follow-up Codex review of #223. Refines the 2.1.1 drift tooling and policy documentation — **no change to the published module bundle**.
+
+### Fixed
+
+- **Drift fingerprint is now contributor-aware.** `New-DLLPickleConflictMatrix` hashes each conflicting assembly's name, its versions, **and** the set of modules that ship it (`ShippedBy`), so a change in which modules contribute to a conflict (at the same version set) also trips drift for re-adjudication — not just name- or version-set changes. The recorded baseline is recomputed accordingly.
+- **Dependency-PR gate documented as an upstream-freshness check.** Corrected the step name, comments, and messages to make clear it validates that the upstream conflict surface still matches the baseline — *not* the bumped bundle (a self-bump does not move the upstream fingerprint). The bundle is validated by the Build Module workflow (full build under `--locked-mode` + the #193 / Azure.Core repro guards, bounded by the csproj caps); those checks must be required status checks for auto-merge to wait on them.
+- **Clarified `Microsoft.Extensions.*` tracking scope.** Recorded a `trackingScope` note on the blocked entries: Az.Resources (the observed #193 trigger) is not in `monitoredModules`, so its own copy is not inventoried; these assemblies are surfaced via the monitored Az.Accounts / Microsoft.Graph.Authentication that also bundle them.
+
 ## [2.1.1] - 2026-05-31
 
 > Addresses the Codex review of 2.1.0. Repo-side hardening of the drift gate and dependency tooling — **no change to the published module bundle**.
@@ -293,7 +303,8 @@ Full Changelog: [v0.2.5...v0.2.6](https://github.com/SamErde/DLLPickle/compare/v
 
 - Initial release.
 
-[Unreleased]: https://github.com/SamErde/DLLPickle/compare/v2.1.1...HEAD
+[Unreleased]: https://github.com/SamErde/DLLPickle/compare/v2.1.2...HEAD
+[2.1.2]: https://github.com/SamErde/DLLPickle/tag/v2.1.2
 [2.1.1]: https://github.com/SamErde/DLLPickle/tag/v2.1.1
 [2.1.0]: https://github.com/SamErde/DLLPickle/tag/v2.1.0
 [2.0.2]: https://github.com/SamErde/DLLPickle/tag/v2.0.2

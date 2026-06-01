@@ -64,15 +64,19 @@ $AssemblyRows = foreach ($Name in ($ByAssembly.Keys | Sort-Object)) {
     }
 }
 
-# Versions-aware fingerprint over the conflict surface. Each diverging assembly contributes its
-# name AND its sorted distinct versions, so a material change where the same assemblies stay in
-# conflict but their versions move (e.g. an upstream module bumps within-major) changes the hash.
+# Versions- and contributor-aware fingerprint over the conflict surface. Each diverging assembly
+# contributes its name, its sorted distinct versions, AND the sorted set of modules that ship it
+# (ShippedBy). Including versions catches a material change where the same assemblies stay in conflict
+# but their versions move (e.g. an upstream module bumps within-major). Including ShippedBy catches a
+# change in WHICH modules contribute to a conflict even when the version set is unchanged (e.g. one
+# module leaves a conflict as another joins at the same versions) -- the preload/block adjudication is
+# module-specific, so that contributor change also needs human review.
 # This is the single source of the drift fingerprint consumed by the Upstream-Compatibility workflow
 # and the recorded baseline in build/dependency-policy.json. (ALC ownership is not included: it is
 # null in the static inventory and is only known from the runtime probe / maintainer adjudication.)
 $SurfaceRows = @(
     $AssemblyRows | Where-Object Diverges | Sort-Object Name | ForEach-Object {
-        '{0}={1}' -f $_.Name, (@($_.Versions | Sort-Object) -join ',')
+        '{0}={1};by={2}' -f $_.Name, (@($_.Versions | Sort-Object) -join ','), (@($_.ShippedBy | Sort-Object) -join ',')
     }
 )
 $FingerprintBytes = [System.Text.Encoding]::UTF8.GetBytes(($SurfaceRows -join '|'))
