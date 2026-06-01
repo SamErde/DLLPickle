@@ -34,37 +34,18 @@ jobs:
     outputs:
       relevant: ${{ steps.detect.outputs.relevant }}
     steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Detect whether upstream-compatibility paths changed
         id: detect
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          # Fail-safe: default relevant=true so any error enumerating changed files runs the
-          # validation rather than silently skipping a required check. Paginated REST files endpoint
-          # (gh pr view --json files caps at 100 files and could miss a later build/ or tools/ change).
-          $Relevant = $true
-          try {
-              $ErrorActionPreference = 'Stop'
-              # Project previous_filename too, so a rename moving a tracked file OUT of a matched tree
-              # (reported as the new path in .filename, old path in .previous_filename) is still seen.
-              $Files = gh api "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" --paginate --jq '.[] | .filename, (.previous_filename // empty)'
-              # Native non-zero exits don't reliably throw in pwsh, so check explicitly -> fail-safe.
-              if ($LASTEXITCODE -ne 0) { throw "gh api exited $LASTEXITCODE while listing PR files" }
-              $Patterns = @('^build/', '^src/DLLPickle\.Build/', '^tests/', '^tools/', '^\.github/workflows/Upstream-Compatibility\.yml$')
-              $Relevant = $false
-              foreach ($File in $Files) {
-                  foreach ($Pattern in $Patterns) {
-                      if ($File -match $Pattern) { $Relevant = $true; break }
-                  }
-                  if ($Relevant) { break }
-              }
-          } catch {
-              Write-Host "::warning::Changed-file detection failed; defaulting to relevant=true (fail-safe). $_"
-              $Relevant = $true
-          }
-          "relevant=$($Relevant.ToString().ToLowerInvariant())" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
-          Write-Host "Upstream-compatibility-relevant change detected: $Relevant"
+          ./.github/ci-scripts/Get-DLLPickleChangedPathRelevance.ps1 `
+            -Repository '${{ github.repository }}' `
+            -PullNumber ${{ github.event.pull_request.number }} `
+            -Pattern '^build/', '^src/DLLPickle\.Build/', '^tests/', '^tools/', '^\.github/workflows/Upstream-Compatibility\.yml$'
 
   pr-smoke-validation:
     name: Validate upstream compatibility tooling
