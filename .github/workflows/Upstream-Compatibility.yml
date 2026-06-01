@@ -11,12 +11,10 @@ on:
   schedule:
     - cron: "34 8 * * 1"
   pull_request:
-    paths:
-      - "build/dependency-policy.json"
-      - "src/DLLPickle.Build/**"
-      - "tests/**"
-      - "tools/**"
-      - ".github/workflows/Upstream-Compatibility.yml"
+    # No path filter: always trigger on PRs to main so the "Validate upstream compatibility tooling"
+    # required check always reports. The job is gated below by `pr-changes` — skipped (== passing
+    # required check) on PRs that don't touch the tooling/policy paths.
+    branches: [main]
 
 permissions:
   contents: read
@@ -26,9 +24,59 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  pr-changes:
+    name: Detect tooling/policy changes
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      relevant: ${{ steps.detect.outputs.relevant }}
+    steps:
+      - name: Detect whether upstream-compatibility paths changed
+        id: detect
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Detection is intentionally INLINE (not a shared .github/ci-scripts script): keeping the
+          # merge-gate logic in the workflow file benefits from GitHub's stricter workflow-edit review,
+          # so a PR can't relocate it to a less-scrutinized script and tamper the skip decision (#228).
+          # Fail-safe: default relevant=true so any error enumerating changed files runs the
+          # validation rather than silently skipping a required check. Paginated REST files endpoint
+          # (gh pr view --json files caps at 100 files and could miss a later build/ or tools/ change).
+          $Relevant = $true
+          try {
+              $ErrorActionPreference = 'Stop'
+              # Project previous_filename too, so a rename moving a tracked file OUT of a matched tree
+              # (reported as the new path in .filename, old path in .previous_filename) is still seen.
+              $Files = gh api "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" --paginate --jq '.[] | .filename, (.previous_filename // empty)'
+              # Native non-zero exits don't reliably throw in pwsh, so check explicitly -> fail-safe.
+              if ($LASTEXITCODE -ne 0) { throw "gh api exited $LASTEXITCODE while listing PR files" }
+              $Patterns = @('^build/', '^src/DLLPickle\.Build/', '^tests/', '^tools/', '^\.github/workflows/Upstream-Compatibility\.yml$')
+              $Relevant = $false
+              foreach ($File in $Files) {
+                  foreach ($Pattern in $Patterns) {
+                      if ($File -match $Pattern) { $Relevant = $true; break }
+                  }
+                  if ($Relevant) { break }
+              }
+          } catch {
+              Write-Host "::warning::Changed-file detection failed; defaulting to relevant=true (fail-safe). $_"
+              $Relevant = $true
+          }
+          "relevant=$($Relevant.ToString().ToLowerInvariant())" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          Write-Host "Upstream-compatibility-relevant change detected: $Relevant"
+
   pr-smoke-validation:
     name: Validate upstream compatibility tooling
-    if: github.event_name == 'pull_request'
+    needs: pr-changes
+    # Runs on PRs that touch the tooling/policy paths; skipped (== passing required check) only when
+    # detection conclusively says false. always() + `!= 'false'` makes it FAIL-SAFE: if pr-changes
+    # fails or its output is unknown, the validation still runs rather than being skipped (which would
+    # otherwise satisfy the required check without actually validating a relevant PR).
+    if: ${{ always() && github.event_name == 'pull_request' && needs.pr-changes.outputs.relevant != 'false' }}
     runs-on: windows-2025
     permissions:
       contents: read
