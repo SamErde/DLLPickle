@@ -46,6 +46,14 @@ Gets modules and sorts them by packaged `Microsoft.Identity.Client.dll` version.
 
 Imports DLLPickle dependency libraries.
 
+### [Import-DPBaseProfile](DLLPickle/Import-DPBaseProfile.md)
+
+Runs `Import-DPLibrary` and imports the validated base-profile modules (Exchange Online, Microsoft Teams, Microsoft Graph, and Az.Accounts) in a known-good order.
+
+### Test-DPLibraryConflict
+
+Reports known-incompatible module combinations loaded in the current session (for example the Az.Storage + ExchangeOnlineManagement OData conflict, issue #174), with the reason and the separate-process workaround. _(The per-command help page is generated during the in-progress `Microsoft.PowerShell.PlatyPS` migration.)_
+
 ## Archived Commands
 
 The following pages are retained for historical reference and migration guidance.

@@ -27,6 +27,31 @@ For usage guidance, see [README.md](README.md) and [docs/index.md](docs/index.md
 | **Major** (X.y.z) | Manual review | Explicit maintainer approval |
 | **Upstream PowerShell module drift** | Candidate PR or issue | Upstream Compatibility workflow |
 
+## Versioning
+
+DLLPickle follows [Semantic Versioning](https://semver.org/) (`MAJOR.MINOR.PATCH`).
+Releases are cut automatically by the **Release-and-Publish** workflow, which
+derives the bump **solely from the [Conventional Commit](https://www.conventionalcommits.org/)
+prefixes** of the commits since the last tag (see
+[`.github/ci-scripts/Get-VersionBump.ps1`](.github/ci-scripts/Get-VersionBump.ps1)):
+
+| Bump | Commit prefix |
+| ---- | ------------- |
+| **MAJOR** (`X.y.z`) | `BREAKING CHANGE:`, `breaking:`, or `major-release` |
+| **MINOR** (`x.Y.z`) | `feat:` (or `minor:`) |
+| **PATCH** (`x.y.Z`) | `fix:`, `perf:`, `refactor:`, `security:`, or `chore:` |
+
+The bump is decided by the commit prefix alone — there is **no** separate
+detection of dependency or MSAL version changes. Label dependency-update PRs
+accordingly: the automated MSAL / identity-library bumps that are the module's
+core purpose should land as `feat:` so they produce a **minor** release, and a
+bundled-library **major** jump should be committed as a breaking change.
+
+A new PowerShell Gallery version is published **only** when a change affects the
+published module bundle (`src/DLLPickle/**` or the bundled package set). CI-,
+docs-, policy-, and tooling-only changes do not trigger a release. See
+[CHANGELOG.md](CHANGELOG.md) for the released history.
+
 ## Upstream Compatibility Automation
 
 Dependabot tracks NuGet package releases, but DLLPickle also tracks the DLLs
@@ -58,6 +83,19 @@ candidate generation, restore, build, and issue reproduction tests pass.
 | `Microsoft.IdentityModel.JsonWebTokens` | `8.*` | JWT handling |
 | `Microsoft.IdentityModel.Tokens` | `8.*` | Token validation/processing |
 | `System.IdentityModel.Tokens.Jwt` | `8.*` | JWT handlers |
+
+### Upstream package documentation
+
+The libraries DLLPickle tracks for preloading are maintained and documented by
+their own code owners:
+
+- [Microsoft.Identity.Abstractions](https://www.nuget.org/packages/Microsoft.Identity.Abstractions)
+- [Microsoft.Identity.Client](https://www.nuget.org/packages/Microsoft.Identity.Client)
+- [Microsoft.IdentityModel.Abstractions](https://www.nuget.org/packages/Microsoft.IdentityModel.Abstractions)
+- [Microsoft.IdentityModel.JsonWebTokens](https://www.nuget.org/packages/Microsoft.IdentityModel.JsonWebTokens)
+- [Microsoft.IdentityModel.Logging](https://www.nuget.org/packages/Microsoft.IdentityModel.Logging)
+- [Microsoft.IdentityModel.Tokens](https://www.nuget.org/packages/Microsoft.IdentityModel.Tokens)
+- [System.IdentityModel.Tokens.Jwt](https://www.nuget.org/packages/System.IdentityModel.Tokens.Jwt)
 
 ## Exact Pin Rationale
 
