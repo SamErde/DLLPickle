@@ -315,6 +315,11 @@ jobs:
     permissions:
       contents: read
       security-events: write
+      # Required by the called "Build Module.yml": its `changes` job declares pull-requests: read.
+      # A reusable workflow's jobs may not request permissions the caller did not grant, and GitHub
+      # validates this STATICALLY at startup -- even though `changes` is skipped on the release
+      # (workflow_call) path. Without granting it here the release run fails to start (startup_failure).
+      pull-requests: read
     with:
       ref: ${{ needs.analyze.outputs.release_sha }}
 
