@@ -177,8 +177,10 @@ This is an upstream incompatibility between the two modules; **DLLPickle cannot 
 (preloading either version breaks the other module), which is why the OData assemblies are
 classified `block`. DLLPickle warns when it detects both modules loaded (see `Test-DPLibraryConflict`).
 
-**Workaround:** use the two modules in **separate PowerShell sessions or processes** — for example,
-run `Get-EXO*` work in one `pwsh`/runspace/background job and `Az.Storage` work in another.
+**Workaround:** use the two modules in **separate PowerShell processes** — for example, run `Get-EXO*`
+work in one `pwsh` (or a `Start-Job` background job) and `Az.Storage` work in another. A separate
+**runspace** in the *same* process does **not** help: the conflict is process-wide (one default
+`AssemblyLoadContext` per process).
 
 ## Audio Discussion
 

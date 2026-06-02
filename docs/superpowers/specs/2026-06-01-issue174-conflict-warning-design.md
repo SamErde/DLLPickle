@@ -27,7 +27,7 @@ New top-level array `knownConflicts`. Each entry:
   "assembly": "Microsoft.OData.Core",
   "issue": "174",
   "reason": "Az.Storage force-loads Microsoft.OData.Core 7.6.4 at import; ExchangeOnlineManagement's Get-EXO* cmdlets require 7.22.0. Both target the default ALC and are strong-named, so the two versions cannot coexist in one process - both import orders fail.",
-  "workaround": "Use Az.Storage and ExchangeOnlineManagement (Get-EXO* cmdlets) in separate PowerShell sessions or processes (e.g., run one in a background job or a separate runspace/pwsh).",
+  "workaround": "Use Az.Storage and ExchangeOnlineManagement (Get-EXO* cmdlets) in separate PowerShell processes - a background job (Start-Job) or a second pwsh. A separate runspace in the same process does NOT help: the conflict is process-wide (one default AssemblyLoadContext per process).",
   "evidence": {
     "versions": { "Az.Storage": "7.6.4", "ExchangeOnlineManagement": "7.22.0" },
     "alc": "Default",
@@ -57,7 +57,9 @@ After the preload completes, for each known conflict (all wrapped so a detection
 
 - If **every** module in the pair is already **loaded** → `Write-Warning` immediately (reuse `Test-DPLibraryConflict`'s warning text).
 - Else if **every** module is **installed** (`Get-Module -ListAvailable`) but not all loaded → the clash is possible later, so **arm a one-shot handler**: register a single `[System.AppDomain]::CurrentDomain.add_AssemblyLoad(...)` handler. At arm time, capture the `ModuleBase` path(s) of the not-yet-loaded conflict module(s). The handler checks the **loaded assembly's path** (the event arg's `Assembly.Location`) against those base paths (a cheap string check — no cmdlet calls inside the load callback); when an assembly from the watched module loads (meaning the pair is now co-loaded), it emits the warning **once** and **unregisters itself**.
-- **Guards:** skip arming under Constrained Language Mode (`$ExecutionContext.SessionState.LanguageMode -eq 'ConstrainedLanguage'` — the AppDomain APIs are blocked there); track armed conflict `id`s so a second `Import-DPLibrary` call does not double-arm; the handler body is wrapped in try/catch and never throws.
+- **Guards:** skip arming under Constrained Language Mode (`$ExecutionContext.SessionState.LanguageMode -eq 'ConstrainedLanguage'` — the AppDomain APIs are blocked there); track handled conflict `id`s in a module-scoped (`$script:`) set so a second `Import-DPLibrary` call does not re-warn or stack handlers; query availability only for the conflict's own module names (not all of PSModulePath); normalize paths before the prefix check; the handler body is wrapped in try/catch and never throws.
+
+**Best-effort limits (acknowledged):** the auto-warn is advisory, not a guarantee. A *rejected* assembly load raises no `AssemblyLoad` event, so if the second module's import fails outright before any of its assemblies load (the EXO-first → Az.Storage-import-failure order), the handler may not fire — the user sees the raw error. Detection keys on imported modules (`Get-Module`), so a module removed with `Remove-Module` while its assemblies remain resident is not re-detected. `Test-DPLibraryConflict` (on demand) and the documented separate-process workaround are the reliable paths; assembly-level detection is a possible future enhancement.
 
 This catches every order automatically while arming only when both modules are installed (no overhead otherwise).
 
@@ -74,7 +76,7 @@ The warning is advisory and must never degrade the session: all detection/handle
 
 ## 9. Testing
 
-- **Unit:** `Test-DPModuleConflict` (synthetic knownConflicts + injected loaded-module-name lists → returns the right active conflicts / none — the detector takes both as parameters, so no real modules needed); `Test-DPLibraryConflict` (via `-KnownConflictsPath` pointing at a synthetic file in `TestDrive` with a pair of always-loaded modules like `Microsoft.PowerShell.Management`/`Microsoft.PowerShell.Utility` → asserts a warning is emitted; and a non-loaded pair → asserts silence); the **sync test** (shipped `KnownConflicts.json` subset equals `dependency-policy.json` `knownConflicts`). Helpers use approved verbs (`Get-`/`Test-`) to stay `AnalyzeTests`-clean.
+- **Unit:** `Test-DPModuleConflict` (synthetic knownConflicts + injected loaded-module-name lists → returns the right active conflicts / none — the detector takes both as parameters, so no real modules needed); `Test-DPLibraryConflict` (via `-KnownConflictsPath` pointing at a synthetic file in `TestDrive` with a pair of always-loaded modules like `Microsoft.PowerShell.Management`/`Microsoft.PowerShell.Utility` → asserts a warning is emitted; and a non-loaded pair → asserts silence); the **extractor test** — run `Export-DLLPickleKnownConflicts` to a `TestDrive` path and assert its output equals `dependency-policy.json`'s `knownConflicts` (this validates the extraction against the policy without reading the build-generated `module/KnownConflicts.json`, so it does not depend on build order — the `Clean`/`Test` phases run before `PrepareModuleOutput`). Helpers use approved verbs (`Get-`/`Test-`) to stay `AnalyzeTests`-clean.
 - **Integration:** the extended #174 both-orders repro.
 - **Import-DPLibrary wiring:** the immediate-warn and armed-handler branches are thin glue over the unit-tested detector; the armed-handler auto-warn path is validated by the maintainer's live probe scenarios rather than a synthetic AssemblyLoad test (to avoid registering real session handlers in CI).
 
