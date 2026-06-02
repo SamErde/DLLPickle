@@ -5,6 +5,7 @@ BeforeAll {
     . (Join-Path $RepoRoot 'src\DLLPickle\Private\Test-DPModuleConflict.ps1')
     . (Join-Path $RepoRoot 'src\DLLPickle\Private\Get-DPKnownConflict.ps1')
     . (Join-Path $RepoRoot 'src\DLLPickle\Private\Format-DPConflictWarning.ps1')
+    . (Join-Path $RepoRoot 'src\DLLPickle\Public\Test-DPLibraryConflict.ps1')
 
     $SampleConflict = [PSCustomObject]@{
         id = 'sample'; modules = @('Alpha', 'Beta'); assembly = 'Some.Assembly'; issue = '999'
@@ -71,5 +72,39 @@ Describe 'Export-DLLPickleKnownConflicts' -Tag 'Unit' {
         $Policy = Get-Content -LiteralPath $PolicyPath -Raw | ConvertFrom-Json
         @($Written).Count | Should -Be @($Policy.knownConflicts).Count
         ($Written | Where-Object id -EQ '174-odata-azstorage-exo') | Should -Not -BeNullOrEmpty
+    }
+}
+
+Describe 'Test-DPLibraryConflict' -Tag 'Unit' {
+    BeforeAll {
+        Import-Module Microsoft.PowerShell.Management -ErrorAction SilentlyContinue
+        Import-Module Microsoft.PowerShell.Utility -ErrorAction SilentlyContinue
+        $LoadedPairPath = Join-Path $TestDrive 'loaded-pair.json'
+        ConvertTo-Json -Depth 20 -InputObject @(
+            [PSCustomObject]@{ id = 'loaded'; modules = @('Microsoft.PowerShell.Management', 'Microsoft.PowerShell.Utility'); assembly = 'x'; issue = '174'; reason = 'r'; workaround = 'w' }
+        ) | Set-Content -LiteralPath $LoadedPairPath -Encoding utf8
+        $UnloadedPairPath = Join-Path $TestDrive 'unloaded-pair.json'
+        ConvertTo-Json -Depth 20 -InputObject @(
+            [PSCustomObject]@{ id = 'unloaded'; modules = @('No.Such.ModuleA', 'No.Such.ModuleB'); assembly = 'x'; issue = '174'; reason = 'r'; workaround = 'w' }
+        ) | Set-Content -LiteralPath $UnloadedPairPath -Encoding utf8
+    }
+
+    It 'warns and returns the conflict when both modules are loaded' {
+        $Active = Test-DPLibraryConflict -KnownConflictsPath $LoadedPairPath -WarningAction SilentlyContinue
+        @($Active).Count | Should -Be 1
+        $Active[0].id | Should -Be 'loaded'
+    }
+
+    It 'emits a Write-Warning when a conflict is active' {
+        $Warnings = $null
+        Test-DPLibraryConflict -KnownConflictsPath $LoadedPairPath -WarningVariable Warnings -WarningAction SilentlyContinue | Out-Null
+        @($Warnings).Count | Should -BeGreaterThan 0
+    }
+
+    It 'is silent and returns nothing when no conflict pair is fully loaded' {
+        $Warnings = $null
+        $Active = Test-DPLibraryConflict -KnownConflictsPath $UnloadedPairPath -WarningVariable Warnings -WarningAction SilentlyContinue
+        @($Active) | Should -BeNullOrEmpty
+        @($Warnings) | Should -BeNullOrEmpty
     }
 }
