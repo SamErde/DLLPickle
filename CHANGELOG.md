@@ -18,7 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **`Test-DPLibraryConflict`** — a public cmdlet that reports known-incompatible module combinations loaded in the current session (with the reason, the separate-process workaround, and the issue link) and returns the active conflicts.
 - **`Import-DPLibrary` now warns** when a known-conflicting module pair is — or later becomes — co-loaded: immediately if both are already imported, otherwise via a best-effort, idempotent, self-unregistering `AssemblyLoad` handler that fires only once the whole pair is co-loaded (armed only when both modules are installed). Advisory: it never throws and is skipped under Constrained Language Mode.
-- Data-driven **`knownConflicts`** in `build/dependency-policy.json`, shipped into the module as `KnownConflicts.json` (adding a future conflict is a data edit, not a code change).
+- Data-driven conflict list in **`src/DLLPickle/KnownConflicts.json`** — a committed source file shipped verbatim with the module (adding a future conflict is a data edit, not a code change). Because it lives under `src/DLLPickle/`, a conflict-data edit correctly publishes a new release, while policy/CI-only edits do not.
 - Runtime ALC-ownership probe tooling under `tools/` (`Get-DLLPickleLoadedTrackedAssembly.ps1`; `Get-DLLPickleRuntimeAssemblySnapshot` now sources its filter from `trackedAssemblies`, so it captures the OData stack) used to adjudicate #174.
 
 ### Changed
