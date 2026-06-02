@@ -63,9 +63,20 @@ function Invoke-DPConflictCheck {
                 $WatchedModule = [System.Collections.Generic.List[object]]::new()
                 $AllInstalled = $true
                 foreach ($Name in $NotLoaded) {
+                    # Normalize each base to end with a directory separator so the handler's StartsWith
+                    # check is a true directory-prefix match (e.g. '...\Az.Storage\' must not match a
+                    # sibling '...\Az.Storage.Custom\').
                     $Bases = @(
                         Get-Module -ListAvailable -Name $Name |
-                            ForEach-Object { if ($_.ModuleBase) { [System.IO.Path]::GetFullPath($_.ModuleBase) } } |
+                            ForEach-Object {
+                                if ($_.ModuleBase) {
+                                    $Full = [System.IO.Path]::GetFullPath($_.ModuleBase)
+                                    if (-not $Full.EndsWith([System.IO.Path]::DirectorySeparatorChar)) {
+                                        $Full += [System.IO.Path]::DirectorySeparatorChar
+                                    }
+                                    $Full
+                                }
+                            } |
                             Select-Object -Unique
                     )
                     if ($Bases.Count -eq 0) { $AllInstalled = $false; break }
