@@ -164,7 +164,7 @@ All libraries tracked for pre-loading by DLL Pickle are maintained and documente
 - Deep technical explanation: [docs/Deep-Dive.md](docs/Deep-Dive.md)
 - Full command reference: [docs/DLLPickle.md](docs/DLLPickle.md)
 - Changelog and active work: [CHANGELOG.md](CHANGELOG.md)
-- Planned work: [Roadmap.md](Roadmap.md)
+- Architecture blueprint and planned enhancements: [docs/Architecture.md](docs/Architecture.md)
 - Contribution workflow: [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md)
 - Dependency and supply chain policy: [DEPENDENCIES.md](DEPENDENCIES.md)
 - Security vulnerability reporting: [SECURITY.md](SECURITY.md)
