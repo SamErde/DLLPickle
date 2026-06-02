@@ -129,9 +129,13 @@ process. A 2026-06-01 runtime probe confirmed that **both import orders fail**:
 - ExchangeOnlineManagement first, then `Import-Module Az.Storage` &rarr; fails (wants 7.6.4, but 7.22.0 is already loaded).
 
 DLLPickle cannot resolve this by preloading — preloading either version breaks the other
-module — so the OData assemblies stay on the block list. As of **2.2.0**, DLLPickle ships
-`Test-DPLibraryConflict` (and `Import-DPLibrary` surfaces the same warning automatically) to
-flag the conflict when both modules are loaded, with the reason and the workaround below.
+module — so the OData assemblies stay on the block list. As of **2.2.0**, run
+`Test-DPLibraryConflict` to reliably check the current session and warn (with the reason and
+the workaround below) whenever both modules are loaded. `Import-DPLibrary` also arms a
+**best-effort, advisory** watcher that surfaces the same warning if the pair becomes co-loaded
+later — but it cannot catch every case (for example, if the second module's import fails before
+any of its assemblies load, no `AssemblyLoad` event fires), so `Test-DPLibraryConflict` is the
+reliable check.
 
 **Workaround:** run the Az.Storage and ExchangeOnlineManagement (`Get-EXO*`) work in separate
 PowerShell processes so each process has its own assembly load context. A separate runspace in

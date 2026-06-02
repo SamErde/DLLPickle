@@ -31,14 +31,21 @@ For usage guidance, see [README.md](README.md) and [docs/index.md](docs/index.md
 
 DLLPickle follows [Semantic Versioning](https://semver.org/) (`MAJOR.MINOR.PATCH`).
 Releases are cut automatically by the **Release-and-Publish** workflow, which
-derives the bump from [Conventional Commits](https://www.conventionalcommits.org/)
-since the last tag:
+derives the bump **solely from the [Conventional Commit](https://www.conventionalcommits.org/)
+prefixes** of the commits since the last tag (see
+[`.github/ci-scripts/Get-VersionBump.ps1`](.github/ci-scripts/Get-VersionBump.ps1)):
 
-| Bump | Trigger |
-| ---- | ------- |
-| **MAJOR** (`X.y.z`) | A breaking change (a `!` / `BREAKING CHANGE` commit), or a bundled MSAL **major** version increment. |
-| **MINOR** (`x.Y.z`) | A new feature (`feat:`), or a new / updated bundled dependency — including the automated MSAL and identity-library version bumps that are the module's core purpose. |
-| **PATCH** (`x.y.Z`) | Fixes (`fix:`), refactors, performance/logging tweaks, and other non-breaking corrections. |
+| Bump | Commit prefix |
+| ---- | ------------- |
+| **MAJOR** (`X.y.z`) | `BREAKING CHANGE:`, `breaking:`, or `major-release` |
+| **MINOR** (`x.Y.z`) | `feat:` (or `minor:`) |
+| **PATCH** (`x.y.Z`) | `fix:`, `perf:`, `refactor:`, `security:`, or `chore:` |
+
+The bump is decided by the commit prefix alone — there is **no** separate
+detection of dependency or MSAL version changes. Label dependency-update PRs
+accordingly: the automated MSAL / identity-library bumps that are the module's
+core purpose should land as `feat:` so they produce a **minor** release, and a
+bundled-library **major** jump should be committed as a breaking change.
 
 A new PowerShell Gallery version is published **only** when a change affects the
 published module bundle (`src/DLLPickle/**` or the bundled package set). CI-,
