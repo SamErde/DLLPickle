@@ -490,5 +490,12 @@
         }
     }
 
+    # Advisory: warn about known-incompatible module combinations (e.g. #174 Az.Storage + EXO).
+    try {
+        Invoke-DPConflictCheck
+    } catch {
+        Write-Verbose "Invoke-DPConflictCheck failed: $_"
+    }
+
     $Results
 }
