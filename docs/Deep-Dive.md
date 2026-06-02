@@ -17,6 +17,19 @@ load errors.
 DLLPickle addresses this by loading a compatible set of identity-related
 assemblies before other modules attempt their own assembly loads.
 
+## Related Issues
+
+This class of conflict is widely reported across Microsoft's first-party
+PowerShell modules:
+
+- [Connect-MgGraph fails after Connect-ExchangeOnline](https://github.com/microsoftgraph/msgraph-sdk-powershell/issues/3394)
+- [UUF Customer feedback: Get-EntraExtensionProperty error](https://github.com/microsoftgraph/entra-powershell/issues/1258) (Assembly with same name is already loaded)
+- [Assembly with same name is already loaded](https://github.com/microsoftgraph/entra-powershell/issues/1083)
+- [Design entra-powershell with ALC bridge pattern for more robust assembly load handling](https://github.com/microsoftgraph/entra-powershell/issues/1242)
+- [Implement proper assembly isolation to play nice with vscode-powershell](https://github.com/microsoftgraph/msgraph-sdk-powershell/issues/2978)
+- [Conflict with the .NET DLL of the Az module (vscode-powershell#3012)](https://github.com/PowerShell/vscode-powershell/issues/3012)
+- [Unable to load Az modules — Assembly with same name is already loaded (vscode-powershell#4727)](https://github.com/PowerShell/vscode-powershell/issues/4727)
+
 ## How DLLPickle Works
 
 `Import-DPLibrary` loads DLLs from the module's packaged `bin` folder that

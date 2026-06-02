@@ -120,12 +120,20 @@ add `Azure.Core.dll` to `Set-DPConfig -SkipLibraries` as a safeguard.
 
 ### Issue #174: Az.Storage and ExchangeOnlineManagement OData
 
-Az.Storage 9.6.0 imports `Microsoft.OData.Core` 7.6.4. ExchangeOnlineManagement
-3.9.2 can later request `Microsoft.OData.Core` 7.22.0 from `Get-EXO*` cmdlets.
-Preloading OData 7.22.0 from DLLPickle was tested and rejected because it
-breaks Az.Storage import with an assembly collision against its 7.6.4 copy.
+Az.Storage (9.6.1) loads `Microsoft.OData.Core` 7.6.4 at import; ExchangeOnlineManagement
+(3.9.2) needs 7.22.0 for its `Get-EXO*` cmdlets. Both load into the **default**
+`AssemblyLoadContext` and are strong-named, so the two versions cannot coexist in one
+process. A 2026-06-01 runtime probe confirmed that **both import orders fail**:
 
-The safe repro tests keep this scenario visible but do not treat OData
-preloading as a supported fix. If both modules need incompatible OData versions,
-run the Az.Storage and ExchangeOnlineManagement work in separate PowerShell
-processes so each process has its own assembly load context.
+- Az.Storage first, then `Get-EXO*` &rarr; fails (wants 7.22.0, but 7.6.4 is already loaded).
+- ExchangeOnlineManagement first, then `Import-Module Az.Storage` &rarr; fails (wants 7.6.4, but 7.22.0 is already loaded).
+
+DLLPickle cannot resolve this by preloading — preloading either version breaks the other
+module — so the OData assemblies stay on the block list. As of **2.2.0**, DLLPickle ships
+`Test-DPLibraryConflict` (and `Import-DPLibrary` surfaces the same warning automatically) to
+flag the conflict when both modules are loaded, with the reason and the workaround below.
+
+**Workaround:** run the Az.Storage and ExchangeOnlineManagement (`Get-EXO*`) work in separate
+PowerShell processes so each process has its own assembly load context. A separate runspace in
+the *same* process does **not** help (the conflict is process-wide). The safe repro tests keep
+this scenario visible but do not treat OData preloading as a supported fix.
