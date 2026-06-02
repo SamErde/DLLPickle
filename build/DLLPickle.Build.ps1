@@ -836,6 +836,16 @@ Add-BuildTask CopyModuleFiles -After RestoreDependencies -Before Build {
 } #CopyModuleFiles
 
 
+# Synopsis: Ship the policy's knownConflicts list into the module for the runtime conflict warning
+Add-BuildTask ExportKnownConflicts -After CopyModuleFiles {
+    Write-Build Gray '        Exporting knownConflicts to the module output...'
+    $PolicyPath = Join-Path -Path $script:ProjectRoot -ChildPath 'build/dependency-policy.json'
+    $OutputPath = Join-Path -Path $script:ModuleOutputPath -ChildPath 'KnownConflicts.json'
+    & (Join-Path -Path $PSScriptRoot -ChildPath 'Export-DLLPickleKnownConflicts.ps1') -PolicyPath $PolicyPath -OutputPath $OutputPath
+    Write-Build Gray '        ...knownConflicts exported.'
+}
+
+
 # Synopsis: Copies module assets to Artifacts folder
 Add-BuildTask AssetCopy -After CopyModuleFiles -Before Build {
     Write-Build Gray '        Copying assets to Artifacts...'
