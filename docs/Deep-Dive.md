@@ -162,6 +162,26 @@ exclusion for environment-specific troubleshooting.
 - [Module reference](DLLPickle.md)
 - [Dependency policy and compatibility notes](../DEPENDENCIES.md)
 
+## Known limitation: Az.Storage + ExchangeOnlineManagement (issue #174)
+
+`Az.Storage` and `ExchangeOnlineManagement` bundle **incompatible, strong-named versions of
+`Microsoft.OData.Core`** (7.6.4 and 7.22.0 respectively) and both load it into the default
+`AssemblyLoadContext`. Only one version can exist per process, and **neither import order works**:
+
+- Import `Az.Storage` first, then run `Get-EXO*` → fails (`Could not load … Microsoft.OData.Core,
+  Version=7.22.0.0 … manifest definition does not match`).
+- Import `ExchangeOnlineManagement`/`Connect-ExchangeOnline` first, then import `Az.Storage` → fails
+  (`Microsoft.OData.Core, Version=7.6.4.0 … assembly with same name is already loaded`).
+
+This is an upstream incompatibility between the two modules; **DLLPickle cannot fix it by preloading**
+(preloading either version breaks the other module), which is why the OData assemblies are
+classified `block`. DLLPickle warns when it detects both modules loaded (see `Test-DPLibraryConflict`).
+
+**Workaround:** use the two modules in **separate PowerShell processes** — for example, run `Get-EXO*`
+work in one `pwsh` (or a `Start-Job` background job) and `Az.Storage` work in another. A separate
+**runspace** in the *same* process does **not** help: the conflict is process-wide (one default
+`AssemblyLoadContext` per process).
+
 ## Audio Discussion
 
 [![Listen](https://raw.githubusercontent.com/SamErde/DLLPickle/main/assets/DLL_Pickle__A_Clever_Fix.png)](https://raw.githubusercontent.com/SamErde/DLLPickle/main/assets/DLL_Pickle__Interactive_Deep_Dive_audio.mp4)

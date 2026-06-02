@@ -27,60 +27,47 @@ BeforeAll {
 
         if ($Name -eq 'Az.Storage') {
             @'
-$global:DllPickleSyntheticODataCore = [PSCustomObject]@{
-    Name = 'Microsoft.OData.Core'
-    Version = '7.6.4.0'
-    Source = 'Az.Storage'
+# Synthetic Az.Storage: at import it force-loads Microsoft.OData.Core 7.6.4 into the single shared
+# OData slot. If a higher version (EXO 7.22.0) already holds the slot, the load collides.
+if ($global:DPSyntheticODataVersion -and [version]$global:DPSyntheticODataVersion -gt [version]'7.6.4.0') {
+    throw [System.IO.FileNotFoundException]::new("Could not load file or assembly 'Microsoft.OData.Core, Version=7.6.4.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35'. Assembly with same name is already loaded")
 }
+$global:DPSyntheticODataVersion = '7.6.4.0'
+
+function New-AzStorageContext {
+    [CmdletBinding()]
+    param(
+        [Parameter()] [string]$StorageAccountName,
+        [Parameter()] [switch]$Anonymous
+    )
+    [PSCustomObject]@{ StorageAccountName = $StorageAccountName }
+}
+Export-ModuleMember -Function New-AzStorageContext
 '@ | Set-Content -LiteralPath $ModuleFile -Encoding UTF8
         } else {
             @'
-function Test-DLLPickleSyntheticAssemblyVersion {
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory)]
-        [string]$Name,
-
-        [Parameter(Mandatory)]
-        [version]$MinimumVersion
-    )
-
-    $LoadedAssembly = [System.AppDomain]::CurrentDomain.GetAssemblies() |
-        Where-Object { $_.GetName().Name -eq $Name } |
-        Sort-Object -Property { $_.GetName().Version } -Descending |
-        Select-Object -First 1
-
-    return $LoadedAssembly -and $LoadedAssembly.GetName().Version -ge $MinimumVersion
-}
-
 function Connect-ExchangeOnline {
     [CmdletBinding()]
     param(
-        [Parameter()]
-        [switch]$ManagedIdentity,
-
-        [Parameter()]
-        [string]$Organization
+        [Parameter()] [switch]$ManagedIdentity,
+        [Parameter()] [string]$Organization
     )
-
-    [PSCustomObject]@{
-        Connected = $true
-        ManagedIdentity = [bool]$ManagedIdentity
-        Organization = $Organization
-    }
+    [PSCustomObject]@{ Connected = $true; Organization = $Organization }
 }
 
+# Synthetic EXO: Get-EXO* lazily needs Microsoft.OData.Core 7.22.0. If the lower 7.6.4 already holds
+# the slot (Az.Storage imported first), the higher reference cannot bind; otherwise it takes the slot.
 function Get-EXOMailbox {
     [CmdletBinding()]
-    param()
-
-    if (-not (Test-DLLPickleSyntheticAssemblyVersion -Name 'Microsoft.OData.Core' -MinimumVersion ([version]'7.22.0.0'))) {
-        throw [System.IO.FileNotFoundException]::new("Could not load file or assembly 'Microsoft.OData.Core, Version=7.22.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35'. Could not find or load a specific file. (0x80131621)")
+    param(
+        [Parameter()] [int]$ResultSize
+    )
+    if ($global:DPSyntheticODataVersion -and [version]$global:DPSyntheticODataVersion -lt [version]'7.22.0.0') {
+        throw [System.IO.FileNotFoundException]::new("Could not load file or assembly 'Microsoft.OData.Core, Version=7.22.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35'. The located assembly's manifest definition does not match the assembly reference. (0x80131040)")
     }
-
+    $global:DPSyntheticODataVersion = '7.22.0.0'
     [PSCustomObject]@{ DisplayName = 'Synthetic mailbox' }
 }
-
 Export-ModuleMember -Function Connect-ExchangeOnline, Get-EXOMailbox
 '@ | Set-Content -LiteralPath $ModuleFile -Encoding UTF8
         }
@@ -134,6 +121,26 @@ Describe 'Issue 174 Az.Storage and ExchangeOnlineManagement OData reproduction' 
         $MailboxStep = $Result.Steps | Where-Object Name -eq 'Get EXO Mailbox'
         $MailboxStep.Success | Should -BeFalse
         $MailboxStep.Error.Message | Should -Match 'Microsoft.OData.Core'
+    }
+
+    It 'fails the EXO-first order too: importing Az.Storage after EXO is loaded throws' {
+        $Result = Invoke-DLLPickleScenario -Name 'Issue174-EXOThenAzStorage-Synthetic' `
+            -ModuleManifestPath $BuiltModuleManifestPath `
+            -AdditionalModulePath $SyntheticModuleRoot `
+            -OutputPath (Join-Path $ScenarioOutputRoot 'Issue174-EXOThenAzStorage-Synthetic.json') `
+            -Step @(
+                @{ Name = 'Import ExchangeOnlineManagement'; Script = 'Import-Module ExchangeOnlineManagement -Force' }
+                @{ Name = 'Connect ExchangeOnlineManagement'; Script = 'Connect-ExchangeOnline -ManagedIdentity -Organization synthetic.example' }
+                @{ Name = 'Get EXO Mailbox'; Script = 'Get-EXOMailbox' }
+                @{ Name = 'Import Az.Storage'; Script = 'Import-Module Az.Storage -Force' }
+            )
+
+        $Result.Success | Should -BeFalse
+        $MailboxStep = $Result.Steps | Where-Object Name -EQ 'Get EXO Mailbox'
+        $MailboxStep.Success | Should -BeTrue
+        $AzStorageStep = $Result.Steps | Where-Object Name -EQ 'Import Az.Storage'
+        $AzStorageStep.Success | Should -BeFalse
+        $AzStorageStep.Error.Message | Should -Match 'Microsoft.OData.Core'
     }
 
     It 'runs the live Az.Storage and ExchangeOnlineManagement import probe when explicitly enabled' -Tag 'LiveRepro' -Skip:($env:DLLPICKLE_RUN_LIVE_REPRO -ne '1') {

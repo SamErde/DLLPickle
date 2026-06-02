@@ -70,6 +70,22 @@
       ]
     ]
   },
+  "knownConflicts": [
+    {
+      "id": "174-odata-azstorage-exo",
+      "modules": [ "Az.Storage", "ExchangeOnlineManagement" ],
+      "assembly": "Microsoft.OData.Core",
+      "issue": "174",
+      "reason": "Az.Storage force-loads Microsoft.OData.Core 7.6.4 at import; ExchangeOnlineManagement's Get-EXO* cmdlets require 7.22.0. Both target the default ALC and are strong-named, so the two versions cannot coexist in one process - both import orders fail.",
+      "workaround": "Use Az.Storage and ExchangeOnlineManagement (Get-EXO* cmdlets) in separate PowerShell processes - for example a background job (Start-Job) or a second pwsh. A separate runspace in the same process does NOT help: the conflict is process-wide (one default AssemblyLoadContext per process).",
+      "evidence": {
+        "versions": { "Az.Storage": "7.6.4", "ExchangeOnlineManagement": "7.22.0" },
+        "alc": "Default",
+        "runtimeProbe": "2026-06-01 scenarios 1-4: both load OData into the Default ALC; Az.Storage-first -> EXO REF_DEF_MISMATCH (0x80131040); EXO-first -> Az.Storage 'same name already loaded'.",
+        "decidedOn": "2026-06-01"
+      }
+    }
+  ],
   "baseline": {
     "capturedOn": "2026-05-31",
     "moduleVersions": {
@@ -362,32 +378,44 @@
     {
       "packageName": "Microsoft.OData.Core",
       "assemblyName": "Microsoft.OData.Core",
+      "classification": "block",
       "sourceModules": [
         "ExchangeOnlineManagement",
         "Az.Storage"
       ],
       "updateMode": "reportOnly",
-      "reason": "Issue #174 showed that default OData preloading can break Az.Storage when ExchangeOnlineManagement and Az.Storage require incompatible OData identities."
+      "reason": "Issue #174 showed that default OData preloading can break Az.Storage when ExchangeOnlineManagement and Az.Storage require incompatible OData identities.",
+      "evidence": {
+        "basis": "Az.Storage 9.6.1 ships Microsoft.OData.Core 7.6.4; ExchangeOnlineManagement 3.9.2 requires 7.22.0. Both load into the default ALC; no preload version can satisfy both. See knownConflicts 174-odata-azstorage-exo for the runtime adjudication."
+      }
     },
     {
       "packageName": "Microsoft.OData.Edm",
       "assemblyName": "Microsoft.OData.Edm",
+      "classification": "block",
       "sourceModules": [
         "ExchangeOnlineManagement",
         "Az.Storage"
       ],
       "updateMode": "reportOnly",
-      "reason": "Keep the OData family out of the default preload set unless a future isolation strategy is implemented."
+      "reason": "Keep the OData family out of the default preload set unless a future isolation strategy is implemented.",
+      "evidence": {
+        "basis": "OData family dependency paired with Microsoft.OData.Core; same default-ALC conflict as Core. See knownConflicts 174-odata-azstorage-exo for the runtime adjudication."
+      }
     },
     {
       "packageName": "Microsoft.Spatial",
       "assemblyName": "Microsoft.Spatial",
+      "classification": "block",
       "sourceModules": [
         "ExchangeOnlineManagement",
         "Az.Storage"
       ],
       "updateMode": "reportOnly",
-      "reason": "Keep the OData family out of the default preload set unless a future isolation strategy is implemented."
+      "reason": "Keep the OData family out of the default preload set unless a future isolation strategy is implemented.",
+      "evidence": {
+        "basis": "OData family dependency paired with Microsoft.OData.Core; same default-ALC conflict as Core. See knownConflicts 174-odata-azstorage-exo for the runtime adjudication."
+      }
     }
   ]
 }
