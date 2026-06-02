@@ -1,0 +1,22 @@
+[
+  {
+    "id": "174-odata-azstorage-exo",
+    "modules": [
+      "Az.Storage",
+      "ExchangeOnlineManagement"
+    ],
+    "assembly": "Microsoft.OData.Core",
+    "issue": "174",
+    "reason": "Az.Storage force-loads Microsoft.OData.Core 7.6.4 at import; ExchangeOnlineManagement's Get-EXO* cmdlets require 7.22.0. Both target the default ALC and are strong-named, so the two versions cannot coexist in one process - both import orders fail.",
+    "workaround": "Use Az.Storage and ExchangeOnlineManagement (Get-EXO* cmdlets) in separate PowerShell processes - for example a background job (Start-Job) or a second pwsh. A separate runspace in the same process does NOT help: the conflict is process-wide (one default AssemblyLoadContext per process).",
+    "evidence": {
+      "versions": {
+        "Az.Storage": "7.6.4",
+        "ExchangeOnlineManagement": "7.22.0"
+      },
+      "alc": "Default",
+      "runtimeProbe": "2026-06-01 scenarios 1-4: both load OData into the Default ALC; Az.Storage-first -> EXO REF_DEF_MISMATCH (0x80131040); EXO-first -> Az.Storage 'same name already loaded'.",
+      "decidedOn": "2026-06-01"
+    }
+  }
+]

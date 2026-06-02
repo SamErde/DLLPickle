@@ -1,7 +1,5 @@
 BeforeAll {
     $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
-    $ExportScript = Join-Path $RepoRoot 'build\Export-DLLPickleKnownConflicts.ps1'
-    $PolicyPath = Join-Path $RepoRoot 'build\dependency-policy.json'
     . (Join-Path $RepoRoot 'src\DLLPickle\Private\Test-DPModuleConflict.ps1')
     . (Join-Path $RepoRoot 'src\DLLPickle\Private\Get-DPKnownConflict.ps1')
     . (Join-Path $RepoRoot 'src\DLLPickle\Private\Format-DPConflictWarning.ps1')
@@ -63,15 +61,31 @@ Describe 'Get-DPKnownConflict' -Tag 'Unit' {
     }
 }
 
-Describe 'Export-DLLPickleKnownConflicts' -Tag 'Unit' {
-    It 'writes the policy knownConflicts array to the output file verbatim' {
-        $Out = Join-Path $TestDrive 'KnownConflicts.json'
-        & $ExportScript -PolicyPath $PolicyPath -OutputPath $Out
-        Test-Path -LiteralPath $Out | Should -BeTrue
-        $Written = Get-Content -LiteralPath $Out -Raw | ConvertFrom-Json
-        $Policy = Get-Content -LiteralPath $PolicyPath -Raw | ConvertFrom-Json
-        @($Written).Count | Should -Be @($Policy.knownConflicts).Count
-        ($Written | Where-Object id -EQ '174-odata-azstorage-exo') | Should -Not -BeNullOrEmpty
+Describe 'Shipped KnownConflicts.json source' -Tag 'Unit' {
+    # The conflict data is a committed source file under src/DLLPickle (the single source of truth),
+    # copied into the module verbatim by the build. No build-time extraction step to validate anymore.
+    BeforeAll {
+        $KnownConflictsPath = Join-Path $RepoRoot 'src\DLLPickle\KnownConflicts.json'
+    }
+
+    It 'exists as a committed source file under src/DLLPickle' {
+        Test-Path -LiteralPath $KnownConflictsPath -PathType Leaf | Should -BeTrue
+    }
+
+    It 'is a non-empty JSON array of conflict entries' {
+        $Parsed = Get-Content -LiteralPath $KnownConflictsPath -Raw | ConvertFrom-Json
+        @($Parsed).Count | Should -BeGreaterThan 0
+    }
+
+    It 'contains the #174 Az.Storage + ExchangeOnlineManagement entry with the required fields' {
+        $Conflicts = Get-DPKnownConflict -Path $KnownConflictsPath
+        $Odata = $Conflicts | Where-Object id -EQ '174-odata-azstorage-exo'
+        $Odata | Should -Not -BeNullOrEmpty
+        @($Odata.modules) | Should -Contain 'Az.Storage'
+        @($Odata.modules) | Should -Contain 'ExchangeOnlineManagement'
+        $Odata.issue | Should -Be '174'
+        $Odata.reason | Should -Not -BeNullOrEmpty
+        $Odata.workaround | Should -Not -BeNullOrEmpty
     }
 }
 

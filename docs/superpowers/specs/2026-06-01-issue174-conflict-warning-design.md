@@ -41,6 +41,8 @@ This is the single source of truth. The matching `blockedPreloadAssemblies` ODat
 
 ## 3. Runtime availability (build ships an extracted subset)
 
+> **Superseded (2026-06-02):** This extraction approach shipped in 2.2.0's PR (#231) but was revised before release in response to Codex review (the policy is a `build/**` file excluded from the release trigger, so a `knownConflicts`-only edit would not have auto-published). The conflict data is now a **committed source file at `src/DLLPickle/KnownConflicts.json`** (the single source of truth), copied into the module verbatim by `CopyModuleFiles` — no extraction step, no sync test, and edits under `src/DLLPickle/` correctly trigger a release. The runtime read path is unchanged (it still reads `KnownConflicts.json` at the module root). The rest of this section describes the original design.
+
 `build/dependency-policy.json` is a build/CI artifact and is **not** shipped in the module. So a build step extracts just `knownConflicts` and writes it to the module output as `module/DLLPickle/KnownConflicts.json` (during `PrepareModuleOutput`, after `CopyModuleFiles`). The runtime reads that shipped file (resolved relative to the module root). A unit test asserts the shipped subset equals the policy's `knownConflicts` (sync guard). Rationale: one source (the policy), small shipped payload (only the conflict list, not the full policy).
 
 ## 4. Detection (Private `Test-DPModuleConflict`)
