@@ -9,7 +9,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 - Working on updates to replace PlatyPS documentation creation with the new Microsoft.PowerShell.PlatyPS module. (PRs and other help would be welcomed!)
-- CI: Release-and-Publish now auto-triggers only on changes to the published module bundle (`src/DLLPickle/**`, `src/DLLPickle.Build/DLLPickle.csproj`, `src/DLLPickle.Build/packages.lock.json`). CI-, policy-, docs-, test-, and tooling-only changes no longer publish a new PowerShell Gallery version; release a genuine packaging-logic change via a manual `workflow_dispatch` run.
+
+## [2.2.0] - 2026-06-02
+
+> Adds proactive detection of the Az.Storage + ExchangeOnlineManagement OData incompatibility (#174) and a public conflict check, plus release-pipeline and CI hardening. The bundled assemblies are **unchanged** from 2.1.2.
+
+### Added
+
+- **`Test-DPLibraryConflict`** — a public cmdlet that reports known-incompatible module combinations loaded in the current session (with the reason, the separate-process workaround, and the issue link) and returns the active conflicts.
+- **`Import-DPLibrary` now warns** when a known-conflicting module pair is — or later becomes — co-loaded: immediately if both are already imported, otherwise via a best-effort, idempotent, self-unregistering `AssemblyLoad` handler that fires only once the whole pair is co-loaded (armed only when both modules are installed). Advisory: it never throws and is skipped under Constrained Language Mode.
+- Data-driven **`knownConflicts`** in `build/dependency-policy.json`, shipped into the module as `KnownConflicts.json` (adding a future conflict is a data edit, not a code change).
+- Runtime ALC-ownership probe tooling under `tools/` (`Get-DLLPickleLoadedTrackedAssembly.ps1`; `Get-DLLPickleRuntimeAssemblySnapshot` now sources its filter from `trackedAssemblies`, so it captures the OData stack) used to adjudicate #174.
+
+### Changed
+
+- **Release-and-Publish auto-triggers only on changes to the published bundle** (`src/DLLPickle/**`, `src/DLLPickle.Build/DLLPickle.csproj`, `src/DLLPickle.Build/packages.lock.json`). CI-, policy-, docs-, test-, and tooling-only changes no longer publish a new PowerShell Gallery version; release a genuine packaging-logic change via a manual `workflow_dispatch` run.
+- The Upstream-Compatibility gate workflows now **always report** (a lightweight change-detection job skips the heavy work on non-bundle PRs), so they can be configured as **required status checks** without deadlocking docs-/CI-only PRs; the matrix build's required-check target is the always-present aggregate **`Build gate`**.
+
+### Documentation
+
+- Documented the **Az.Storage + ExchangeOnlineManagement known limitation** (#174): the two modules bundle incompatible strong-named `Microsoft.OData.Core` versions (7.6.4 vs 7.22.0) into the default `AssemblyLoadContext` and **cannot share one process** in either import order. DLLPickle cannot resolve this by preloading (preloading either version breaks the other), so the OData stack stays `block` — now runtime-confirmed. Use the two modules in separate PowerShell processes; #174 remains open as an upstream incompatibility.
+- Synced `docs/Architecture.md` (ALC self-isolation model, preload/block taxonomy, the required-checks model, and the multi-TFM / Windows PowerShell 5.1 notes).
 
 ## [2.1.2] - 2026-06-01
 
@@ -304,7 +324,8 @@ Full Changelog: [v0.2.5...v0.2.6](https://github.com/SamErde/DLLPickle/compare/v
 
 - Initial release.
 
-[Unreleased]: https://github.com/SamErde/DLLPickle/compare/v2.1.2...HEAD
+[Unreleased]: https://github.com/SamErde/DLLPickle/compare/v2.2.0...HEAD
+[2.2.0]: https://github.com/SamErde/DLLPickle/tag/v2.2.0
 [2.1.2]: https://github.com/SamErde/DLLPickle/tag/v2.1.2
 [2.1.1]: https://github.com/SamErde/DLLPickle/tag/v2.1.1
 [2.1.0]: https://github.com/SamErde/DLLPickle/tag/v2.1.0
