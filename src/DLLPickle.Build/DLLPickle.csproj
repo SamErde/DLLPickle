@@ -42,7 +42,7 @@
          keeps them out of the bundled bin so they are not preloaded; the consuming service modules
          supply them. Logging.Abstractions depends on DependencyInjection.Abstractions, so both are
          excluded together. -->
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.*" ExcludeAssets="runtime" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.*" ExcludeAssets="runtime" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.*" ExcludeAssets="runtime" />
   </ItemGroup>
 
