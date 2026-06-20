@@ -1,4 +1,4 @@
-﻿function Invoke-DPConflictCheck {
+function Invoke-DPConflictCheck {
     <#
     .SYNOPSIS
         Warns about known incompatible module pairs that are already loaded.
