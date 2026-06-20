@@ -10,6 +10,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Working on updates to replace PlatyPS documentation creation with the new Microsoft.PowerShell.PlatyPS module. (PRs and other help would be welcomed!)
 
+### Changed
+
+- The upstream-compatibility required check is now an always-reported aggregate. Policy, dependency, and fingerprint-generator changes run a live freshness check, while deterministic guardrail changes can be repaired without accepting a stale baseline.
+- Scheduled conflict-surface monitoring now runs daily, publishes compact JSON evidence and a job summary, and reports the exact monitored module versions.
+- Dependabot auto-approval now rejects any PR containing files outside the NuGet project/lock-file allow-list.
+
+### Fixed
+
+- `Compare-DLLPickleConflictMatrix.ps1` now treats version, contributor, removed-conflict, and ALC changes consistently with the version-aware fingerprint gate.
+- Runtime ALC snapshots support strict adjudication mode, where module-import and probe-command failures are fatal instead of producing partial evidence.
+
 ## [2.2.0] - 2026-06-02
 
 > Adds proactive detection of the Az.Storage + ExchangeOnlineManagement OData incompatibility (#174) and a public conflict check, plus release-pipeline and CI hardening. The bundled assemblies are **unchanged** from 2.1.2.

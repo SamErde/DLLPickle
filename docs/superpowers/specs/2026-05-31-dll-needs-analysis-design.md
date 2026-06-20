@@ -113,7 +113,7 @@ The gate recomputes the conflict matrix and diffs it against the recorded `basel
 - a preloaded assembly's required version crosses its **major lock** (a target module now needs `N+1`);
 - an **ALC-ownership change** (an assembly moves between default and a private ALC) — the Azure.Core-class signal.
 
-Patch/minor moves *within* range with no new conflict and no ALC change **pass silently** — this keeps Dependabot auto-merge low-friction.
+> **Superseded by the version-aware drift gate (2026-06-01):** patch/minor moves no longer pass silently. The accepted fingerprint includes versions and contributing modules, so either kind of change fails closed for re-adjudication. `Compare-DLLPickleConflictMatrix.ps1` reports the same structured reasons.
 
 **Two contexts:** scheduled (monitored-module releases) and **Dependabot bump PRs** (re-evaluate the bumped library against the 4 modules). The drift comparison is **bundled-version vs the 4 modules' expected versions**, not merely module-vs-module, so a bump that drifts from what the modules expect is caught.
 
