@@ -1,8 +1,9 @@
-BeforeAll {
+﻿BeforeAll {
     $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
     . (Join-Path $RepoRoot 'src\DLLPickle\Private\Test-DPModuleConflict.ps1')
     . (Join-Path $RepoRoot 'src\DLLPickle\Private\Get-DPKnownConflict.ps1')
     . (Join-Path $RepoRoot 'src\DLLPickle\Private\Format-DPConflictWarning.ps1')
+    . (Join-Path $RepoRoot 'src\DLLPickle\Private\Invoke-DPConflictCheck.ps1')
     . (Join-Path $RepoRoot 'src\DLLPickle\Public\Test-DPLibraryConflict.ps1')
 
     $SampleConflict = [PSCustomObject]@{
@@ -120,5 +121,50 @@ Describe 'Test-DPLibraryConflict' -Tag 'Unit' {
         $Active = Test-DPLibraryConflict -KnownConflictsPath $UnloadedPairPath -WarningVariable Warnings -WarningAction SilentlyContinue
         @($Active) | Should -BeNullOrEmpty
         @($Warnings) | Should -BeNullOrEmpty
+    }
+}
+
+Describe 'Invoke-DPConflictCheck' -Tag 'Unit' {
+    BeforeEach {
+        $script:DPConflictHandled = $null
+        $LoadedPairPath = Join-Path $TestDrive 'invoke-loaded-pair.json'
+        ConvertTo-Json -Depth 20 -InputObject @(
+            [PSCustomObject]@{
+                id         = 'invoke-loaded'
+                modules    = @('Microsoft.PowerShell.Management', 'Microsoft.PowerShell.Utility')
+                assembly   = 'x'
+                issue      = '174'
+                reason     = 'r'
+                workaround = 'w'
+            }
+        ) | Set-Content -LiteralPath $LoadedPairPath -Encoding utf8
+    }
+
+    It 'warns only once for a conflict that is already loaded' {
+        $Warnings = @()
+
+        Invoke-DPConflictCheck -KnownConflictsPath $LoadedPairPath -WarningVariable +Warnings -WarningAction SilentlyContinue
+        Invoke-DPConflictCheck -KnownConflictsPath $LoadedPairPath -WarningVariable +Warnings -WarningAction SilentlyContinue
+
+        @($Warnings) | Should -HaveCount 1
+        $Warnings[0].Message | Should -Match 'Microsoft.PowerShell.Management'
+    }
+
+    It 'does not mark an unloaded conflict as handled' {
+        $UnloadedPairPath = Join-Path $TestDrive 'invoke-unloaded-pair.json'
+        ConvertTo-Json -Depth 20 -InputObject @(
+            [PSCustomObject]@{
+                id         = 'invoke-unloaded'
+                modules    = @('No.Such.ModuleA', 'No.Such.ModuleB')
+                assembly   = 'x'
+                issue      = '174'
+                reason     = 'r'
+                workaround = 'w'
+            }
+        ) | Set-Content -LiteralPath $UnloadedPairPath -Encoding utf8
+
+        Invoke-DPConflictCheck -KnownConflictsPath $UnloadedPairPath -WarningAction SilentlyContinue
+
+        $script:DPConflictHandled.Contains('invoke-unloaded') | Should -BeFalse
     }
 }
