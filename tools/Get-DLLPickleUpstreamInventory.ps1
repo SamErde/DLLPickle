@@ -154,6 +154,18 @@ if ($PolicyModules.Count -eq 0) {
 }
 
 $null = New-Item -Path $ModuleCachePath -ItemType Directory -Force
+$ResolvedModuleVersions = @{}
+if (-not $SkipDownload.IsPresent) {
+    # Resolve the complete upstream snapshot before downloading anything. This prevents a module
+    # release published midway through the run from producing an internally mixed baseline.
+    foreach ($PolicyModule in $PolicyModules) {
+        $Name = [string]$PolicyModule.name
+        $Repository = if ($PolicyModule.repository) { [string]$PolicyModule.repository } else { 'PSGallery' }
+        $GalleryModule = Find-Module -Name $Name -Repository $Repository -ErrorAction Stop
+        $ResolvedModuleVersions[$Name] = $GalleryModule.Version
+    }
+}
+
 $ModuleResults = foreach ($PolicyModule in $PolicyModules) {
     $Name = [string]$PolicyModule.name
     $Repository = if ($PolicyModule.repository) { [string]$PolicyModule.repository } else { 'PSGallery' }
@@ -164,10 +176,9 @@ $ModuleResults = foreach ($PolicyModule in $PolicyModules) {
             Remove-Item -LiteralPath $ModuleRoot -Recurse -Force
         }
 
-        $GalleryModule = Find-Module -Name $Name -Repository $Repository -ErrorAction Stop
         $SaveModuleParameters = @{
             Name            = $Name
-            RequiredVersion = $GalleryModule.Version
+            RequiredVersion = $ResolvedModuleVersions[$Name]
             Repository      = $Repository
             Path            = $ModuleCachePath
             Force           = $true

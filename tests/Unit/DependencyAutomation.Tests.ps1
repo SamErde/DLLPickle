@@ -6,6 +6,49 @@ BeforeAll {
 }
 
 Describe 'Dependency automation tooling' -Tag 'Unit' {
+    It 'resolves every monitored module version before downloading any module' {
+        $Assembly = [System.String].Assembly
+        $AssemblyName = $Assembly.GetName().Name
+        $ModuleCachePath = Join-Path -Path $TestDrive -ChildPath 'atomic-modules'
+        $PolicyPath = Join-Path -Path $TestDrive -ChildPath 'atomic-policy.json'
+        @{
+            monitoredModules = @(
+                @{ name = 'Synthetic.One'; repository = 'PSGallery'; purpose = 'First synthetic module.' }
+                @{ name = 'Synthetic.Two'; repository = 'PSGallery'; purpose = 'Second synthetic module.' }
+            )
+            trackedAssemblies = @($AssemblyName)
+        } | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $PolicyPath -Encoding UTF8
+
+        $InventoryTestStateKey = 'DLLPickle.DependencyAutomation.InventoryTestState'
+        $InventoryTestState = [PSCustomObject]@{
+            Events           = [System.Collections.Generic.List[string]]::new()
+            AssemblyLocation = $Assembly.Location
+            AssemblyName     = $AssemblyName
+        }
+        [System.AppDomain]::CurrentDomain.SetData($InventoryTestStateKey, $InventoryTestState)
+        Mock Find-Module {
+            $State = [System.AppDomain]::CurrentDomain.GetData('DLLPickle.DependencyAutomation.InventoryTestState')
+            $State.Events.Add("find:$Name")
+            [PSCustomObject]@{
+                Name = $Name
+                Version = if ($Name -eq 'Synthetic.One') { [version]'1.2.3' } else { [version]'4.5.6' }
+            }
+        }
+        Mock Save-Module {
+            $State = [System.AppDomain]::CurrentDomain.GetData('DLLPickle.DependencyAutomation.InventoryTestState')
+            $State.Events.Add("save:$Name")
+            $ModuleRoot = Join-Path -Path $Path -ChildPath ([System.IO.Path]::Combine($Name, [string]$RequiredVersion))
+            $null = New-Item -Path $ModuleRoot -ItemType Directory -Force
+            Copy-Item -LiteralPath $State.AssemblyLocation -Destination (Join-Path $ModuleRoot "$($State.AssemblyName).dll") -Force
+        }
+
+        $null = & $script:InventoryScriptPath -PolicyPath $PolicyPath -ModuleCachePath $ModuleCachePath -OutputPath (Join-Path $TestDrive 'atomic-inventory.json')
+
+        $InventoryEvents = @($InventoryTestState.Events)
+        [System.AppDomain]::CurrentDomain.SetData($InventoryTestStateKey, $null)
+        $InventoryEvents | Should -Be @('find:Synthetic.One', 'find:Synthetic.Two', 'save:Synthetic.One', 'save:Synthetic.Two')
+    }
+
     It 'inventories tracked assemblies from an existing module cache' {
         $Assembly = [System.String].Assembly
         $AssemblyName = $Assembly.GetName().Name

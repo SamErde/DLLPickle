@@ -108,6 +108,10 @@ When changing the preload contract, follow this loop:
 6. **Validate** (non-auth gates always; auth tier for any bundled-set change).
 7. **Update this blueprint** if the contract or invariants changed.
 
+The baseline is a reproducible snapshot, not just a hash: `baseline.conflictSurface` stores every diverging assembly's `name`, sorted `versions`, and sorted `shippedBy` contributors alongside the module versions and fingerprint. Baseline refreshes must resolve all monitored versions before downloading any module, then prove that the stored rows recompute to the recorded fingerprint. Version-only moves are material drift and require adjudication; they do not pass silently.
+
+Issue #239 was adjudicated on 2026-06-20 against Microsoft.Graph.Authentication 2.38.0, ExchangeOnlineManagement 3.10.0, Az.Storage 9.7.0, Az.Accounts 5.5.0, and MicrosoftTeams 7.8.0. The 16 conflict names and their contributors were unchanged. Strict probes of both configured import orders, with and without DLLPickle preloading, confirmed the existing preload/block classifications, so only the structured policy baseline changed; the bundled set and public module behavior did not.
+
 **Hard gates (non-negotiable):**
 
 - A design must be approved before implementation (see the spec/plan workflow under `docs/superpowers/`).
