@@ -42,7 +42,6 @@ To improve reliability, the loader:
 1. Builds a dependency graph from local assembly metadata.
 1. Applies dependency-first ordering where possible.
 1. Appends unresolved nodes in deterministic alphabetical order.
-1. Registers a scoped local assembly resolution fallback.
 1. Adds packaged native runtime directories for the current process RID to
    `PATH` so broker/MSAL native dependencies can be found without loading native
    DLLs as managed assemblies.
@@ -188,7 +187,8 @@ exclusion for environment-specific troubleshooting.
 
 This is an upstream incompatibility between the two modules; **DLLPickle cannot fix it by preloading**
 (preloading either version breaks the other module), which is why the OData assemblies are
-classified `block`. DLLPickle warns when it detects both modules loaded (see `Test-DPLibraryConflict`).
+classified `block`. `Import-DPLibrary` warns if it finds both modules already loaded; run
+`Test-DPLibraryConflict` after later imports to check the session again.
 
 **Workaround:** use the two modules in **separate PowerShell processes** — for example, run `Get-EXO*`
 work in one `pwsh` (or a `Start-Job` background job) and `Az.Storage` work in another. A separate

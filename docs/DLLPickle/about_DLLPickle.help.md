@@ -46,8 +46,7 @@ compatible dependency set from the module's `bin` folder:
 - `bin/net8.0` on PowerShell 7.4+
 
 The loader applies dependency-aware ordering, deterministic fallback ordering,
-and scoped local resolution fallback to improve reliability during assembly
-probing.
+and retries to improve reliability during assembly probing.
 
 ## Optional Subtopics
 
