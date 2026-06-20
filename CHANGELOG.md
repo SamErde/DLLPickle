@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The upstream-compatibility required check is now an always-reported aggregate. Policy, dependency, and fingerprint-generator changes run a live freshness check, while deterministic guardrail changes can be repaired without accepting a stale baseline.
 - Scheduled conflict-surface monitoring now runs daily, publishes compact JSON evidence and a job summary, and reports the exact monitored module versions.
 - Dependabot auto-approval now rejects any PR containing files outside the NuGet project/lock-file allow-list.
+- Upstream inventory capture now resolves every monitored module version before downloading any module, so the resulting inventory is an atomic version snapshot.
+- The issue #239 conflict baseline now records the full version- and contributor-aware surface. Adjudication against the latest monitored modules confirmed that classifications and the bundled set are unchanged.
 
 ### Fixed
 

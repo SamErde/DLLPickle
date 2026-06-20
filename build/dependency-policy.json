@@ -71,15 +71,220 @@
     ]
   },
   "baseline": {
-    "capturedOn": "2026-05-31",
+    "capturedOn": "2026-06-20",
     "moduleVersions": {
-      "Az.Accounts": "5.4.0",
-      "Microsoft.Graph.Authentication": "2.37.0",
-      "ExchangeOnlineManagement": "3.9.2",
+      "Az.Accounts": "5.5.0",
+      "Microsoft.Graph.Authentication": "2.38.0",
+      "ExchangeOnlineManagement": "3.10.0",
       "MicrosoftTeams": "7.8.0",
-      "Az.Storage": "9.6.1"
+      "Az.Storage": "9.7.0"
     },
-    "conflictSurfaceFingerprint": "b04622cba725f5cb9c1cee4bb928879564ff6e700b574f92f744673151b90798"
+    "conflictSurfaceFingerprint": "af1f1358ba4bcd4793a2b460c5b7fc46c2661df981244317c00a695d08c06250",
+    "conflictSurface": [
+      {
+        "name": "Azure.Core",
+        "versions": [
+          "1.50.0.0",
+          "1.51.1.0"
+        ],
+        "shippedBy": [
+          "Az.Accounts",
+          "ExchangeOnlineManagement",
+          "Microsoft.Graph.Authentication"
+        ]
+      },
+      {
+        "name": "Azure.Identity",
+        "versions": [
+          "1.17.2.0",
+          "1.18.0.0"
+        ],
+        "shippedBy": [
+          "Az.Accounts",
+          "Microsoft.Graph.Authentication"
+        ]
+      },
+      {
+        "name": "Azure.Identity.Broker",
+        "versions": [
+          "1.1.0.0",
+          "1.4.0.0"
+        ],
+        "shippedBy": [
+          "Az.Accounts",
+          "Microsoft.Graph.Authentication"
+        ]
+      },
+      {
+        "name": "Microsoft.Identity.Client",
+        "versions": [
+          "4.81.0.0",
+          "4.82.1.0",
+          "4.83.1.0"
+        ],
+        "shippedBy": [
+          "Az.Accounts",
+          "ExchangeOnlineManagement",
+          "Microsoft.Graph.Authentication",
+          "MicrosoftTeams"
+        ]
+      },
+      {
+        "name": "Microsoft.Identity.Client.Broker",
+        "versions": [
+          "4.78.0.0",
+          "4.81.0.0",
+          "4.83.1.0"
+        ],
+        "shippedBy": [
+          "Az.Accounts",
+          "ExchangeOnlineManagement",
+          "Microsoft.Graph.Authentication",
+          "MicrosoftTeams"
+        ]
+      },
+      {
+        "name": "Microsoft.Identity.Client.Extensions.Msal",
+        "versions": [
+          "4.78.0.0",
+          "4.81.0.0",
+          "4.83.1.0"
+        ],
+        "shippedBy": [
+          "Az.Accounts",
+          "Microsoft.Graph.Authentication",
+          "MicrosoftTeams"
+        ]
+      },
+      {
+        "name": "Microsoft.Identity.Client.NativeInterop",
+        "versions": [
+          "0.19.4.0",
+          "0.20.2.0"
+        ],
+        "shippedBy": [
+          "Az.Accounts",
+          "ExchangeOnlineManagement",
+          "Microsoft.Graph.Authentication",
+          "MicrosoftTeams"
+        ]
+      },
+      {
+        "name": "Microsoft.IdentityModel.Abstractions",
+        "versions": [
+          "8.14.0.0",
+          "8.17.0.0",
+          "8.18.0.0"
+        ],
+        "shippedBy": [
+          "Az.Accounts",
+          "ExchangeOnlineManagement",
+          "Microsoft.Graph.Authentication",
+          "MicrosoftTeams"
+        ]
+      },
+      {
+        "name": "Microsoft.IdentityModel.JsonWebTokens",
+        "versions": [
+          "8.17.0.0",
+          "8.3.0.0",
+          "8.9.0.0"
+        ],
+        "shippedBy": [
+          "ExchangeOnlineManagement",
+          "MicrosoftTeams"
+        ]
+      },
+      {
+        "name": "Microsoft.IdentityModel.Logging",
+        "versions": [
+          "8.17.0.0",
+          "8.3.0.0",
+          "8.9.0.0"
+        ],
+        "shippedBy": [
+          "ExchangeOnlineManagement",
+          "MicrosoftTeams"
+        ]
+      },
+      {
+        "name": "Microsoft.IdentityModel.Tokens",
+        "versions": [
+          "8.17.0.0",
+          "8.3.0.0",
+          "8.9.0.0"
+        ],
+        "shippedBy": [
+          "ExchangeOnlineManagement",
+          "MicrosoftTeams"
+        ]
+      },
+      {
+        "name": "Microsoft.OData.Core",
+        "versions": [
+          "7.22.0.0",
+          "7.6.4.0"
+        ],
+        "shippedBy": [
+          "Az.Storage",
+          "ExchangeOnlineManagement"
+        ]
+      },
+      {
+        "name": "Microsoft.OData.Edm",
+        "versions": [
+          "7.22.0.0",
+          "7.6.4.0"
+        ],
+        "shippedBy": [
+          "Az.Storage",
+          "ExchangeOnlineManagement"
+        ]
+      },
+      {
+        "name": "Microsoft.Spatial",
+        "versions": [
+          "7.22.0.0",
+          "7.6.4.0"
+        ],
+        "shippedBy": [
+          "Az.Storage",
+          "ExchangeOnlineManagement"
+        ]
+      },
+      {
+        "name": "System.ClientModel",
+        "versions": [
+          "1.8.0.0",
+          "1.9.0.0"
+        ],
+        "shippedBy": [
+          "Az.Accounts",
+          "Microsoft.Graph.Authentication"
+        ]
+      },
+      {
+        "name": "System.IdentityModel.Tokens.Jwt",
+        "versions": [
+          "8.17.0.0",
+          "8.3.0.0"
+        ],
+        "shippedBy": [
+          "ExchangeOnlineManagement",
+          "MicrosoftTeams"
+        ]
+      }
+    ],
+    "validation": {
+      "issue": 239,
+      "result": "classifications-unchanged",
+      "validatedOn": "2026-06-20",
+      "evidence": [
+        "Atomic latest-module inventory and structured matrix comparison found version-only drift: no new, removed, contributor, or ALC-ownership changes.",
+        "Strict runtime ALC snapshots covered both configured import orders, with and without DLLPickle preloading.",
+        "Issue reproduction and composition validation confirmed the current preload and block classifications."
+      ]
+    }
   },
   "preload": [
     {
