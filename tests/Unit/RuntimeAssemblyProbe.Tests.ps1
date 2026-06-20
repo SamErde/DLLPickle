@@ -50,4 +50,18 @@ Describe 'Get-DLLPickleRuntimeAssemblySnapshot' -Tag 'Unit' {
         $Result = & $SnapshotScript -ModuleName 'Microsoft.PowerShell.Management' -PolicyPath $Policy
         ($Result | Where-Object Name -EQ 'System.Management.Automation') | Should -Not -BeNullOrEmpty
     }
+
+    It 'throws in strict mode when a module cannot be imported' {
+        $Policy = Get-TempPolicyPath -TrackedAssemblies @('System.Management.Automation')
+
+        { & $SnapshotScript -ModuleName 'DLLPickle.DefinitelyMissing' -PolicyPath $Policy -Strict } |
+            Should -Throw '*runtime assembly snapshot failed*'
+    }
+
+    It 'throws in strict mode when the probe command fails' {
+        $Policy = Get-TempPolicyPath -TrackedAssemblies @('System.Management.Automation')
+
+        { & $SnapshotScript -ModuleName 'Microsoft.PowerShell.Management' -PolicyPath $Policy -ProbeCommand "throw 'probe failed'" -Strict } |
+            Should -Throw '*runtime assembly snapshot failed*'
+    }
 }

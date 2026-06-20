@@ -9,7 +9,7 @@ on:
         default: true
         type: boolean
   schedule:
-    - cron: "34 8 * * 1"
+    - cron: "34 8 * * *"
   pull_request:
     # No path filter: always trigger on PRs to main so the "Validate upstream compatibility tooling"
     # required check always reports. The job is gated below by `pr-changes` — skipped (== passing
@@ -33,6 +33,7 @@ jobs:
       pull-requests: read
     outputs:
       relevant: ${{ steps.detect.outputs.relevant }}
+      live_validation: ${{ steps.detect.outputs.live_validation }}
     steps:
       - name: Detect whether upstream-compatibility paths changed
         id: detect
@@ -47,6 +48,7 @@ jobs:
           # validation rather than silently skipping a required check. Paginated REST files endpoint
           # (gh pr view --json files caps at 100 files and could miss a later build/ or tools/ change).
           $Relevant = $true
+          $LiveValidation = $true
           try {
               $ErrorActionPreference = 'Stop'
               # Project previous_filename too, so a rename moving a tracked file OUT of a matched tree
@@ -55,22 +57,39 @@ jobs:
               # Native non-zero exits don't reliably throw in pwsh, so check explicitly -> fail-safe.
               if ($LASTEXITCODE -ne 0) { throw "gh api exited $LASTEXITCODE while listing PR files" }
               $Patterns = @('^build/', '^src/DLLPickle\.Build/', '^tests/', '^tools/', '^\.github/workflows/Upstream-Compatibility\.yml$')
+              # Any change that can alter the accepted baseline or the fingerprint computation must
+              # prove itself against a fresh upstream inventory. Comparator/tests/workflow-only changes
+              # stay on the deterministic smoke path so a pre-existing external drift does not prevent
+              # the guardrail itself from being repaired.
+              $LivePatterns = @(
+                '^build/dependency-policy\.json$',
+                '^src/DLLPickle\.Build/DLLPickle\.csproj$',
+                '^src/DLLPickle\.Build/packages\.lock\.json$',
+                '^tools/Get-DLLPickleUpstreamInventory\.ps1$',
+                '^tools/New-DLLPickleConflictMatrix\.ps1$'
+              )
               $Relevant = $false
+              $LiveValidation = $false
               foreach ($File in $Files) {
                   foreach ($Pattern in $Patterns) {
-                      if ($File -match $Pattern) { $Relevant = $true; break }
+                      if ($File -match $Pattern) { $Relevant = $true }
                   }
-                  if ($Relevant) { break }
+                  foreach ($Pattern in $LivePatterns) {
+                      if ($File -match $Pattern) { $LiveValidation = $true }
+                  }
               }
           } catch {
-              Write-Host "::warning::Changed-file detection failed; defaulting to relevant=true (fail-safe). $_"
+              Write-Host "::warning::Changed-file detection failed; defaulting to relevant=true and live_validation=true (fail-safe). $_"
               $Relevant = $true
+              $LiveValidation = $true
           }
           "relevant=$($Relevant.ToString().ToLowerInvariant())" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "live_validation=$($LiveValidation.ToString().ToLowerInvariant())" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           Write-Host "Upstream-compatibility-relevant change detected: $Relevant"
+          Write-Host "Live upstream validation required: $LiveValidation"
 
   pr-smoke-validation:
-    name: Validate upstream compatibility tooling
+    name: Validate upstream compatibility implementation
     needs: pr-changes
     # Runs on PRs that touch the tooling/policy paths; skipped (== passing required check) only when
     # detection conclusively says false. always() + `!= 'false'` makes it FAIL-SAFE: if pr-changes
@@ -108,26 +127,12 @@ jobs:
           $ErrorActionPreference = 'Stop'
           Invoke-Build -File ./build/DLLPickle.Build.ps1 -Task Analyze,Test
 
-      - name: Detect dependency change
-        id: depchange
+      - name: Validate live upstream conflict-surface freshness
+        if: needs.pr-changes.outputs.live_validation == 'true'
         shell: pwsh
         run: |
-          $ErrorActionPreference = 'Stop'
-          # Compare against the PR base SHA from the event context (always present in fetch-depth:0
-          # history); avoids relying on origin/<base> being fetched as a named ref or on a merge-base.
-          $BaseSha = '${{ github.event.pull_request.base.sha }}'
-          $Changed = git diff --name-only $BaseSha HEAD -- src/DLLPickle.Build/packages.lock.json src/DLLPickle.Build/DLLPickle.csproj
-          $IsDependencyChange = -not [string]::IsNullOrWhiteSpace(($Changed | Out-String))
-          "is_dependency_change=$($IsDependencyChange.ToString().ToLowerInvariant())" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
-
-      - name: Upstream conflict-surface freshness check for dependency PRs
-        if: steps.depchange.outputs.is_dependency_change == 'true'
-        shell: pwsh
-        run: |
-          # Freshness check, NOT a bundle validation. When a dependency PR (Dependabot bump of the
-          # lock/csproj) is open, recompute the UPSTREAM module conflict surface and block the PR if it
-          # drifted from the recorded baseline: a stale baseline means the preload/block decision the
-          # bundle is built against may no longer hold and must be re-adjudicated before merge.
+          # Freshness check, NOT a bundle validation. Recompute the upstream module conflict surface
+          # whenever the policy, bundle dependency files, or fingerprint-producing tools change.
           #
           # This step does NOT validate the bumped bundle itself. A self-bump of DLLPickle's own NuGet
           # references does not change what the upstream modules ship, so it will not move this
@@ -136,7 +141,6 @@ jobs:
           # integration repro guards, bounded by the csproj floating-with-cap constraints. For auto-merge
           # to actually wait on those signals, the Build Module and Dependency Review checks must be
           # configured as required status checks (see Dependabot-Auto-Approve.yml).
-          # Non-dependency PRs skip this step (and its module-download cost).
           $ErrorActionPreference = 'Stop'
           ./tools/Get-DLLPickleUpstreamInventory.ps1 `
             -PolicyPath ./build/dependency-policy.json `
@@ -148,13 +152,101 @@ jobs:
             -OutputPath ./artifacts/upstreamCompatibility/conflict-matrix.json | Out-Null
           $policy = Get-Content ./build/dependency-policy.json -Raw | ConvertFrom-Json
           $current = Get-Content ./artifacts/upstreamCompatibility/conflict-matrix.json -Raw | ConvertFrom-Json
+          $inventory = Get-Content ./artifacts/upstreamCompatibility/upstream-inventory.json -Raw | ConvertFrom-Json
           $fingerprint = [string]$current.Fingerprint
           $baseline = [string]$policy.baseline.conflictSurfaceFingerprint
+          $comparison = $null
+          if ($policy.baseline.PSObject.Properties.Name -contains 'conflictSurface') {
+            $baselineMatrix = [PSCustomObject]@{
+              Assemblies = @($policy.baseline.conflictSurface | ForEach-Object {
+                [PSCustomObject]@{
+                  Name = [string]$_.name
+                  Versions = @($_.versions)
+                  ShippedBy = @($_.shippedBy)
+                  Diverges = $true
+                  AlcOwner = $null
+                }
+              })
+            }
+            $comparison = ./tools/Compare-DLLPickleConflictMatrix.ps1 -Baseline $baselineMatrix -Current $current
+          }
+
+          $report = [PSCustomObject]@{
+            BaselineFingerprint = $baseline
+            CurrentFingerprint = $fingerprint
+            ModuleVersions = [ordered]@{}
+            Comparison = $comparison
+          }
+          foreach ($module in $inventory.Modules) { $report.ModuleVersions[[string]$module.Name] = [string]$module.Version }
+          $report | ConvertTo-Json -Depth 20 | Set-Content ./artifacts/upstreamCompatibility/comparison-report.json -Encoding utf8NoBOM
+
+          @(
+            '# Upstream conflict-surface freshness'
+            ''
+            "- Baseline fingerprint: ``$baseline``"
+            "- Current fingerprint: ``$fingerprint``"
+            ''
+            '| Module | Version |'
+            '| --- | --- |'
+            ($inventory.Modules | Sort-Object Name | ForEach-Object { "| $($_.Name) | $($_.Version) |" })
+          ) | Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Encoding utf8
+
+          if ($comparison -and $comparison.HasMaterialDrift) {
+            @(
+              ''
+              '## Structured drift'
+              ''
+              '```json'
+              ($comparison | ConvertTo-Json -Depth 20)
+              '```'
+            ) | Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Encoding utf8
+          }
+
           if ($fingerprint -ne $baseline) {
-            Write-Host "::error::Upstream conflict surface changed (baseline '$baseline' -> '$fingerprint') while a dependency PR is open. The preload/block decision this bundle is built against may be stale: re-adjudicate and update build/dependency-policy.json (classification + evidence + baseline) per docs/Architecture.md section 8 before merging."
-            throw 'Upstream conflict-surface drift detected on a dependency PR; blocking auto-merge until re-adjudicated.'
+            Write-Host "::error::Upstream conflict surface changed (baseline '$baseline' -> '$fingerprint'). The preload/block decision this bundle is built against may be stale: re-adjudicate and update build/dependency-policy.json (classification + evidence + baseline) per docs/Architecture.md section 8 before merging."
+            throw 'Upstream conflict-surface drift detected; blocking merge until re-adjudicated.'
           }
           Write-Host "Upstream conflict surface unchanged (fingerprint '$fingerprint'); the recorded preload/block baseline still holds. (Bundle correctness is validated separately by the Build Module workflow.)"
+
+      - name: Upload PR upstream compatibility evidence
+        if: ${{ always() && needs.pr-changes.outputs.live_validation == 'true' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: upstream-compatibility-pr-${{ github.event.pull_request.number }}-${{ github.run_id }}
+          path: |
+            ./artifacts/upstreamCompatibility/upstream-inventory.json
+            ./artifacts/upstreamCompatibility/conflict-matrix.json
+            ./artifacts/upstreamCompatibility/comparison-report.json
+          if-no-files-found: warn
+          retention-days: 14
+
+  pr-gate:
+    name: Validate upstream compatibility tooling
+    needs: [pr-changes, pr-smoke-validation]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report aggregate validation result
+        shell: pwsh
+        run: |
+          if ('${{ github.event_name }}' -ne 'pull_request') {
+            Write-Host 'Aggregate PR gate is not applicable to this event.'
+            exit 0
+          }
+
+          $DetectionResult = '${{ needs.pr-changes.result }}'
+          $Relevant = '${{ needs.pr-changes.outputs.relevant }}'
+          $ValidationResult = '${{ needs.pr-smoke-validation.result }}'
+          if ($DetectionResult -ne 'success') {
+            throw "Changed-file detection did not succeed: $DetectionResult"
+          }
+          if ($Relevant -eq 'true' -and $ValidationResult -ne 'success') {
+            throw "Relevant upstream-compatibility validation did not succeed: $ValidationResult"
+          }
+          if ($Relevant -eq 'false' -and $ValidationResult -notin @('skipped', 'success')) {
+            throw "Irrelevant-path validation had an unexpected result: $ValidationResult"
+          }
+          Write-Host "Upstream compatibility aggregate gate passed (relevant=$Relevant, validation=$ValidationResult)."
 
   scheduled-upstream-compatibility:
     name: Validate latest upstream module compatibility
@@ -204,12 +296,47 @@ jobs:
             -OutputPath ./artifacts/upstreamCompatibility/conflict-matrix.json | Out-Null
           $policy = Get-Content ./build/dependency-policy.json -Raw | ConvertFrom-Json
           $current = Get-Content ./artifacts/upstreamCompatibility/conflict-matrix.json -Raw | ConvertFrom-Json
+          $inventory = Get-Content ./artifacts/upstreamCompatibility/upstream-inventory.json -Raw | ConvertFrom-Json
           $surface = @($current.ConflictSurface | Sort-Object)
           # Versions-aware fingerprint produced by New-DLLPickleConflictMatrix (single source of the
           # algorithm) so a within-major version move on a still-conflicting assembly is detected,
           # not just name-set changes. (ALC-ownership drift is the runtime-probe / maintainer tier.)
           $fingerprint = [string]$current.Fingerprint
           $baseline = [string]$policy.baseline.conflictSurfaceFingerprint
+          $comparison = $null
+          if ($policy.baseline.PSObject.Properties.Name -contains 'conflictSurface') {
+            $baselineMatrix = [PSCustomObject]@{
+              Assemblies = @($policy.baseline.conflictSurface | ForEach-Object {
+                [PSCustomObject]@{
+                  Name = [string]$_.name
+                  Versions = @($_.versions)
+                  ShippedBy = @($_.shippedBy)
+                  Diverges = $true
+                  AlcOwner = $null
+                }
+              })
+            }
+            $comparison = ./tools/Compare-DLLPickleConflictMatrix.ps1 -Baseline $baselineMatrix -Current $current
+          }
+          $report = [PSCustomObject]@{
+            BaselineFingerprint = $baseline
+            CurrentFingerprint = $fingerprint
+            ModuleVersions = [ordered]@{}
+            Comparison = $comparison
+          }
+          foreach ($module in $inventory.Modules) { $report.ModuleVersions[[string]$module.Name] = [string]$module.Version }
+          $report | ConvertTo-Json -Depth 20 | Set-Content ./artifacts/upstreamCompatibility/comparison-report.json -Encoding utf8NoBOM
+
+          @(
+            '# Scheduled upstream compatibility'
+            ''
+            "- Baseline fingerprint: ``$baseline``"
+            "- Current fingerprint: ``$fingerprint``"
+            ''
+            '| Module | Version |'
+            '| --- | --- |'
+            ($inventory.Modules | Sort-Object Name | ForEach-Object { "| $($_.Name) | $($_.Version) |" })
+          ) | Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Encoding utf8
           if ($fingerprint -ne $baseline) {
             Write-Host "::warning::Conflict surface changed (baseline '$baseline' -> '$fingerprint'). The preload decision in build/dependency-policy.json needs human review."
             "drift=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
@@ -220,8 +347,14 @@ jobs:
               "Baseline fingerprint: ``$baseline``"
               "Current fingerprint: ``$fingerprint``"
               ''
+              'Current monitored modules:'
+              ($inventory.Modules | Sort-Object Name | ForEach-Object { "- $($_.Name) $($_.Version)" })
+              ''
               'Current conflict surface:'
               ($surface | ForEach-Object { "- $_" })
+              ''
+              'Workflow evidence:'
+              '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
               ''
               'Re-run the runtime ALC adjudication and update build/dependency-policy.json (classification + evidence + baseline) per docs/Architecture.md section 8.'
             ) -join [System.Environment]::NewLine
@@ -287,8 +420,13 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: upstream-compatibility-${{ github.run_id }}
-          path: ./artifacts/upstreamCompatibility
+          path: |
+            ./artifacts/upstreamCompatibility/upstream-inventory.json
+            ./artifacts/upstreamCompatibility/conflict-matrix.json
+            ./artifacts/upstreamCompatibility/comparison-report.json
+            ./artifacts/upstreamCompatibility/candidate-report.json
           if-no-files-found: warn
+          retention-days: 30
 
       - name: Open issue when scheduled compatibility validation fails
         if: failure()

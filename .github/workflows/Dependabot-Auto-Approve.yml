@@ -12,7 +12,8 @@
 #
 #     NOTE: Dependabot-triggered runs read Dependabot secrets, NOT Actions secrets.
 #
-#   - Branch protection rules requiring the "Dependency Review" and build/test checks, so `--auto` merge cannot complete until those checks pass.
+#   - Repository rules requiring "Build gate", "Validate upstream compatibility tooling", and
+#     "dependency-review", so `--auto` cannot complete until bundle, policy, and security checks pass.
 #   - "Allow auto-merge" enabled under Settings > General > Pull Requests.
 
 name: 🤖 Auto-Approve Dependabot NuGet Package Updates
@@ -81,7 +82,7 @@ jobs:
         with:
           github-token: ${{ steps.generate_token.outputs.token }}
 
-      - name: 📦 Check whether NuGet manifests were updated
+      - name: 📦 Require an exact NuGet-only file set
         id: nuget_check
         shell: bash
         env:
@@ -89,25 +90,26 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           set -euo pipefail
-          MATCHING_FILES=$(gh pr view "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --json files --jq '
-            .files[].path | select(
-              . == "src/DLLPickle.Build/DLLPickle.csproj" or
-              . == "src/DLLPickle.Build/packages.lock.json"
-            )
-          ')
+          FILES=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/files" --paginate --jq '.[].filename')
+          MATCHING_FILES=$(printf '%s\n' "$FILES" | sed '/^$/d' | grep -E '^src/DLLPickle\.Build/(DLLPickle\.csproj|packages\.lock\.json)$' || true)
+          UNEXPECTED_FILES=$(printf '%s\n' "$FILES" | sed '/^$/d' | grep -Ev '^src/DLLPickle\.Build/(DLLPickle\.csproj|packages\.lock\.json)$' || true)
 
-          if [ -n "$MATCHING_FILES" ]; then
-            echo "is_nuget_update=true" >> "$GITHUB_OUTPUT"
+          if [ -n "$MATCHING_FILES" ] && [ -z "$UNEXPECTED_FILES" ]; then
+            echo "is_exact_nuget_update=true" >> "$GITHUB_OUTPUT"
           else
-            echo "is_nuget_update=false" >> "$GITHUB_OUTPUT"
+            echo "is_exact_nuget_update=false" >> "$GITHUB_OUTPUT"
+            if [ -n "$UNEXPECTED_FILES" ]; then
+              echo "Refusing auto-approval because the PR changes files outside the NuGet allow-list:"
+              printf '%s\n' "$UNEXPECTED_FILES"
+            fi
           fi
 
-      # Dependency Review runs as its own workflow on every PR. Configure it (plus the build/test checks) as required
-      # status checks so `--auto` waits for them to pass before this PR can merge.
+      # The repository ruleset requires Build gate, Validate upstream compatibility tooling, and
+      # dependency-review, so `--auto` waits for all three before this PR can merge.
 
       - name: ✅ Approve and auto-merge NuGet patch/minor updates
         if: |
-          steps.nuget_check.outputs.is_nuget_update == 'true' &&
+          steps.nuget_check.outputs.is_exact_nuget_update == 'true' &&
           steps.metadata.outputs.update-type != 'version-update:semver-major'
         shell: bash
         env:
@@ -121,7 +123,7 @@ jobs:
 
       - name: 💬 Comment on major version updates
         if: |
-          steps.nuget_check.outputs.is_nuget_update == 'true' &&
+          steps.nuget_check.outputs.is_exact_nuget_update == 'true' &&
           steps.metadata.outputs.update-type == 'version-update:semver-major'
         shell: bash
         env:

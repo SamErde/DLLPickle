@@ -16,6 +16,9 @@
     Optional command string run after imports (e.g. 'Get-AzContext') to force lazy ALC init.
 .PARAMETER PolicyPath
     Path to dependency-policy.json. Defaults to build/dependency-policy.json relative to the repo root.
+.PARAMETER Strict
+    Fails when a requested module cannot be imported or the probe command throws. Use this mode when
+    collecting adjudication evidence so a partial snapshot cannot be mistaken for a successful probe.
 .OUTPUTS
     PSCustomObject[] one row per loaded tracked assembly: Name, Version, Alc, Path.
 #>
@@ -31,7 +34,10 @@ param(
     [string]$ProbeCommand,
 
     [Parameter()]
-    [string]$PolicyPath
+    [string]$PolicyPath,
+
+    [Parameter()]
+    [switch]$Strict
 )
 
 $ErrorActionPreference = 'Stop'
@@ -42,15 +48,32 @@ if (-not $PolicyPath) {
 }
 
 $ChildScript = @'
-param($ModuleNames, $PreloadManifest, $ProbeCommand, $HelperScript, $PolicyPath)
+param($ModuleNames, $PreloadManifest, $ProbeCommand, $HelperScript, $PolicyPath, [switch]$StrictMode)
 $ModuleNames = $ModuleNames -split ','
 $ErrorActionPreference = 'Continue'
 if ($PreloadManifest) {
-    Import-Module $PreloadManifest -Force
-    Import-DPLibrary -SuppressLogo | Out-Null
+    if ($StrictMode) {
+        Import-Module $PreloadManifest -Force -ErrorAction Stop
+        Import-DPLibrary -SuppressLogo -ErrorAction Stop | Out-Null
+    } else {
+        Import-Module $PreloadManifest -Force
+        Import-DPLibrary -SuppressLogo | Out-Null
+    }
 }
-foreach ($Name in $ModuleNames) { Import-Module $Name -Force -ErrorAction Continue }
-if ($ProbeCommand) { try { Invoke-Expression $ProbeCommand | Out-Null } catch { } }
+foreach ($Name in $ModuleNames) {
+    if ($StrictMode) {
+        Import-Module $Name -Force -ErrorAction Stop
+    } else {
+        Import-Module $Name -Force -ErrorAction Continue
+    }
+}
+if ($ProbeCommand) {
+    if ($StrictMode) {
+        Invoke-Expression $ProbeCommand | Out-Null
+    } else {
+        try { Invoke-Expression $ProbeCommand | Out-Null } catch { }
+    }
+}
 & $HelperScript -PolicyPath $PolicyPath | ConvertTo-Json -Depth 5
 '@
 
@@ -65,7 +88,16 @@ try {
     )
     if ($PreloadDllPickleManifest) { $ChildArguments += @('-PreloadManifest', $PreloadDllPickleManifest) }
     if ($ProbeCommand) { $ChildArguments += @('-ProbeCommand', $ProbeCommand) }
-    $Raw = & pwsh @ChildArguments
+    if ($Strict.IsPresent) {
+        $ChildArguments += '-StrictMode'
+        $Raw = & pwsh @ChildArguments 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            $ChildError = ($Raw | Out-String).Trim()
+            throw "DLLPickle runtime assembly snapshot failed in strict mode. $ChildError"
+        }
+    } else {
+        $Raw = & pwsh @ChildArguments
+    }
     $Json = ($Raw | Out-String).Trim()
     if ([string]::IsNullOrWhiteSpace($Json)) { return @() }
     @($Json | ConvertFrom-Json)
