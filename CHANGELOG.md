@@ -26,6 +26,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Import-DPLibrary` no longer registers PowerShell script blocks as CLR `AssemblyResolve` or `AssemblyLoad` event handlers. Those events can run on threads without a PowerShell runspace and terminate the process with `PSInvalidOperationException` (#242).
 - Dependency loading now relies on the supported-runtime dependency graph, deterministic fallback ordering, and retries. Synthetic transitive-dependency coverage confirmed that the legacy Windows PowerShell 5.1 resolver is not required on PowerShell 7.4+ / .NET 8.
 
+### Documentation
+
+- Refreshed `docs/Architecture.md` and the runtime/dependency docs around the core design decisions. Made the **two-tier platform-support contract** explicit: the automated `Import-DPLibrary` / `Import-DPBaseProfile` preloader is **PowerShell 7.4+ / .NET 8 only**, while the inspection/diagnostic helpers are **cross-edition by design** so they can guide a *manual* fix for Windows PowerShell 5.1 users.
+- Added a **Release & dependency-update contract** section (Architecture §8) covering the publish trigger (bundle-path gate **and** Conventional-Commit version gate) and the intended dependency lifecycle: minor/patch → TFM-aligned + tested + merged with a detailed comment → **minor** release; major → tested **draft PR with fully detailed notes**, not auto-merged or auto-published.
+- Corrected `DEPENDENCIES.md`: the MSAL / IdentityModel families use **major-locked floating** references (`N.*`) with `packages.lock.json` pinning the resolved version — not the exact pins previously documented.
+- Recorded the current automation gaps against the intended contract (the Dependabot `deps:` commit prefix is not a release prefix, so auto-merged dependency bumps do not publish on their own; the major-version draft-PR flow and an explicit TFM-alignment check are not yet automated). **No code or workflow behavior changed in this revision.**
+
 ## [2.2.0] - 2026-06-02
 
 > Adds proactive detection of the Az.Storage + ExchangeOnlineManagement OData incompatibility (#174) and a public conflict check, plus release-pipeline and CI hardening. The bundled assemblies are **unchanged** from 2.1.2.

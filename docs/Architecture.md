@@ -7,7 +7,23 @@
 
 A single PowerShell process can load only one assembly of a given identity at a time. When several Microsoft service modules each bundle a different version of the same dependency DLL, the first one loaded "wins" and the others can fail with type-load or missing-method errors. DLLPickle **preloads a curated set of identity-stack assemblies into the default `AssemblyLoadContext` (ALC) before those modules load**, so default-ALC consumers share one coherent version.
 
-**Scope:** PowerShell 7.4+ on the `net8.0` runtime profile. Multi-TFM (net9.0/net10.0) is a deferred goal.
+### 1.1 Two tiers of functionality (and two different scopes)
+
+DLLPickle ships two distinct kinds of capability, and they have **different runtime requirements**. Keeping them separate is a load-bearing design decision — conflating them is the most common way to misread the platform-support contract.
+
+| Tier | Functions | Runtime requirement | What it does |
+| --- | --- | --- | --- |
+| **Preloader (automated fix)** | `Import-DPLibrary`, `Import-DPBaseProfile` | **PowerShell 7.4+ / .NET 8 (`net8.0`) only.** Depends on `AssemblyLoadContext`. | Loads the bundled `bin/net8.0` identity stack into the default ALC so later module loads reuse one coherent version. |
+| **Inspection / diagnostics (manual aid)** | `Find-DLLInPSModulePath`, `Get-ModuleImportCandidate`, `Get-ModulesWithDependency`, `Get-ModulesWithVersionSortedIdentityClient`, `Test-DPLibraryConflict` (plus `Get-DPConfig`/`Set-DPConfig`) | **Cross-edition by design.** Deliberately also scans Windows PowerShell module roots. | Reports which installed module ships the newest identity DLL, so a user can decide which service to connect to first. |
+
+The inspection tier exists to serve the project charter even for environments the preloader cannot reach: a **Windows PowerShell 5.1** user who hits the same version-conflict problem can run the inspection helpers to discover which module to load first and apply that **manual** "first-one-wins" workaround. See §1.2 for the precise platform-support contract.
+
+### 1.2 Platform-support contract (decisions 1 & 2)
+
+- **The automated preloader targets PowerShell 7.4+ on the `net8.0` runtime profile, and only that.** This is the supported way to *fix* the conflict automatically. It is enforced top to bottom: the manifest declares `PowerShellVersion = '7.4'` and `CompatiblePSEditions = @('Core')` (`src/DLLPickle/DLLPickle.psd1`); the build sets `RequiredPSVersion = '7.4.0'` (`build/DLLPickle.Settings.ps1`); the build project is single-target `<TargetFramework>net8.0</TargetFramework>` (`src/DLLPickle.Build/DLLPickle.csproj`); and `Import-DPLibrary` hard-codes `bin/net8.0` and throws if that directory is missing.
+- **Windows PowerShell 5.1 / .NET Framework 4.8 is not a supported runtime for the preloader, by design.** The whole self-isolation reasoning in §2 depends on `AssemblyLoadContext`, which does not exist on .NET Framework 4.8. The module manifest is `Core`-only, so DLLPickle is not intended to be *imported and run* under Windows PowerShell 5.1.
+- **The inspection/diagnostic tier is deliberately cross-edition.** Its functions are written to run on both editions and to scan the **Windows PowerShell module roots** (e.g. `Documents\WindowsPowerShell\Modules`) as well as the PowerShell 7 roots. This is intentional: a 5.1 user who needs a *manual* solution to the version-conflict problem can use these helpers to identify which module to connect to first. The supported way to do this today is to run the helpers **from a PowerShell 7.4+ session** while they inspect a machine's full set of installed modules (see the §10 note on the manifest edition declaration).
+- **Multi-TFM (net9.0/net10.0) is a deferred goal**, not current scope (§10). The methodology is TFM-parameterizable; the runtime profile is single-target `net8.0` today.
 
 ## 2. The runtime model that drives every decision (read this first)
 
@@ -30,7 +46,7 @@ They even run **different `Azure.Core` versions side-by-side** (Az `1.50`, Graph
 1. DLLPickle must **not** preload the Azure SDK stack. Preloading `Azure.Core` into the default ALC splits the identity of `Azure.Core.TokenRequestContext` across the module's private ALC boundary and breaks `Connect-AzAccount` with a `MissingMethodException` (shipped fix: 2.0.1).
 2. As more modules self-isolate, **DLLPickle's necessary scope shrinks** on PS 7.4+. Its remaining value is the **MSAL + IdentityModel** stack, which default-ALC consumers (Exchange Online, Teams) still share.
 
-> **Windows PowerShell 5.1 caveat — no ALC.** Everything above depends on `AssemblyLoadContext`, which exists only on .NET (Core) 5+. **Windows PowerShell 5.1 runs on .NET Framework 4.8, which has no ALC**, so modules **cannot** self-isolate there — every dependency lands in one shared load context. If net48 / WinPS 5.1 support is ever re-added, the "modules manage the Azure SDK themselves" premise does **not** hold, and the Azure SDK stack (`Azure.Core`, `Azure.Identity`, `Azure.Identity.Broker`, `System.ClientModel`) would need to be **preloaded again — conditionally, per-TFM (net48 only)** — exactly as #183 originally did before the 2.0 refactor over-generalized it. In other words: the `block` verdicts in §3 are correct **because** the runtime is ALC-capable; they are not universal. See §9 for the full re-introduction checklist.
+> **Windows PowerShell 5.1 caveat — no ALC.** Everything above depends on `AssemblyLoadContext`, which exists only on .NET (Core) 5+. **Windows PowerShell 5.1 runs on .NET Framework 4.8, which has no ALC**, so modules **cannot** self-isolate there — every dependency lands in one shared load context. This is *why* the preloader does not support 5.1 (§1.2): the "modules manage the Azure SDK themselves" premise does not hold. If net48 / WinPS 5.1 support is ever re-added, the Azure SDK stack (`Azure.Core`, `Azure.Identity`, `Azure.Identity.Broker`, `System.ClientModel`) would need to be **preloaded again — conditionally, per-TFM (net48 only)** — exactly as #183 originally did before the 2.0 refactor over-generalized it. In other words: the `block` verdicts in §3 are correct **because** the runtime is ALC-capable; they are not universal. See §10 for the full re-introduction checklist.
 
 ## 3. The preload decision model
 
@@ -49,7 +65,7 @@ Every tracked assembly is classified into exactly one of:
 | Assemblies | Class | Basis |
 | --- | --- | --- |
 | `Microsoft.Identity.Client` (+ `.Broker`, `.Extensions.Msal`, `.NativeInterop`); `Microsoft.IdentityModel.*`; `System.IdentityModel.Tokens.Jwt` | **preload** | Default-ALC consumers (EXO/Teams) + the #156 broker fix; 2.0.1-validated. |
-| `Azure.Core`, `Azure.Identity`, `Azure.Identity.Broker`, `System.ClientModel` | **block** | Az + Graph self-isolate these privately; preloading splits type identity (the `Connect-AzAccount` break). **ALC-capable runtimes only** — would flip to `preload` on net48 (see §2 caveat / §9). |
+| `Azure.Core`, `Azure.Identity`, `Azure.Identity.Broker`, `System.ClientModel` | **block** | Az + Graph self-isolate these privately; preloading splits type identity (the `Connect-AzAccount` break). **ALC-capable runtimes only** — would flip to `preload` on net48 (see §2 caveat / §10). |
 | `Microsoft.OData.Core`, `Microsoft.OData.Edm`, `Microsoft.Spatial` | **block** (report-only) | #174 — preloading breaks Az.Storage. |
 | `Microsoft.Extensions.DependencyInjection.Abstractions`, `Microsoft.Extensions.Logging.Abstractions` | **block** | #193 — incidental `Microsoft.IdentityModel.Tokens` transitives, not host-provided. Preloading DLLPickle's own copies into the default ALC collided with the copies `Az.Resources` bundles (`assembly with same name is already loaded`). Excluded via `ExcludeAssets="runtime"` (shipped 2.0.2); `Microsoft.IdentityModel.Tokens` still loads without them. |
 
@@ -63,7 +79,8 @@ Every tracked assembly is classified into exactly one of:
 | Dependency policy | `build/dependency-policy.json` | **Decision source of truth** — per-assembly classification + evidence, monitored modules, target scenario, drift baseline. |
 | Analysis tools | `tools/Get-DLLPickleLoadedTrackedAssembly.ps1`, `New-DLLPickleConflictMatrix.ps1`, `Compare-DLLPickleConflictMatrix.ps1`, `Get-DLLPickleRuntimeAssemblySnapshot.ps1`, `Get-DLLPickleUpstreamInventory.ps1`, `Update-DLLPickleDependencyPins.ps1` | Inventory upstream modules, build the conflict matrix, probe runtime ALC ownership (filter sourced from `trackedAssemblies`), detect drift, and apply policy pins. |
 | Build script | `build/DLLPickle.Build.ps1` | Invoke-Build tasks: Analyze, AnalyzeTests, AnalyzeTools, Test, RestoreDependencies, PrepareModuleOutput, IntegrationTest. |
-| CI | `.github/workflows/` | Build/test matrix, Upstream-Compatibility (inventory + drift), Dependabot auto-approve, tag-driven Release-and-Publish. |
+| Release scripts | `.github/ci-scripts/Get-VersionBump.ps1` | Decides the semantic-version bump (and whether to release at all) from Conventional Commit prefixes since the last tag. The publish-decision logic behind §8.1. |
+| CI | `.github/workflows/` | Build/test matrix, Upstream-Compatibility (inventory + drift), Dependabot auto-approve, path+commit-gated `Release-and-Publish`. |
 | Build output | `module/DLLPickle/` | **Generated** (gitignored). Rebuilt by `PrepareModuleOutput`; never hand-edited. |
 
 ## 5. Source-of-truth map
@@ -73,6 +90,9 @@ Every tracked assembly is classified into exactly one of:
 | Which assemblies are preloaded/blocked, and why? | `build/dependency-policy.json` (classification + evidence) |
 | What is actually bundled? | `src/DLLPickle.Build/DLLPickle.csproj` (+ `packages.lock.json`) — must match the policy's `preload` set |
 | How does the loader behave? | `src/DLLPickle/Public/Import-DPLibrary.ps1` |
+| Which runtime/edition is supported? | §1.2 (platform-support contract) + `src/DLLPickle/DLLPickle.psd1` |
+| When does a merged PR publish a new version? | §8.1 + `.github/workflows/Release-and-Publish.yml` + `.github/ci-scripts/Get-VersionBump.ps1` |
+| How is a dependency update adjudicated and shipped? | §8.2 + `build/dependency-policy.json` + `.github/workflows/Dependabot-Auto-Approve.yml` |
 | User guidance | `docs/Deep-Dive.md` |
 | Dependency/update policy | `DEPENDENCIES.md`, `.github/dependabot.yml` |
 | Design rationale (point-in-time) | `docs/superpowers/specs/2026-05-31-dll-needs-analysis-design.md` |
@@ -93,10 +113,52 @@ Every tracked assembly is classified into exactly one of:
 - **Issue reproduction + composition:** `Invoke-Build -Task IssueReproTest` (synthetic modules; deterministic).
 - **Runtime adjudication — non-auth tier (CI-capable):** strict per-module ALC snapshots (module/probe failures are fatal) + the four-module import/composition smoke.
 - **Runtime adjudication — auth tier (maintainer-run; future Stage 2b automatable via GitHub OIDC + Entra federated credential):** real `Connect-*` to a dev tenant. This is the sign-off for any change to the bundled set.
-- **Publish trigger:** `Release-and-Publish` auto-runs **only on bundle-affecting paths** (`src/DLLPickle/**`, `src/DLLPickle.Build/DLLPickle.csproj`, `src/DLLPickle.Build/packages.lock.json`). CI-, policy-, docs-, test-, and tooling-only changes do **not** publish a new gallery version; `workflow_dispatch` is the deliberate-release escape hatch.
-- **Dependency PRs (Dependabot):** the bumped *bundle* is validated by **Build Module** (full build under `--locked-mode` + the #193/Azure.Core repro guards), bounded by the csproj floating-with-cap constraints. The Upstream-Compatibility `pr-smoke` adds an **upstream conflict-surface freshness check** — explicitly *not* a bundle validation, since a self-bump does not move the upstream fingerprint. **Enforcement caveat:** these signals only block `gh pr merge --auto` if the build + Dependency Review checks are configured as **required status checks** (see §9).
+- **Publish trigger:** `Release-and-Publish` publishes a merged PR only when it passes **both** the bundle-affecting **path gate** and the Conventional-Commit **version gate** — see §8.1 for the full contract (including the `deps:`-prefix caveat). CI-, policy-, docs-, test-, and tooling-only changes do **not** publish a new gallery version; `workflow_dispatch` is the deliberate-release escape hatch.
+- **Dependency PRs (Dependabot):** the bumped *bundle* is validated by **Build Module** (full build under `--locked-mode` + the #193/Azure.Core repro guards), bounded by the csproj floating-with-cap constraints. The Upstream-Compatibility `pr-smoke` adds an **upstream conflict-surface freshness check** — explicitly *not* a bundle validation, since a self-bump does not move the upstream fingerprint. See §8.2 for the full dependency lifecycle and §10 for the `deps:`-prefix publish gap. **Enforcement caveat:** these signals only block `gh pr merge --auto` if the build + Dependency Review checks are configured as **required status checks** (see §10).
 
-## 8. Agent workstream conventions
+## 8. Release & dependency-update contract
+
+This section is the source of truth for **when a merged change publishes a new PowerShell Gallery version** (decision 3) and **how a tracked-dependency release is adjudicated, tested, and shipped** (decision 4). It documents the **intended contract**; where today's automation does not yet fully implement it, the delta is recorded in §10. No behavior here is changed by simply updating this document.
+
+### 8.1 What publishes a new version (decision 3)
+
+The published artifact is the **module bundle**: the module source under `src/DLLPickle/**` and the bundled DLL set realized by `src/DLLPickle.Build/DLLPickle.csproj` + `packages.lock.json`. A change that alters that bundle should produce a new gallery version; CI-, policy-, docs-, test-, and tooling-only changes should not.
+
+`Release-and-Publish` auto-publishes a merged PR **only when both gates pass**:
+
+1. **Path gate** — the merge touches a bundle-affecting path: `src/DLLPickle/**`, `src/DLLPickle.Build/DLLPickle.csproj`, or `src/DLLPickle.Build/packages.lock.json` (the workflow `paths:` filter).
+2. **Version gate** — `.github/ci-scripts/Get-VersionBump.ps1` finds a release-worthy Conventional Commit prefix among the commits since the last tag. Recognized prefixes:
+
+   | Bump | Prefixes |
+   | --- | --- |
+   | **major** | `BREAKING CHANGE:`, `breaking:`, `major-release` |
+   | **minor** | `feat:`, `minor:` |
+   | **patch** | `fix:`, `perf:`, `refactor:`, `security:`, `chore:` |
+
+   Any other prefix (`docs:`, `style:`, `ci:`, **`deps:`**, …) yields `ShouldRelease = false` → **no publish**.
+
+Versioning is **tag-driven**: the in-source manifest stays at the `0.0.0` placeholder, the Git tag `vX.Y.Z` is the source of truth, and the real version is stamped into the built artifact at publish time. A failed publish rolls back by deleting the tag and release; `main` is never committed to. `workflow_dispatch` is the deliberate-release escape hatch (e.g. to ship a packaging-logic change that does not move a bundle path).
+
+> **Both gates matter for dependency PRs.** A Dependabot NuGet bump touches `DLLPickle.csproj` + `packages.lock.json` (path gate ✔) but its default commit prefix is `deps:` — **not** a recognized release prefix — so on its own it does **not** publish. Closing that gap is the subject of §8.2 and the recorded gap in §10.
+
+### 8.2 Tracked-dependency release lifecycle (decision 4)
+
+A "tracked dependency" is one of the NuGet packages bundled into the preload set (the MSAL + IdentityModel families in `DLLPickle.csproj`; see §3). When a new release of one is detected — by Dependabot or the scheduled Upstream-Compatibility candidate flow — it is adjudicated by the **severity of the version jump**.
+
+**Step 0 — TFM-alignment check (precondition for both paths).** Before any merge, confirm the new release aligns with the supported target framework moniker(s). "TFM-aligned" means **both**:
+
+- **(a) Build-gate proof** — the project still restores under `--locked-mode` and builds + passes Pester/CI green on `net8.0` (the `Build gate` required check); **and**
+- **(b) Explicit TFM inspection** — the package actually ships an assembly compatible with the supported TFM(s) (`net8.0`, or a `netstandard2.0` asset that loads on net8.0), rather than appearing to work only by luck of transitive resolution.
+
+A release that fails either half is not TFM-aligned and must not be merged on the automated path.
+
+**Minor / patch release** → run Step 0 (TFM alignment) + Pester + CI, then **approve and merge with a detailed PR comment** recording what moved, the alignment evidence, and the conflict-surface result. Because identity-library bumps are the module's core deliverable, a minor/patch dependency bump is intended to produce a **minor** module release; to fire the version gate (§8.1) the merge must carry a `feat:` prefix (see the §10 `deps:`-prefix gap).
+
+**Major release** → still **fully tested** (Pester + CI) and **verified for architecture alignment** (Step 0, plus a re-adjudication of the §3 preload/block classifications, since a major upstream jump can move the conflict surface), **but it lands as a draft PR with fully detailed notes** — never auto-merged and never auto-published. The notes should cover: the version delta and an upstream changelog / breaking-change summary, the TFM-alignment result, the Pester/CI outcome, and the conflict-surface / `dependency-policy.json` impact. A maintainer promotes the draft to ready and merges after review; the merge then publishes a **major** module release (carried as `breaking:`).
+
+This mirrors the **hard gate** in §9: bundle-set changes are behavior-changing and require the auth-tier real-environment sign-off; they are not auto-merged blindly.
+
+## 9. Agent workstream conventions
 
 When changing the preload contract, follow this loop:
 
@@ -119,16 +181,20 @@ Issue #239 was adjudicated on 2026-06-20 against Microsoft.Graph.Authentication 
 - Commit/push only when the maintainer asks.
 - Never hand-edit `module/` (generated). Never weaken analyzer settings to silence a finding — fix the code or scope a justified suppression.
 
-## 9. Known gaps / follow-ups
+## 10. Known gaps / follow-ups
 
 - **Required status checks.** The "Protect Main" ruleset enforces a PR (with review-thread resolution), Copilot review, code quality, and three required status checks: **`Build gate`**, **`Validate upstream compatibility tooling`**, and **`dependency-review`**. `Validate upstream compatibility tooling` is the always-reported aggregate over changed-file detection and the conditional Windows validation worker; policy, dependency, and fingerprint-generator changes also run a fresh live inventory. Keep the workflows triggered on every PR and condition jobs internally—workflow-level path filters can leave required checks pending. Dependabot auto-merge is restricted to the exact csproj/lock-file allow-list and waits on all three contexts.
+- **Dependency bumps do not publish on their own — the `deps:` prefix gap (decisions 3 & 4).** Dependabot's NuGet `commit-message.prefix` is `deps` (`.github/dependabot.yml`), which `Get-VersionBump.ps1` does **not** recognize as a release prefix (§8.1). So an auto-approved, squash-merged minor/patch dependency bump satisfies the *path* gate but yields `ShouldRelease = false` and **does not publish**. Until the contract is realized in code, a maintainer must land the bump under a recognized prefix — `feat:` for the intended **minor** release (decision 4) or `breaking:` for a major. Options to close it: add `deps` to the recognized minor prefixes in `Get-VersionBump.ps1`, or change the Dependabot `commit-message.prefix` to `feat`. (Documented as the contract here; **no code change made in this revision**.)
+- **Major-dependency draft-PR flow is not implemented (decision 4).** `Dependabot-Auto-Approve.yml` correctly excludes `version-update:semver-major` PRs from `gh pr merge --auto` and posts a single generic "requires manual review" comment, but it does **not** convert them to draft or attach the fully detailed, structured notes §8.2 specifies (version delta, upstream breaking-change summary, TFM-alignment result, Pester/CI outcome, conflict-surface impact). The auto-merge split is enforced; the draft + detailed-notes half is manual today.
+- **Explicit TFM-alignment inspection is not automated (decision 4).** `Get-DLLPickleUpstreamInventory.ps1` captures only assembly `Name`/`Version`/`FullName`; it does not extract or assert a target framework. Step 0(a) of §8.2 (the `Build gate`) is enforced, so a TFM-incompatible package would fail the build — but Step 0(b), the dedicated net8.0/netstandard2.0 compatibility assertion, is satisfied only implicitly by a green build, not by a purpose-built check.
+- **Platform-support contract vs. manifest edition (decision 2).** The inspection/diagnostic tier is intended to be cross-edition (§1.2), but the manifest declares `CompatiblePSEditions = @('Core')`, so *importing* the module under Windows PowerShell 5.1 surfaces a compatibility warning. The supported manual-remediation path is therefore to run the inspection helpers **from a PowerShell 7.4+ session** while they scan the Windows PowerShell module roots — not to import DLLPickle under 5.1. Two code paths back this cross-edition intent on purpose: `Set-DPConfig` keeps a `$PSEdition`-aware encoding fallback, and `Find-DLLInPSModulePath` seeds the `WindowsPowerShell\Modules` roots (the all-users WinPS root only when actually running on 5.1). These are intentional, not residual dead code; recorded here so the contract is explicit.
 - **`Az.Resources` is not in `monitoredModules`.** It is the observed #193 collision source, but its copy and future drift are **not** inventoried. Among monitored modules the `Microsoft.Extensions.*` transitives are observed only in `MicrosoftTeams` (a single shipper → not in the conflict surface), recorded as `trackingScope` on the blocked entries. Note #193 was a *bundle-vs-consumer* collision (DLLPickle's preloaded copy vs Az.Resources'), which the cross-module drift gate does not model — the regression guard is the integration test that keeps these transitives out of `bin`, not the matrix. Re-adjudicate manually if an Az.Resources change is suspected, or add it to `monitoredModules` to track it directly.
 - **EXO/Teams ALC ownership** is not yet captured — a bare `Import-Module` doesn't eager-load their identity assemblies; the probe needs a representative `-ProbeCommand`.
-- **Multi-TFM (net9.0/net10.0):** deferred; the methodology is TFM-parameterizable. net9.0/net10.0 are ALC-capable, so the `block` verdicts in §3 carry over to them. The `net8.0` bundle is confirmed to load on **PS 7.6 / .NET 10 via roll-forward** (Az.Resources import verified, no #193 regression) — a positive signal that multi-TFM is mostly a packaging exercise, not a behavioral one, on ALC-capable runtimes.
+- **Multi-TFM (net9.0/net10.0):** deferred; the methodology is TFM-parameterizable. net9.0/net10.0 are ALC-capable, so the `block` verdicts in §3 carry over to them. The `net8.0` bundle is confirmed to load on **PS 7.6 / .NET 10 via roll-forward** (Az.Resources import verified, no #193 regression) — a positive signal that multi-TFM is mostly a packaging exercise, not a behavioral one, on ALC-capable runtimes. When it lands, `dependency-policy.json` preload entries (currently a single `targetFramework: net8.0` each) and the `Update-DLLPickleDependencyPins` tooling will need a per-TFM representation; the `RestoreDependencies` task already parses both `TargetFramework` and `TargetFrameworks` in anticipation.
 - **Re-introducing Windows PowerShell 5.1 / net48 (no ALC) — checklist if attempted:** because net48 has no `AssemblyLoadContext`, modules cannot self-isolate and the §3 `block` verdicts for the Azure SDK stack **invert**. Re-support would require: (1) multi-targeting the build to `net48` alongside `net8.0`; (2) **conditionally preloading the Azure SDK stack** (`Azure.Core` + `Azure.Identity`/`Broker` + `System.ClientModel`) for net48 only — pinned to the highest version the WinPS-supported module set agrees on, as #183 did; (3) restoring net48-specific dependency conditions in `DLLPickle.csproj` (e.g. `Condition="'$(TargetFramework)' == 'net48'"`); (4) restoring `CompatiblePSEditions = @('Core','Desktop')` and lowering the manifest `PowerShellVersion`, plus per-edition guards in `Import-DPLibrary`; (5) adding WinPS 5.1 to the CI test matrix and re-validating the #156/#165-class scenarios. The 2.0 refactor's mistake was applying the net48-era Azure.Core preload to net8 unconditionally — any re-introduction must keep it **strictly TFM-conditional**.
-- **Planned feature enhancements (backlog).** Forward-looking ideas consolidated from the former root `Roadmap.md`; not yet scheduled, order is not guaranteed, and large dependency/platform shifts may change priority. (Released and in-progress work lives in [CHANGELOG.md](../CHANGELOG.md) — for example the `Microsoft.PowerShell.PlatyPS` help-generation migration is already tracked there, and the broader PowerShell 7.4+ compatibility and supply-chain hardening work is the ongoing subject of §3 and §8.)
+- **Planned feature enhancements (backlog).** Forward-looking ideas consolidated from the former root `Roadmap.md`; not yet scheduled, order is not guaranteed, and large dependency/platform shifts may change priority. (Released and in-progress work lives in [CHANGELOG.md](../CHANGELOG.md) — for example the `Microsoft.PowerShell.PlatyPS` help-generation migration is already tracked there, and the broader PowerShell 7.4+ compatibility and supply-chain hardening work is the ongoing subject of §3, §8, and §9.)
   - Import a specific version of MSAL (`Microsoft.Identity.Client`) on demand, rather than only the bundled pin.
-  - Verify a package's hash/signature against the original source (e.g. NuGet) metadata before preload — a supply-chain integrity check extending the §8 dependency work.
+  - Verify a package's hash/signature against the original source (e.g. NuGet) metadata before preload — a supply-chain integrity check extending the dependency-update work in §8.
   - Option to preload additional common (non-identity) assemblies beyond the default identity stack.
   - Option to inspect and preload only the newest version of relevant assemblies already present among the modules installed on the current system. The inspection side already exists (`Get-ModuleImportCandidate`, `Get-ModulesWithVersionSortedIdentityClient`, `Find-DLLInPSModulePath`); this would add the preload-from-installed mode.
   - A function to import a specific named set of assemblies — a targeted alternative to the full `Import-DPLibrary` set or `Import-DPBaseProfile`.

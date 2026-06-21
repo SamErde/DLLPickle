@@ -58,6 +58,8 @@ For diagnostic detail, add `-ShowLoaderExceptions -Verbose`.
 - `Get-ModulesWithDependency` — list installed modules that package a given dependency.
 - `Get-ModulesWithVersionSortedIdentityClient` — compare modules by packaged `Microsoft.Identity.Client.dll` version.
 
+> The inspection helpers are **cross-edition**. `Import-DPLibrary` needs PowerShell 7.4+, but these helpers also scan the Windows PowerShell module roots — so a **Windows PowerShell 5.1** user can run them (from a PowerShell 7.4+ session) to find which module to load first and apply the "first one wins" fix manually.
+
 Full syntax and examples: [docs index](docs/index.md) · [command reference](docs/DLLPickle.md).
 
 ## 🥒 How It Works

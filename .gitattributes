@@ -1,0 +1,6 @@
+# Line-ending policy for DLLPickle.
+#
+# Markdown documentation is authored and reviewed on Windows; normalize it so the
+# repository blob is LF and the working tree is CRLF on every platform. This keeps
+# future edits from producing spurious CRLF/LF churn in diffs.
+*.md text eol=crlf
