@@ -1,3 +1,10 @@
+# Module Build Artifacts
+module/
+
+# AI Assistant Configuration and Data - Selective Inclusion
+.claude
+.codacity/*
+
 # CI Artifacts
 archive
 artifacts
@@ -5,21 +12,16 @@ cov.xml
 coverage.xml
 testResults.xml
 
-# NuGet
+# .NET Build Artifacts
+**/DLLPickle.Build/bin/
+**/DLLPickle.Build/obj/
+
+# NuGet Packages
 *.nupkg
 packages/
 .nuget/
 
-# .NET build artifacts
-**/DLLPickle.Build/bin/
-**/DLLPickle.Build/obj/
-
-# Staged Module Output
-module/
-
-
-
-### VisualStudioCode ###
+# VisualStudioCode and Visual Studio Artifacts
 .vs/
 .vscode/*
 !.vscode/settings.json
@@ -28,13 +30,7 @@ module/
 !.vscode/extensions.json
 !.vscode/*.code-snippets
 
-### AI ###
-.claude
-.codacity/*
-
-
-
-### OS ###
+# OS Generated Files
 Thumbs.db
 .DS_Store
 .DS_Store?
