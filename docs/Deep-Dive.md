@@ -50,6 +50,29 @@ To improve reliability, the loader:
 This approach reduces transient first-pass load failures while keeping behavior
 predictable and diagnosable.
 
+## The inspection helpers (and Windows PowerShell 5.1)
+
+`Import-DPLibrary` is the *automated* fix, and it needs PowerShell 7.4+ / .NET 8
+because it depends on `AssemblyLoadContext`. But DLLPickle also ships a set of
+**inspection helpers** that are deliberately cross-edition:
+
+- `Find-DLLInPSModulePath` — find DLLs across the installed module paths
+  (including the Windows PowerShell roots), filtered by product metadata.
+- `Get-ModulesWithDependency` — list installed modules that package a given
+  dependency DLL.
+- `Get-ModulesWithVersionSortedIdentityClient` — compare modules by the
+  `Microsoft.Identity.Client.dll` version they ship.
+- `Get-ModuleImportCandidate` — show which installed module version would import.
+- `Test-DPLibraryConflict` — report known-incompatible module pairs already loaded
+  in the current session.
+
+These exist so the project charter still helps environments the preloader cannot
+reach. A **Windows PowerShell 5.1** user who hits the same DLL conflict can run
+these helpers from a PowerShell 7.4+ session, see which installed module ships the
+newest identity DLL, and connect to that service *first* — the same "first one
+wins" idea, applied by hand. The automated preload is the convenience; the manual
+workaround is always available.
+
 ## Dependency Maintenance Automation
 
 DLLPickle's preload set must track both NuGet package releases and the DLLs that
@@ -62,11 +85,11 @@ The repository therefore includes an upstream compatibility policy and scheduled
 workflow:
 
 - `build/dependency-policy.json` declares monitored PSGallery modules, tracked
-  assembly families, exact pins, and blocked preload families.
+  assembly families, per-assembly version policies, and blocked preload families.
 - `tools/Get-DLLPickleUpstreamInventory.ps1` downloads and inventories the
   latest monitored modules.
 - `tools/Update-DLLPickleDependencyPins.ps1` compares the inventory with the
-  policy and applies safe candidate exact-pin updates.
+  policy and applies safe candidate pin updates (major-locked floating `N.*`, or an exact pin when a `maximumPackageVersion` cap applies).
 - `.github/workflows/Upstream-Compatibility.yml` runs the inventory and
   candidate update flow on a schedule or on demand.
 
@@ -99,10 +122,12 @@ preload is unnecessary on .NET 8.
 
 > **Windows PowerShell 5.1 caveat:** this module self-isolation relies on
 > `AssemblyLoadContext`, which only exists on .NET (Core) 5+. Windows PowerShell
-> 5.1 (.NET Framework 4.8) has no ALC, so modules cannot self-isolate there. If
-> net48 support is ever re-added, the Azure SDK stack would need to be preloaded
-> again for that target — see the re-introduction checklist in
-> [Architecture.md](Architecture.md).
+> 5.1 (.NET Framework 4.8) has no ALC, so modules cannot self-isolate there —
+> which is exactly why DLLPickle's automated preloader does not support 5.1 (use
+> the inspection helpers above for the manual path). Re-adding net48 is **out of
+> scope for the current major version**; if it were ever revisited, the Azure SDK
+> stack would have to be preloaded again, net48-only. The maintainer-facing
+> re-introduction checklist lives in [Architecture.md](Architecture.md) §10.
 
 ## Validated Base Profile
 

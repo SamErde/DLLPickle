@@ -18,6 +18,27 @@ repeatable diagnostics when Microsoft service modules load conflicting
 assemblies. The default tests use synthetic modules and do not require service
 credentials, VS Code, Azure Automation, or PSGallery module installation.
 
+## Supported runtime (and Windows PowerShell 5.1)
+
+The automated fix — `Import-DPLibrary` and `Import-DPBaseProfile` — requires
+**PowerShell 7.4+ on .NET 8**. It relies on `AssemblyLoadContext`, which does not
+exist on .NET Framework 4.8, so it does not run on **Windows PowerShell 5.1**.
+
+If you are on Windows PowerShell 5.1 and hitting the same conflict, you can still
+use DLLPickle's **inspection helpers** to solve it manually. Run them from a
+PowerShell 7.4+ session — they scan the Windows PowerShell module roots too — to
+find which installed module ships the newest identity DLL, then connect to that
+service *first* (the "first one wins" workaround). For example:
+
+```powershell
+# Compare installed modules by the Microsoft.Identity.Client version they ship,
+# and see which copy would load first.
+Get-ModulesWithVersionSortedIdentityClient
+Get-ModuleImportCandidate
+```
+
+See [Architecture.md](Architecture.md) §1.2 for the full platform-support contract.
+
 ## Run the safe issue repro tests
 
 The safe repro task prepares the built module output and runs integration tests
@@ -64,6 +85,32 @@ Compare-DLLPickleScenarioResult -BaselinePath .\before.json -CandidatePath .\aft
 
 The comparison shows changed step outcomes and final loaded assembly
 differences by name, version, and location.
+
+## Common loader errors
+
+### `Binary directory not found for target framework 'net8.0'`
+
+`Import-DPLibrary` loads the bundled assemblies from the module's `bin/net8.0`
+folder and throws this error if that folder is missing:
+
+```text
+Binary directory not found for target framework 'net8.0' at: <path>\bin\net8.0
+```
+
+This usually means the installed module is incomplete, or you are importing from a
+source tree that has not been built (the `bin/net8.0` output is generated, not
+committed). Re-install the module from the PowerShell Gallery:
+
+```powershell
+Install-PSResource -Name DLLPickle   # or: Install-Module DLLPickle -Scope CurrentUser
+```
+
+If you are working from a clone, build the module output first and import that:
+
+```powershell
+Invoke-Build -Task Build -File .\build\DLLPickle.Build.ps1
+Import-Module .\module\DLLPickle\DLLPickle.psd1
+```
 
 ## Current issue-specific findings
 

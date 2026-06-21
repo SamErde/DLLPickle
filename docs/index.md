@@ -37,7 +37,11 @@ For more information about how this works, [read here](https://raw.githubusercon
 
 ### Prerequisites
 
-PowerShell 7.4 or later on Linux, macOS, or Windows.
+PowerShell 7.4 or later on Linux, macOS, or Windows for the automated preload
+(`Import-DPLibrary`). The inspection helpers — for diagnosing conflicts and
+guiding a manual fix, including across Windows PowerShell 5.1 module installs —
+are cross-edition. See the [Deep Dive](Deep-Dive.md) and
+[Architecture](Architecture.md) for the full platform-support contract.
 
 ### Installation
 
