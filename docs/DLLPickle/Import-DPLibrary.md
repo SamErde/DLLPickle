@@ -33,12 +33,10 @@ DLLs are loaded from:
 The latest versions of all dependencies are automatically imported, providing
 backwards compatibility and avoiding version conflicts.
 
-Import-DPLibrary uses dependency-graph-based load ordering, a local assembly
-resolution fallback, and retry logic to reduce transient assembly load failures
-This approach derives dependency-first ordering from local assembly metadata,
-appends unresolved graph nodes deterministically in alphabetical order, and
-resolves same-name assemblies from the module's local bin folder when .NET
-runtime probing does not resolve them on the first pass.
+Import-DPLibrary uses dependency-graph-based load ordering and retry logic to
+reduce transient assembly load failures. This approach derives dependency-first
+ordering from local assembly metadata and appends unresolved graph nodes
+deterministically in alphabetical order.
 
 If an assembly still fails due to unresolved transitive dependencies or platform limitations,
 Import-DPLibrary retries the failed assembly set and returns detailed diagnostics for

@@ -17,11 +17,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Dependabot auto-approval now rejects any PR containing files outside the NuGet project/lock-file allow-list.
 - Upstream inventory capture now resolves every monitored module version before downloading any module, so the resulting inventory is an atomic version snapshot.
 - The issue #239 conflict baseline now records the full version- and contributor-aware surface. Adjudication against the latest monitored modules confirmed that classifications and the bundled set are unchanged.
+- Automatic future-load conflict watching has been removed. `Import-DPLibrary` still warns once for known conflicts that are already loaded; run `Test-DPLibraryConflict` after later module imports for the reliable on-demand check.
 
 ### Fixed
 
 - `Compare-DLLPickleConflictMatrix.ps1` now treats version, contributor, removed-conflict, and ALC changes consistently with the version-aware fingerprint gate.
 - Runtime ALC snapshots support strict adjudication mode, where module-import and probe-command failures are fatal instead of producing partial evidence.
+- `Import-DPLibrary` no longer registers PowerShell script blocks as CLR `AssemblyResolve` or `AssemblyLoad` event handlers. Those events can run on threads without a PowerShell runspace and terminate the process with `PSInvalidOperationException` (#242).
+- Dependency loading now relies on the supported-runtime dependency graph, deterministic fallback ordering, and retries. Synthetic transitive-dependency coverage confirmed that the legacy Windows PowerShell 5.1 resolver is not required on PowerShell 7.4+ / .NET 8.
 
 ## [2.2.0] - 2026-06-02
 
