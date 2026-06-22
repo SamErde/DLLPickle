@@ -208,6 +208,31 @@ jobs:
           }
           Write-Host "Upstream conflict surface unchanged (fingerprint '$fingerprint'); the recorded preload/block baseline still holds. (Bundle correctness is validated separately by the Build Module workflow.)"
 
+      - name: Validate preload TFM alignment (Step 0b)
+        if: needs.pr-changes.outputs.live_validation == 'true'
+        shell: pwsh
+        run: |
+          # docs/Architecture.md section 8.2 Step 0(b): when a PR changes the bundled dependency set
+          # (csproj / packages.lock.json), prove each preload package ships a portable net8.0/
+          # netstandard2.0 asset before it can be auto-merged. This runs on the PR gate that
+          # Dependabot auto-merge waits on, so a bundle bump cannot merge on 0a (Build gate) alone.
+          $ErrorActionPreference = 'Stop'
+          dotnet restore ./src/DLLPickle.Build/DLLPickle.csproj --locked-mode
+          $report = ./tools/Test-DLLPickleTfmAlignment.ps1 `
+            -PolicyPath ./build/dependency-policy.json `
+            -LockFilePath ./src/DLLPickle.Build/packages.lock.json `
+            -OutputPath ./artifacts/upstreamCompatibility/tfm-alignment.json `
+            -Strict
+          @(
+            '# Preload TFM alignment (net8.0)'
+            ''
+            "- Aligned: ``$($report.IsAligned)``"
+            ''
+            '| Package | Version | Aligned | Compatible assets |'
+            '| --- | --- | --- | --- |'
+            ($report.Packages | ForEach-Object { "| $($_.PackageName) | $($_.ResolvedVersion) | $($_.IsAligned) | $((@($_.CompatibleAssets) -join ', ')) |" })
+          ) | Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Encoding utf8
+
       - name: Upload PR upstream compatibility evidence
         if: ${{ always() && needs.pr-changes.outputs.live_validation == 'true' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -217,6 +242,7 @@ jobs:
             ./artifacts/upstreamCompatibility/upstream-inventory.json
             ./artifacts/upstreamCompatibility/conflict-matrix.json
             ./artifacts/upstreamCompatibility/comparison-report.json
+            ./artifacts/upstreamCompatibility/tfm-alignment.json
           if-no-files-found: warn
           retention-days: 14
 
