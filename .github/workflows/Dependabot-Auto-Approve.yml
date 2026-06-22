@@ -1,5 +1,5 @@
 # Auto-approves and auto-merges Dependabot pull requests that update the NuGet packages in src/DLLPickle.Build (patch/minor only).
-# Major updates are left for manual review with an explanatory comment.
+# Major updates are converted to a draft PR with detailed review notes (decision 4 / docs/Architecture.md section 8.2) -- never auto-merged or auto-published.
 #
 # Requirements:
 #
@@ -121,7 +121,7 @@ jobs:
           gh pr review --approve "$PR_URL" --body "✅ Auto-approved: NuGet ${UPDATE_TYPE} update"
           gh pr merge --auto --squash "$PR_URL"
 
-      - name: 💬 Comment on major version updates
+      - name: 📝 Convert major version updates to a reviewed draft PR
         if: |
           steps.nuget_check.outputs.is_exact_nuget_update == 'true' &&
           steps.metadata.outputs.update-type == 'version-update:semver-major'
@@ -129,18 +129,53 @@ jobs:
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
           UPDATE_TYPE: ${{ steps.metadata.outputs.update-type }}
+          DEP_NAMES: ${{ steps.metadata.outputs.dependency-names }}
+          PREV_VERSION: ${{ steps.metadata.outputs.previous-version }}
+          NEW_VERSION: ${{ steps.metadata.outputs.new-version }}
           GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}
         run: |
           set -euo pipefail
-          echo "⏭️ Skipping major version update - requires manual review"
-          gh pr comment "$PR_URL" --body "🔔 **Major version update detected**
+          echo "⏭️ Major version update: converting to a reviewed draft (no auto-merge, no auto-publish)."
 
-          This PR updates one or more NuGet packages to a new major version, which may include breaking changes.
+          # Decision 4 (docs/Architecture.md section 8.2): a major upstream bump is still fully tested,
+          # but it lands as a DRAFT PR with detailed notes rather than auto-merging. A maintainer
+          # promotes it to ready and merges after sign-off; the merge then publishes a MAJOR module
+          # release (carry the squash commit as `breaking:`).
+          gh pr ready --undo "$PR_URL"
 
-          **Action Required:** Manual review and approval is required before merging.
+          # Build a real NuGet package link from the first reported dependency (no fabricated changelog URL).
+          FIRST_DEP="$(printf '%s' "${DEP_NAMES:-}" | head -n1 | cut -d',' -f1 | tr -d ' ')"
+          if [ -n "$FIRST_DEP" ]; then
+            NUGET_LINK="https://www.nuget.org/packages/${FIRST_DEP}"
+          else
+            NUGET_LINK="(package name unavailable from Dependabot metadata)"
+          fi
 
-          - Review the package changelog for breaking changes
-          - Test the build and functionality locally
-          - Approve and merge manually when ready
+          gh pr comment "$PR_URL" --body "🔔 **Major dependency update — draft for review (not auto-merged, not auto-published)**
 
-          Package update type: \`${UPDATE_TYPE}\`"
+          Per the tracked-dependency release contract (decision 4 / \`docs/Architecture.md\` §8.2), a major upstream bump is fully tested but lands as a **draft PR** with detailed notes. A maintainer promotes it to *ready* and merges after sign-off; the merge then publishes a **major** module release (carry the squash commit as \`breaking:\`).
+
+          **Dependencies:** \`${DEP_NAMES:-unknown}\`
+
+          **Version change:** \`${PREV_VERSION:-unknown}\` → \`${NEW_VERSION:-unknown}\`
+
+          **Update type:** \`${UPDATE_TYPE}\`
+
+          **Package:** ${NUGET_LINK} — see the package's Release Notes / changelog for breaking changes.
+
+          **TFM alignment (§8.2 Step 0)**
+
+          - 0a — Build gate: restore/build/test green on \`net8.0\` under \`--locked-mode\`. See the Checks tab: ${PR_URL}/checks
+          - 0b — explicit net8.0/netstandard2.0 asset inspection: run \`tools/Test-DLLPickleTfmAlignment.ps1\` against the bumped package(s); the scheduled Upstream-Compatibility candidate flow runs this fail-closed.
+
+          **Pester / CI:** ${PR_URL}/checks
+
+          **Conflict surface / policy impact:** a major upstream jump can move the conflict surface. Re-check the Upstream-Compatibility drift gate and re-adjudicate \`build/dependency-policy.json\` (classification + evidence + baseline) per §3 if it moved.
+
+          **Maintainer checklist (complete before marking ready)**
+
+          - [ ] Re-adjudicate the §3 preload/block classifications for the bumped package(s).
+          - [ ] Confirm TFM alignment: 0a (Build gate green) and 0b (\`Test-DLLPickleTfmAlignment.ps1\`).
+          - [ ] Refresh the \`build/dependency-policy.json\` baseline if the conflict surface moved.
+          - [ ] Auth-tier real-environment sign-off per §9 (the 2.0.1 precedent) for any bundled-set change.
+          - [ ] Merge carrying a \`breaking:\` prefix so the release publishes a **major** module version."
