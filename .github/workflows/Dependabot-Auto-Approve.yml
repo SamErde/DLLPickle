@@ -178,4 +178,4 @@ jobs:
           - [ ] Confirm TFM alignment: 0a (Build gate green) and 0b (\`Test-DLLPickleTfmAlignment.ps1\`).
           - [ ] Refresh the \`build/dependency-policy.json\` baseline if the conflict surface moved.
           - [ ] Auth-tier real-environment sign-off per §9 (the 2.0.1 precedent) for any bundled-set change.
-          - [ ] Merge carrying a \`breaking:\` prefix so the release publishes a **major** module version."
+          - [ ] Merge carrying a \`breaking:\` prefix so the release publishes a **major** module version. ⚠️ The default squash subject is Dependabot's \`deps:\` commit message, which \`Get-VersionBump.ps1\` maps to a **minor** bump — edit the squash commit subject to \`breaking:\` before confirming the merge, or the release will publish the wrong (minor) version."
