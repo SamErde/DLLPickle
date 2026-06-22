@@ -16,7 +16,11 @@ BeforeAll {
 
             [switch]$NoLibFolder,
 
-            [switch]$FlatLib
+            [switch]$FlatLib,
+
+            [Parameter()]
+            [AllowEmptyCollection()]
+            [string[]]$PlaceholderFramework = @()
         )
 
         $Root = Join-Path $TestDrive ([System.Guid]::NewGuid().ToString('n'))
@@ -33,6 +37,12 @@ BeforeAll {
                     $TfmDirectory = Join-Path $LibDirectory $Tfm
                     $null = New-Item -Path $TfmDirectory -ItemType Directory -Force
                     Set-Content -LiteralPath (Join-Path $TfmDirectory "$PackageName.dll") -Value 'fixture' -Encoding utf8
+                }
+                # A placeholder framework folder ships only a NuGet `_._` marker (no assembly).
+                foreach ($Tfm in $PlaceholderFramework) {
+                    $TfmDirectory = Join-Path $LibDirectory $Tfm
+                    $null = New-Item -Path $TfmDirectory -ItemType Directory -Force
+                    Set-Content -LiteralPath (Join-Path $TfmDirectory '_._') -Value '' -Encoding utf8
                 }
             }
         }
@@ -88,7 +98,6 @@ Describe 'Test-DLLPickleTfmAlignment net8.0 compatibility decisions' -Tag 'Unit'
     It 'treats <Tfm> as net8.0-aligned' -ForEach @(
         @{ Tfm = 'net8.0' }
         @{ Tfm = 'net6.0' }
-        @{ Tfm = 'net8.0-windows' }
         @{ Tfm = 'netstandard2.0' }
         @{ Tfm = 'netstandard2.1' }
         @{ Tfm = 'netcoreapp3.1' }
@@ -104,6 +113,9 @@ Describe 'Test-DLLPickleTfmAlignment net8.0 compatibility decisions' -Tag 'Unit'
         @{ Tfm = 'net472' }
         @{ Tfm = 'net40' }
         @{ Tfm = 'net9.0' }
+        # OS-specific TFMs are not portable net8.0 assets (DLLPickle's bundle is portable net8.0).
+        @{ Tfm = 'net8.0-windows' }
+        @{ Tfm = 'net8.0-browser' }
         @{ Tfm = 'sl5-garbage' }
     ) {
         $Directory = Get-FixturePackageDirectory -LibFramework @($Tfm)
@@ -132,6 +144,20 @@ Describe 'Test-DLLPickleTfmAlignment package inspection' -Tag 'Unit' {
         $Result = & $script:ToolPath -PackageDirectory $Directory
         $Result.IsAligned | Should -BeFalse
         $Result.Reason | Should -Match 'lib'
+    }
+
+    It 'is not aligned when the only compatible TFM folder ships no assembly (NuGet placeholder)' {
+        $Directory = Get-FixturePackageDirectory -PlaceholderFramework @('net8.0')
+        $Result = & $script:ToolPath -PackageDirectory $Directory
+        $Result.IsAligned | Should -BeFalse
+    }
+
+    It 'ignores an empty compatible folder but stays aligned via a populated one' {
+        $Directory = Get-FixturePackageDirectory -LibFramework @('net8.0') -PlaceholderFramework @('net6.0')
+        $Result = & $script:ToolPath -PackageDirectory $Directory
+        $Result.IsAligned | Should -BeTrue
+        $Result.CompatibleAssets | Should -Contain 'net8.0'
+        $Result.CompatibleAssets | Should -Not -Contain 'net6.0'
     }
 }
 

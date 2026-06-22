@@ -96,8 +96,12 @@ function Test-DLLPickleTargetFrameworkCompatible {
         return $false
     }
 
-    # Reduce a platform-specific TFM (e.g. net8.0-windows) to its base moniker before parsing.
-    $Moniker = $Moniker.Split('-')[0]
+    # Reject OS-specific TFMs (e.g. net8.0-windows, net8.0-browser, net8.0-android). DLLPickle's
+    # bundle is validated as a PORTABLE net8.0 asset across Windows/Linux/macOS, so a package that
+    # ships only an OS-specific asset has no portable asset to preload and is not Step 0b-aligned.
+    if ($Moniker.Contains('-')) {
+        return $false
+    }
 
     # .NET Standard (1.x-2.1): loadable on net8.0.
     if ($Moniker -match '^netstandard\d+\.\d+$') {
@@ -134,17 +138,24 @@ function Get-DLLPickleLibTargetFramework {
         return [PSCustomObject]@{ HasLib = $false; IsFlatLib = $false; TargetFrameworks = @() }
     }
 
-    $TfmDirectories = @(Get-ChildItem -LiteralPath $LibDirectory -Directory -ErrorAction SilentlyContinue)
-    if ($TfmDirectories.Count -eq 0) {
+    $AllSubdirectories = @(Get-ChildItem -LiteralPath $LibDirectory -Directory -ErrorAction SilentlyContinue)
+    if ($AllSubdirectories.Count -eq 0) {
         # Legacy flat lib/ layout: assemblies placed directly under lib/ apply to any target framework.
         $FlatAssemblies = @(Get-ChildItem -LiteralPath $LibDirectory -Filter '*.dll' -File -ErrorAction SilentlyContinue)
         return [PSCustomObject]@{ HasLib = $true; IsFlatLib = ($FlatAssemblies.Count -gt 0); TargetFrameworks = @() }
     }
 
+    # Only count a TFM folder as an available asset if it actually contains an assembly. An empty
+    # folder or a NuGet `_._` placeholder is "compatible" to NuGet but ships nothing for DLLPickle
+    # to preload, so it must not satisfy Step 0b.
+    $PopulatedTfmDirectories = @($AllSubdirectories | Where-Object {
+            @(Get-ChildItem -LiteralPath $_.FullName -Filter '*.dll' -File -ErrorAction SilentlyContinue).Count -gt 0
+        })
+
     [PSCustomObject]@{
         HasLib           = $true
         IsFlatLib        = $false
-        TargetFrameworks = @($TfmDirectories | ForEach-Object { $_.Name })
+        TargetFrameworks = @($PopulatedTfmDirectories | ForEach-Object { $_.Name })
     }
 }
 
