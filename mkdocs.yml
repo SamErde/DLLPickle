@@ -98,6 +98,6 @@ theme:
 nav:
   - Home: index.md
   - Architecture: Architecture.md
-  - Deep Dive: DeepDive.md
-  - Dependencies: Dependencies.md
+  - Deep Dive: Deep-Dive.md
+  - Dependencies: DEPENDENCIES.md
   - Troubleshooting: Troubleshooting.md
