@@ -97,5 +97,7 @@ theme:
 
 nav:
   - Home: index.md
+  - Architecture: docs/Architecture.md
+  - Deep Dive: docs/DeepDive.md
+  - Dependencies: docs/Dependencies.md
   - Troubleshooting: Troubleshooting.md
-  - Change Log: https://raw.githubusercontent.com/SamErde/DLLPickle/main/CHANGELOG.md
