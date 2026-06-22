@@ -10,20 +10,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Working on updates to replace PlatyPS documentation creation with the new Microsoft.PowerShell.PlatyPS module. (PRs and other help would be welcomed!)
 
+## [2.2.2] - 2026-06-22
+
+> No functional PowerShell module behavior changes. This release hardens the dependency-update and release contract around the existing net8.0 module bundle.
+
 ### Added
 
 - `tools/Test-DLLPickleTfmAlignment.ps1` — the explicit net8.0/netstandard2.0 TFM-alignment inspection (Architecture §8.2 Step 0b): it inspects each preload package's `lib/<tfm>/` assets and runs fail-closed in the scheduled Upstream-Compatibility candidate flow, complementing the `Build gate`.
 
 ### Changed
 
-- The upstream-compatibility required check is now an always-reported aggregate. Policy, dependency, and fingerprint-generator changes run a live freshness check, while deterministic guardrail changes can be repaired without accepting a stale baseline.
+- The upstream-compatibility required check now distinguishes live freshness checks from deterministic guardrail changes, so workflow-only fixes can merge without pretending to refresh a stale conflict baseline.
+- Dependabot's NuGet `deps:` commit prefix now publishes a **minor** module release: `Get-VersionBump.ps1` recognizes `deps:` as a minor release prefix, so an auto-merged minor/patch dependency bump fires the version gate on its own (decisions 3 & 4 / Architecture §8).
+- Major dependency PRs are now converted to reviewed **draft PRs** with structured notes (version delta, NuGet link, TFM-alignment references, Build gate / CI links, conflict-surface / `dependency-policy.json` impact, and a maintainer checklist) instead of a generic comment; they stay excluded from auto-merge and auto-publish (decision 4).
+
+### Internal
+
+- Renormalize tracked files to a consistent LF-in-repo policy without changing module behavior.
+
+## [2.2.1] - 2026-06-20
+
+> Removes unsafe runtime assembly event callbacks, hardens the conflict-surface adjudication path, and records the refreshed issue #239 baseline.
+
+### Changed
+
 - Scheduled conflict-surface monitoring now runs daily, publishes compact JSON evidence and a job summary, and reports the exact monitored module versions.
 - Dependabot auto-approval now rejects any PR containing files outside the NuGet project/lock-file allow-list.
 - Upstream inventory capture now resolves every monitored module version before downloading any module, so the resulting inventory is an atomic version snapshot.
 - The issue #239 conflict baseline now records the full version- and contributor-aware surface. Adjudication against the latest monitored modules confirmed that classifications and the bundled set are unchanged.
 - Automatic future-load conflict watching has been removed. `Import-DPLibrary` still warns once for known conflicts that are already loaded; run `Test-DPLibraryConflict` after later module imports for the reliable on-demand check.
-- Dependabot's NuGet `deps:` commit prefix now publishes a **minor** module release: `Get-VersionBump.ps1` recognizes `deps:` as a minor release prefix, so an auto-merged minor/patch dependency bump fires the version gate on its own (decisions 3 & 4 / Architecture §8).
-- Major dependency PRs are now converted to a reviewed **draft PR** with structured notes (version delta, NuGet link, TFM-alignment references, Build gate / CI links, conflict-surface / `dependency-policy.json` impact, and a maintainer checklist) instead of a generic comment; they stay excluded from auto-merge and auto-publish (decision 4).
 
 ### Fixed
 
@@ -31,13 +46,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Runtime ALC snapshots support strict adjudication mode, where module-import and probe-command failures are fatal instead of producing partial evidence.
 - `Import-DPLibrary` no longer registers PowerShell script blocks as CLR `AssemblyResolve` or `AssemblyLoad` event handlers. Those events can run on threads without a PowerShell runspace and terminate the process with `PSInvalidOperationException` (#242).
 - Dependency loading now relies on the supported-runtime dependency graph, deterministic fallback ordering, and retries. Synthetic transitive-dependency coverage confirmed that the legacy Windows PowerShell 5.1 resolver is not required on PowerShell 7.4+ / .NET 8.
-
-### Documentation
-
-- Refreshed `docs/Architecture.md` and the runtime/dependency docs around the core design decisions. Made the **two-tier platform-support contract** explicit: the automated `Import-DPLibrary` / `Import-DPBaseProfile` preloader is **PowerShell 7.4+ / .NET 8 only**, while the inspection/diagnostic helpers are **cross-edition by design** so they can guide a *manual* fix for Windows PowerShell 5.1 users.
-- Added a **Release & dependency-update contract** section (Architecture §8) covering the publish trigger (bundle-path gate **and** Conventional-Commit version gate) and the intended dependency lifecycle: minor/patch → TFM-aligned + tested + merged with a detailed comment → **minor** release; major → tested **draft PR with fully detailed notes**, not auto-merged or auto-published.
-- Corrected `docs/DEPENDENCIES.md`: the MSAL / IdentityModel families use **major-locked floating** references (`N.*`) with `packages.lock.json` pinning the resolved version — not the exact pins previously documented.
-- Closed the three recorded automation gaps so the implementation matches the documented contract (Architecture §8 / §10): `deps → minor` publishing in `Get-VersionBump.ps1`, the major-version draft-PR flow with structured notes in `Dependabot-Auto-Approve.yml`, and the explicit TFM-alignment inspection (`tools/Test-DLLPickleTfmAlignment.ps1`) wired fail-closed into the Upstream-Compatibility candidate flow. Each is covered by unit/guardrail tests; no bundle path changed, so this revision does not itself publish a new module version.
 
 ## [2.2.0] - 2026-06-02
 
@@ -349,11 +357,13 @@ System.IdentityModel.Tokens.Jwt: 0.0.0 → 8.14.0
 
 This release includes new packages related to the Microsoft Identity libraries.
 
-Full Changelog: [v0.2.5...v0.2.6](https://github.com/SamErde/DLLPickle/compare/v0.2.1...v0.2.6)
+Full Changelog: [v0.2.5...v0.2.6](https://github.com/SamErde/DLLPickle/compare/v0.2.5...v0.2.6)
 
 - Initial release.
 
-[Unreleased]: https://github.com/SamErde/DLLPickle/compare/v2.2.0...HEAD
+[Unreleased]: https://github.com/SamErde/DLLPickle/compare/v2.2.2...HEAD
+[2.2.2]: https://github.com/SamErde/DLLPickle/tag/v2.2.2
+[2.2.1]: https://github.com/SamErde/DLLPickle/tag/v2.2.1
 [2.2.0]: https://github.com/SamErde/DLLPickle/tag/v2.2.0
 [2.1.2]: https://github.com/SamErde/DLLPickle/tag/v2.1.2
 [2.1.1]: https://github.com/SamErde/DLLPickle/tag/v2.1.1
