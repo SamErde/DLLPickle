@@ -17,7 +17,7 @@ PowerShell 7.4+ / .NET 8 because it depends on `AssemblyLoadContext`. The
 intentionally cross-edition — they scan the Windows PowerShell module roots too,
 so a Windows PowerShell 5.1 user can still discover which module to load first and
 apply the conflict workaround manually. See
-[docs/Architecture.md](docs/Architecture.md) §1.2 for the full platform-support
+[Architecture.md](Architecture.md) §1.2 for the full platform-support
 contract.
 
 ## Purpose
@@ -27,7 +27,7 @@ libraries to resolve DLL version conflicts in mixed-module PowerShell sessions.
 This is a core feature, not a bug: we want the newest compatible versions
 loaded first.
 
-For usage guidance, see [README.md](README.md) and [docs/index.md](docs/index.md).
+For usage guidance, see [README.md](../README.md) and [docs/index.md](index.md).
 
 ## Dependency Management Strategy
 
@@ -52,7 +52,7 @@ version jump decide how it ships:
 > auto-merged or auto-published) and merged carrying a `breaking:` prefix; an
 > explicit TFM-alignment check (`tools/Test-DLLPickleTfmAlignment.ps1`) runs
 > fail-closed in the candidate flow. See
-> [docs/Architecture.md](docs/Architecture.md) §8.2.
+> [Architecture.md](Architecture.md) §8.2.
 
 The automation that supports this: Dependabot opens NuGet update PRs; the
 **Dependabot-Auto-Approve** workflow auto-approves and squash-merges patch/minor
@@ -68,7 +68,7 @@ DLLPickle follows [Semantic Versioning](https://semver.org/) (`MAJOR.MINOR.PATCH
 Releases are cut automatically by the **Release-and-Publish** workflow, which
 derives the bump **solely from the [Conventional Commit](https://www.conventionalcommits.org/)
 prefixes** of the commits since the last tag (see
-[`.github/ci-scripts/Get-VersionBump.ps1`](.github/ci-scripts/Get-VersionBump.ps1)):
+[`../.github/ci-scripts/Get-VersionBump.ps1`](../.github/ci-scripts/Get-VersionBump.ps1)):
 
 | Bump | Commit prefix |
 | ---- | ------------- |
@@ -82,13 +82,13 @@ identity-library bumps that are the module's core purpose land as `deps:`
 (Dependabot's NuGet prefix), which `Get-VersionBump.ps1` maps to a **minor**
 release, so an auto-merged minor/patch bump produces a minor release on its own.
 A bundled-library **major** jump is reviewed as a draft PR and merged carrying a
-`breaking:` prefix. See [docs/Architecture.md](docs/Architecture.md) §8.2 for the
+`breaking:` prefix. See [Architecture.md](Architecture.md) §8.2 for the
 full lifecycle.
 
 A new PowerShell Gallery version is published **only** when a change affects the
 published module bundle (`src/DLLPickle/**` or the bundled package set). CI-,
 docs-, policy-, and tooling-only changes do not trigger a release. See
-[CHANGELOG.md](CHANGELOG.md) for the released history.
+[CHANGELOG.md](../CHANGELOG.md) for the released history.
 
 ## Upstream Compatibility Automation
 
