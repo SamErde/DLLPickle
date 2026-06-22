@@ -1,6 +1,24 @@
 # Line-ending policy for DLLPickle.
 #
-# Markdown documentation is authored and reviewed on Windows; normalize it so the
-# repository blob is LF and the working tree is CRLF on every platform. This keeps
-# future edits from producing spurious CRLF/LF churn in diffs.
-*.md text eol=crlf
+# Goal: every text file is stored in the repository with LF blobs so diffs stay
+# clean and consistent across platforms, while Windows-authored source and docs
+# check out with CRLF working-tree endings. Normalizing here prevents the
+# spurious CRLF/LF (and mixed-ending) churn that otherwise leaks into diffs.
+
+# Baseline: let Git detect text vs. binary and normalize all text blobs to LF.
+* text=auto
+
+# Windows-authored content: force CRLF in the working tree on every platform so
+# editors, PSScriptAnalyzer, and signing behave identically regardless of each
+# contributor's core.autocrlf setting.
+*.md     text eol=crlf
+*.ps1    text eol=crlf
+*.psm1   text eol=crlf
+*.psd1   text eol=crlf
+*.ps1xml text eol=crlf
+
+# Binary assets: never apply line-ending conversion.
+*.png binary
+*.mp4 binary
+*.zip binary
+*.cab binary
