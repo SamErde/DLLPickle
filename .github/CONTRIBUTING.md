@@ -68,5 +68,5 @@ Documentation updates are encouraged, especially when behavior or command surfac
 ## Additional Resources
 
 - [Project README](../README.md)
-- [Dependency policy](../DEPENDENCIES.md)
+- [Dependency policy](../docs/DEPENDENCIES.md)
 - [Security policy](../SECURITY.md)

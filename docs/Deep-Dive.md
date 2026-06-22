@@ -197,7 +197,7 @@ exclusion for environment-specific troubleshooting.
 
 - [Import-DPLibrary command help](DLLPickle/Import-DPLibrary.md)
 - [Module reference](DLLPickle.md)
-- [Dependency policy and compatibility notes](../DEPENDENCIES.md)
+- [Dependency policy and compatibility notes](DEPENDENCIES.md)
 
 ## Known limitation: Az.Storage + ExchangeOnlineManagement (issue #174)
 

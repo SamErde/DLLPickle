@@ -1,7 +1,7 @@
 <!-- markdownlint-disable MD013 MD024 -->
 # DLLPickle Architecture Blueprint
 
-> **Audience:** maintainers and **agentic workstreams**. This is the durable, living source of truth for how DLLPickle is built and why. Read it before changing the preload contract; update it after. For the point-in-time design rationale, see [the needs-analysis design spec](superpowers/specs/2026-05-31-dll-needs-analysis-design.md). For user-facing guidance, see [Deep-Dive.md](Deep-Dive.md) and [DEPENDENCIES.md](../DEPENDENCIES.md).
+> **Audience:** maintainers and **agentic workstreams**. This is the durable, living source of truth for how DLLPickle is built and why. Read it before changing the preload contract; update it after. For the point-in-time design rationale, see [the needs-analysis design spec](superpowers/specs/2026-05-31-dll-needs-analysis-design.md). For user-facing guidance, see [Deep-Dive.md](Deep-Dive.md) and [DEPENDENCIES.md](DEPENDENCIES.md).
 
 ## 1. What DLLPickle does
 
@@ -94,7 +94,7 @@ Every tracked assembly is classified into exactly one of:
 | When does a merged PR publish a new version? | §8.1 + `.github/workflows/Release-and-Publish.yml` + `.github/ci-scripts/Get-VersionBump.ps1` |
 | How is a dependency update adjudicated and shipped? | §8.2 + `build/dependency-policy.json` + `.github/workflows/Dependabot-Auto-Approve.yml` |
 | User guidance | `docs/Deep-Dive.md` |
-| Dependency/update policy | `DEPENDENCIES.md`, `.github/dependabot.yml` |
+| Dependency/update policy | `docs/DEPENDENCIES.md`, `.github/dependabot.yml` |
 | Design rationale (point-in-time) | `docs/superpowers/specs/2026-05-31-dll-needs-analysis-design.md` |
 | Architecture (living) | this file |
 

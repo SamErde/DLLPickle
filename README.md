@@ -68,7 +68,7 @@ Many PowerShell modules — Az, Exchange Online, Microsoft Graph, Teams, and mor
 
 DLL Pickle preloads a current, compatible set of these assemblies **first**, so the "first one wins" rule works in your favor and the modules you load afterward reuse what's already there. A new DLL Pickle release is published automatically whenever a new MSAL version ships — so keep it updated and load it first.
 
-For the full explanation (and the real-world issues that motivated it), read the [Deep Dive](docs/Deep-Dive.md). The supported platform is **PowerShell 7.4+ (Core, net8.0)**; compatibility, versioning, and dependency details live in [DEPENDENCIES.md](DEPENDENCIES.md).
+For the full explanation (and the real-world issues that motivated it), read the [Deep Dive](docs/Deep-Dive.md). The supported platform is **PowerShell 7.4+ (Core, net8.0)**; compatibility, versioning, and dependency details live in [DEPENDENCIES.md](docs/DEPENDENCIES.md).
 
 ## 📚 Documentation Map
 
@@ -78,6 +78,6 @@ For the full explanation (and the real-world issues that motivated it), read the
 - Full command reference: [docs/DLLPickle.md](docs/DLLPickle.md)
 - Changelog and active work: [CHANGELOG.md](CHANGELOG.md)
 - Architecture blueprint and planned enhancements: [docs/Architecture.md](docs/Architecture.md)
-- Dependency, versioning, and supply-chain policy: [DEPENDENCIES.md](DEPENDENCIES.md)
+- Dependency, versioning, and supply-chain policy: [DEPENDENCIES.md](docs/DEPENDENCIES.md)
 - Contribution workflow: [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md)
 - Security vulnerability reporting: [SECURITY.md](SECURITY.md)

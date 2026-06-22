@@ -168,7 +168,7 @@ Because closing these gaps makes the documented contract true, the §10 gap note
 - `docs/Architecture.md` §8.2 — drop the "must carry `feat:`" workaround caveat for routine
   bumps; note 0b is now enforced.
 - `docs/Architecture.md` §10 — mark the three gaps resolved (what implements each).
-- `DEPENDENCIES.md` and `CHANGELOG.md` — reflect `deps → minor`, the major draft-PR notes,
+- `docs/DEPENDENCIES.md` and `CHANGELOG.md` — reflect `deps → minor`, the major draft-PR notes,
   and the TFM-alignment tool.
 
 In-progress working-tree edits to these docs are diffed first so they are not clobbered.

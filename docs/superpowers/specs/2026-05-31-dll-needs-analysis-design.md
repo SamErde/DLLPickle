@@ -146,7 +146,7 @@ A durable, living document — **`docs/Architecture.md`** — distinct from this
 Required structure:
 
 - **Component map:** module source (`src/DLLPickle`), build project (`src/DLLPickle.Build`), the `Import-DPLibrary` loader, `dependency-policy.json`, the `tools/` inventory/analysis scripts, CI workflows, and the tag-driven release pipeline — each with its responsibility and authoritative file path.
-- **Source-of-truth map:** which file is authoritative for what (e.g., preload decision = `dependency-policy.json`; realization = `DLLPickle.csproj`; user guidance = `docs/Deep-Dive.md`; dependency policy/automation = `DEPENDENCIES.md`).
+- **Source-of-truth map:** which file is authoritative for what (e.g., preload decision = `dependency-policy.json`; realization = `DLLPickle.csproj`; user guidance = `docs/Deep-Dive.md`; dependency policy/automation = `docs/DEPENDENCIES.md`).
 - **Invariants (machine-checkable where possible):** e.g., *no assembly classified `block` may appear in `module/DLLPickle/bin`*; *the preloaded set ⟺ `dependency-policy.json` `preload` entries*; *Az private-ALC-owned assemblies are never preloaded*; *runtime-provided BCL assemblies are never preloaded*. Each invariant links to the test/CI gate that enforces it.
 - **Validation gates:** map each invariant to the test (`tests/`) or workflow check that verifies it, so an agent knows how to prove a change is safe.
 - **Workstream conventions for agents:** the standard change loop (update policy → regenerate inventory/matrix → run runtime probe → realize in csproj → validate → update blueprint), the hard gates (design approval before implementation; commit/push only when asked), and where new decisions get recorded.

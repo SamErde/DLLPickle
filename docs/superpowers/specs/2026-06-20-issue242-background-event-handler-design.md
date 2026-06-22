@@ -46,4 +46,3 @@ The fallback resolver, if required, must be a precompiled `net8.0` type. It must
 - A synthetic two-assembly dependency test proves dependency loading on the supported runtime.
 - A child-process test imports and exercises the module without `PSInvalidOperationException` or abnormal termination.
 - Analyzer, unit tests, issue reproduction integration tests, and the complete repository build pass.
-

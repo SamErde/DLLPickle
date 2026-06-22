@@ -20,5 +20,5 @@ Once we have either a) published a fix, or b) declined to address the vulnerabil
 
 ## Related Policies
 
-- Dependency and supply chain policy: [DEPENDENCIES.md](DEPENDENCIES.md)
+- Dependency and supply chain policy: [DEPENDENCIES.md](docs/DEPENDENCIES.md)
 - Contribution workflow and quality gates: [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md)
