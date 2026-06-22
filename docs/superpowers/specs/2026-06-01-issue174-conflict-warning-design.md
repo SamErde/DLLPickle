@@ -68,7 +68,7 @@ This catches every order automatically while arming only when both modules are i
 ## 7. Supporting items
 
 - **OData `blockedPreloadAssemblies` evidence:** add the cross-reference to the knownConflicts entry; keep `block`.
-- **Known-limitation doc:** a short section in `docs/Deep-Dive.md` (and/or `DEPENDENCIES.md`) describing the Az.Storage + EXO OData limitation and the separate-session workaround, linking #174.
+- **Known-limitation doc:** a short section in `docs/Deep-Dive.md` (and/or `docs/DEPENDENCIES.md`) describing the Az.Storage + EXO OData limitation and the separate-session workaround, linking #174.
 - **#174 synthetic test:** extend `tests/Integration/DLLPickle.Issue174.OData.Tests.ps1` to also assert the **EXO-first → Az.Storage import fails** order (the current test only covers Az.Storage-first), so both-orders-fail is the recorded characterization.
 - **#174 issue:** post the Phase 1 evidence + this resolution as a comment; **keep the issue open**.
 
