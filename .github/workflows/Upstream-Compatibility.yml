@@ -386,6 +386,36 @@ jobs:
           dotnet restore ./src/DLLPickle.Build/DLLPickle.csproj --locked-mode
           Invoke-Build -File ./build/DLLPickle.Build.ps1 -Task IssueReproTest
 
+      - name: Inspect preload TFM alignment (Step 0b)
+        if: steps.drift.outputs.drift != 'true'
+        shell: pwsh
+        run: |
+          # docs/Architecture.md section 8.2 Step 0(b): the explicit half of "TFM alignment". The
+          # Build gate (0a) proves restore+build green under --locked-mode; this proves each preload
+          # package actually ships a net8.0/netstandard2.0-compatible asset (not just transitive luck).
+          # The preceding --locked-mode restore populated the NuGet global-packages folder, so the
+          # tool can inspect each resolved package's lib/<tfm>/ assets. Fail-closed: a misaligned
+          # candidate must not proceed on the automated path.
+          $ErrorActionPreference = 'Stop'
+          $report = ./tools/Test-DLLPickleTfmAlignment.ps1 `
+            -PolicyPath ./build/dependency-policy.json `
+            -LockFilePath ./src/DLLPickle.Build/packages.lock.json `
+            -OutputPath ./artifacts/upstreamCompatibility/tfm-alignment.json
+          @(
+            '# Preload TFM alignment (net8.0)'
+            ''
+            "- Aligned: ``$($report.IsAligned)``"
+            ''
+            '| Package | Version | Aligned | Compatible assets |'
+            '| --- | --- | --- | --- |'
+            ($report.Packages | ForEach-Object { "| $($_.PackageName) | $($_.ResolvedVersion) | $($_.IsAligned) | $((@($_.CompatibleAssets) -join ', ')) |" })
+          ) | Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Encoding utf8
+          if (-not $report.IsAligned) {
+            Write-Host "::error::Preload TFM alignment failed for: $((@($report.Misaligned)) -join ', '). A candidate that fails the explicit net8.0/netstandard2.0 asset check (docs/Architecture.md section 8.2 Step 0b) must not proceed."
+            throw 'TFM alignment check failed; blocking candidate generation.'
+          }
+          Write-Host "Preload TFM alignment passed: every preload package ships a net8.0-compatible asset."
+
       - name: Detect generated changes
         if: steps.drift.outputs.drift != 'true'
         id: generated_changes
@@ -425,6 +455,7 @@ jobs:
             ./artifacts/upstreamCompatibility/conflict-matrix.json
             ./artifacts/upstreamCompatibility/comparison-report.json
             ./artifacts/upstreamCompatibility/candidate-report.json
+            ./artifacts/upstreamCompatibility/tfm-alignment.json
           if-no-files-found: warn
           retention-days: 30
 
