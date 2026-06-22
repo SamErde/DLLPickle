@@ -6,15 +6,15 @@
 
 ## Critical Dependency Files - Require Explicit Review
 
-These control what external packages get automatically imported and resolved:
+### These control what external packages get automatically imported and resolved
 
 /src/DLLPickle.Build/DLLPickle.csproj @SamErde
 /src/DLLPickle.Build/packages.lock.json @SamErde
 
 ## PowerShell Module Manifest - Controls Module Dependencies and Exports
 
-# Note: under tag-driven versioning the ModuleVersion in these files is a 0.0.0 placeholder; the
-# real release version is stamped from the Git tag at build time (see Release-and-Publish.yml).
+### Note: under tag-driven versioning the ModuleVersion in these files is a 0.0.0 placeholder; the real release version is stamped from the Git tag at build time (see Release-and-Publish.yml)
+
 /src/DLLPickle/DLLPickle.psd1 @SamErde
 /module/DLLPickle/DLLPickle.psd1 @SamErde
 
@@ -25,7 +25,7 @@ These control what external packages get automatically imported and resolved:
 ## Supply Chain Security Configuration
 
 /.github/dependabot.yml @SamErde
-/DEPENDENCIES.md @SamErde
+/docs/DEPENDENCIES.md @SamErde
 /SECURITY.md @SamErde
 
 ## Build System - Controls How Dependencies are Built and Tested
