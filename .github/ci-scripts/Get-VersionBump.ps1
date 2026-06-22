@@ -128,8 +128,12 @@ if (-not [string]::IsNullOrEmpty($ManualBump)) {
             $VersionBump = 'major'
             $ShouldRelease = $true
             break
-        } elseif ($Commit -match '^(feat|minor)(\(.+\))?:') {
-            # Check for features. Set as minor if not already major.
+        } elseif ($Commit -match '^(feat|minor|deps)(\(.+\))?:') {
+            # Check for features and tracked-dependency bumps. Set as minor if not already major.
+            # Dependabot's NuGet ecosystem commits a `deps:` prefix (.github/dependabot.yml); a routine
+            # tracked-dependency minor/patch bump is intended to publish a MINOR module release
+            # (deps -> minor, decision 4 / docs/Architecture.md section 8). A maintainer-promoted major
+            # dependency PR still carries `breaking:` and is handled by the major branch above.
             if ($VersionBump -ne 'major') {
                 $VersionBump = 'minor'
                 $ShouldRelease = $true

@@ -27,6 +27,11 @@ Describe 'Upstream compatibility workflow guardrails' -Tag 'Unit' {
         $UpstreamWorkflow | Should -Match 'GITHUB_STEP_SUMMARY'
         $UpstreamWorkflow | Should -Not -Match '(?m)^\s+path: \.\/artifacts\/upstreamCompatibility\s*$'
     }
+
+    It 'runs the explicit TFM-alignment check (Step 0b) in the candidate flow and uploads its report' {
+        $UpstreamWorkflow | Should -Match ([regex]::Escape('tools/Test-DLLPickleTfmAlignment.ps1'))
+        $UpstreamWorkflow | Should -Match ([regex]::Escape('tfm-alignment.json'))
+    }
 }
 
 Describe 'Dependabot auto-merge guardrails' -Tag 'Unit' {
@@ -39,5 +44,29 @@ Describe 'Dependabot auto-merge guardrails' -Tag 'Unit' {
         $DependabotWorkflow | Should -Match ([regex]::Escape('Build gate'))
         $DependabotWorkflow | Should -Match ([regex]::Escape('Validate upstream compatibility tooling'))
         $DependabotWorkflow | Should -Match ([regex]::Escape('dependency-review'))
+    }
+}
+
+Describe 'Dependabot major-version draft-PR flow' -Tag 'Unit' {
+    It 'converts a major-version PR to a draft for mandatory review' {
+        $DependabotWorkflow | Should -Match ([regex]::Escape('gh pr ready --undo'))
+    }
+
+    It 'gates the draft conversion on the major update type' {
+        $DependabotWorkflow | Should -Match ([regex]::Escape("update-type == 'version-update:semver-major'"))
+    }
+
+    It 'posts structured notes covering the version delta, TFM alignment, conflict surface, and a maintainer checklist' {
+        $DependabotWorkflow | Should -Match 'Version change'
+        $DependabotWorkflow | Should -Match 'TFM alignment'
+        $DependabotWorkflow | Should -Match ([regex]::Escape('Test-DLLPickleTfmAlignment.ps1'))
+        $DependabotWorkflow | Should -Match ([regex]::Escape('dependency-policy.json'))
+        $DependabotWorkflow | Should -Match 'Maintainer checklist'
+    }
+
+    It 'keeps major updates excluded from auto-merge' {
+        # Auto-merge is invoked exactly once -- in the patch/minor step, never on the major path.
+        ([regex]::Matches($DependabotWorkflow, [regex]::Escape('gh pr merge --auto'))).Count | Should -Be 1
+        $DependabotWorkflow | Should -Match ([regex]::Escape("update-type != 'version-update:semver-major'"))
     }
 }

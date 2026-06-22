@@ -33,30 +33,34 @@ For usage guidance, see [README.md](README.md) and [docs/index.md](docs/index.md
 
 Every tracked-dependency release is first checked for **target-framework
 alignment**: it must restore, build, and pass tests on `net8.0` under
-`--locked-mode`, and ship a net8.0-compatible assembly. Only then does the
-severity of the version jump decide how it ships:
+`--locked-mode`, and ship a net8.0/netstandard2.0-compatible assembly (verified
+by `tools/Test-DLLPickleTfmAlignment.ps1`). Only then does the severity of the
+version jump decide how it ships:
 
 | Update Type | Policy |
 | ----------- | ------ |
-| **Patch / Minor** (x.Y.Z) | After the TFM-alignment + test gate, approve and merge with a detailed PR comment. Identity-library bumps are the module's core deliverable, so they ship as a **minor** module release (`feat:`). |
+| **Patch / Minor** (x.Y.Z) | After the TFM-alignment + test gate, approve and merge with a detailed PR comment. Identity-library bumps are the module's core deliverable, so they ship as a **minor** module release — Dependabot's `deps:` commit is a recognized minor release prefix, so an auto-merged bump publishes a minor release on its own. |
 | **Major** (X.y.z) | Still fully tested and TFM-verified, with the conflict surface re-adjudicated, but opened as a **draft PR with fully detailed notes** — **not** auto-merged and **not** auto-published. A maintainer promotes and merges it, publishing a **major** release (`breaking:`). |
 | **Upstream PowerShell module drift** | Candidate PR or issue after the scheduled inventory + drift check. |
 
 > **Publish note.** A merged dependency PR publishes a new gallery version only
 > when its commit also carries a release-worthy Conventional Commit prefix (see
-> Versioning, below). Dependabot's NuGet commits use the `deps:` prefix, which is
-> **not** a release prefix, so an auto-merged bump does not publish on its own —
-> land identity-library bumps as `feat:` (minor) or `breaking:` (major). The
-> major-version *draft-PR-with-detailed-notes* flow and an explicit TFM-inspection
-> check are intended contract that is not yet fully automated; see
-> [docs/Architecture.md](docs/Architecture.md) §8.2 and §10.
+> Versioning, below). Dependabot's NuGet commits use the `deps:` prefix, which
+> `Get-VersionBump.ps1` recognizes as a **minor** release prefix, so an
+> auto-merged minor/patch bump publishes a **minor** release on its own. Major
+> dependency PRs are converted to a reviewed draft with detailed notes (not
+> auto-merged or auto-published) and merged carrying a `breaking:` prefix; an
+> explicit TFM-alignment check (`tools/Test-DLLPickleTfmAlignment.ps1`) runs
+> fail-closed in the candidate flow. See
+> [docs/Architecture.md](docs/Architecture.md) §8.2.
 
 The automation that supports this: Dependabot opens NuGet update PRs; the
 **Dependabot-Auto-Approve** workflow auto-approves and squash-merges patch/minor
 updates (restricted to the exact `DLLPickle.csproj` / `packages.lock.json`
 allow-list, and only after the `Build gate`, `Validate upstream compatibility
 tooling`, and `dependency-review` required checks pass) and excludes major
-updates from auto-merge.
+updates from auto-merge, converting them to a reviewed **draft PR** with detailed
+notes instead.
 
 ## Versioning
 
@@ -69,19 +73,17 @@ prefixes** of the commits since the last tag (see
 | Bump | Commit prefix |
 | ---- | ------------- |
 | **MAJOR** (`X.y.z`) | `BREAKING CHANGE:`, `breaking:`, or `major-release` |
-| **MINOR** (`x.Y.z`) | `feat:` (or `minor:`) |
+| **MINOR** (`x.Y.z`) | `feat:` (or `minor:`), and `deps:` (Dependabot's NuGet bumps) |
 | **PATCH** (`x.y.Z`) | `fix:`, `perf:`, `refactor:`, `security:`, or `chore:` |
 
 The bump is decided by the commit prefix alone — there is **no** separate
-detection of dependency or MSAL version changes. Label dependency-update PRs
-accordingly: the automated MSAL / identity-library bumps that are the module's
-core purpose should land as `feat:` so they produce a **minor** release, and a
-bundled-library **major** jump should be committed as a breaking change.
-Dependabot's NuGet PRs use the `deps:` prefix, which is **not** a release prefix,
-so this relabeling is a **manual step today** — a maintainer lands the squash
-commit as `feat:` / `breaking:`. See [docs/Architecture.md](docs/Architecture.md)
-§10 for the gap and the options to automate it (add `deps` to the recognized
-prefixes, or change the Dependabot commit prefix).
+detection of dependency or MSAL version changes. The automated MSAL /
+identity-library bumps that are the module's core purpose land as `deps:`
+(Dependabot's NuGet prefix), which `Get-VersionBump.ps1` maps to a **minor**
+release, so an auto-merged minor/patch bump produces a minor release on its own.
+A bundled-library **major** jump is reviewed as a draft PR and merged carrying a
+`breaking:` prefix. See [docs/Architecture.md](docs/Architecture.md) §8.2 for the
+full lifecycle.
 
 A new PowerShell Gallery version is published **only** when a change affects the
 published module bundle (`src/DLLPickle/**` or the bundled package set). CI-,
