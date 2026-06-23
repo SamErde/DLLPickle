@@ -1,7 +1,7 @@
 <!-- markdownlint-disable MD013 MD024 -->
 # DLLPickle Architecture Blueprint
 
-> **Audience:** maintainers and **agentic workstreams**. This is the durable, living source of truth for how DLLPickle is built and why. Read it before changing the preload contract; update it after. For the point-in-time design rationale, see [the needs-analysis design spec](superpowers/specs/2026-05-31-dll-needs-analysis-design.md). For user-facing guidance, see [Deep-Dive.md](Deep-Dive.md) and [DEPENDENCIES.md](DEPENDENCIES.md).
+> **Audience:** maintainers and **agentic workstreams**. This is the durable, living source of truth for how DLLPickle is built and why. Read it before changing the preload contract; update it after. For the point-in-time design rationale, see [the needs-analysis design spec](superpowers/specs/2026-05-31-dll-needs-analysis-design.md). For user-facing guidance, see [Deep-Dive.md](Deep-Dive.md) and [DEPENDENCIES.md](DEPENDENCIES.md). Open maintenance traps and follow-ups are tracked in the [gap register](gaps/README.md).
 
 ## 1. What DLLPickle does
 
@@ -82,6 +82,7 @@ Every tracked assembly is classified into exactly one of:
 | Release scripts | `.github/ci-scripts/Get-VersionBump.ps1` | Decides the semantic-version bump (and whether to release at all) from Conventional Commit prefixes since the last tag. The publish-decision logic behind §8.1. |
 | CI | `.github/workflows/` | Build/test matrix, Upstream-Compatibility (inventory + drift), Dependabot auto-approve, path+commit-gated `Release-and-Publish`. |
 | Build output | `module/DLLPickle/` | **Generated** (gitignored). Rebuilt by `PrepareModuleOutput`; never hand-edited. |
+| Gap register | `docs/gaps/` | Repo-local status tracking for maintenance traps, automation gaps, deferred follow-ups, and agent-resolvable work items. |
 
 ## 5. Source-of-truth map
 
@@ -93,6 +94,7 @@ Every tracked assembly is classified into exactly one of:
 | Which runtime/edition is supported? | §1.2 (platform-support contract) + `src/DLLPickle/DLLPickle.psd1` |
 | When does a merged PR publish a new version? | §8.1 + `.github/workflows/Release-and-Publish.yml` + `.github/ci-scripts/Get-VersionBump.ps1` |
 | How is a dependency update adjudicated and shipped? | §8.2 + `build/dependency-policy.json` + `.github/workflows/Dependabot-Auto-Approve.yml` |
+| What maintenance traps and follow-up gaps remain? | `docs/gaps/README.md` and the individual `docs/gaps/GAP-*.md` files |
 | User guidance | `docs/Deep-Dive.md` |
 | Dependency/update policy | `docs/DEPENDENCIES.md`, `.github/dependabot.yml` |
 | Design rationale (point-in-time) | `docs/superpowers/specs/2026-05-31-dll-needs-analysis-design.md` |
@@ -102,7 +104,7 @@ Every tracked assembly is classified into exactly one of:
 
 - **No `block` assembly appears in `module/DLLPickle/bin/net8.0`.** → `tests/Integration/DLLPickle.IntegrationTest.Tests.ps1` (Azure.Core guard + the #193 `Microsoft.Extensions.*` guard; extend per newly-blocked assembly).
 - **No preloaded assembly is loaded into two ALCs at once** in the four-module scenario. → integration ALC-split guard (runtime tier; maintainer-run with real modules).
-- **The bundled `preload` set equals `dependency-policy.json`'s `preload` entries.** → planned realization guard (Task A6); until then, verified by review.
+- **The bundled `preload` set equals `dependency-policy.json`'s `preload` entries.** → `tests/Integration/DependencyPolicyRealization.Tests.ps1` after GAP-001 / PR #257 merges; until then, verified by review.
 - **Runtime-provided BCL assemblies (e.g. `System.Text.Json`) are never preloaded.** → conflict-matrix `AlcOwner` = `Default`/runtime + the split guard.
 - **Analysis tooling is correct.** → `tests/Unit/ConflictMatrix.Tests.ps1`, `tests/Unit/ConflictMatrixDrift.Tests.ps1`.
 - **`tests/` and `tools/` stay analyzer-clean.** → `AnalyzeTests` / `AnalyzeTools` build tasks (throw on any finding; `tests/` excludes only `PSUseDeclaredVarsMoreThanAssignments`).
@@ -114,7 +116,7 @@ Every tracked assembly is classified into exactly one of:
 - **Runtime adjudication — non-auth tier (CI-capable):** strict per-module ALC snapshots (module/probe failures are fatal) + the four-module import/composition smoke.
 - **Runtime adjudication — auth tier (maintainer-run; future Stage 2b automatable via GitHub OIDC + Entra federated credential):** real `Connect-*` to a dev tenant. This is the sign-off for any change to the bundled set.
 - **Publish trigger:** `Release-and-Publish` publishes a merged PR only when it passes **both** the bundle-affecting **path gate** and the Conventional-Commit **version gate** — see §8.1 for the full contract (including how a Dependabot `deps:` commit maps to a **minor** release). CI-, policy-, docs-, test-, and tooling-only changes do **not** publish a new gallery version; `workflow_dispatch` is the deliberate-release escape hatch.
-- **Dependency PRs (Dependabot):** the bumped *bundle* is validated by **Build Module** (full build under `--locked-mode` + the #193/Azure.Core repro guards), bounded by the csproj floating-with-cap constraints. The Upstream-Compatibility `pr-smoke` adds an **upstream conflict-surface freshness check** — explicitly *not* a bundle validation, since a self-bump does not move the upstream fingerprint. See §8.2 for the full dependency lifecycle (the Dependabot `deps:` prefix now publishes a **minor** release). **Enforcement caveat:** these signals only block `gh pr merge --auto` if the build + Dependency Review checks are configured as **required status checks** (see §10).
+- **Dependency PRs (Dependabot):** the bumped *bundle* is validated by **Build Module** (full build under `--locked-mode` + the #193/Azure.Core repro guards), bounded by the csproj floating-with-cap constraints. The Upstream-Compatibility `pr-smoke` adds an upstream-latest freshness check for policy/tooling changes, and the scheduled candidate flow performs live inventory, drift detection, TFM alignment, and candidate PR generation.
 
 ## 8. Release & dependency-update contract
 
@@ -169,6 +171,7 @@ When changing the preload contract, follow this loop:
 5. **Realize** in `DLLPickle.csproj` (preload = bundled reference; block = excluded, incl. `ExcludeAssets` for blocked transitives), regenerate `packages.lock.json`.
 6. **Validate** (non-auth gates always; auth tier for any bundled-set change).
 7. **Update this blueprint** if the contract or invariants changed.
+8. **Update the gap register** if the work opens, advances, resolves, blocks, supersedes, or intentionally accepts a tracked gap.
 
 The baseline is a reproducible snapshot, not just a hash: `baseline.conflictSurface` stores every diverging assembly's `name`, sorted `versions`, and sorted `shippedBy` contributors alongside the module versions and fingerprint. Baseline refreshes must resolve all monitored versions before downloading any module, then prove that the stored rows recompute to the recorded fingerprint. Version-only moves are material drift and require adjudication; they do not pass silently.
 
@@ -180,16 +183,29 @@ Issue #239 was adjudicated on 2026-06-20 against Microsoft.Graph.Authentication 
 - Changes to the **bundled set** are behavior-changing and require the auth-tier real-environment sign-off before merge (the 2.0.1 precedent). They are **not** auto-merged.
 - Commit/push only when the maintainer asks.
 - Never hand-edit `module/` (generated). Never weaken analyzer settings to silence a finding — fix the code or scope a justified suppression.
+- Do not mark a `docs/gaps/GAP-*.md` item `resolved` unless the implementation, tests or explicit test rationale, and documentation updates are complete and linked.
 
 ## 10. Known gaps / follow-ups
 
-- **Required status checks.** The "Protect Main" ruleset enforces a PR (with review-thread resolution), Copilot review, code quality, and three required status checks: **`Build gate`**, **`Validate upstream compatibility tooling`**, and **`dependency-review`**. `Validate upstream compatibility tooling` is the always-reported aggregate over changed-file detection and the conditional Windows validation worker; policy, dependency, and fingerprint-generator changes also run a fresh live inventory. Keep the workflows triggered on every PR and condition jobs internally—workflow-level path filters can leave required checks pending. Dependabot auto-merge is restricted to the exact csproj/lock-file allow-list and waits on all three contexts.
+Detailed status for open and in-progress maintenance traps is tracked in the [gap register](gaps/README.md). Keep this section focused on architecture context; keep item state, checklists, and resolution links in the individual gap files.
+
+| Gap | Status | Architecture note |
+| --- | --- | --- |
+| [GAP-001](gaps/GAP-001-dependency-policy-realization-guard.md) | in-progress | Adds the executable realization guard for policy/csproj/built-output drift. |
+| [GAP-002](gaps/GAP-002-az-resources-monitoring.md) | open | `Az.Resources` is the observed #193 collision source but is not currently in `monitoredModules`. |
+| [GAP-003](gaps/GAP-003-exo-teams-probe-commands.md) | open | EXO/Teams ALC ownership is not yet captured because bare `Import-Module` does not eagerly load their identity assemblies. |
+| [GAP-004](gaps/GAP-004-vscode-powershelleditorservices-host.md) | open | VS Code / PowerShellEditorServices host behavior is not yet modeled for issue #169. |
+| [GAP-005](gaps/GAP-005-odata-conflict-expectation-management.md) | open | OData/#174 remains a known unsolved single-process incompatibility; guard expectations and user docs must stay current. |
+| [GAP-006](gaps/GAP-006-release-dispatch-process-trap.md) | open | Packaging/release-logic changes may require deliberate `workflow_dispatch` because non-bundle paths do not auto-publish. |
+| [GAP-007](gaps/GAP-007-required-status-check-ruleset-audit.md) | open | Required status-check ruleset configuration lives partly outside the repository and needs an auditable repo-local snapshot or procedure. |
+| [GAP-008](gaps/GAP-008-manifest-export-drift.md) | open | Manifest `FunctionsToExport` should be guarded against drift from intended public functions. |
+
+Historical/resolved notes remain below when they explain the current architecture or release contract.
+
 - **Dependency bumps publish on their own — `deps → minor` (decisions 3 & 4).** *Resolved.* `Get-VersionBump.ps1` now recognizes Dependabot's NuGet `deps:` commit prefix (`.github/dependabot.yml`) as a **minor** release prefix (§8.1), so an auto-approved, squash-merged minor/patch dependency bump satisfies both the path gate and the version gate and publishes a **minor** module release. (A maintainer-promoted major dependency PR still carries `breaking:`.) Covered by `tests/Unit/GetVersionBump.Tests.ps1`.
 - **Major-dependency draft-PR flow.** *Resolved.* `Dependabot-Auto-Approve.yml` converts a `version-update:semver-major` PR to a **draft** (`gh pr ready --undo`) and posts structured notes (version delta, NuGet package link, TFM-alignment references, Build gate / CI links, conflict-surface / `dependency-policy.json` impact, and a maintainer checklist) instead of the former generic comment. Majors remain excluded from `gh pr merge --auto`. Guarded by `tests/Unit/WorkflowGuardrails.Tests.ps1`.
 - **Explicit TFM-alignment inspection (Step 0b).** *Resolved.* `tools/Test-DLLPickleTfmAlignment.ps1` inspects each preload package's `lib/<tfm>/` assets (or a legacy flat `lib/`) and asserts a net8.0/netstandard2.0-compatible asset is present, complementing the `Build gate` (Step 0a). It runs fail-closed in the scheduled Upstream-Compatibility candidate flow and is referenced from the major-dependency draft-PR notes. (`Get-DLLPickleUpstreamInventory.ps1` still captures only assembly `Name`/`Version`/`FullName`; the TFM assertion lives in the dedicated tool, which inspects the restored NuGet package layout.) Covered by `tests/Unit/TfmAlignment.Tests.ps1`.
 - **Platform-support contract vs. manifest edition (decision 2).** The inspection/diagnostic tier is intended to be cross-edition (§1.2), but the manifest declares `CompatiblePSEditions = @('Core')`, so *importing* the module under Windows PowerShell 5.1 surfaces a compatibility warning. The supported manual-remediation path is therefore to run the inspection helpers **from a PowerShell 7.4+ session** while they scan the Windows PowerShell module roots — not to import DLLPickle under 5.1. Two code paths back this cross-edition intent on purpose: `Set-DPConfig` keeps a `$PSEdition`-aware encoding fallback, and `Find-DLLInPSModulePath` seeds the `WindowsPowerShell\Modules` roots (the all-users WinPS root only when actually running on 5.1). These are intentional, not residual dead code; recorded here so the contract is explicit.
-- **`Az.Resources` is not in `monitoredModules`.** It is the observed #193 collision source, but its copy and future drift are **not** inventoried. Among monitored modules the `Microsoft.Extensions.*` transitives are observed only in `MicrosoftTeams` (a single shipper → not in the conflict surface), recorded as `trackingScope` on the blocked entries. Note #193 was a *bundle-vs-consumer* collision (DLLPickle's preloaded copy vs Az.Resources'), which the cross-module drift gate does not model — the regression guard is the integration test that keeps these transitives out of `bin`, not the matrix. Re-adjudicate manually if an Az.Resources change is suspected, or add it to `monitoredModules` to track it directly.
-- **EXO/Teams ALC ownership** is not yet captured — a bare `Import-Module` doesn't eager-load their identity assemblies; the probe needs a representative `-ProbeCommand`.
 - **Multi-TFM (net9.0/net10.0):** deferred; the methodology is TFM-parameterizable. net9.0/net10.0 are ALC-capable, so the `block` verdicts in §3 carry over to them. The `net8.0` bundle is confirmed to load on **PS 7.6 / .NET 10 via roll-forward** (Az.Resources import verified, no #193 regression) — a positive signal that multi-TFM is mostly a packaging exercise, not a behavioral one, on ALC-capable runtimes. When it lands, `dependency-policy.json` preload entries (currently a single `targetFramework: net8.0` each) and the `Update-DLLPickleDependencyPins` tooling will need a per-TFM representation; the `RestoreDependencies` task already parses both `TargetFramework` and `TargetFrameworks` in anticipation.
 - **Re-introducing Windows PowerShell 5.1 / net48 (no ALC) — checklist if attempted:** because net48 has no `AssemblyLoadContext`, modules cannot self-isolate and the §3 `block` verdicts for the Azure SDK stack **invert**. Re-support would require: (1) multi-targeting the build to `net48` alongside `net8.0`; (2) **conditionally preloading the Azure SDK stack** (`Azure.Core` + `Azure.Identity`/`Broker` + `System.ClientModel`) for net48 only — pinned to the highest version the WinPS-supported module set agrees on, as #183 did; (3) restoring net48-specific dependency conditions in `DLLPickle.csproj` (e.g. `Condition="'$(TargetFramework)' == 'net48'"`); (4) restoring `CompatiblePSEditions = @('Core','Desktop')` and lowering the manifest `PowerShellVersion`, plus per-edition guards in `Import-DPLibrary`; (5) adding WinPS 5.1 to the CI test matrix and re-validating the #156/#165-class scenarios. The 2.0 refactor's mistake was applying the net48-era Azure.Core preload to net8 unconditionally — any re-introduction must keep it **strictly TFM-conditional**.
 - **Planned feature enhancements (backlog).** Forward-looking ideas consolidated from the former root `Roadmap.md`; not yet scheduled, order is not guaranteed, and large dependency/platform shifts may change priority. (Released and in-progress work lives in [CHANGELOG.md](../CHANGELOG.md) — for example the `Microsoft.PowerShell.PlatyPS` help-generation migration is already tracked there, and the broader PowerShell 7.4+ compatibility and supply-chain hardening work is the ongoing subject of §3, §8, and §9.)
