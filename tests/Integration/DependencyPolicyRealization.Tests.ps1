@@ -17,11 +17,55 @@ BeforeAll {
 
     $Policy = Get-Content -LiteralPath $PolicyPath -Raw | ConvertFrom-Json
     $Project = [xml](Get-Content -LiteralPath $ProjectPath -Raw)
+    
+    # Helper to evaluate MSBuild conditions
+    function Test-MSBuildCondition {
+        param([string]$Condition)
+        
+        if ([string]::IsNullOrWhiteSpace($Condition)) {
+            return $true
+        }
+
+        # Replace common MSBuild properties with their runtime values
+        $EvaluatedCondition = $Condition
+        $EvaluatedCondition = $EvaluatedCondition -replace '\$\(OS\)', "'$([environment]::OSVersion.Platform -eq 'Win32NT' ? 'Windows_NT' : 'Unix')'"
+        
+        # Simple evaluation for the OS conditions we use
+        if ($EvaluatedCondition -match "'\$\(OS\)'\s*==\s*'Windows_NT'") {
+            return [environment]::OSVersion.Platform -eq 'Win32NT'
+        } elseif ($EvaluatedCondition -match "'\$\(OS\)'\s*!=\s*'Windows_NT'") {
+            return [environment]::OSVersion.Platform -ne 'Win32NT'
+        }
+
+        return $true  # If we can't evaluate, assume it applies
+    }
+    
     $PackageReferences = @($Project.Project.ItemGroup.PackageReference)
     $PackageReferenceByName = @{}
 
     foreach ($PackageReference in $PackageReferences) {
-        $PackageReferenceByName[[string]$PackageReference.Include] = $PackageReference
+        $PackageName = [string]$PackageReference.Include
+        $Condition = [string]$PackageReference.Condition
+        
+        # Skip this reference if the condition doesn't apply
+        if (-not (Test-MSBuildCondition -Condition $Condition)) {
+            continue
+        }
+
+        # If we already have this package, keep the one with the more specific metadata
+        # (prefer the one with ExcludeAssets over the one without)
+        if ($PackageReferenceByName.ContainsKey($PackageName)) {
+            $Existing = $PackageReferenceByName[$PackageName]
+            $CurrentHasExclusion = -not [string]::IsNullOrWhiteSpace([string]$PackageReference.ExcludeAssets)
+            $ExistingHasExclusion = -not [string]::IsNullOrWhiteSpace([string]$Existing.ExcludeAssets)
+            
+            # If current has more restrictions (exclusions), keep current; otherwise keep existing
+            if (-not $CurrentHasExclusion -and $ExistingHasExclusion) {
+                continue
+            }
+        }
+
+        $PackageReferenceByName[$PackageName] = $PackageReference
     }
 
     $PreloadPackages = @($Policy.preload.packageName | Sort-Object -Unique)
@@ -35,6 +79,15 @@ BeforeAll {
             Sort-Object -Unique
     )
 
+    # Build a hashtable of blocked packages with their policy entries for platform checking
+    $BlockedPoliciesByPackageName = @{}
+    foreach ($BlockedPolicy in $Policy.blockedPreloadAssemblies) {
+        $BlockedPoliciesByPackageName[$BlockedPolicy.packageName] = $BlockedPolicy
+    }
+
+    # Determine current platform
+    $CurrentPlatform = if ([Environment]::OSVersion.Platform -eq 'Win32NT') { 'Windows' } else { 'Unix' }
+
     function Get-ExcludedAssetName {
         param(
             [Parameter(Mandatory)]
@@ -46,6 +99,26 @@ BeforeAll {
                 ForEach-Object { $_.Trim().ToLowerInvariant() } |
                 Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
         )
+    }
+
+    function Test-PackageApplicableToCurrentPlatform {
+        param(
+            [Parameter(Mandatory)]
+            [string]$PackageName
+        )
+
+        $PolicyEntry = $BlockedPoliciesByPackageName[$PackageName]
+        if (-not $PolicyEntry) {
+            return $true # If no policy entry, assume it applies
+        }
+
+        # If no platforms field, it applies to all platforms
+        if (-not $PolicyEntry.platforms) {
+            return $true
+        }
+
+        # Check if current platform is in the list
+        return $CurrentPlatform -in $PolicyEntry.platforms
     }
 }
 
@@ -89,6 +162,11 @@ Describe 'Dependency policy realization' -Tag 'Integration' {
     It 'excludes runtime assets from directly referenced blocked packages' {
         $BlockedReferencesWithoutRuntimeExclusion = @(
             foreach ($PackageName in $BlockedPackages) {
+                # Skip packages that are not applicable to the current platform
+                if (-not (Test-PackageApplicableToCurrentPlatform -PackageName $PackageName)) {
+                    continue
+                }
+
                 if (-not $PackageReferenceByName.ContainsKey($PackageName)) {
                     continue
                 }
@@ -113,8 +191,16 @@ Describe 'Dependency policy realization' -Tag 'Integration' {
     }
 
     It 'does not bundle blocked assemblies' {
+        # Filter blocked assemblies to only those applicable to the current platform
+        $ApplicableBlockedAssemblyNames = @(
+            $Policy.blockedPreloadAssemblies |
+                Where-Object { Test-PackageApplicableToCurrentPlatform -PackageName $_.packageName } |
+                ForEach-Object { $_.assemblyName } |
+                Sort-Object -Unique
+        )
+
         $BundledBlockedAssemblies = @(
-            $BlockedAssemblyNames |
+            $ApplicableBlockedAssemblyNames |
                 Where-Object { $_ -in $BuiltAssemblyNames }
         )
 

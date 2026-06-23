@@ -583,14 +583,15 @@
       "packageName": "System.Security.Cryptography.ProtectedData",
       "assemblyName": "System.Security.Cryptography.ProtectedData",
       "classification": "block",
+      "platforms": ["Windows"],
       "sourceModules": [
         "PowerShell"
       ],
       "updateMode": "reportOnly",
-      "reason": "Runtime-provided BCL assembly pulled transitively by Microsoft.Identity.Client.Extensions.Msal on Windows. DLLPickle must not bundle and preload its older NuGet copy into PowerShell's default ALC.",
+      "reason": "Runtime-provided BCL assembly supplied by PowerShell on Windows; does not require bundling. On non-Windows platforms, PowerShell does not provide this assembly, so it is allowed to be bundled transitively via Microsoft.Identity.Client.Extensions.Msal without creating a conflict.",
       "evidence": {
-        "alcOwner": "PowerShell host / Default",
-        "basis": "Windows build validation on 2026-06-23 found that the MSAL extensions dependency copied NuGet System.Security.Cryptography.ProtectedData 4.5.0 into the bundle while PowerShell already supplied the runtime assembly. A direct ExcludeAssets=runtime reference keeps that host-provided assembly out of DLLPickle's preload set.",
+        "alcOwner": "PowerShell host / Default (Windows)",
+        "basis": "Windows build validation on 2026-06-23 found that the MSAL extensions dependency copied NuGet System.Security.Cryptography.ProtectedData 4.5.0 into the bundle while PowerShell already supplied the runtime assembly. A direct ExcludeAssets=runtime reference keeps that host-provided assembly out of DLLPickle's preload set. On non-Windows platforms, the runtime assets are retained to satisfy the dependency chain.",
         "decidedOn": "2026-06-23"
       }
     },
