@@ -5,7 +5,7 @@ BeforeAll {
 
 Describe 'Dependency policy baseline' -Tag 'Unit' {
     It 'records the complete structured conflict surface' {
-        @($script:Policy.baseline.conflictSurface) | Should -HaveCount 16
+        @($script:Policy.baseline.conflictSurface) | Should -HaveCount 17
 
         foreach ($Row in $script:Policy.baseline.conflictSurface) {
             $Row.name | Should -Not -BeNullOrEmpty
@@ -35,16 +35,26 @@ Describe 'Dependency policy baseline' -Tag 'Unit' {
             @($script:Policy.blockedPreloadAssemblies).assemblyName
         )
 
-        $ConflictNames | Should -HaveCount 16
+        $ConflictNames | Should -HaveCount 17
         foreach ($Name in $ConflictNames) {
             @($ClassifiedNames | Where-Object { $_ -eq $Name }) | Should -HaveCount 1
         }
     }
 
-    It 'records the issue 239 adjudication evidence' {
-        $script:Policy.baseline.validation.issue | Should -Be 239
-        $script:Policy.baseline.validation.result | Should -BeExactly 'classifications-unchanged'
-        $script:Policy.baseline.validation.validatedOn | Should -BeExactly '2026-06-20'
+    It 'records the pull request 257 adjudication evidence' {
+        $script:Policy.baseline.validation.pullRequest | Should -Be 257
+        $script:Policy.baseline.validation.result | Should -BeExactly 'tracked-conflict-classified-and-excluded'
+        $script:Policy.baseline.validation.validatedOn | Should -BeExactly '2026-06-23'
         @($script:Policy.baseline.validation.evidence) | Should -Not -BeNullOrEmpty
+    }
+
+    It 'records the ProtectedData conflict row and block classification' {
+        $ConflictRow = @($script:Policy.baseline.conflictSurface | Where-Object name -EQ 'System.Security.Cryptography.ProtectedData')
+        $BlockEntry = @($script:Policy.blockedPreloadAssemblies | Where-Object assemblyName -EQ 'System.Security.Cryptography.ProtectedData')
+
+        $ConflictRow | Should -HaveCount 1
+        @($ConflictRow[0].versions) | Should -Be @('4.0.3.0', '7.0.0.0', '9.0.0.0')
+        @($ConflictRow[0].shippedBy) | Should -Be @('Az.Accounts', 'ExchangeOnlineManagement', 'Microsoft.Graph.Authentication', 'MicrosoftTeams')
+        $BlockEntry | Should -HaveCount 1
     }
 }
