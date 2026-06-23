@@ -218,7 +218,7 @@ Describe 'Dependency policy realization' -Tag 'Integration' {
 
         $UnexpectedBundledAssemblies = @(
             $BuiltAssemblyNames |
-                Where-Object { 
+                Where-Object {
                     # Exclude assemblies that are in the preload policy
                     $_ -notin $PreloadAssemblyNames -and
                     # Also exclude assemblies that are platform-applicable blocked (may be bundled on their platform)
