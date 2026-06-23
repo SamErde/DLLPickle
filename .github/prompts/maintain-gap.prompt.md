@@ -25,7 +25,7 @@ Gap file path: `${input:gapFile:docs/gaps/GAP-001-dependency-policy-realization-
 
 1. Read the requested gap file.
 2. Read `docs/gaps/README.md`.
-3. Read every file listed in the gap file's `related_docs` frontmatter.
+3. Read every path listed in the gap file's `related_docs` frontmatter (if an entry is a directory, read the `*.md` files under it).
 4. Search the repository for the gap ID.
 5. Determine whether the gap is still `open`, `in-progress`, `blocked`, `resolved`, `superseded`, or `wont-fix`.
 6. If implementing a fix:
