@@ -208,10 +208,11 @@ Describe 'Dependency policy realization' -Tag 'Integration' {
     }
 
     It 'does not bundle assemblies absent from the preload policy' {
-        # Filter blocked assemblies to only those applicable to the current platform
-        $ApplicableBlockedAssemblyNames = @(
+        # Collect blocked assemblies that are NOT applicable to the current platform
+        # (i.e., blocked on other platforms, legitimately bundled on this platform)
+        $AllowedBlockedAssemblyNames = @(
             $Policy.blockedPreloadAssemblies |
-                Where-Object { Test-PackageApplicableToCurrentPlatform -PackageName $_.packageName } |
+                Where-Object { -not (Test-PackageApplicableToCurrentPlatform -PackageName $_.packageName) } |
                 ForEach-Object { $_.assemblyName } |
                 Sort-Object -Unique
         )
@@ -221,8 +222,8 @@ Describe 'Dependency policy realization' -Tag 'Integration' {
                 Where-Object {
                     # Exclude assemblies that are in the preload policy
                     $_ -notin $PreloadAssemblyNames -and
-                    # Also exclude assemblies that are platform-applicable blocked (may be bundled on their platform)
-                    $_ -notin $ApplicableBlockedAssemblyNames
+                    # Exclude assemblies that are blocked on other platforms (not applicable to current platform)
+                    $_ -notin $AllowedBlockedAssemblyNames
                 }
         )
 
