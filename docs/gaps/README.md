@@ -42,6 +42,9 @@ Use this register for durable repo-local gap state. Use `docs/superpowers/specs/
 | GAP-006 | open | release-process | Document manual release dispatch process trap | [GAP-006](GAP-006-release-dispatch-process-trap.md) |
 | GAP-007 | open | branch-protection | Audit required status-check ruleset configuration | [GAP-007](GAP-007-required-status-check-ruleset-audit.md) |
 | GAP-008 | open | module-manifest | Guard manifest export drift | [GAP-008](GAP-008-manifest-export-drift.md) |
+| GAP-009 | open | build-output | Make merged root-module script order deterministic | [GAP-009](GAP-009-merged-root-module-order.md) |
+| GAP-010 | open | review-process | Define unresolved review-thread maintenance workflow | [GAP-010](GAP-010-unresolved-review-thread-maintenance.md) |
+| GAP-011 | open | documentation | Guard docs and implementation drift for gap closures | [GAP-011](GAP-011-docs-implementation-drift.md) |
 
 ## Agent workflow
 
