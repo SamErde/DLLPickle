@@ -75,7 +75,7 @@ Every tracked assembly is classified into exactly one of:
 | --- | --- | --- |
 | Module source | `src/DLLPickle/` | The shipped PowerShell module (public/private functions, manifest). |
 | Loader | `src/DLLPickle/Public/Import-DPLibrary.ps1` | Loads the bundled `bin/net8.0` DLLs into the default ALC with dependency-ordered, retrying loads. |
-| Build project | `src/DLLPickle.Build/DLLPickle.csproj` | **Realizes** the preload set — an assembly is preloaded **iff** it is a direct/transitive package reference here. `packages.lock.json` pins resolved versions. |
+| Build project | `src/DLLPickle.Build/DLLPickle.csproj` | **Realizes** the policy — preload packages are direct runtime references; blocked transitives that need suppression are direct references with `ExcludeAssets="runtime"`. `packages.lock.json` pins resolved versions. |
 | Dependency policy | `build/dependency-policy.json` | **Decision source of truth** — per-assembly classification + evidence, monitored modules, target scenario, drift baseline. |
 | Analysis tools | `tools/Get-DLLPickleLoadedTrackedAssembly.ps1`, `New-DLLPickleConflictMatrix.ps1`, `Compare-DLLPickleConflictMatrix.ps1`, `Get-DLLPickleRuntimeAssemblySnapshot.ps1`, `Get-DLLPickleUpstreamInventory.ps1`, `Update-DLLPickleDependencyPins.ps1` | Inventory upstream modules, build the conflict matrix, probe runtime ALC ownership (filter sourced from `trackedAssemblies`), detect drift, and apply policy pins. |
 | Build script | `build/DLLPickle.Build.ps1` | Invoke-Build tasks: Analyze, AnalyzeTests, AnalyzeTools, Test, RestoreDependencies, PrepareModuleOutput, IntegrationTest. |
@@ -102,10 +102,10 @@ Every tracked assembly is classified into exactly one of:
 
 ## 6. Invariants (and the gate that enforces each)
 
-- **No `block` assembly appears in `module/DLLPickle/bin/net8.0`.** → `tests/Integration/DLLPickle.IntegrationTest.Tests.ps1` (Azure.Core guard + the #193 `Microsoft.Extensions.*` guard; extend per newly-blocked assembly).
+- **No `block` assembly appears in `module/DLLPickle/bin/net8.0`.** → policy-driven `tests/Integration/DependencyPolicyRealization.Tests.ps1` plus scenario-specific guards in `tests/Integration/DLLPickle.IntegrationTest.Tests.ps1`.
 - **No preloaded assembly is loaded into two ALCs at once** in the four-module scenario. → integration ALC-split guard (runtime tier; maintainer-run with real modules).
-- **The bundled `preload` set equals `dependency-policy.json`'s `preload` entries.** → `tests/Integration/DependencyPolicyRealization.Tests.ps1` after GAP-001 / PR #257 merges; until then, verified by review.
-- **Runtime-provided BCL assemblies (e.g. `System.Text.Json`) are never preloaded.** → conflict-matrix `AlcOwner` = `Default`/runtime + the split guard.
+- **The bundled `preload` set equals `dependency-policy.json`'s `preload` entries.** → `tests/Integration/DependencyPolicyRealization.Tests.ps1`.
+- **Runtime-provided BCL assemblies are never preloaded.** Some assemblies are platform-scoped: `System.Security.Cryptography.ProtectedData` is provided by PowerShell only on Windows; on Linux/macOS it is bundled (not excluded). See `build/dependency-policy.json` for platform-specific block scopes. → policy block classification + `tests/Integration/DependencyPolicyRealization.Tests.ps1` with platform-aware filtering.
 - **Analysis tooling is correct.** → `tests/Unit/ConflictMatrix.Tests.ps1`, `tests/Unit/ConflictMatrixDrift.Tests.ps1`.
 - **`tests/` and `tools/` stay analyzer-clean.** → `AnalyzeTests` / `AnalyzeTools` build tasks (throw on any finding; `tests/` excludes only `PSUseDeclaredVarsMoreThanAssignments`).
 

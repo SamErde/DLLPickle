@@ -42,6 +42,7 @@
     "Microsoft.IdentityModel.Logging",
     "Microsoft.IdentityModel.Tokens",
     "System.IdentityModel.Tokens.Jwt",
+    "System.Security.Cryptography.ProtectedData",
     "Microsoft.Extensions.DependencyInjection.Abstractions",
     "Microsoft.Extensions.Logging.Abstractions",
     "Microsoft.OData.Core",
@@ -71,7 +72,7 @@
     ]
   },
   "baseline": {
-    "capturedOn": "2026-06-20",
+    "capturedOn": "2026-06-23",
     "moduleVersions": {
       "Az.Accounts": "5.5.0",
       "Microsoft.Graph.Authentication": "2.38.0",
@@ -79,7 +80,7 @@
       "MicrosoftTeams": "7.8.0",
       "Az.Storage": "9.7.0"
     },
-    "conflictSurfaceFingerprint": "af1f1358ba4bcd4793a2b460c5b7fc46c2661df981244317c00a695d08c06250",
+    "conflictSurfaceFingerprint": "8489ef99f7a87bd12c048e0f680bcdfc4a76eb736dcb093a732f83c66858f52c",
     "conflictSurface": [
       {
         "name": "Azure.Core",
@@ -273,16 +274,30 @@
           "ExchangeOnlineManagement",
           "MicrosoftTeams"
         ]
+      },
+      {
+        "name": "System.Security.Cryptography.ProtectedData",
+        "versions": [
+          "4.0.3.0",
+          "7.0.0.0",
+          "9.0.0.0"
+        ],
+        "shippedBy": [
+          "Az.Accounts",
+          "ExchangeOnlineManagement",
+          "Microsoft.Graph.Authentication",
+          "MicrosoftTeams"
+        ]
       }
     ],
     "validation": {
-      "issue": 239,
-      "result": "classifications-unchanged",
-      "validatedOn": "2026-06-20",
+      "pullRequest": 257,
+      "result": "tracked-conflict-classified-and-excluded",
+      "validatedOn": "2026-06-23",
       "evidence": [
-        "Atomic latest-module inventory and structured matrix comparison found version-only drift: no new, removed, contributor, or ALC-ownership changes.",
-        "Strict runtime ALC snapshots covered both configured import orders, with and without DLLPickle preloading.",
-        "Issue reproduction and composition validation confirmed the current preload and block classifications."
+        "Tracking System.Security.Cryptography.ProtectedData exposed a 17th conflict row across Az.Accounts, ExchangeOnlineManagement, Microsoft.Graph.Authentication, and MicrosoftTeams at assembly versions 4.0.3.0, 7.0.0.0, and 9.0.0.0; the other 16 conflict rows and monitored module versions were unchanged.",
+        "The assembly is classified block because PowerShell supplies the runtime assembly and DLLPickle's Windows build had bundled the older 4.0.3.0 NuGet assembly transitively through Microsoft.Identity.Client.Extensions.Msal.",
+        "A direct ExcludeAssets=runtime reference removed the bundled copy, and the full Windows build passed the policy-realization guard plus 193 unit and 18 non-live integration tests."
       ]
     }
   },
@@ -562,6 +577,24 @@
         "decidedOn": "2026-05-31",
         "issue": "193",
         "trackingScope": "Az.Resources is the observed #193 collision trigger but is NOT in monitoredModules, so the drift inventory does not see its copy or future drift. Among the monitored modules, the current inventory observes this assembly only in MicrosoftTeams (a single shipper, so it does not diverge cross-module and is not in the conflict surface). #193 was a DLLPickle-bundle-vs-consumer collision, not a cross-module version split, so the cross-module drift gate does not model it; the regression guard against re-bundling this transitive lives in tests/Integration/DLLPickle.IntegrationTest.Tests.ps1. Re-adjudicate manually if a future Az.Resources change is suspected, or add Az.Resources to monitoredModules to inventory it directly."
+      }
+    },
+    {
+      "packageName": "System.Security.Cryptography.ProtectedData",
+      "assemblyName": "System.Security.Cryptography.ProtectedData",
+      "classification": "block",
+      "platforms": [
+        "Windows"
+      ],
+      "sourceModules": [
+        "PowerShell"
+      ],
+      "updateMode": "reportOnly",
+      "reason": "Runtime-provided BCL assembly supplied by PowerShell on Windows; does not require bundling. On non-Windows platforms, PowerShell does not provide this assembly, so it is allowed to be bundled transitively via Microsoft.Identity.Client.Extensions.Msal without creating a conflict.",
+      "evidence": {
+        "alcOwner": "PowerShell host / Default (Windows)",
+        "basis": "Windows build validation on 2026-06-23 found that the MSAL extensions dependency copied NuGet System.Security.Cryptography.ProtectedData 4.5.0 into the bundle while PowerShell already supplied the runtime assembly. A direct ExcludeAssets=runtime reference keeps that host-provided assembly out of DLLPickle's preload set. On non-Windows platforms, the runtime assets are retained to satisfy the dependency chain.",
+        "decidedOn": "2026-06-23"
       }
     },
     {

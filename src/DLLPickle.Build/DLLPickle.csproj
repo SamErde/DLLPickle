@@ -34,6 +34,14 @@
     <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.*" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.*" />
 
+    <!-- Microsoft.Identity.Client.Extensions.Msal pulls ProtectedData transitively on all platforms,
+         but the handling differs by OS: on Windows, PowerShell already provides this runtime assembly,
+         so exclude it from the bundle to avoid conflicts with the host copy. On non-Windows platforms,
+         PowerShell does not provide it, so include the runtime assets. Keep the package visible as a
+         direct, policy-classified reference in both cases. -->
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="4.5.0" ExcludeAssets="runtime" Condition="'$(OS)' == 'Windows_NT'" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="4.5.0" Condition="'$(OS)' != 'Windows_NT'" />
+
     <!-- #193: Do NOT preload the Microsoft.Extensions.* BCL transitives pulled by
          Microsoft.IdentityModel.Tokens. They are not part of DLLPickle's identity-coordination
          purpose, PowerShell does not host-provide them (it ships only Microsoft.Extensions.ObjectPool),
