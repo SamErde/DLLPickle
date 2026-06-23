@@ -105,7 +105,7 @@ Every tracked assembly is classified into exactly one of:
 - **No `block` assembly appears in `module/DLLPickle/bin/net8.0`.** → policy-driven `tests/Integration/DependencyPolicyRealization.Tests.ps1` plus scenario-specific guards in `tests/Integration/DLLPickle.IntegrationTest.Tests.ps1`.
 - **No preloaded assembly is loaded into two ALCs at once** in the four-module scenario. → integration ALC-split guard (runtime tier; maintainer-run with real modules).
 - **The bundled `preload` set equals `dependency-policy.json`'s `preload` entries.** → `tests/Integration/DependencyPolicyRealization.Tests.ps1`.
-- **Runtime-provided BCL assemblies (e.g. `System.Text.Json`, `System.Security.Cryptography.ProtectedData`) are never preloaded.** → policy block classification + `tests/Integration/DependencyPolicyRealization.Tests.ps1`.
+- **Runtime-provided BCL assemblies are never preloaded.** Some assemblies are platform-scoped: `System.Security.Cryptography.ProtectedData` is provided by PowerShell only on Windows; on Linux/macOS it is bundled (not excluded). See `build/dependency-policy.json` for platform-specific block scopes. → policy block classification + `tests/Integration/DependencyPolicyRealization.Tests.ps1` with platform-aware filtering.
 - **Analysis tooling is correct.** → `tests/Unit/ConflictMatrix.Tests.ps1`, `tests/Unit/ConflictMatrixDrift.Tests.ps1`.
 - **`tests/` and `tools/` stay analyzer-clean.** → `AnalyzeTests` / `AnalyzeTools` build tasks (throw on any finding; `tests/` excludes only `PSUseDeclaredVarsMoreThanAssignments`).
 
