@@ -583,7 +583,9 @@
       "packageName": "System.Security.Cryptography.ProtectedData",
       "assemblyName": "System.Security.Cryptography.ProtectedData",
       "classification": "block",
-      "platforms": ["Windows"],
+      "platforms": [
+        "Windows"
+      ],
       "sourceModules": [
         "PowerShell"
       ],
