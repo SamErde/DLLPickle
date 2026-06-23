@@ -26,15 +26,15 @@ BeforeAll {
             return $true
         }
 
-        # Replace common MSBuild properties with their runtime values
-        $EvaluatedCondition = $Condition
-        $EvaluatedCondition = $EvaluatedCondition -replace '\$\(OS\)', "'$([environment]::OSVersion.Platform -eq 'Win32NT' ? 'Windows_NT' : 'Unix')'"
+        # Determine current OS value
+        $CurrentOSIsWindows = [environment]::OSVersion.Platform -eq 'Win32NT'
 
         # Simple evaluation for the OS conditions we use
-        if ($EvaluatedCondition -match "'\$\(OS\)'\s*==\s*'Windows_NT'") {
-            return [environment]::OSVersion.Platform -eq 'Win32NT'
-        } elseif ($EvaluatedCondition -match "'\$\(OS\)'\s*!=\s*'Windows_NT'") {
-            return [environment]::OSVersion.Platform -ne 'Win32NT'
+        # Match conditions like: '$(OS)' == 'Windows_NT' or '$(OS)' != 'Windows_NT'
+        if ($Condition -match '\$\(OS\)\s*==\s*[''"]Windows_NT[''"]') {
+            return $CurrentOSIsWindows
+        } elseif ($Condition -match '\$\(OS\)\s*!=\s*[''"]Windows_NT[''"]') {
+            return -not $CurrentOSIsWindows
         }
 
         return $true  # If we can't evaluate, assume it applies
