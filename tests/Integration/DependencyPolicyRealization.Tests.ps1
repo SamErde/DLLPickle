@@ -17,11 +17,11 @@ BeforeAll {
 
     $Policy = Get-Content -LiteralPath $PolicyPath -Raw | ConvertFrom-Json
     $Project = [xml](Get-Content -LiteralPath $ProjectPath -Raw)
-    
+
     # Helper to evaluate MSBuild conditions
     function Test-MSBuildCondition {
         param([string]$Condition)
-        
+
         if ([string]::IsNullOrWhiteSpace($Condition)) {
             return $true
         }
@@ -29,7 +29,7 @@ BeforeAll {
         # Replace common MSBuild properties with their runtime values
         $EvaluatedCondition = $Condition
         $EvaluatedCondition = $EvaluatedCondition -replace '\$\(OS\)', "'$([environment]::OSVersion.Platform -eq 'Win32NT' ? 'Windows_NT' : 'Unix')'"
-        
+
         # Simple evaluation for the OS conditions we use
         if ($EvaluatedCondition -match "'\$\(OS\)'\s*==\s*'Windows_NT'") {
             return [environment]::OSVersion.Platform -eq 'Win32NT'
@@ -39,14 +39,14 @@ BeforeAll {
 
         return $true  # If we can't evaluate, assume it applies
     }
-    
+
     $PackageReferences = @($Project.Project.ItemGroup.PackageReference)
     $PackageReferenceByName = @{}
 
     foreach ($PackageReference in $PackageReferences) {
         $PackageName = [string]$PackageReference.Include
         $Condition = [string]$PackageReference.Condition
-        
+
         # Skip this reference if the condition doesn't apply
         if (-not (Test-MSBuildCondition -Condition $Condition)) {
             continue
@@ -58,7 +58,7 @@ BeforeAll {
             $Existing = $PackageReferenceByName[$PackageName]
             $CurrentHasExclusion = -not [string]::IsNullOrWhiteSpace([string]$PackageReference.ExcludeAssets)
             $ExistingHasExclusion = -not [string]::IsNullOrWhiteSpace([string]$Existing.ExcludeAssets)
-            
+
             # If current has more restrictions (exclusions), keep current; otherwise keep existing
             if (-not $CurrentHasExclusion -and $ExistingHasExclusion) {
                 continue
