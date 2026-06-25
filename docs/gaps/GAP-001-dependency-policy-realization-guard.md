@@ -1,12 +1,12 @@
 ---
 id: GAP-001
 title: Add dependency policy realization guard
-status: in-progress
+status: resolved
 severity: high
 area: dependency-policy
 owner: maintainer
 created: 2026-06-23
-updated: 2026-06-23
+updated: 2026-06-25
 related_issues: []
 related_prs:
   - https://github.com/SamErde/DLLPickle/pull/257
@@ -17,16 +17,16 @@ related_docs:
 related_tests:
   - tests/Integration/DependencyPolicyRealization.Tests.ps1
 resolution_pr: https://github.com/SamErde/DLLPickle/pull/257
-resolved_on:
+resolved_on: 2026-06-23
 ---
 
 # GAP-001 — Add dependency policy realization guard
 
 ## Status
 
-**Current status:** In progress.
+**Current status:** Resolved.
 
-Implementation is in draft PR #257. Keep this gap in `in-progress` until the PR merges and the test is confirmed in CI.
+PR #257 merged into `main` on 2026-06-23 as commit `56f41a2` (`[codex] Add dependency policy realization guard (#257)`).
 
 ## Problem
 
@@ -40,7 +40,7 @@ This is a high-risk maintenance trap because the policy can look correct during 
 
 - `docs/Architecture.md` identifies `build/dependency-policy.json` as the classification source of truth.
 - `docs/Architecture.md` identifies `DLLPickle.csproj` and `packages.lock.json` as the source of what is actually bundled.
-- Draft PR #257 adds an integration guard for this gap.
+- PR #257 added `tests/Integration/DependencyPolicyRealization.Tests.ps1` and the corresponding `DLLPickle.csproj` / `dependency-policy.json` updates on `main`.
 
 ## Desired end state
 
@@ -54,17 +54,16 @@ The repository has an automated integration test that compares the policy, proje
 - [x] A test exists that asserts every preload assembly appears in the built `bin/net8.0` output.
 - [x] A test exists that asserts blocked assemblies do not appear in the built `bin/net8.0` output.
 - [x] A test exists that asserts the built `bin/net8.0` output does not contain unclassified managed assemblies.
-- [ ] PR #257 has merged.
-- [ ] The gap frontmatter is updated to `status: resolved` after merge.
-- [ ] `docs/gaps/README.md` is updated after merge.
+- [x] PR #257 has merged.
+- [x] The gap frontmatter is updated to `status: resolved` after merge.
+- [x] `docs/gaps/README.md` is updated after merge.
 
 ## Implementation notes for Codex
 
-1. Inspect PR #257 before changing this gap.
-2. Do not duplicate the test unless PR #257 is closed without merge.
-3. After PR #257 merges, update this file and `docs/gaps/README.md` in the merge-follow-up PR, or in the same PR if the branch is rebased before merge.
-4. Do not mark this gap `resolved` until the resolving PR is merged.
+1. Use this file as the historical closure record for the realization guard added by PR #257.
+2. If the policy/csproj/built-output contract changes, update the integration guard instead of reopening this exact gap by default.
+3. Open a new gap only if future drift requires materially new guard behavior beyond the current realization test.
 
 ## Resolution notes
 
-Pending merge of PR #257.
+Resolved by PR #257 on 2026-06-23. The merged change added `tests/Integration/DependencyPolicyRealization.Tests.ps1`, updated `src/DLLPickle.Build/DLLPickle.csproj` to realize platform-scoped policy decisions correctly, and aligned `build/dependency-policy.json` with the enforced runtime/bundle contract.
