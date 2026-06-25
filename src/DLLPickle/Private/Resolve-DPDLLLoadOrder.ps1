@@ -56,8 +56,8 @@
 
     # Fallback: inspect PE metadata directly without loading the assembly into a runtime context.
     $PEReaderType = [type]::GetType('System.Reflection.PortableExecutable.PEReader, System.Reflection.Metadata', $false)
-    $MetadataReaderType = [type]::GetType('System.Reflection.Metadata.MetadataReader, System.Reflection.Metadata', $false)
-    if ($PEReaderType -and $MetadataReaderType) {
+    $MetadataReaderProviderType = [type]::GetType('System.Reflection.Metadata.MetadataReaderProvider, System.Reflection.Metadata', $false)
+    if ($PEReaderType -and $MetadataReaderProviderType) {
         try {
             $AssemblyStream = [System.IO.File]::Open(
                 $Path,
