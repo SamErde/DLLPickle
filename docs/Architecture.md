@@ -191,7 +191,6 @@ Detailed status for open and in-progress maintenance traps is tracked in the [ga
 
 | Gap | Status | Architecture note |
 | --- | --- | --- |
-| [GAP-001](gaps/GAP-001-dependency-policy-realization-guard.md) | in-progress | Adds the executable realization guard for policy/csproj/built-output drift. |
 | [GAP-002](gaps/GAP-002-az-resources-monitoring.md) | open | `Az.Resources` is the observed #193 collision source but is not currently in `monitoredModules`. |
 | [GAP-003](gaps/GAP-003-exo-teams-probe-commands.md) | open | EXO/Teams ALC ownership is not yet captured because bare `Import-Module` does not eagerly load their identity assemblies. |
 | [GAP-004](gaps/GAP-004-vscode-powershelleditorservices-host.md) | open | VS Code / PowerShellEditorServices host behavior is not yet modeled for issue #169. |
