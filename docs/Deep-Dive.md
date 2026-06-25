@@ -57,7 +57,8 @@ because it depends on `AssemblyLoadContext`. But DLLPickle also ships a set of
 **inspection helpers** that are deliberately cross-edition:
 
 - `Find-DLLInPSModulePath` — find DLLs across the installed module paths
-  (including the Windows PowerShell roots), filtered by product metadata.
+  (including `Documents\WindowsPowerShell\Modules`; the all-users WinPS root is
+  auto-seeded when the helper itself runs on 5.1), filtered by product metadata.
 - `Get-ModulesWithDependency` — list installed modules that package a given
   dependency DLL.
 - `Get-ModulesWithVersionSortedIdentityClient` — compare modules by the
@@ -68,9 +69,10 @@ because it depends on `AssemblyLoadContext`. But DLLPickle also ships a set of
 
 These exist so the project charter still helps environments the preloader cannot
 reach. A **Windows PowerShell 5.1** user who hits the same DLL conflict can run
-these helpers from a PowerShell 7.4+ session, see which installed module ships the
-newest identity DLL, and connect to that service *first* — the same "first one
-wins" idea, applied by hand. The automated preload is the convenience; the manual
+these helpers from a PowerShell 7.4+ session, inspect the current-user Windows
+PowerShell module roots from there, see which installed module ships the newest
+identity DLL, and connect to that service *first* — the same "first one wins"
+idea, applied by hand. The automated preload is the convenience; the manual
 workaround is always available.
 
 ## Dependency Maintenance Automation

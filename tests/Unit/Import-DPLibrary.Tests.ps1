@@ -169,9 +169,16 @@ $ErrorActionPreference = 'Stop'
 $Payload = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('__PAYLOAD__')) | ConvertFrom-Json
 $TfmDirectory = Join-Path -Path $Payload.FixtureRoot -ChildPath ([IO.Path]::Combine('bin', 'net8.0'))
 $null = New-Item -Path $TfmDirectory -ItemType Directory -Force
-$DependencyPath = Join-Path -Path $TfmDirectory -ChildPath 'A.Synthetic.Dependency.dll'
-$ConsumerPath = Join-Path -Path $TfmDirectory -ChildPath 'Z.Synthetic.Consumer.dll'
+$DependencyPath = Join-Path -Path $TfmDirectory -ChildPath 'Z.Synthetic.Dependency.dll'
+$ConsumerPath = Join-Path -Path $TfmDirectory -ChildPath 'A.Synthetic.Consumer.dll'
+$CompilerRoot = Join-Path -Path $Payload.FixtureRoot -ChildPath 'compiler'
+$DependencyProjectRoot = Join-Path -Path $CompilerRoot -ChildPath 'Dependency'
+$ConsumerProjectRoot = Join-Path -Path $CompilerRoot -ChildPath 'Consumer'
+$null = New-Item -Path $DependencyProjectRoot -ItemType Directory -Force
+$null = New-Item -Path $ConsumerProjectRoot -ItemType Directory -Force
 
+$DependencySourcePath = Join-Path -Path $DependencyProjectRoot -ChildPath 'Dependency.cs'
+$DependencyProjectPath = Join-Path -Path $DependencyProjectRoot -ChildPath 'Z.Synthetic.Dependency.csproj'
 $DependencySource = @"
 namespace $($Payload.FixtureId) {
     public static class Dependency {
@@ -179,8 +186,23 @@ namespace $($Payload.FixtureId) {
     }
 }
 "@
-Add-Type -TypeDefinition $DependencySource -OutputAssembly $DependencyPath -ErrorAction Stop
+Set-Content -LiteralPath $DependencySourcePath -Value $DependencySource -Encoding UTF8
+Set-Content -LiteralPath $DependencyProjectPath -Value @"
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <AssemblyName>Z.Synthetic.Dependency</AssemblyName>
+    <RootNamespace>$($Payload.FixtureId)</RootNamespace>
+  </PropertyGroup>
+</Project>
+"@ -Encoding UTF8
+$DependencyBuildOutput = @(& dotnet build $DependencyProjectPath -c Release -nologo -o $TfmDirectory 2>&1)
+if ($LASTEXITCODE -ne 0) {
+    throw "Dependency project build failed: $($DependencyBuildOutput -join [Environment]::NewLine)"
+}
 
+$ConsumerSourcePath = Join-Path -Path $ConsumerProjectRoot -ChildPath 'Consumer.cs'
+$ConsumerProjectPath = Join-Path -Path $ConsumerProjectRoot -ChildPath 'A.Synthetic.Consumer.csproj'
 $ConsumerSource = @"
 namespace $($Payload.FixtureId) {
     public static class Consumer {
@@ -188,7 +210,25 @@ namespace $($Payload.FixtureId) {
     }
 }
 "@
-Add-Type -TypeDefinition $ConsumerSource -ReferencedAssemblies $DependencyPath -OutputAssembly $ConsumerPath -ErrorAction Stop
+Set-Content -LiteralPath $ConsumerSourcePath -Value $ConsumerSource -Encoding UTF8
+Set-Content -LiteralPath $ConsumerProjectPath -Value @"
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <AssemblyName>A.Synthetic.Consumer</AssemblyName>
+    <RootNamespace>$($Payload.FixtureId)</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Z.Synthetic.Dependency">
+      <HintPath>$DependencyPath</HintPath>
+    </Reference>
+  </ItemGroup>
+</Project>
+"@ -Encoding UTF8
+$ConsumerBuildOutput = @(& dotnet build $ConsumerProjectPath -c Release -nologo -o $TfmDirectory 2>&1)
+if ($LASTEXITCODE -ne 0) {
+    throw "Consumer project build failed: $($ConsumerBuildOutput -join [Environment]::NewLine)"
+}
 
 . (Join-Path $Payload.RepoRoot 'src\DLLPickle\Public\Get-DPConfig.ps1')
 . (Join-Path $Payload.RepoRoot 'src\DLLPickle\Private\Resolve-DPDLLLoadOrder.ps1')
@@ -196,6 +236,17 @@ Add-Type -TypeDefinition $ConsumerSource -ReferencedAssemblies $DependencyPath -
 function Get-DPConfig { [PSCustomObject]@{ SkipLibraries = @(); ShowLogo = $false } }
 function Invoke-DPConflictCheck {}
 $global:PSModuleRoot = $Payload.FixtureRoot
+
+$LocalAssemblyNames = @('A.Synthetic.Consumer', 'Z.Synthetic.Dependency')
+$DiscoveredReferences = @(Get-DPDLLReferenceName -Path $ConsumerPath -LocalAssemblyNames $LocalAssemblyNames)
+if ($DiscoveredReferences -notcontains 'Z.Synthetic.Dependency') {
+    throw "Synthetic consumer did not advertise its dependency edge: $($DiscoveredReferences -join ', ')"
+}
+
+$OrderedDlls = @(Resolve-DPDLLLoadOrder -DLLFiles @((Get-Item -LiteralPath $ConsumerPath), (Get-Item -LiteralPath $DependencyPath)))
+if ($OrderedDlls[0].Name -ne 'Z.Synthetic.Dependency.dll' -or $OrderedDlls[1].Name -ne 'A.Synthetic.Consumer.dll') {
+    throw "Synthetic dependency graph did not order dependency-first: $($OrderedDlls.Name -join ', ')"
+}
 
 $Result = @(Import-DPLibrary -SuppressLogo -WarningAction SilentlyContinue)
 if ($Result.Count -ne 2 -or @($Result | Where-Object Status -eq 'Failed').Count -gt 0) {

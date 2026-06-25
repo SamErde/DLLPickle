@@ -166,7 +166,7 @@ jobs:
           **TFM alignment (§8.2 Step 0)**
 
           - 0a — Build gate: restore/build/test green on \`net8.0\` under \`--locked-mode\`. See the Checks tab: ${PR_URL}/checks
-          - 0b — explicit net8.0/netstandard2.0 asset inspection: run \`tools/Test-DLLPickleTfmAlignment.ps1\` against the bumped package(s); the scheduled Upstream-Compatibility candidate flow runs this fail-closed.
+          - 0b — explicit net8.0-consumable asset inspection (including \`netstandard2.0\` and \`netstandard2.1\` where applicable): run \`tools/Test-DLLPickleTfmAlignment.ps1\` against the bumped package(s); the scheduled Upstream-Compatibility candidate flow runs this fail-closed.
 
           **Pester / CI:** ${PR_URL}/checks
 

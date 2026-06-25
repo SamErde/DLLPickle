@@ -11,13 +11,8 @@ build:
     python: "3.13"
 
 mkdocs:
-  configuration: /mkdocs.yml
+  configuration: mkdocs.yml
 
 python:
   install:
     - requirements: docs/requirements.txt
-
-# Build PDF & ePub
-formats: all
-#   - epub
-#   - pdf

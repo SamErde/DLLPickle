@@ -14,9 +14,12 @@ PowerShell 7.4+ / .NET 8 because it depends on `AssemblyLoadContext`. The
 *inspection / diagnostic* helpers (`Find-DLLInPSModulePath`,
 `Get-ModuleImportCandidate`, `Get-ModulesWithDependency`,
 `Get-ModulesWithVersionSortedIdentityClient`, `Test-DPLibraryConflict`) are
-intentionally cross-edition — they scan the Windows PowerShell module roots too,
-so a Windows PowerShell 5.1 user can still discover which module to load first and
-apply the conflict workaround manually. See
+intentionally cross-edition — from a PowerShell 7.4+ session they still inspect
+the current-user Windows PowerShell roots (for example
+`Documents\WindowsPowerShell\Modules`), and when actually running on 5.1 they
+also auto-seed the all-users WinPS root. That lets a Windows PowerShell 5.1
+user still discover which module to load first and apply the conflict
+workaround manually. See
 [Architecture.md](Architecture.md) §1.2 for the full platform-support
 contract.
 
@@ -33,8 +36,9 @@ For usage guidance, see [README.md](../README.md) and [docs/index.md](index.md).
 
 Every tracked-dependency release is first checked for **target-framework
 alignment**: it must restore, build, and pass tests on `net8.0` under
-`--locked-mode`, and ship a net8.0/netstandard2.0-compatible assembly (verified
-by `tools/Test-DLLPickleTfmAlignment.ps1`). Only then does the severity of the
+`--locked-mode`, and ship a net8.0-consumable assembly asset (for example
+`net8.0`, `netstandard2.0`, or `netstandard2.1`, as verified by
+`tools/Test-DLLPickleTfmAlignment.ps1`). Only then does the severity of the
 version jump decide how it ships:
 
 | Update Type | Policy |

@@ -54,6 +54,29 @@
         }
     }
 
+    # Fallback: inspect the assembly in a collectible ALC when MetadataLoadContext is unavailable.
+    # GetReferencedAssemblies reads metadata without requiring the target assembly to execute, and
+    # unloading the collectible context avoids polluting the caller's default load context.
+    try {
+        $InspectionContext = [System.Runtime.Loader.AssemblyLoadContext]::new('DLLPickle.ReferenceProbe', $true)
+        try {
+            $Assembly = $InspectionContext.LoadFromAssemblyPath($Path)
+            foreach ($Reference in $Assembly.GetReferencedAssemblies()) {
+                if ($LocalAssemblyLookup.Contains($Reference.Name)) {
+                    [void]$References.Add($Reference.Name)
+                }
+            }
+        } finally {
+            $InspectionContext.Unload()
+            [System.GC]::Collect()
+            [System.GC]::WaitForPendingFinalizers()
+        }
+
+        return @($References)
+    } catch {
+        Write-Verbose "Collectible AssemblyLoadContext reference discovery failed for '$Path'. Continuing without discovered dependency edges for this assembly."
+    }
+
     return @()
 }
 
