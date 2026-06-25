@@ -1,12 +1,12 @@
 ---
 id: GAP-002
 title: Track Az.Resources as a monitored collision source
-status: open
+status: resolved
 severity: high
 area: dependency-policy
 owner: maintainer
 created: 2026-06-23
-updated: 2026-06-23
+updated: 2026-06-25
 related_issues:
   - "193"
 related_prs: []
@@ -16,15 +16,15 @@ related_docs:
   - docs/DEPENDENCIES.md
 related_tests:
   - tests/Integration/DLLPickle.IntegrationTest.Tests.ps1
-resolution_pr:
-resolved_on:
+resolution_pr: pending-local-pr
+resolved_on: 2026-06-25
 ---
 
-# GAP-002 — Track Az.Resources as a monitored collision source
+## GAP-002 — Track Az.Resources as a monitored collision source
 
 ## Status
 
-**Current status:** Open.
+**Current status:** Resolved.
 
 ## Problem
 
@@ -46,12 +46,12 @@ The repository either monitors `Az.Resources` directly or documents a deliberate
 
 ## Acceptance criteria
 
-- [ ] Decide whether `Az.Resources` should be added to `monitoredModules`.
-- [ ] If added, update `build/dependency-policy.json` and refresh the baseline/fingerprint using the established upstream inventory process.
-- [ ] If not added, document the rationale and compensating guard in this gap and `docs/Architecture.md`.
-- [ ] Update or add tests so future workflow/policy changes preserve the decision.
-- [ ] Update `docs/DEPENDENCIES.md` if the monitored-module lifecycle changes.
-- [ ] Update `docs/gaps/README.md` and this file when resolved or superseded.
+- [x] Decide whether `Az.Resources` should be added to `monitoredModules`.
+- [x] If added, update `build/dependency-policy.json` and refresh the baseline/fingerprint using the established upstream inventory process.
+- [x] If not added, document the rationale and compensating guard in this gap and `docs/Architecture.md`.
+- [x] Update or add tests so future workflow/policy changes preserve the decision.
+- [x] Update `docs/DEPENDENCIES.md` if the monitored-module lifecycle changes.
+- [x] Update `docs/gaps/README.md` and this file when resolved or superseded.
 
 ## Implementation notes for Codex
 
@@ -63,4 +63,8 @@ The repository either monitors `Az.Resources` directly or documents a deliberate
 
 ## Resolution notes
 
-Pending.
+`Az.Resources` was added to `monitoredModules` in `build/dependency-policy.json`, with baseline capture metadata refreshed and #193 tracking-scope notes updated to reflect direct monitoring.
+
+Structural guardrails were added in `tests/Unit/DependencyPolicy.Tests.ps1` to enforce the monitoring decision and preserve `Az.Resources`-linked blocked-transitive expectations.
+
+Documentation was updated in `docs/DEPENDENCIES.md`, `docs/Deep-Dive.md`, and `docs/Architecture.md` so monitored-module lifecycle guidance and architecture notes align with the policy decision.
