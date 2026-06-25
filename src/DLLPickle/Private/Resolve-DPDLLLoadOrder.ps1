@@ -54,9 +54,64 @@
         }
     }
 
-    # Fallback: inspect the assembly in a collectible ALC when MetadataLoadContext is unavailable.
-    # GetReferencedAssemblies reads metadata without requiring the target assembly to execute, and
-    # unloading the collectible context avoids polluting the caller's default load context.
+    # Fallback: inspect PE metadata directly without loading the assembly into a runtime context.
+    $PEReaderType = [type]::GetType('System.Reflection.PortableExecutable.PEReader, System.Reflection.Metadata', $false)
+    $MetadataReaderType = [type]::GetType('System.Reflection.Metadata.MetadataReader, System.Reflection.Metadata', $false)
+    if ($PEReaderType -and $MetadataReaderType) {
+        try {
+            $AssemblyStream = [System.IO.File]::Open(
+                $Path,
+                [System.IO.FileMode]::Open,
+                [System.IO.FileAccess]::Read,
+                [System.IO.FileShare]::ReadWrite
+            )
+
+            try {
+                $PEReader = [System.Reflection.PortableExecutable.PEReader]::new(
+                    $AssemblyStream,
+                    [System.Reflection.PortableExecutable.PEStreamOptions]::LeaveOpen
+                )
+
+                try {
+                    if (-not $PEReader.HasMetadata) {
+                        return @()
+                    }
+
+                    $MetadataReaderProvider = [System.Reflection.Metadata.MetadataReaderProvider]::FromMetadataImage(
+                        $PEReader.GetMetadata().GetContent()
+                    )
+
+                    try {
+                        $MetadataReader = $MetadataReaderProvider.GetMetadataReader()
+                        if (-not $MetadataReader.IsAssembly) {
+                            return @()
+                        }
+
+                        foreach ($ReferenceHandle in $MetadataReader.AssemblyReferences) {
+                            $AssemblyReference = $MetadataReader.GetAssemblyReference($ReferenceHandle)
+                            $ReferenceName = $MetadataReader.GetString($AssemblyReference.Name)
+                            if ($LocalAssemblyLookup.Contains($ReferenceName)) {
+                                [void]$References.Add($ReferenceName)
+                            }
+                        }
+                    } finally {
+                        $MetadataReaderProvider.Dispose()
+                    }
+                } finally {
+                    $PEReader.Dispose()
+                }
+            } finally {
+                $AssemblyStream.Dispose()
+            }
+
+            return @($References)
+        } catch {
+            Write-Verbose "PEReader metadata inspection failed for '$Path'. Continuing without discovered dependency edges for this assembly."
+        }
+    }
+
+    # Last resort: inspect the assembly in a collectible ALC. This can still trigger load-time
+    # behavior, so keep it behind the metadata-only paths above and unload immediately afterward.
     try {
         $InspectionContext = [System.Runtime.Loader.AssemblyLoadContext]::new('DLLPickle.ReferenceProbe', $true)
         try {
@@ -68,8 +123,6 @@
             }
         } finally {
             $InspectionContext.Unload()
-            [System.GC]::Collect()
-            [System.GC]::WaitForPendingFinalizers()
         }
 
         return @($References)

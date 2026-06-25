@@ -243,6 +243,18 @@ if ($DiscoveredReferences -notcontains 'Z.Synthetic.Dependency') {
     throw "Synthetic consumer did not advertise its dependency edge: $($DiscoveredReferences -join ', ')"
 }
 
+$ProbeLoadedAssemblies = @(
+    [AppDomain]::CurrentDomain.GetAssemblies() |
+        Where-Object { $_.GetName().Name -in $LocalAssemblyNames } |
+        Where-Object {
+            $LoadContext = [System.Runtime.Loader.AssemblyLoadContext]::GetLoadContext($_)
+            $LoadContext -and $LoadContext.IsCollectible
+        }
+)
+if ($ProbeLoadedAssemblies.Count -gt 0) {
+    throw "Reference discovery loaded synthetic assemblies into a collectible context: $($ProbeLoadedAssemblies.FullName -join ', ')"
+}
+
 $OrderedDlls = @(Resolve-DPDLLLoadOrder -DLLFiles @((Get-Item -LiteralPath $ConsumerPath), (Get-Item -LiteralPath $DependencyPath)))
 if ($OrderedDlls[0].Name -ne 'Z.Synthetic.Dependency.dll' -or $OrderedDlls[1].Name -ne 'A.Synthetic.Consumer.dll') {
     throw "Synthetic dependency graph did not order dependency-first: $($OrderedDlls.Name -join ', ')"
@@ -251,6 +263,9 @@ if ($OrderedDlls[0].Name -ne 'Z.Synthetic.Dependency.dll' -or $OrderedDlls[1].Na
 $Result = @(Import-DPLibrary -SuppressLogo -WarningAction SilentlyContinue)
 if ($Result.Count -ne 2 -or @($Result | Where-Object Status -eq 'Failed').Count -gt 0) {
     throw "Synthetic dependency import failed: $($Result | ConvertTo-Json -Compress)"
+}
+if (@($Result | Where-Object Status -ne 'Imported').Count -gt 0) {
+    throw "Synthetic dependency import should not rely on preloaded probe contexts: $($Result | ConvertTo-Json -Compress)"
 }
 
 $ConsumerAssemblyName = [Reflection.AssemblyName]::GetAssemblyName($ConsumerPath).Name
@@ -275,6 +290,152 @@ if ($ConsumerType.GetMethod('GetValue').Invoke($null, @()) -ne 'resolved') {
     }
 
     Context 'Dependency graph helper behavior' {
+        It 'uses a metadata-only fallback instead of forcing per-assembly GC after collectible loads' {
+            $ResolverSource = Get-Content -LiteralPath (Join-Path $RepoRoot 'src\DLLPickle\Private\Resolve-DPDLLLoadOrder.ps1') -Raw
+
+            $ResolverSource | Should -Match ([regex]::Escape('System.Reflection.PortableExecutable.PEReader'))
+            $ResolverSource | Should -Not -Match ([regex]::Escape('[System.GC]::Collect()'))
+            $ResolverSource | Should -Not -Match ([regex]::Escape('[System.GC]::WaitForPendingFinalizers()'))
+        }
+
+        It 'inspects dependency references without executing module initializers when MetadataLoadContext is unavailable' {
+            $FixtureRoot = Join-Path -Path $TestDrive -ChildPath ('MetadataOnly' + [guid]::NewGuid().ToString('N'))
+            $Payload = [ordered]@{
+                RepoRoot    = $RepoRoot
+                FixtureRoot = $FixtureRoot
+                FixtureId   = 'MetadataOnly' + [guid]::NewGuid().ToString('N')
+            }
+            $PayloadBase64 = [Convert]::ToBase64String(
+                [Text.Encoding]::UTF8.GetBytes(($Payload | ConvertTo-Json -Compress))
+            )
+            $ChildScript = @'
+$ErrorActionPreference = 'Stop'
+$Payload = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('__PAYLOAD__')) | ConvertFrom-Json
+if ([type]::GetType('System.Reflection.MetadataLoadContext, System.Reflection.MetadataLoadContext', $false)) {
+    'METADATA_ONLY_SKIPPED'
+    exit 0
+}
+
+if (
+    -not [type]::GetType('System.Reflection.PortableExecutable.PEReader, System.Reflection.Metadata', $false) -or
+    -not [type]::GetType('System.Reflection.Metadata.MetadataReader, System.Reflection.Metadata', $false)
+) {
+    throw 'PEReader metadata inspection types are unavailable in the isolated child process.'
+}
+
+$TfmDirectory = Join-Path -Path $Payload.FixtureRoot -ChildPath ([IO.Path]::Combine('bin', 'net8.0'))
+$CompilerRoot = Join-Path -Path $Payload.FixtureRoot -ChildPath 'compiler'
+$DependencyProjectRoot = Join-Path -Path $CompilerRoot -ChildPath 'Dependency'
+$ConsumerProjectRoot = Join-Path -Path $CompilerRoot -ChildPath 'Consumer'
+$MarkerPath = Join-Path -Path $Payload.FixtureRoot -ChildPath 'module-initializer.txt'
+
+$null = New-Item -Path $TfmDirectory -ItemType Directory -Force
+$null = New-Item -Path $DependencyProjectRoot -ItemType Directory -Force
+$null = New-Item -Path $ConsumerProjectRoot -ItemType Directory -Force
+
+$DependencyPath = Join-Path -Path $TfmDirectory -ChildPath 'Z.MetadataOnly.Dependency.dll'
+$ConsumerPath = Join-Path -Path $TfmDirectory -ChildPath 'A.MetadataOnly.Consumer.dll'
+
+$DependencySource = @"
+namespace $($Payload.FixtureId) {
+    public static class Dependency {
+        public static string GetValue() { return "resolved"; }
+    }
+}
+"@
+Set-Content -LiteralPath (Join-Path $DependencyProjectRoot 'Dependency.cs') -Value $DependencySource -Encoding UTF8
+Set-Content -LiteralPath (Join-Path $DependencyProjectRoot 'Z.MetadataOnly.Dependency.csproj') -Value @"
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <AssemblyName>Z.MetadataOnly.Dependency</AssemblyName>
+    <RootNamespace>$($Payload.FixtureId)</RootNamespace>
+  </PropertyGroup>
+</Project>
+"@ -Encoding UTF8
+$DependencyBuildOutput = @(& dotnet build (Join-Path $DependencyProjectRoot 'Z.MetadataOnly.Dependency.csproj') -c Release -nologo -o $TfmDirectory 2>&1)
+if ($LASTEXITCODE -ne 0) {
+    throw "Dependency project build failed: $($DependencyBuildOutput -join [Environment]::NewLine)"
+}
+
+$EscapedMarkerPath = $MarkerPath.Replace('\', '\\')
+$ConsumerSource = @"
+using System.IO;
+using System.Runtime.CompilerServices;
+
+namespace $($Payload.FixtureId) {
+    public static class ConsumerInitialization {
+        [ModuleInitializer]
+        public static void Initialize() {
+            File.WriteAllText("$EscapedMarkerPath", "initialized");
+        }
+    }
+
+    public static class Consumer {
+        public static string GetValue() { return Dependency.GetValue(); }
+    }
+}
+"@
+Set-Content -LiteralPath (Join-Path $ConsumerProjectRoot 'Consumer.cs') -Value $ConsumerSource -Encoding UTF8
+Set-Content -LiteralPath (Join-Path $ConsumerProjectRoot 'A.MetadataOnly.Consumer.csproj') -Value @"
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <AssemblyName>A.MetadataOnly.Consumer</AssemblyName>
+    <RootNamespace>$($Payload.FixtureId)</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Z.MetadataOnly.Dependency">
+      <HintPath>$DependencyPath</HintPath>
+    </Reference>
+  </ItemGroup>
+</Project>
+"@ -Encoding UTF8
+$ConsumerBuildOutput = @(& dotnet build (Join-Path $ConsumerProjectRoot 'A.MetadataOnly.Consumer.csproj') -c Release -nologo -o $TfmDirectory 2>&1)
+if ($LASTEXITCODE -ne 0) {
+    throw "Consumer project build failed: $($ConsumerBuildOutput -join [Environment]::NewLine)"
+}
+
+. (Join-Path $Payload.RepoRoot 'src\DLLPickle\Private\Resolve-DPDLLLoadOrder.ps1')
+$References = @(Get-DPDLLReferenceName -Path $ConsumerPath -LocalAssemblyNames @('A.MetadataOnly.Consumer', 'Z.MetadataOnly.Dependency'))
+if ($References -notcontains 'Z.MetadataOnly.Dependency') {
+    throw "Metadata-only dependency discovery missed the synthetic reference: $($References -join ', ')"
+}
+
+if (Test-Path -LiteralPath $MarkerPath) {
+    throw 'Metadata-only dependency discovery executed the module initializer.'
+}
+
+$ProbeLoadedAssemblies = @(
+    [AppDomain]::CurrentDomain.GetAssemblies() |
+        Where-Object { $_.GetName().Name -in @('A.MetadataOnly.Consumer', 'Z.MetadataOnly.Dependency') } |
+        Where-Object {
+            $LoadContext = [System.Runtime.Loader.AssemblyLoadContext]::GetLoadContext($_)
+            $LoadContext -and $LoadContext.IsCollectible
+        }
+)
+if ($ProbeLoadedAssemblies.Count -gt 0) {
+    throw "Metadata-only dependency discovery left synthetic assemblies in a collectible context: $($ProbeLoadedAssemblies.FullName -join ', ')"
+}
+
+'METADATA_ONLY_OK'
+'@.Replace('__PAYLOAD__', $PayloadBase64)
+            $ChildScriptPath = Join-Path -Path $TestDrive -ChildPath 'Invoke-MetadataOnlyDependencyTest.ps1'
+            Set-Content -LiteralPath $ChildScriptPath -Value $ChildScript -Encoding UTF8
+
+            $ProcessOutput = @(& pwsh -NoProfile -NonInteractive -File $ChildScriptPath 2>&1)
+            $ProcessExitCode = $LASTEXITCODE
+            $ProcessOutputText = $ProcessOutput -join [Environment]::NewLine
+
+            if ($ProcessOutputText -match 'METADATA_ONLY_SKIPPED') {
+                Set-ItResult -Skipped -Because 'MetadataLoadContext is available in the isolated child process, so the metadata-only fallback path is not exercised.'
+                return
+            }
+
+            $ProcessExitCode | Should -Be 0 -Because $ProcessOutputText
+            $ProcessOutputText | Should -Match 'METADATA_ONLY_OK'
+        }
+
         It 'Orders dependencies before dependents and appends unresolved nodes deterministically' {
             $AlphaPath = Join-Path -Path $TestDrive -ChildPath 'Alpha.dll'
             $BetaPath = Join-Path -Path $TestDrive -ChildPath 'Beta.dll'
