@@ -67,4 +67,4 @@ The repository either monitors `Az.Resources` directly or documents a deliberate
 
 Structural guardrails were added in `tests/Unit/DependencyPolicy.Tests.ps1` to enforce the monitoring decision and preserve `Az.Resources`-linked blocked-transitive expectations.
 
-Documentation was updated in `docs/DEPENDENCIES.md`, `docs/Deep-Dive.md`, and `docs/Architecture.md` so monitored-module lifecycle guidance and architecture notes align with the policy decision.
+Documentation was updated in `docs/DEPENDENCIES.md` so monitored-module lifecycle guidance aligns with the policy decision.

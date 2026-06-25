@@ -67,7 +67,7 @@ Every tracked assembly is classified into exactly one of:
 | `Microsoft.Identity.Client` (+ `.Broker`, `.Extensions.Msal`, `.NativeInterop`); `Microsoft.IdentityModel.*`; `System.IdentityModel.Tokens.Jwt` | **preload** | Default-ALC consumers (EXO/Teams) + the #156 broker fix; 2.0.1-validated. |
 | `Azure.Core`, `Azure.Identity`, `Azure.Identity.Broker`, `System.ClientModel` | **block** | Az + Graph self-isolate these privately; preloading splits type identity (the `Connect-AzAccount` break). **ALC-capable runtimes only** — would flip to `preload` on net48 (see §2 caveat / §10). |
 | `Microsoft.OData.Core`, `Microsoft.OData.Edm`, `Microsoft.Spatial` | **block** (report-only) | #174 — preloading breaks Az.Storage. |
-| `Microsoft.Extensions.DependencyInjection.Abstractions`, `Microsoft.Extensions.Logging.Abstractions` | **block** | #193 — incidental `Microsoft.IdentityModel.Tokens` transitives, not host-provided. Preloading DLLPickle's own copies into the default ALC collided with the copies `Az.Resources` bundles (`assembly with same name is already loaded`). Excluded via `ExcludeAssets="runtime"` (shipped 2.0.2); `Microsoft.IdentityModel.Tokens` still loads without them. |
+| `Microsoft.Extensions.DependencyInjection.Abstractions`, `Microsoft.Extensions.Logging.Abstractions` | **block** | #193 — incidental `Microsoft.IdentityModel.Tokens` transitives, not host-provided. Preloading DLLPickle's own copies into the default ALC collided with the copies `Az.Resources` bundles (`assembly with same name is already loaded`). Excluded via `ExcludeAssets="runtime"` (shipped 2.0.2); `Microsoft.IdentityModel.Tokens` still loads without them. `Az.Resources` is now explicitly monitored so drift inventory sees that collision source directly. |
 
 ## 4. Component map (authoritative paths)
 
@@ -191,7 +191,7 @@ Detailed status for open and in-progress maintenance traps is tracked in the [ga
 
 | Gap | Status | Architecture note |
 | --- | --- | --- |
-| [GAP-002](gaps/GAP-002-az-resources-monitoring.md) | open | `Az.Resources` is the observed #193 collision source but is not currently in `monitoredModules`. |
+| [GAP-002](gaps/GAP-002-az-resources-monitoring.md) | resolved | `Az.Resources` is now included in `monitoredModules`; policy tracking scope and dependency docs were updated with structural test coverage. |
 | [GAP-003](gaps/GAP-003-exo-teams-probe-commands.md) | open | EXO/Teams ALC ownership is not yet captured because bare `Import-Module` does not eagerly load their identity assemblies. |
 | [GAP-004](gaps/GAP-004-vscode-powershelleditorservices-host.md) | open | VS Code / PowerShellEditorServices host behavior is not yet modeled for issue #169. |
 | [GAP-005](gaps/GAP-005-odata-conflict-expectation-management.md) | open | OData/#174 remains a known unsolved single-process incompatibility; guard expectations and user docs must stay current. |

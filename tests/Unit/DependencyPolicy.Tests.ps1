@@ -4,6 +4,22 @@ BeforeAll {
 }
 
 Describe 'Dependency policy baseline' -Tag 'Unit' {
+    It 'explicitly monitors Az.Resources as the #193 collision source' {
+        $MonitoredNames = @($script:Policy.monitoredModules | ForEach-Object name)
+        $MonitoredNames | Should -Contain 'Az.Resources'
+
+        $TrackedBlocked = @(
+            $script:Policy.blockedPreloadAssemblies |
+                Where-Object { $_.assemblyName -in @('Microsoft.Extensions.DependencyInjection.Abstractions', 'Microsoft.Extensions.Logging.Abstractions') }
+        )
+
+        $TrackedBlocked | Should -HaveCount 2
+        foreach ($Entry in $TrackedBlocked) {
+            @($Entry.sourceModules) | Should -Contain 'Az.Resources'
+            $Entry.evidence.trackingScope | Should -Match 'included in monitoredModules'
+        }
+    }
+
     It 'records the complete structured conflict surface' {
         @($script:Policy.baseline.conflictSurface) | Should -HaveCount 17
 
@@ -57,4 +73,5 @@ Describe 'Dependency policy baseline' -Tag 'Unit' {
         @($ConflictRow[0].shippedBy) | Should -Be @('Az.Accounts', 'ExchangeOnlineManagement', 'Microsoft.Graph.Authentication', 'MicrosoftTeams')
         $BlockEntry | Should -HaveCount 1
     }
+
 }
