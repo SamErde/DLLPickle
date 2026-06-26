@@ -85,12 +85,22 @@ Describe 'Release publish gating guardrails' -Tag 'Unit' {
         # GAP-006 is closed to prevent. The list must therefore have no entries beyond the allow-list.
         $pathsMatch = [regex]::Match(
             $ReleaseWorkflow,
-            '(?ms)^  pull_request:.*?^    paths:\r?\n(?<list>(?:[^\S\r\n]+-[^\S\r\n].*(?:\r?\n|$))+)')
+            '(?m)^  pull_request:[\s\S]*?^    paths:\r?\n(?<list>(?:[^\S\r\n]+-[^\S\r\n][^\r\n]*\r?\n?)+)')
         $pathsMatch.Success | Should -BeTrue -Because 'the pull_request trigger must declare a paths allow-list'
 
+        # Extract every YAML sequence item under paths: regardless of quote style (double-quoted,
+        # single-quoted, or unquoted) so an extra entry like - docs/** or - 'docs/**' is still
+        # captured and trips the EXACTLY-three assertion instead of being silently ignored.
         $declaredPaths = @(
-            [regex]::Matches($pathsMatch.Groups['list'].Value, '(?m)^[^\S\r\n]+-[^\S\r\n]+"(?<path>[^"]+)"') |
-                ForEach-Object { $_.Groups['path'].Value }
+            $pathsMatch.Groups['list'].Value -split '\r?\n' |
+                ForEach-Object {
+                    $item = [regex]::Match($_, '^[^\S\r\n]*-[^\S\r\n]+(?<path>\S.*?)[^\S\r\n]*$')
+                    if ($item.Success) {
+                        # Strip one matching pair of surrounding double or single quotes, if present.
+                        $item.Groups['path'].Value -replace '^"(.*)"$', '$1' -replace "^'(.*)'`$", '$1'
+                    }
+                } |
+                Where-Object { $_ }
         )
         $allowedPaths = @(
             'src/DLLPickle/**'

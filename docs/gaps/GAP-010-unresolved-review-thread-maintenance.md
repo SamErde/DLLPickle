@@ -11,7 +11,7 @@ related_issues: []
 related_prs: []
 related_docs:
   - docs/Architecture.md
-  - .github/workflows/Build-Module.yml
+  - .github/workflows/Build Module.yml
 related_tests: []
 resolution_pr: https://github.com/SamErde/DLLPickle/pull/267
 resolved_on: 2026-06-26
