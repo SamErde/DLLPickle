@@ -144,6 +144,24 @@ Describe 'Test-DPLibraryConflict' -Tag 'Unit' {
 }
 
 Describe 'Invoke-DPConflictCheck' -Tag 'Unit' {
+    BeforeAll {
+        $script:ConflictModuleA = 'Synthetic.ConflictA'
+        $script:ConflictModuleB = 'Synthetic.ConflictB'
+        $SyntheticRoot = Join-Path $TestDrive 'KnownConflictModules'
+
+        foreach ($ModuleName in @($script:ConflictModuleA, $script:ConflictModuleB)) {
+            $Version = '1.0.0'
+            $ModuleDirectory = Join-Path -Path $SyntheticRoot -ChildPath ([System.IO.Path]::Combine($ModuleName, $Version))
+            $null = New-Item -Path $ModuleDirectory -ItemType Directory -Force
+            $ModuleFile = Join-Path -Path $ModuleDirectory -ChildPath "$ModuleName.psm1"
+            $ManifestFile = Join-Path -Path $ModuleDirectory -ChildPath "$ModuleName.psd1"
+
+            Set-Content -LiteralPath $ModuleFile -Value 'Export-ModuleMember' -Encoding UTF8
+            New-ModuleManifest -Path $ManifestFile -RootModule "$ModuleName.psm1" -ModuleVersion $Version -FunctionsToExport @()
+            Import-Module $ManifestFile -Force
+        }
+    }
+
     BeforeEach {
         $script:DPConflictHandled = $null
         $LoadedPairPath = Join-Path $TestDrive 'invoke-loaded-pair.json'
