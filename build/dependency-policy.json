@@ -308,13 +308,13 @@
       }
     ],
     "validation": {
-      "pullRequest": 257,
+      "pullRequest": 264,
       "result": "tracked-conflict-classified-and-excluded",
-      "validatedOn": "2026-06-23",
+      "validatedOn": "2026-06-25",
       "evidence": [
-        "Tracking System.Security.Cryptography.ProtectedData exposed a 17th conflict row across Az.Accounts, ExchangeOnlineManagement, Microsoft.Graph.Authentication, and MicrosoftTeams at assembly versions 4.0.3.0, 7.0.0.0, and 9.0.0.0; the other 16 conflict rows and monitored module versions were unchanged.",
-        "The assembly is classified block because PowerShell supplies the runtime assembly and DLLPickle's Windows build had bundled the older 4.0.3.0 NuGet assembly transitively through Microsoft.Identity.Client.Extensions.Msal.",
-        "A direct ExcludeAssets=runtime reference removed the bundled copy, and the full Windows build passed the policy-realization guard plus 193 unit and 18 non-live integration tests."
+        "Adding Az.Resources to the monitored module set for issue #193 / GAP-002 refreshed the baseline capture on 2026-06-25, adding Az.Resources 10.0.0 to the monitored module versions and exposing Microsoft.Extensions.DependencyInjection.Abstractions as an 18th conflict row across Az.Resources and MicrosoftTeams at assembly versions 2.2.0.0 and 8.0.0.0; the prior 17 conflict rows were unchanged and Az.Resources is the only module that contributes the new row.",
+        "The assembly is classified block because the contributing modules already diverge on Microsoft.Extensions.DependencyInjection.Abstractions and DLLPickle must not re-bundle it; its paired Microsoft.Extensions.Logging.Abstractions is excluded alongside it but is shipped only by MicrosoftTeams, so it does not appear in the cross-module conflict surface.",
+        "The conflict-surface fingerprint was recomputed to 03b94d1603f2d7af09021a738fe9b7ed028dd18bba361e55bbe866bb1febaae0, and the refreshed baseline is exercised by the policy-realization guard and the dependency-policy unit and non-live integration suites."
       ]
     }
   },

@@ -66,10 +66,10 @@ Describe 'Dependency policy baseline' -Tag 'Unit' {
         }
     }
 
-    It 'records the pull request 257 adjudication evidence' {
-        $script:Policy.baseline.validation.pullRequest | Should -Be 257
+    It 'records the pull request 264 adjudication evidence' {
+        $script:Policy.baseline.validation.pullRequest | Should -Be 264
         $script:Policy.baseline.validation.result | Should -BeExactly 'tracked-conflict-classified-and-excluded'
-        $script:Policy.baseline.validation.validatedOn | Should -BeExactly '2026-06-23'
+        $script:Policy.baseline.validation.validatedOn | Should -BeExactly '2026-06-25'
         @($script:Policy.baseline.validation.evidence) | Should -Not -BeNullOrEmpty
     }
 
