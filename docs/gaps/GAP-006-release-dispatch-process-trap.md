@@ -1,12 +1,12 @@
 ---
 id: GAP-006
 title: Document manual release dispatch process trap
-status: open
+status: resolved
 severity: medium
 area: release-process
 owner: maintainer
 created: 2026-06-23
-updated: 2026-06-23
+updated: 2026-06-26
 related_issues: []
 related_prs: []
 related_docs:
@@ -15,15 +15,15 @@ related_docs:
   - .github/workflows/Release-and-Publish.yml
 related_tests:
   - tests/Unit/WorkflowGuardrails.Tests.ps1
-resolution_pr:
-resolved_on:
+resolution_pr: https://github.com/SamErde/DLLPickle/pull/267
+resolved_on: 2026-06-26
 ---
 
 # GAP-006 — Document manual release dispatch process trap
 
 ## Status
 
-**Current status:** Open.
+**Current status:** Resolved.
 
 ## Problem
 
@@ -45,12 +45,12 @@ The repository contains clear maintainer-facing instructions for when and how to
 
 ## Acceptance criteria
 
-- [ ] Add a maintainer-facing release dispatch note to `docs/Architecture.md`, `CHANGELOG.md`, or a dedicated release document.
-- [ ] Document examples of changes that do and do not publish automatically.
-- [ ] Document when `workflow_dispatch` is appropriate.
-- [ ] Confirm workflow guardrail tests cover the path gate and manual-dispatch expectations where practical.
-- [ ] Update PR/release guidance so Codex does not claim that non-bundle changes are shipped automatically.
-- [ ] Update `docs/gaps/README.md` and this file when resolved or superseded.
+- [x] Add a maintainer-facing release dispatch note to `docs/Architecture.md`, `CHANGELOG.md`, or a dedicated release document.
+- [x] Document examples of changes that do and do not publish automatically.
+- [x] Document when `workflow_dispatch` is appropriate.
+- [x] Confirm workflow guardrail tests cover the path gate and manual-dispatch expectations where practical.
+- [x] Update PR/release guidance so Codex does not claim that non-bundle changes are shipped automatically.
+- [x] Update `docs/gaps/README.md` and this file when resolved or superseded.
 
 ## Implementation notes for Codex
 
@@ -62,4 +62,6 @@ The repository contains clear maintainer-facing instructions for when and how to
 
 ## Resolution notes
 
-Pending.
+Added a maintainer runbook as `docs/Architecture.md` §8.3 ("Manual release dispatch"), including a "Does this merge auto-publish?" table of concrete examples, the precise conditions under which `workflow_dispatch` is the correct tool, when not to use it, and explicit agent guidance never to claim a non-bundle change "shipped" just because its PR merged. Recorded the change in `CHANGELOG.md` under Unreleased.
+
+The release path gate and the `workflow_dispatch` escape hatch are now guarded by `tests/Unit/WorkflowGuardrails.Tests.ps1` (`Release publish gating guardrails`): it asserts the `paths:` filter contains exactly the three bundle inputs, that non-bundle paths (`docs/**`, `tests/**`, `tools/**`, `build/**`) are not path-gated, and that `workflow_dispatch` exposes the explicit `auto/major/minor/patch` bump choice. The publish triggers were not broadened.

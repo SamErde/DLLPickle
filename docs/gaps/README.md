@@ -39,11 +39,11 @@ Use this register for durable repo-local gap state. Use `docs/superpowers/specs/
 | GAP-003 | open | runtime-probes | Add representative EXO and Teams probe commands | [GAP-003](GAP-003-exo-teams-probe-commands.md) |
 | GAP-004 | open | host-context | Model VS Code and PowerShellEditorServices host behavior | [GAP-004](GAP-004-vscode-powershelleditorservices-host.md) |
 | GAP-005 | resolved | known-conflicts | Strengthen OData conflict expectation management | [GAP-005](GAP-005-odata-conflict-expectation-management.md) |
-| GAP-006 | open | release-process | Document manual release dispatch process trap | [GAP-006](GAP-006-release-dispatch-process-trap.md) |
+| GAP-006 | resolved | release-process | Document manual release dispatch process trap | [GAP-006](GAP-006-release-dispatch-process-trap.md) |
 | GAP-007 | open | branch-protection | Audit required status-check ruleset configuration | [GAP-007](GAP-007-required-status-check-ruleset-audit.md) |
 | GAP-008 | open | module-manifest | Guard manifest export drift | [GAP-008](GAP-008-manifest-export-drift.md) |
 | GAP-009 | open | build-output | Make merged root-module script order deterministic | [GAP-009](GAP-009-merged-root-module-order.md) |
-| GAP-010 | open | review-process | Define unresolved review-thread maintenance workflow | [GAP-010](GAP-010-unresolved-review-thread-maintenance.md) |
+| GAP-010 | resolved | review-process | Define unresolved review-thread maintenance workflow | [GAP-010](GAP-010-unresolved-review-thread-maintenance.md) |
 | GAP-011 | resolved | documentation | Guard docs and implementation drift for gap closures | [GAP-011](GAP-011-docs-implementation-drift.md) |
 
 ## Agent workflow

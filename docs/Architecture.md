@@ -160,6 +160,32 @@ A release that fails either half is not TFM-aligned and must not be merged on th
 
 This mirrors the **hard gate** in §9: bundle-set changes are behavior-changing and require the auth-tier real-environment sign-off; they are not auto-merged blindly.
 
+### 8.3 Manual release dispatch (maintainer runbook)
+
+The path gate in §8.1 is deliberate: a merge only auto-publishes when it changes the **published bundle** (`src/DLLPickle/**`, `src/DLLPickle.Build/DLLPickle.csproj`, or `src/DLLPickle.Build/packages.lock.json`). This protects the gallery from docs/CI/test/tooling churn, but it creates a **process trap**: a change that is *about* releasing or packaging — yet does not touch a bundle path — will merge without ever publishing. A maintainer (or agent) can reasonably but wrongly assume "merged" means "shipped".
+
+**Does this merge auto-publish?**
+
+| Change | Auto-publishes? | Why |
+| --- | --- | --- |
+| Edit a public/private function under `src/DLLPickle/**` | ✅ Yes (with a release-worthy commit prefix) | Hits the path gate; the version gate fires on `feat:`/`fix:`/etc. |
+| Dependabot NuGet bump (`DLLPickle.csproj` + `packages.lock.json`, `deps:` prefix) | ✅ Yes → **minor** | Path gate ✔ + `deps:` is a recognized minor prefix (§8.1/§8.2). |
+| Edit `build/DLLPickle.Build.ps1` packaging/release logic | ❌ No | `build/**` is excluded from the `paths:` filter — bundle bytes are unchanged. |
+| Edit `.github/workflows/Release-and-Publish.yml` | ❌ No | `.github/**` is excluded. |
+| Edit `build/dependency-policy.json`, tests, tooling, or docs only | ❌ No | None of these change the shipped DLLs or module source. |
+| Any bundle-path change whose commits are all `docs:`/`ci:`/`style:` | ❌ No | Path gate ✔ but the version gate finds no release-worthy prefix. |
+
+**When `workflow_dispatch` is the correct tool.** Use the manual **Run workflow** button on `Release-and-Publish` (the deliberate-release escape hatch) when **all** of the following hold:
+
+1. The change should ship a new gallery version, **and**
+2. It does **not** move a bundle path (so the automatic path gate will never fire) — for example a packaging/release-logic fix in `build/DLLPickle.Build.ps1`, **or**
+3. You need to re-release after a transient publish failure (the failed run rolls back by deleting the tag/release; `main` is never committed to), **or**
+4. You are cutting a release whose bump type you want to set explicitly (`major`/`minor`/`patch`) rather than inferring from commit prefixes (`auto`).
+
+**When *not* to use it.** Do not use `workflow_dispatch` to bypass the version gate for ordinary code changes — fix the commit prefix instead. Do not manually dispatch a release for docs/CI/test/tooling-only changes; by design they do not ship a new module version.
+
+> **Agent guidance:** never report that a non-bundle change (build script, workflow, policy, tests, tooling, docs) has "shipped" or "published" simply because its PR merged. State that it merged and, if a release is intended, that a deliberate `workflow_dispatch` run is required. The path gate and version gate are guarded by `tests/Unit/WorkflowGuardrails.Tests.ps1`.
+
 ## 9. Agent workstream conventions
 
 When changing the preload contract, follow this loop:
@@ -184,6 +210,30 @@ Issue #239 was adjudicated on 2026-06-20 against Microsoft.Graph.Authentication 
 - Commit/push only when the maintainer asks.
 - Never hand-edit `module/` (generated). Never weaken analyzer settings to silence a finding — fix the code or scope a justified suppression.
 - Do not mark a `docs/gaps/GAP-*.md` item `resolved` unless the implementation, tests or explicit test rationale, and documentation updates are complete and linked.
+- Do not resolve a pull-request review thread as a substitute for code, test, or documentation changes (see §9.1).
+
+### 9.1 Review-thread maintenance workflow
+
+The `Protect Main` ruleset expects review-thread resolution before merge (this is the conversation-resolution half of GAP-007's required-status posture). That gate is only meaningful if threads are resolved because the underlying concern was addressed — not to clear a merge blocker. This workflow is intentionally kept **separate** from GAP-007: GAP-007 audits the *ruleset configuration*; this section governs *human/agent behavior* on threads.
+
+**Who may resolve a thread.** Prefer the reviewer who opened it. An author (human or agent) may resolve a thread only when the change that addresses it is committed and linked, or when the thread is non-actionable (answered question, acknowledged nit, or out-of-scope item tracked elsewhere).
+
+**Resolve a thread only when one of these is true:**
+
+1. The requested change is implemented and the resolving commit is referenced in a reply, **or**
+2. The concern is answered with a substantive reply and the reviewer agrees (or explicitly deferred to author discretion), **or**
+3. The item is out of scope and is captured as a `docs/gaps/GAP-*.md` entry or a linked issue, referenced in the reply.
+
+**Do not:**
+
+- Resolve a thread without a reply explaining how it was addressed.
+- Bulk-resolve threads to unblock a merge.
+- Resolve a thread by deleting or weakening the code, test, or doc it asked about.
+- Treat thread resolution as equivalent to closing the work — if a thread maps to deferred work, open or update a gap and link it.
+
+**Stale threads.** If a thread is stale because the surrounding code changed, reply with the superseding commit/PR and resolve. If it is stale because of an unmade decision, leave it open and request maintainer review rather than resolving silently.
+
+**Agent guidance.** Agents must never resolve review threads autonomously to make a PR mergeable. An agent may *reply* to a thread describing the change it made and may resolve only under rule (1) above with the commit linked; otherwise it leaves the thread for maintainer action.
 
 ## 10. Known gaps / follow-ups
 
@@ -195,9 +245,10 @@ Detailed status for open and in-progress maintenance traps is tracked in the [ga
 | [GAP-003](gaps/GAP-003-exo-teams-probe-commands.md) | open | EXO/Teams ALC ownership is not yet captured because bare `Import-Module` does not eagerly load their identity assemblies. |
 | [GAP-004](gaps/GAP-004-vscode-powershelleditorservices-host.md) | open | VS Code / PowerShellEditorServices host behavior is not yet modeled for issue #169. |
 | [GAP-005](gaps/GAP-005-odata-conflict-expectation-management.md) | resolved | OData/#174 expectation management is explicit in known-conflict data, docs, and policy tests; changes require runtime re-adjudication. |
-| [GAP-006](gaps/GAP-006-release-dispatch-process-trap.md) | open | Packaging/release-logic changes may require deliberate `workflow_dispatch` because non-bundle paths do not auto-publish. |
+| [GAP-006](gaps/GAP-006-release-dispatch-process-trap.md) | resolved | The manual release dispatch runbook (§8.3) documents which changes auto-publish and when `workflow_dispatch` is required; guarded by `tests/Unit/WorkflowGuardrails.Tests.ps1`. |
 | [GAP-007](gaps/GAP-007-required-status-check-ruleset-audit.md) | open | Required status-check ruleset configuration lives partly outside the repository and needs an auditable repo-local snapshot or procedure. |
 | [GAP-008](gaps/GAP-008-manifest-export-drift.md) | open | Manifest `FunctionsToExport` should be guarded against drift from intended public functions. |
+| [GAP-010](gaps/GAP-010-unresolved-review-thread-maintenance.md) | resolved | Review-thread maintenance workflow is documented in §9.1; kept separate from GAP-007 (configuration audit) by design. |
 | [GAP-011](gaps/GAP-011-docs-implementation-drift.md) | resolved | Gap register status/index/resolution drift is guarded by `tests/Unit/GapRegister.Tests.ps1`; related-docs updates remain review-only. |
 
 Historical/resolved notes remain below when they explain the current architecture or release contract.

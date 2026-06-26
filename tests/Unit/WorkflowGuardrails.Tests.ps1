@@ -2,6 +2,7 @@ BeforeAll {
     $ProjectRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
     $UpstreamWorkflow = Get-Content -LiteralPath (Join-Path $ProjectRoot '.github\workflows\Upstream-Compatibility.yml') -Raw
     $DependabotWorkflow = Get-Content -LiteralPath (Join-Path $ProjectRoot '.github\workflows\Dependabot-Auto-Approve.yml') -Raw
+    $ReleaseWorkflow = Get-Content -LiteralPath (Join-Path $ProjectRoot '.github\workflows\Release-and-Publish.yml') -Raw
 }
 
 Describe 'Upstream compatibility workflow guardrails' -Tag 'Unit' {
@@ -68,5 +69,58 @@ Describe 'Dependabot major-version draft-PR flow' -Tag 'Unit' {
         # Auto-merge is invoked exactly once -- in the patch/minor step, never on the major path.
         ([regex]::Matches($DependabotWorkflow, [regex]::Escape('gh pr merge --auto'))).Count | Should -Be 1
         $DependabotWorkflow | Should -Match ([regex]::Escape("update-type != 'version-update:semver-major'"))
+    }
+}
+
+Describe 'Release publish gating guardrails' -Tag 'Unit' {
+    It 'auto-triggers only on closed pull requests to main' {
+        $ReleaseWorkflow | Should -Match '(?ms)on:\s+pull_request:\s+types:\s*\[closed\]'
+        $ReleaseWorkflow | Should -Match '(?ms)branches:\s+- main'
+    }
+
+    It 'path-gates auto-publish to EXACTLY the three bundle-affecting inputs' {
+        # Parse the pull_request paths: allow-list and assert it is EXACTLY the three bundle inputs.
+        # A presence-only check would still pass if an accidental auto-publish path (e.g. "docs/**",
+        # "*.md", ".github/**") were added later -- the precise CI/docs release-trigger regression
+        # GAP-006 is closed to prevent. The list must therefore have no entries beyond the allow-list.
+        $pathsMatch = [regex]::Match(
+            $ReleaseWorkflow,
+            '(?m)^  pull_request:[\s\S]*?^    paths:\r?\n(?<list>(?:[^\S\r\n]+-[^\S\r\n][^\r\n]*\r?\n?)+)')
+        $pathsMatch.Success | Should -BeTrue -Because 'the pull_request trigger must declare a paths allow-list'
+
+        # Extract every YAML sequence item under paths: regardless of quote style (double-quoted,
+        # single-quoted, or unquoted) so an extra entry like - docs/** or - 'docs/**' is still
+        # captured and trips the EXACTLY-three assertion instead of being silently ignored.
+        $declaredPaths = @(
+            $pathsMatch.Groups['list'].Value -split '\r?\n' |
+                ForEach-Object {
+                    $item = [regex]::Match($_, '^[^\S\r\n]*-[^\S\r\n]+(?<path>\S.*?)[^\S\r\n]*$')
+                    if ($item.Success) {
+                        # Strip one matching pair of surrounding double or single quotes, if present.
+                        $item.Groups['path'].Value -replace '^"(.*)"$', '$1' -replace "^'(.*)'`$", '$1'
+                    }
+                } |
+                Where-Object { $_ }
+        )
+        $allowedPaths = @(
+            'src/DLLPickle/**'
+            'src/DLLPickle.Build/DLLPickle.csproj'
+            'src/DLLPickle.Build/packages.lock.json'
+        )
+        $declaredPaths | Should -Be $allowedPaths
+    }
+
+    It 'does not path-gate on non-bundle inputs that must never auto-publish' {
+        # docs/test/tooling/policy/CI-only changes leave the shipped bundle byte-identical.
+        $ReleaseWorkflow | Should -Not -Match '(?m)^\s+- "docs/\*\*"'
+        $ReleaseWorkflow | Should -Not -Match '(?m)^\s+- "tests/\*\*"'
+        $ReleaseWorkflow | Should -Not -Match '(?m)^\s+- "tools/\*\*"'
+        $ReleaseWorkflow | Should -Not -Match '(?m)^\s+- "build/\*\*"'
+    }
+
+    It 'exposes workflow_dispatch as the deliberate-release escape hatch with an explicit bump choice' {
+        $ReleaseWorkflow | Should -Match '(?m)^\s+workflow_dispatch:'
+        $ReleaseWorkflow | Should -Match ([regex]::Escape('version_bump'))
+        $ReleaseWorkflow | Should -Match '(?ms)options:\s+- auto\s+- major\s+- minor\s+- patch'
     }
 }
