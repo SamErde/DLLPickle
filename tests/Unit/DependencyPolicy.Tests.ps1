@@ -21,7 +21,7 @@ Describe 'Dependency policy baseline' -Tag 'Unit' {
     }
 
     It 'records the complete structured conflict surface' {
-        @($script:Policy.baseline.conflictSurface) | Should -HaveCount 17
+            @($script:Policy.baseline.conflictSurface) | Should -HaveCount 18
 
         foreach ($Row in $script:Policy.baseline.conflictSurface) {
             $Row.name | Should -Not -BeNullOrEmpty
@@ -51,7 +51,7 @@ Describe 'Dependency policy baseline' -Tag 'Unit' {
             @($script:Policy.blockedPreloadAssemblies).assemblyName
         )
 
-        $ConflictNames | Should -HaveCount 17
+        $ConflictNames | Should -HaveCount 18
         foreach ($Name in $ConflictNames) {
             @($ClassifiedNames | Where-Object { $_ -eq $Name }) | Should -HaveCount 1
         }

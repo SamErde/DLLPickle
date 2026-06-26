@@ -86,7 +86,7 @@
       "Az.Storage": "9.7.0",
       "Az.Resources": "10.0.0"
     },
-    "conflictSurfaceFingerprint": "8489ef99f7a87bd12c048e0f680bcdfc4a76eb736dcb093a732f83c66858f52c",
+    "conflictSurfaceFingerprint": "03b94d1603f2d7af09021a738fe9b7ed028dd18bba361e55bbe866bb1febaae0",
     "conflictSurface": [
       {
         "name": "Azure.Core",
@@ -120,6 +120,17 @@
         "shippedBy": [
           "Az.Accounts",
           "Microsoft.Graph.Authentication"
+        ]
+      },
+      {
+        "name": "Microsoft.Extensions.DependencyInjection.Abstractions",
+        "versions": [
+          "2.2.0.0",
+          "8.0.0.0"
+        ],
+        "shippedBy": [
+          "Az.Resources",
+          "MicrosoftTeams"
         ]
       },
       {
