@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 - Working on updates to replace PlatyPS documentation creation with the new Microsoft.PowerShell.PlatyPS module. (PRs and other help would be welcomed!)
+- Added a structural gap-register guard (`tests/Unit/GapRegister.Tests.ps1`) that validates gap status values, index membership, index/frontmatter status agreement, and `resolution_pr`/`resolved_on` on resolved gaps; surfaced and fixed GAP-001's missing index row (GAP-011).
 
 ## [2.2.2] - 2026-06-22
 

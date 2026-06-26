@@ -1,12 +1,12 @@
 ---
 id: GAP-011
 title: Guard docs and implementation drift for gap closures
-status: open
+status: resolved
 severity: medium
 area: documentation
 owner: maintainer
 created: 2026-06-23
-updated: 2026-06-23
+updated: 2026-06-26
 related_issues: []
 related_prs: []
 related_docs:
@@ -14,16 +14,17 @@ related_docs:
   - docs/gaps/README.md
   - docs/superpowers/plans
   - docs/superpowers/specs
-related_tests: []
-resolution_pr:
-resolved_on:
+related_tests:
+  - tests/Unit/GapRegister.Tests.ps1
+resolution_pr: https://github.com/SamErde/DLLPickle/pull/266
+resolved_on: 2026-06-26
 ---
 
 # GAP-011 — Guard docs and implementation drift for gap closures
 
 ## Status
 
-**Current status:** Open.
+**Current status:** Resolved.
 
 ## Problem
 
@@ -44,12 +45,12 @@ The repository has either a lightweight automated consistency check for gap file
 
 ## Acceptance criteria
 
-- [ ] Add a structural test or script that validates gap frontmatter status values.
-- [ ] Add a structural test or script that checks every `docs/gaps/GAP-*.md` file appears in `docs/gaps/README.md`.
-- [ ] Add a structural test or script that checks resolved gaps include `resolution_pr` and `resolved_on`.
-- [ ] Decide whether related docs updates can be tested structurally or must remain review-only.
-- [ ] Update `.github/prompts/maintain-gap.prompt.md` if the workflow changes.
-- [ ] Update `docs/gaps/README.md` and this file when resolved or superseded.
+- [x] Add a structural test or script that validates gap frontmatter status values.
+- [x] Add a structural test or script that checks every `docs/gaps/GAP-*.md` file appears in `docs/gaps/README.md`.
+- [x] Add a structural test or script that checks resolved gaps include `resolution_pr` and `resolved_on`.
+- [x] Decide whether related docs updates can be tested structurally or must remain review-only.
+- [x] Update `.github/prompts/maintain-gap.prompt.md` if the workflow changes.
+- [x] Update `docs/gaps/README.md` and this file when resolved or superseded.
 
 ## Implementation notes for Codex
 
@@ -60,4 +61,6 @@ The repository has either a lightweight automated consistency check for gap file
 
 ## Resolution notes
 
-Pending.
+Added `tests/Unit/GapRegister.Tests.ps1`, a deterministic, local-only Pester guard that validates: allowed `status` values, gap-file-to-index membership, index/frontmatter status agreement, and `resolution_pr`/`resolved_on` presence on resolved gaps. Implementing the guard surfaced existing drift: GAP-001 (resolved) was missing from the index and is now listed.
+
+Decision on related-docs updates: kept **review-only**. Verifying that a resolved gap's `related_docs` were meaningfully updated cannot be done structurally without false positives, so it remains a maintainer/agent review responsibility documented in `docs/gaps/README.md` and `.github/prompts/maintain-gap.prompt.md`.
