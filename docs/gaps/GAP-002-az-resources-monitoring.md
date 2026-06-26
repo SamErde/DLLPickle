@@ -9,14 +9,15 @@ created: 2026-06-23
 updated: 2026-06-25
 related_issues:
   - "193"
-related_prs: []
+related_prs:
+  - https://github.com/SamErde/DLLPickle/pull/264
 related_docs:
   - docs/Architecture.md
   - build/dependency-policy.json
   - docs/DEPENDENCIES.md
 related_tests:
   - tests/Integration/DLLPickle.IntegrationTest.Tests.ps1
-resolution_pr: pending-local-pr
+resolution_pr: https://github.com/SamErde/DLLPickle/pull/264
 resolved_on: 2026-06-25
 ---
 

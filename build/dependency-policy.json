@@ -583,8 +583,7 @@
       "assemblyName": "Microsoft.Extensions.Logging.Abstractions",
       "classification": "block",
       "sourceModules": [
-        "MicrosoftTeams",
-        "Az.Resources"
+        "MicrosoftTeams"
       ],
       "updateMode": "reportOnly",
       "reason": "#193: paired with DependencyInjection.Abstractions (depends on it); same incidental-transitive collision with Az modules. Excluded from the bundle (ExcludeAssets=runtime).",
@@ -593,7 +592,7 @@
         "basis": "Excluded alongside DependencyInjection.Abstractions in 2.0.2. Microsoft.IdentityModel.Tokens still loads without it bundled (resolves lazily / supplied by the consuming service modules).",
         "decidedOn": "2026-05-31",
         "issue": "193",
-        "trackingScope": "Az.Resources is included in monitoredModules so upstream inventory captures this assembly family from the observed #193 collision source. #193 remains a DLLPickle-bundle-vs-consumer collision (not a cross-module version split), so the cross-module conflict-surface gate still may not flag every change by itself; preserve the regression guard against re-bundling in tests/Integration/DLLPickle.IntegrationTest.Tests.ps1 and re-adjudicate runtime behavior when Az.Resources dependency content changes."
+        "trackingScope": "Az.Resources does not ship this assembly; the refreshed inventory observes Microsoft.Extensions.Logging.Abstractions only in MicrosoftTeams (a single shipper, so it does not diverge cross-module and is not in the conflict surface). It is excluded from the bundle as the paired dependency of Microsoft.Extensions.DependencyInjection.Abstractions, which Az.Resources does ship and which is now monitored and present in the conflict surface. #193 remains a DLLPickle-bundle-vs-consumer collision; preserve the regression guard against re-bundling in tests/Integration/DLLPickle.IntegrationTest.Tests.ps1 and re-adjudicate runtime behavior when Az.Resources dependency content changes."
       }
     },
     {

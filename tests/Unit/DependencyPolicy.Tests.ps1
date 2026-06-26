@@ -5,19 +5,28 @@ BeforeAll {
 
 Describe 'Dependency policy baseline' -Tag 'Unit' {
     It 'explicitly monitors Az.Resources as the #193 collision source' {
-        $MonitoredNames = @($script:Policy.monitoredModules | ForEach-Object name)
+        $MonitoredNames = @($script:Policy.monitoredModules.name)
         $MonitoredNames | Should -Contain 'Az.Resources'
 
-        $TrackedBlocked = @(
+        # Az.Resources ships Microsoft.Extensions.DependencyInjection.Abstractions (a diverging
+        # member of the conflict surface), so it must be recorded as a source module there.
+        $DiEntry = @(
             $script:Policy.blockedPreloadAssemblies |
-                Where-Object { $_.assemblyName -in @('Microsoft.Extensions.DependencyInjection.Abstractions', 'Microsoft.Extensions.Logging.Abstractions') }
+                Where-Object { $_.assemblyName -eq 'Microsoft.Extensions.DependencyInjection.Abstractions' }
         )
+        $DiEntry | Should -HaveCount 1
+        @($DiEntry[0].sourceModules) | Should -Contain 'Az.Resources'
+        $DiEntry[0].evidence.trackingScope | Should -Match 'included in monitoredModules'
 
-        $TrackedBlocked | Should -HaveCount 2
-        foreach ($Entry in $TrackedBlocked) {
-            @($Entry.sourceModules) | Should -Contain 'Az.Resources'
-            $Entry.evidence.trackingScope | Should -Match 'included in monitoredModules'
-        }
+        # Az.Resources does NOT ship Microsoft.Extensions.Logging.Abstractions; the refreshed
+        # inventory observes it only in MicrosoftTeams, so it must not be recorded there.
+        $LoggingEntry = @(
+            $script:Policy.blockedPreloadAssemblies |
+                Where-Object { $_.assemblyName -eq 'Microsoft.Extensions.Logging.Abstractions' }
+        )
+        $LoggingEntry | Should -HaveCount 1
+        @($LoggingEntry[0].sourceModules) | Should -Contain 'MicrosoftTeams'
+        @($LoggingEntry[0].sourceModules) | Should -Not -Contain 'Az.Resources'
     }
 
     It 'records the complete structured conflict surface' {
