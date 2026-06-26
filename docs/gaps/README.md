@@ -63,6 +63,7 @@ Use this register for durable repo-local gap state. Use `docs/superpowers/specs/
 - a `GAP-*.md` file declares a `status` outside the allowed values above,
 - a `GAP-*.md` file is missing from the gap index table,
 - a gap file's frontmatter status does not match its index row, or
+- a gap index row File-column link basename does not match its actual `GAP-*.md` filename, or
 - a `resolved` gap is missing `resolution_pr` or `resolved_on`.
 
 The guard is deterministic and local-only; it does not call the GitHub API. Whether the `related_docs` of a resolved gap were actually updated remains a **review-only** check, because that cannot be verified structurally without false positives.

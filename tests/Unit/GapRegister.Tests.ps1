@@ -46,13 +46,24 @@ BeforeAll {
     # Status values must stay in sync with the status table in docs/gaps/README.md.
     $script:AllowedGapStatuses = @('open', 'in-progress', 'blocked', 'resolved', 'superseded', 'wont-fix')
 
-    # Parse the index table rows (| GAP-### | status | ... |) into a lookup.
+    # Parse the index table rows (| GAP-### | status | ... | [GAP-###](GAP-###-file.md) |)
+    # into a lookup of index status + File-column link basename.
     $indexContent = Get-Content -LiteralPath $indexPath -Raw
     $script:GapIndexRows = @{}
     foreach ($line in ($indexContent -split '\r?\n')) {
-        $rowMatch = [regex]::Match($line, '^\|\s*(GAP-\d+)\s*\|\s*([^|]+?)\s*\|')
+        $rowMatch = [regex]::Match(
+            $line,
+            '^\|\s*(GAP-\d+)\s*\|\s*([^|]+?)\s*\|[^|]*\|[^|]*\|\s*\[[^\]]+\]\((?<file>[^)]+)\)\s*\|')
         if ($rowMatch.Success) {
-            $script:GapIndexRows[$rowMatch.Groups[1].Value] = $rowMatch.Groups[2].Value.Trim()
+            $gapId = $rowMatch.Groups[1].Value
+            $fileLinkTarget = $rowMatch.Groups['file'].Value.Trim()
+            # Treat README link fragments/query as non-basename metadata (foo.md#x, foo.md?y)
+            # so this guard validates the file path basename only.
+            $filePathOnly = ($fileLinkTarget -split '[#?]', 2)[0]
+            $script:GapIndexRows[$gapId] = @{
+                Status = $rowMatch.Groups[2].Value.Trim()
+                File   = [System.IO.Path]::GetFileName($filePathOnly)
+            }
         }
     }
 }
@@ -80,7 +91,14 @@ Describe 'Gap register consistency' -Tag 'Unit' {
             # silently comparing $null index values.
             $Id | Should -Not -BeNullOrEmpty -Because 'a gap file without an id cannot be looked up in the index'
             $Status | Should -Not -BeNullOrEmpty -Because 'the index status comparison needs a frontmatter status'
-            $script:GapIndexRows[$Id] | Should -Be $Status
+            $script:GapIndexRows.ContainsKey($Id) | Should -BeTrue
+            $script:GapIndexRows[$Id].Status | Should -Be $Status
+        }
+
+        It 'has an index file link basename matching its file name' {
+            $Id | Should -Not -BeNullOrEmpty -Because 'a gap file without an id cannot be looked up in the index'
+            $script:GapIndexRows.ContainsKey($Id) | Should -BeTrue
+            $script:GapIndexRows[$Id].File | Should -Be $Name
         }
     }
 
