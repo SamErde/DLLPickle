@@ -9,7 +9,8 @@ created: 2026-06-23
 updated: 2026-06-25
 related_issues:
   - "174"
-related_prs: []
+related_prs:
+  - https://github.com/SamErde/DLLPickle/pull/265
 related_docs:
   - docs/Architecture.md
   - docs/Deep-Dive.md
@@ -18,7 +19,7 @@ related_docs:
   - docs/superpowers/plans/2026-06-01-issue174-conflict-warning.md
 related_tests:
   - tests/Integration/DLLPickle.Issue174.OData.Tests.ps1
-resolution_pr:
+resolution_pr: https://github.com/SamErde/DLLPickle/pull/265
 resolved_on: 2026-06-25
 ---
 
