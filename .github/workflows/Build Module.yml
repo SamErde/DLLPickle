@@ -73,7 +73,10 @@ jobs:
               $Files = gh api "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" --paginate --jq '.[] | .filename, (.previous_filename // empty)'
               # Native non-zero exits don't reliably throw in pwsh, so check explicitly -> fail-safe.
               if ($LASTEXITCODE -ne 0) { throw "gh api exited $LASTEXITCODE while listing PR files" }
-              $Patterns = @('^src/', '^build/', '^tests/', '^tools/', '^\.github/ci-scripts/', '^\.github/workflows/Build Module\.yml$')
+              # docs/gaps/ is build-relevant: the gap-register guard (tests/Unit/GapRegister.Tests.ps1)
+              # must run when gap files or their index change, otherwise a docs-only gap edit would skip
+              # the very check that detects gap-register drift (GAP-011).
+              $Patterns = @('^src/', '^build/', '^tests/', '^tools/', '^docs/gaps/', '^\.github/ci-scripts/', '^\.github/workflows/Build Module\.yml$')
               $Relevant = $false
               foreach ($File in $Files) {
                   foreach ($Pattern in $Patterns) {

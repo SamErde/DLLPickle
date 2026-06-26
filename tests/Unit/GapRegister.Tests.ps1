@@ -1,4 +1,4 @@
-﻿BeforeDiscovery {
+BeforeDiscovery {
     $gapProjectRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
     $gapDirectory = Join-Path $gapProjectRoot 'docs\gaps'
 
@@ -69,10 +69,17 @@ Describe 'Gap register consistency' -Tag 'Unit' {
         }
 
         It 'appears as a row in the gap index' {
+            # Assert the id is present first so a missing-id gap fails with an actionable message
+            # instead of ContainsKey($null) throwing an ArgumentNullException.
+            $Id | Should -Not -BeNullOrEmpty -Because 'a gap file without an id cannot be matched to an index row'
             $script:GapIndexRows.ContainsKey($Id) | Should -BeTrue
         }
 
         It 'has an index status matching its frontmatter status' {
+            # Guard both lookup inputs so a missing id/status reports the real defect rather than
+            # silently comparing $null index values.
+            $Id | Should -Not -BeNullOrEmpty -Because 'a gap file without an id cannot be looked up in the index'
+            $Status | Should -Not -BeNullOrEmpty -Because 'the index status comparison needs a frontmatter status'
             $script:GapIndexRows[$Id] | Should -Be $Status
         }
     }
