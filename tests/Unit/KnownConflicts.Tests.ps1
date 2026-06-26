@@ -124,20 +124,20 @@ Describe 'Test-DPLibraryConflict' -Tag 'Unit' {
     }
 
     It 'warns and returns the conflict when both modules are loaded' {
-        $Active = Test-DPLibraryConflict -KnownConflictsPath $LoadedPairPath -WarningAction SilentlyContinue
+        $Active = Test-DPLibraryConflict -KnownConflictsPath $script:LoadedPairPath -WarningAction SilentlyContinue
         @($Active).Count | Should -Be 1
         $Active[0].id | Should -Be 'loaded'
     }
 
     It 'emits a Write-Warning when a conflict is active' {
         $Warnings = $null
-        Test-DPLibraryConflict -KnownConflictsPath $LoadedPairPath -WarningVariable Warnings -WarningAction SilentlyContinue | Out-Null
+        Test-DPLibraryConflict -KnownConflictsPath $script:LoadedPairPath -WarningVariable Warnings -WarningAction SilentlyContinue | Out-Null
         @($Warnings).Count | Should -BeGreaterThan 0
     }
 
     It 'is silent and returns nothing when no conflict pair is fully loaded' {
         $Warnings = $null
-        $Active = Test-DPLibraryConflict -KnownConflictsPath $UnloadedPairPath -WarningVariable Warnings -WarningAction SilentlyContinue
+        $Active = Test-DPLibraryConflict -KnownConflictsPath $script:UnloadedPairPath -WarningVariable Warnings -WarningAction SilentlyContinue
         @($Active) | Should -BeNullOrEmpty
         @($Warnings) | Should -BeNullOrEmpty
     }
