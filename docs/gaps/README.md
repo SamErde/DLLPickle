@@ -34,6 +34,7 @@ Use this register for durable repo-local gap state. Use `docs/superpowers/specs/
 
 | ID | Status | Area | Title | File |
 | --- | --- | --- | --- | --- |
+| GAP-001 | resolved | dependency-policy | Add dependency policy realization guard | [GAP-001](GAP-001-dependency-policy-realization-guard.md) |
 | GAP-002 | resolved | dependency-policy | Track Az.Resources as a monitored collision source | [GAP-002](GAP-002-az-resources-monitoring.md) |
 | GAP-003 | open | runtime-probes | Add representative EXO and Teams probe commands | [GAP-003](GAP-003-exo-teams-probe-commands.md) |
 | GAP-004 | open | host-context | Model VS Code and PowerShellEditorServices host behavior | [GAP-004](GAP-004-vscode-powershelleditorservices-host.md) |
@@ -43,7 +44,7 @@ Use this register for durable repo-local gap state. Use `docs/superpowers/specs/
 | GAP-008 | open | module-manifest | Guard manifest export drift | [GAP-008](GAP-008-manifest-export-drift.md) |
 | GAP-009 | open | build-output | Make merged root-module script order deterministic | [GAP-009](GAP-009-merged-root-module-order.md) |
 | GAP-010 | resolved | review-process | Define unresolved review-thread maintenance workflow | [GAP-010](GAP-010-unresolved-review-thread-maintenance.md) |
-| GAP-011 | open | documentation | Guard docs and implementation drift for gap closures | [GAP-011](GAP-011-docs-implementation-drift.md) |
+| GAP-011 | resolved | documentation | Guard docs and implementation drift for gap closures | [GAP-011](GAP-011-docs-implementation-drift.md) |
 
 ## Agent workflow
 
@@ -54,3 +55,14 @@ Use this register for durable repo-local gap state. Use `docs/superpowers/specs/
 5. Add or update tests before marking a gap resolved when an automated guard is practical.
 6. Update related documentation before finalizing the PR.
 7. Update this index and the gap file frontmatter in the same PR that resolves, blocks, supersedes, or intentionally accepts the gap.
+
+## Automated guard
+
+`tests/Unit/GapRegister.Tests.ps1` structurally validates this register on every unit-test run. It fails the build when:
+
+- a `GAP-*.md` file declares a `status` outside the allowed values above,
+- a `GAP-*.md` file is missing from the gap index table,
+- a gap file's frontmatter status does not match its index row, or
+- a `resolved` gap is missing `resolution_pr` or `resolved_on`.
+
+The guard is deterministic and local-only; it does not call the GitHub API. Whether the `related_docs` of a resolved gap were actually updated remains a **review-only** check, because that cannot be verified structurally without false positives.

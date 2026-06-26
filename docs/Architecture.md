@@ -249,6 +249,7 @@ Detailed status for open and in-progress maintenance traps is tracked in the [ga
 | [GAP-007](gaps/GAP-007-required-status-check-ruleset-audit.md) | open | Required status-check ruleset configuration lives partly outside the repository and needs an auditable repo-local snapshot or procedure. |
 | [GAP-008](gaps/GAP-008-manifest-export-drift.md) | open | Manifest `FunctionsToExport` should be guarded against drift from intended public functions. |
 | [GAP-010](gaps/GAP-010-unresolved-review-thread-maintenance.md) | resolved | Review-thread maintenance workflow is documented in §9.1; kept separate from GAP-007 (configuration audit) by design. |
+| [GAP-011](gaps/GAP-011-docs-implementation-drift.md) | resolved | Gap register status/index/resolution drift is guarded by `tests/Unit/GapRegister.Tests.ps1`; related-docs updates remain review-only. |
 
 Historical/resolved notes remain below when they explain the current architecture or release contract.
 
