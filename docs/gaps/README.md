@@ -37,7 +37,7 @@ Use this register for durable repo-local gap state. Use `docs/superpowers/specs/
 | GAP-002 | resolved | dependency-policy | Track Az.Resources as a monitored collision source | [GAP-002](GAP-002-az-resources-monitoring.md) |
 | GAP-003 | open | runtime-probes | Add representative EXO and Teams probe commands | [GAP-003](GAP-003-exo-teams-probe-commands.md) |
 | GAP-004 | open | host-context | Model VS Code and PowerShellEditorServices host behavior | [GAP-004](GAP-004-vscode-powershelleditorservices-host.md) |
-| GAP-005 | open | known-conflicts | Strengthen OData conflict expectation management | [GAP-005](GAP-005-odata-conflict-expectation-management.md) |
+| GAP-005 | resolved | known-conflicts | Strengthen OData conflict expectation management | [GAP-005](GAP-005-odata-conflict-expectation-management.md) |
 | GAP-006 | open | release-process | Document manual release dispatch process trap | [GAP-006](GAP-006-release-dispatch-process-trap.md) |
 | GAP-007 | open | branch-protection | Audit required status-check ruleset configuration | [GAP-007](GAP-007-required-status-check-ruleset-audit.md) |
 | GAP-008 | open | module-manifest | Guard manifest export drift | [GAP-008](GAP-008-manifest-export-drift.md) |

@@ -7,8 +7,8 @@
     ],
     "assembly": "Microsoft.OData.Core",
     "issue": "174",
-    "reason": "Az.Storage force-loads Microsoft.OData.Core 7.6.4 at import; ExchangeOnlineManagement's Get-EXO* cmdlets require 7.22.0. Both target the default ALC and are strong-named, so the two versions cannot coexist in one process - both import orders fail.",
-    "workaround": "Use Az.Storage and ExchangeOnlineManagement (Get-EXO* cmdlets) in separate PowerShell processes - for example a background job (Start-Job) or a second pwsh. A separate runspace in the same process does NOT help: the conflict is process-wide (one default AssemblyLoadContext per process).",
+    "reason": "Az.Storage force-loads Microsoft.OData.Core 7.6.4 at import; ExchangeOnlineManagement's Get-EXO* cmdlets require 7.22.0. Both target the default ALC and are strong-named, so the two versions cannot coexist in one process - both import orders fail. This is an upstream module incompatibility, not a missing DLLPickle preload target.",
+    "workaround": "Use Az.Storage and ExchangeOnlineManagement (Get-EXO* cmdlets) in separate PowerShell processes - for example a background job (Start-Job) or a second pwsh. A separate runspace in the same process does NOT help: the conflict is process-wide (one default AssemblyLoadContext per process). Do not re-enable OData preloading unless fresh runtime evidence proves both import orders work in one process.",
     "evidence": {
       "versions": {
         "Az.Storage": "7.6.4",
@@ -16,7 +16,8 @@
       },
       "alc": "Default",
       "runtimeProbe": "2026-06-01 scenarios 1-4: both load OData into the Default ALC; Az.Storage-first -> EXO REF_DEF_MISMATCH (0x80131040); EXO-first -> Az.Storage 'same name already loaded'.",
-      "decidedOn": "2026-06-01"
+      "decidedOn": "2026-06-01",
+      "reAdjudicationRequired": "Any OData classification change requires fresh runtime evidence for both import orders in one process; static dependency updates alone are insufficient."
     }
   }
 ]
