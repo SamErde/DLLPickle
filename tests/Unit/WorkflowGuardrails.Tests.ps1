@@ -78,10 +78,26 @@ Describe 'Release publish gating guardrails' -Tag 'Unit' {
         $ReleaseWorkflow | Should -Match '(?ms)branches:\s+- main'
     }
 
-    It 'path-gates auto-publish to the three bundle-affecting inputs' {
-        $ReleaseWorkflow | Should -Match ([regex]::Escape('- "src/DLLPickle/**"'))
-        $ReleaseWorkflow | Should -Match ([regex]::Escape('- "src/DLLPickle.Build/DLLPickle.csproj"'))
-        $ReleaseWorkflow | Should -Match ([regex]::Escape('- "src/DLLPickle.Build/packages.lock.json"'))
+    It 'path-gates auto-publish to EXACTLY the three bundle-affecting inputs' {
+        # Parse the pull_request paths: allow-list and assert it is EXACTLY the three bundle inputs.
+        # A presence-only check would still pass if an accidental auto-publish path (e.g. "docs/**",
+        # "*.md", ".github/**") were added later -- the precise CI/docs release-trigger regression
+        # GAP-006 is closed to prevent. The list must therefore have no entries beyond the allow-list.
+        $pathsMatch = [regex]::Match(
+            $ReleaseWorkflow,
+            '(?ms)^  pull_request:.*?^    paths:\r?\n(?<list>(?:[^\S\r\n]+-[^\S\r\n].*(?:\r?\n|$))+)')
+        $pathsMatch.Success | Should -BeTrue -Because 'the pull_request trigger must declare a paths allow-list'
+
+        $declaredPaths = @(
+            [regex]::Matches($pathsMatch.Groups['list'].Value, '(?m)^[^\S\r\n]+-[^\S\r\n]+"(?<path>[^"]+)"') |
+                ForEach-Object { $_.Groups['path'].Value }
+        )
+        $allowedPaths = @(
+            'src/DLLPickle/**'
+            'src/DLLPickle.Build/DLLPickle.csproj'
+            'src/DLLPickle.Build/packages.lock.json'
+        )
+        $declaredPaths | Should -Be $allowedPaths
     }
 
     It 'does not path-gate on non-bundle inputs that must never auto-publish' {
