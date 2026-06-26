@@ -102,6 +102,10 @@ The monitored module set currently includes:
 - `Az.Storage`
 - `Az.Accounts`
 - `MicrosoftTeams`
+- `Az.Resources`
+
+`Az.Resources` is monitored explicitly because it is the observed trigger for
+the #193 `Microsoft.Extensions.*` collision family.
 
 The workflow is fail-closed. It may open a candidate PR when a policy-supported
 pin changes, such as a Graph or Teams `Azure.Core` update. It does not merge or

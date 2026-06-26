@@ -108,6 +108,10 @@ Monitored modules:
 - `Az.Storage`
 - `Az.Accounts`
 - `MicrosoftTeams`
+- `Az.Resources`
+
+`Az.Resources` is monitored explicitly because it is the observed collision
+source for the #193 `Microsoft.Extensions.*` transitive-assembly conflict.
 
 The workflow is fail-closed: it only opens a candidate PR after inventory,
 candidate generation, restore, build, and issue reproduction tests pass.

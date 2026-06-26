@@ -4,8 +4,34 @@ BeforeAll {
 }
 
 Describe 'Dependency policy baseline' -Tag 'Unit' {
+    It 'explicitly monitors Az.Resources as the #193 collision source' {
+        $MonitoredNames = @($script:Policy.monitoredModules.name)
+        $MonitoredNames | Should -Contain 'Az.Resources'
+
+        # Az.Resources ships Microsoft.Extensions.DependencyInjection.Abstractions (a diverging
+        # member of the conflict surface), so it must be recorded as a source module there and
+        # carry the structured #193 collision linkage.
+        $DiEntry = @(
+            $script:Policy.blockedPreloadAssemblies |
+                Where-Object { $_.assemblyName -eq 'Microsoft.Extensions.DependencyInjection.Abstractions' }
+        )
+        $DiEntry | Should -HaveCount 1
+        @($DiEntry[0].sourceModules) | Should -Contain 'Az.Resources'
+        $DiEntry[0].evidence.issue | Should -Be '193'
+
+        # Az.Resources does NOT ship Microsoft.Extensions.Logging.Abstractions; the refreshed
+        # inventory observes it only in MicrosoftTeams, so it must not be recorded there.
+        $LoggingEntry = @(
+            $script:Policy.blockedPreloadAssemblies |
+                Where-Object { $_.assemblyName -eq 'Microsoft.Extensions.Logging.Abstractions' }
+        )
+        $LoggingEntry | Should -HaveCount 1
+        @($LoggingEntry[0].sourceModules) | Should -Contain 'MicrosoftTeams'
+        @($LoggingEntry[0].sourceModules) | Should -Not -Contain 'Az.Resources'
+    }
+
     It 'records the complete structured conflict surface' {
-        @($script:Policy.baseline.conflictSurface) | Should -HaveCount 17
+        @($script:Policy.baseline.conflictSurface) | Should -HaveCount 18
 
         foreach ($Row in $script:Policy.baseline.conflictSurface) {
             $Row.name | Should -Not -BeNullOrEmpty
@@ -35,16 +61,16 @@ Describe 'Dependency policy baseline' -Tag 'Unit' {
             @($script:Policy.blockedPreloadAssemblies).assemblyName
         )
 
-        $ConflictNames | Should -HaveCount 17
+        $ConflictNames | Should -HaveCount 18
         foreach ($Name in $ConflictNames) {
             @($ClassifiedNames | Where-Object { $_ -eq $Name }) | Should -HaveCount 1
         }
     }
 
-    It 'records the pull request 257 adjudication evidence' {
-        $script:Policy.baseline.validation.pullRequest | Should -Be 257
+    It 'records the pull request 264 adjudication evidence' {
+        $script:Policy.baseline.validation.pullRequest | Should -Be 264
         $script:Policy.baseline.validation.result | Should -BeExactly 'tracked-conflict-classified-and-excluded'
-        $script:Policy.baseline.validation.validatedOn | Should -BeExactly '2026-06-23'
+        $script:Policy.baseline.validation.validatedOn | Should -BeExactly '2026-06-25'
         @($script:Policy.baseline.validation.evidence) | Should -Not -BeNullOrEmpty
     }
 
@@ -57,4 +83,5 @@ Describe 'Dependency policy baseline' -Tag 'Unit' {
         @($ConflictRow[0].shippedBy) | Should -Be @('Az.Accounts', 'ExchangeOnlineManagement', 'Microsoft.Graph.Authentication', 'MicrosoftTeams')
         $BlockEntry | Should -HaveCount 1
     }
+
 }
