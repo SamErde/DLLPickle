@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 - Working on updates to replace PlatyPS documentation creation with the new Microsoft.PowerShell.PlatyPS module. (PRs and other help would be welcomed!)
+- Documented the manual release dispatch process trap: Architecture §8.3 now spells out which changes auto-publish, which do not, and when a deliberate `workflow_dispatch` run is required, backed by new `Release-and-Publish` path/version-gate guardrail tests (GAP-006).
+- Documented the unresolved review-thread maintenance workflow so review threads are not resolved as a substitute for code, test, or documentation changes (GAP-010).
 
 ## [2.2.2] - 2026-06-22
 

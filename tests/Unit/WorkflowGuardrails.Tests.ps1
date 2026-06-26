@@ -2,6 +2,7 @@ BeforeAll {
     $ProjectRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
     $UpstreamWorkflow = Get-Content -LiteralPath (Join-Path $ProjectRoot '.github\workflows\Upstream-Compatibility.yml') -Raw
     $DependabotWorkflow = Get-Content -LiteralPath (Join-Path $ProjectRoot '.github\workflows\Dependabot-Auto-Approve.yml') -Raw
+    $ReleaseWorkflow = Get-Content -LiteralPath (Join-Path $ProjectRoot '.github\workflows\Release-and-Publish.yml') -Raw
 }
 
 Describe 'Upstream compatibility workflow guardrails' -Tag 'Unit' {
@@ -68,5 +69,32 @@ Describe 'Dependabot major-version draft-PR flow' -Tag 'Unit' {
         # Auto-merge is invoked exactly once -- in the patch/minor step, never on the major path.
         ([regex]::Matches($DependabotWorkflow, [regex]::Escape('gh pr merge --auto'))).Count | Should -Be 1
         $DependabotWorkflow | Should -Match ([regex]::Escape("update-type != 'version-update:semver-major'"))
+    }
+}
+
+Describe 'Release publish gating guardrails' -Tag 'Unit' {
+    It 'auto-triggers only on closed pull requests to main' {
+        $ReleaseWorkflow | Should -Match '(?ms)on:\s+pull_request:\s+types:\s*\[closed\]'
+        $ReleaseWorkflow | Should -Match '(?ms)branches:\s+- main'
+    }
+
+    It 'path-gates auto-publish to the three bundle-affecting inputs' {
+        $ReleaseWorkflow | Should -Match ([regex]::Escape('- "src/DLLPickle/**"'))
+        $ReleaseWorkflow | Should -Match ([regex]::Escape('- "src/DLLPickle.Build/DLLPickle.csproj"'))
+        $ReleaseWorkflow | Should -Match ([regex]::Escape('- "src/DLLPickle.Build/packages.lock.json"'))
+    }
+
+    It 'does not path-gate on non-bundle inputs that must never auto-publish' {
+        # docs/test/tooling/policy/CI-only changes leave the shipped bundle byte-identical.
+        $ReleaseWorkflow | Should -Not -Match '(?m)^\s+- "docs/\*\*"'
+        $ReleaseWorkflow | Should -Not -Match '(?m)^\s+- "tests/\*\*"'
+        $ReleaseWorkflow | Should -Not -Match '(?m)^\s+- "tools/\*\*"'
+        $ReleaseWorkflow | Should -Not -Match '(?m)^\s+- "build/\*\*"'
+    }
+
+    It 'exposes workflow_dispatch as the deliberate-release escape hatch with an explicit bump choice' {
+        $ReleaseWorkflow | Should -Match '(?m)^\s+workflow_dispatch:'
+        $ReleaseWorkflow | Should -Match ([regex]::Escape('version_bump'))
+        $ReleaseWorkflow | Should -Match '(?ms)options:\s+- auto\s+- major\s+- minor\s+- patch'
     }
 }

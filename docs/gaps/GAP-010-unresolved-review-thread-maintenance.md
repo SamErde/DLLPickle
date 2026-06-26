@@ -1,27 +1,27 @@
 ---
 id: GAP-010
 title: Define unresolved review-thread maintenance workflow
-status: open
+status: resolved
 severity: low
 area: review-process
 owner: maintainer
 created: 2026-06-23
-updated: 2026-06-23
+updated: 2026-06-26
 related_issues: []
 related_prs: []
 related_docs:
   - docs/Architecture.md
   - .github/workflows/Build-Module.yml
 related_tests: []
-resolution_pr:
-resolved_on:
+resolution_pr: pending-local-pr
+resolved_on: 2026-06-26
 ---
 
 # GAP-010 — Define unresolved review-thread maintenance workflow
 
 ## Status
 
-**Current status:** Open.
+**Current status:** Resolved.
 
 ## Problem
 
@@ -42,11 +42,11 @@ The repository documents how maintainers and agents should handle unresolved rev
 
 ## Acceptance criteria
 
-- [ ] Decide whether this gap should be folded into GAP-007 or kept separate.
-- [ ] Document the review-thread maintenance workflow if kept separate.
-- [ ] Update the relevant PR guidance or architecture note.
-- [ ] Ensure the workflow does not encourage agents to resolve review threads without addressing the underlying issue.
-- [ ] Update `docs/gaps/README.md` and this file when resolved, superseded, or folded into GAP-007.
+- [x] Decide whether this gap should be folded into GAP-007 or kept separate.
+- [x] Document the review-thread maintenance workflow if kept separate.
+- [x] Update the relevant PR guidance or architecture note.
+- [x] Ensure the workflow does not encourage agents to resolve review threads without addressing the underlying issue.
+- [x] Update `docs/gaps/README.md` and this file when resolved, superseded, or folded into GAP-007.
 
 ## Implementation notes for Codex
 
@@ -57,4 +57,6 @@ The repository documents how maintainers and agents should handle unresolved rev
 
 ## Resolution notes
 
-Pending.
+Decision: **kept separate** from GAP-007. GAP-007 audits the required-status-check *ruleset configuration*; this gap governs *human and agent behavior* on review threads, so folding them would conflate a configuration audit with a process convention.
+
+Documented the workflow in `docs/Architecture.md` §9.1 ("Review-thread maintenance workflow"): who may resolve a thread, the three conditions under which a thread may be resolved, an explicit do-not list, stale-thread handling, and agent-specific guidance. Added a matching hard-gate bullet to §9 stating that resolving a thread is never a substitute for code, test, or documentation changes, and that threads mapping to deferred work must be captured as a `GAP-*` entry or linked issue.
