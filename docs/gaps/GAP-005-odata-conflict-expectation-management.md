@@ -1,15 +1,16 @@
 ---
 id: GAP-005
 title: Strengthen OData conflict expectation management
-status: open
+status: resolved
 severity: medium
 area: known-conflicts
 owner: maintainer
 created: 2026-06-23
-updated: 2026-06-23
+updated: 2026-06-25
 related_issues:
   - "174"
-related_prs: []
+related_prs:
+  - https://github.com/SamErde/DLLPickle/pull/265
 related_docs:
   - docs/Architecture.md
   - docs/Deep-Dive.md
@@ -18,15 +19,15 @@ related_docs:
   - docs/superpowers/plans/2026-06-01-issue174-conflict-warning.md
 related_tests:
   - tests/Integration/DLLPickle.Issue174.OData.Tests.ps1
-resolution_pr:
-resolved_on:
+resolution_pr: https://github.com/SamErde/DLLPickle/pull/265
+resolved_on: 2026-06-25
 ---
 
-# GAP-005 — Strengthen OData conflict expectation management
+## GAP-005 — Strengthen OData conflict expectation management
 
 ## Status
 
-**Current status:** Open.
+**Current status:** Resolved.
 
 ## Problem
 
@@ -48,12 +49,12 @@ The repository makes it unambiguous that #174 is a known unsolved cross-module i
 
 ## Acceptance criteria
 
-- [ ] Confirm `src/DLLPickle/KnownConflicts.json` clearly describes the #174 behavior and workaround.
-- [ ] Confirm user-facing docs explain that the workaround is separate PowerShell processes/sessions, not a single-process preload fix.
-- [ ] Confirm tests fail if OData assemblies are added back to the preload bundle without a deliberate re-adjudication.
-- [ ] Update the issue #174 plan/spec notes if they are stale after the committed-source relocation.
-- [ ] Add or update an architecture note that future OData changes require runtime re-adjudication, not static dependency updates alone.
-- [ ] Update `docs/gaps/README.md` and this file when resolved or superseded.
+- [x] Confirm `src/DLLPickle/KnownConflicts.json` clearly describes the #174 behavior and workaround.
+- [x] Confirm user-facing docs explain that the workaround is separate PowerShell processes/sessions, not a single-process preload fix.
+- [x] Confirm tests fail if OData assemblies are added back to the preload bundle without a deliberate re-adjudication.
+- [x] Update the issue #174 plan/spec notes if they are stale after the committed-source relocation.
+- [x] Add or update an architecture note that future OData changes require runtime re-adjudication, not static dependency updates alone.
+- [x] Update `docs/gaps/README.md` and this file when resolved or superseded.
 
 ## Implementation notes for Codex
 
@@ -65,4 +66,8 @@ The repository makes it unambiguous that #174 is a known unsolved cross-module i
 
 ## Resolution notes
 
-Pending.
+`src/DLLPickle/KnownConflicts.json` now states explicitly that #174 is an upstream incompatibility (not a missing preload target), preserves the separate-process workaround language, and adds a re-adjudication requirement for any future OData classification change.
+
+Expectation-management regression guards were strengthened in `tests/Unit/KnownConflicts.Tests.ps1` and `tests/Unit/DependencyPolicy.Tests.ps1`, while `docs/Deep-Dive.md` and `docs/Architecture.md` now state that OData preload changes require runtime evidence across both import orders.
+
+Historical plan/spec notes were refreshed in `docs/superpowers/plans/2026-06-01-issue174-conflict-warning.md` and `docs/superpowers/specs/2026-06-01-issue174-conflict-warning-design.md` to align with the current committed-source model and ongoing runtime re-adjudication expectation.

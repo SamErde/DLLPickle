@@ -226,6 +226,10 @@ work in one `pwsh` (or a `Start-Job` background job) and `Az.Storage` work in an
 **runspace** in the *same* process does **not** help: the conflict is process-wide (one default
 `AssemblyLoadContext` per process).
 
+Any future attempt to reclassify OData as preloadable must be re-adjudicated
+with fresh runtime evidence for both import orders in one process; static
+package/version changes alone are not sufficient.
+
 ## Audio Discussion
 
 [![Listen](https://raw.githubusercontent.com/SamErde/DLLPickle/main/assets/DLL_Pickle__A_Clever_Fix.png)](https://raw.githubusercontent.com/SamErde/DLLPickle/main/assets/DLL_Pickle__Interactive_Deep_Dive_audio.mp4)

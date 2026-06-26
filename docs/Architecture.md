@@ -66,7 +66,7 @@ Every tracked assembly is classified into exactly one of:
 | --- | --- | --- |
 | `Microsoft.Identity.Client` (+ `.Broker`, `.Extensions.Msal`, `.NativeInterop`); `Microsoft.IdentityModel.*`; `System.IdentityModel.Tokens.Jwt` | **preload** | Default-ALC consumers (EXO/Teams) + the #156 broker fix; 2.0.1-validated. |
 | `Azure.Core`, `Azure.Identity`, `Azure.Identity.Broker`, `System.ClientModel` | **block** | Az + Graph self-isolate these privately; preloading splits type identity (the `Connect-AzAccount` break). **ALC-capable runtimes only** — would flip to `preload` on net48 (see §2 caveat / §10). |
-| `Microsoft.OData.Core`, `Microsoft.OData.Edm`, `Microsoft.Spatial` | **block** (report-only) | #174 — preloading breaks Az.Storage. |
+| `Microsoft.OData.Core`, `Microsoft.OData.Edm`, `Microsoft.Spatial` | **block** (report-only) | #174 — preloading breaks Az.Storage. Any future change requires runtime re-adjudication in both import orders, not static package updates alone. |
 | `Microsoft.Extensions.DependencyInjection.Abstractions`, `Microsoft.Extensions.Logging.Abstractions` | **block** | #193 — incidental `Microsoft.IdentityModel.Tokens` transitives, not host-provided. Preloading DLLPickle's own copies into the default ALC collided with the copies `Az.Resources` bundles (`assembly with same name is already loaded`). Excluded via `ExcludeAssets="runtime"` (shipped 2.0.2); `Microsoft.IdentityModel.Tokens` still loads without them. `Az.Resources` is now explicitly monitored so drift inventory sees that collision source directly. |
 
 ## 4. Component map (authoritative paths)
@@ -194,7 +194,7 @@ Detailed status for open and in-progress maintenance traps is tracked in the [ga
 | [GAP-002](gaps/GAP-002-az-resources-monitoring.md) | resolved | `Az.Resources` is now included in `monitoredModules`; policy tracking scope and dependency docs were updated with structural test coverage. |
 | [GAP-003](gaps/GAP-003-exo-teams-probe-commands.md) | open | EXO/Teams ALC ownership is not yet captured because bare `Import-Module` does not eagerly load their identity assemblies. |
 | [GAP-004](gaps/GAP-004-vscode-powershelleditorservices-host.md) | open | VS Code / PowerShellEditorServices host behavior is not yet modeled for issue #169. |
-| [GAP-005](gaps/GAP-005-odata-conflict-expectation-management.md) | open | OData/#174 remains a known unsolved single-process incompatibility; guard expectations and user docs must stay current. |
+| [GAP-005](gaps/GAP-005-odata-conflict-expectation-management.md) | resolved | OData/#174 expectation management is explicit in known-conflict data, docs, and policy tests; changes require runtime re-adjudication. |
 | [GAP-006](gaps/GAP-006-release-dispatch-process-trap.md) | open | Packaging/release-logic changes may require deliberate `workflow_dispatch` because non-bundle paths do not auto-publish. |
 | [GAP-007](gaps/GAP-007-required-status-check-ruleset-audit.md) | open | Required status-check ruleset configuration lives partly outside the repository and needs an auditable repo-local snapshot or procedure. |
 | [GAP-008](gaps/GAP-008-manifest-export-drift.md) | open | Manifest `FunctionsToExport` should be guarded against drift from intended public functions. |

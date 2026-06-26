@@ -4,6 +4,8 @@
 
 > **Superseded (2026-06-02):** The conflict data was relocated before the 2.2.0 release — it is now a committed source file at `src/DLLPickle/KnownConflicts.json` rather than extracted from `build/dependency-policy.json` at build time. The `Export-DLLPickleKnownConflicts.ps1` extractor, the `ExportKnownConflicts` build task, and the extractor sync test described below no longer exist. See the superseding note in the design doc §3 for the rationale (Codex review of #231).
 
+> **Maintenance note (2026-06-25):** GAP-005 closed by preserving the single-process limitation explicitly in known-conflict data, docs, and policy tests. Any future OData preload change still requires fresh runtime re-adjudication in both import orders.
+
 **Goal:** Warn DLLPickle users about the Az.Storage ↔ ExchangeOnlineManagement OData incompatibility, driven by a data-defined `knownConflicts` list, and record the runtime evidence + workaround.
 
 **Architecture:** Conflicts are data in `build/dependency-policy.json`; the build extracts them into a shipped `module/DLLPickle/KnownConflicts.json`; a pure Private detector compares them against the session's loaded modules; a public `Test-DPLibraryConflict` and an `Import-DPLibrary`-armed one-shot `AssemblyLoad` handler surface a `Write-Warning`. The warning never throws.
