@@ -30,7 +30,7 @@ Describe 'Dependency policy baseline' -Tag 'Unit' {
     }
 
     It 'records the complete structured conflict surface' {
-            @($script:Policy.baseline.conflictSurface) | Should -HaveCount 18
+        @($script:Policy.baseline.conflictSurface) | Should -HaveCount 18
 
         foreach ($Row in $script:Policy.baseline.conflictSurface) {
             $Row.name | Should -Not -BeNullOrEmpty
