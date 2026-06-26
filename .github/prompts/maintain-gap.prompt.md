@@ -65,3 +65,9 @@ Summarize:
 - [ ] Related docs are updated or explicitly left unchanged with rationale.
 - [ ] Relevant tests were added or updated when practical.
 - [ ] Validation commands were run or a clear blocker is documented.
+
+## Automated register guard
+
+`tests/Unit/GapRegister.Tests.ps1` enforces the structural parts of this workflow: allowed `status` values, gap-file-to-index membership, index/frontmatter status agreement, and `resolution_pr`/`resolved_on` presence on `resolved` gaps. Run `Invoke-Build -Task Test -File build/DLLPickle.Build.ps1` (or the focused Pester file) after editing any gap file or the index.
+
+The guard is intentionally structural only. Confirming that a resolved gap's `related_docs` were actually updated stays a **review-only** responsibility — do not treat a green guard run as proof the documentation was synchronized.
