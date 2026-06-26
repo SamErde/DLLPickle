@@ -56,9 +56,13 @@ BeforeAll {
             '^\|\s*(GAP-\d+)\s*\|\s*([^|]+?)\s*\|[^|]*\|[^|]*\|\s*\[[^\]]+\]\((?<file>[^)]+)\)\s*\|')
         if ($rowMatch.Success) {
             $gapId = $rowMatch.Groups[1].Value
+            $fileLinkTarget = $rowMatch.Groups['file'].Value.Trim()
+            # Treat README link fragments/query as non-basename metadata (foo.md#x, foo.md?y)
+            # so this guard validates the file path basename only.
+            $filePathOnly = ($fileLinkTarget -split '[#?]', 2)[0]
             $script:GapIndexRows[$gapId] = @{
                 Status = $rowMatch.Groups[2].Value.Trim()
-                File   = [System.IO.Path]::GetFileName($rowMatch.Groups['file'].Value.Trim())
+                File   = [System.IO.Path]::GetFileName($filePathOnly)
             }
         }
     }
@@ -87,6 +91,7 @@ Describe 'Gap register consistency' -Tag 'Unit' {
             # silently comparing $null index values.
             $Id | Should -Not -BeNullOrEmpty -Because 'a gap file without an id cannot be looked up in the index'
             $Status | Should -Not -BeNullOrEmpty -Because 'the index status comparison needs a frontmatter status'
+            $script:GapIndexRows.ContainsKey($Id) | Should -BeTrue
             $script:GapIndexRows[$Id].Status | Should -Be $Status
         }
 
