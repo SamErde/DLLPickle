@@ -16,7 +16,7 @@ related_docs:
   - docs/superpowers/specs
 related_tests:
   - tests/Unit/GapRegister.Tests.ps1
-resolution_pr: pending-local-pr
+resolution_pr: https://github.com/SamErde/DLLPickle/pull/266
 resolved_on: 2026-06-26
 ---
 
