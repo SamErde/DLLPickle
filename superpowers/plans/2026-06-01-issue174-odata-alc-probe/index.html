@@ -1,0 +1,826 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A PowerShell module that helps you get un-stuck from version conflicts (aka DLL pickle) that occur when using modules that depend on multiple versions of the same dependencies such as the Microsoft Authentication Library (MSAL).">
+      
+      
+        <meta name="author" content="Sam Erde">
+      
+      
+        <link rel="canonical" href="https://day3bits.com/DLLPickle/superpowers/plans/2026-06-01-issue174-odata-alc-probe/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Issue #174 OData ALC Probe — Phase 1 Implementation Plan - DLLPickle PowerShell Module</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#issue-174-odata-alc-probe-phase-1-implementation-plan" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../.." title="DLLPickle PowerShell Module" class="md-header__button md-logo" aria-label="DLLPickle PowerShell Module" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            DLLPickle PowerShell Module
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Issue #174 OData ALC Probe — Phase 1 Implementation Plan
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m14.3 16-.7-2h-3.2l-.7 2H7.8L11 7h2l3.2 9zM20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12zm-9.15 3.96h2.3L12 9z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_2" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to system preference"  type="radio" name="__palette" id="__palette_2">
+    
+      <label class="md-header__button md-icon" title="Switch to system preference" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/SamErde/DLLPickle" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    SamErde/DLLPickle
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="DLLPickle PowerShell Module" class="md-nav__button md-logo" aria-label="DLLPickle PowerShell Module" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    DLLPickle PowerShell Module
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/SamErde/DLLPickle" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    SamErde/DLLPickle
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../Architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../Deep-Dive/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deep Dive
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../DEPENDENCIES/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dependencies
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../Troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+  
+
+
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="issue-174-odata-alc-probe-phase-1-implementation-plan">Issue #174 OData ALC Probe — Phase 1 Implementation Plan<a class="headerlink" href="#issue-174-odata-alc-probe-phase-1-implementation-plan" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p><strong>For agentic workers:</strong> REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (<code>- [ ]</code>) syntax for tracking.</p>
+</blockquote>
+<p><strong>Goal:</strong> Build the runtime ALC-ownership probe tooling that captures <code>Microsoft.OData.*</code>/<code>Microsoft.Spatial</code> (and the rest of the tracked stack) so the maintainer can gather the evidence needed to adjudicate issue #174.</p>
+<p><strong>Architecture:</strong> A new in-session dump script (<code>tools/Get-DLLPickleLoadedTrackedAssembly.ps1</code>) sources its assembly filter from <code>build/dependency-policy.json</code> → <code>trackedAssemblies</code> and resolves each loaded assembly&rsquo;s ALC. The existing spawn-a-clean-child probe (<code>tools/Get-DLLPickleRuntimeAssemblySnapshot.ps1</code>) is refactored to reuse that helper inside its child process (DRY) via a new <code>-PolicyPath</code> parameter, replacing its hardcoded regex. A unit test file covers both. The live-probe runbook (in the design spec) then calls the helper.</p>
+<p><strong>Tech Stack:</strong> PowerShell 7.4+, <code>System.Runtime.Loader.AssemblyLoadContext</code>, Pester 5, Invoke-Build (<code>Analyze</code>, <code>Test</code>, <code>AnalyzeTools</code>).</p>
+<p><strong>Spec:</strong> <code>docs/superpowers/specs/2026-06-01-issue174-odata-alc-probe-design.md</code> (Phase 1 = Components A, B, the runbook, tests; Phase 2 = the #174 resolution, evidence-gated, OUT OF SCOPE here).</p>
+<hr />
+<h2 id="file-structure">File Structure<a class="headerlink" href="#file-structure" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Create</strong> <code>tools/Get-DLLPickleLoadedTrackedAssembly.ps1</code> — Component A: in-session dump of loaded tracked assemblies + ALC. One responsibility: &ldquo;given the policy, what tracked assemblies are loaded right now and in which ALC.&rdquo;</li>
+<li><strong>Modify</strong> <code>tools/Get-DLLPickleRuntimeAssemblySnapshot.ps1</code> — Component B: spawn a clean child, import modules, run the probe command, then call Component A in the child to produce the snapshot. Adds <code>-PolicyPath</code>; removes the hardcoded regex.</li>
+<li><strong>Create</strong> <code>tests/Unit/RuntimeAssemblyProbe.Tests.ps1</code> — unit tests for A (in-process) and B (end-to-end via a spawned child against an always-loaded assembly).</li>
+<li><strong>Modify</strong> <code>docs/Architecture.md</code> — §4 component map: add Component A and note the snapshot tool now sources its filter from <code>trackedAssemblies</code>.</li>
+</ul>
+<p>Each task ends green (analyzer + tests) and is committed independently.</p>
+<hr />
+<h2 id="task-1-component-a-toolsget-dllpickleloadedtrackedassemblyps1">Task 1: Component A — <code>tools/Get-DLLPickleLoadedTrackedAssembly.ps1</code><a class="headerlink" href="#task-1-component-a-toolsget-dllpickleloadedtrackedassemblyps1" title="Permanent link">&para;</a></h2>
+<p><strong>Files:</strong>
+- Create: <code>tools/Get-DLLPickleLoadedTrackedAssembly.ps1</code>
+- Test: <code>tests/Unit/RuntimeAssemblyProbe.Tests.ps1</code></p>
+<ul>
+<li>[ ] <strong>Step 1: Write the failing tests</strong></li>
+</ul>
+<p>Create <code>tests/Unit/RuntimeAssemblyProbe.Tests.ps1</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">BeforeAll</span> <span class="p">{</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="nv">$RepoRoot</span> <span class="p">=</span> <span class="p">(</span><span class="nb">Resolve-Path</span> <span class="p">(</span><span class="nb">Join-Path</span> <span class="nv">$PSScriptRoot</span> <span class="s1">&#39;..\..&#39;</span><span class="p">)).</span><span class="n">Path</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="nv">$LoadedScript</span> <span class="p">=</span> <span class="nb">Join-Path</span> <span class="nv">$RepoRoot</span> <span class="s1">&#39;tools\Get-DLLPickleLoadedTrackedAssembly.ps1&#39;</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="c"># Named Get-* (not New-*): the AnalyzeTests task only excludes PSUseDeclaredVarsMoreThanAssignments,</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="c"># so a New-*/Set-* helper would trip PSUseShouldProcessForStateChangingFunctions and fail the gate.</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="k">function</span> <span class="nb">Get-TempPolicyPath</span> <span class="p">{</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>        <span class="k">param</span><span class="p">(</span><span class="no">[string[]]</span><span class="nv">$TrackedAssemblies</span><span class="p">)</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>        <span class="nv">$Path</span> <span class="p">=</span> <span class="nb">Join-Path</span> <span class="nv">$TestDrive</span> <span class="p">(</span><span class="no">[System.Guid]</span><span class="p">::</span><span class="n">NewGuid</span><span class="p">().</span><span class="n">ToString</span><span class="p">(</span><span class="s1">&#39;n&#39;</span><span class="p">)</span> <span class="p">+</span> <span class="s1">&#39;.json&#39;</span><span class="p">)</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>        <span class="no">[PSCustomObject]</span><span class="p">@{</span> <span class="n">trackedAssemblies</span> <span class="p">=</span> <span class="nv">$TrackedAssemblies</span> <span class="p">}</span> <span class="p">|</span>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>            <span class="nb">ConvertTo-Json</span> <span class="p">|</span> <span class="nb">Set-Content</span> <span class="n">-LiteralPath</span> <span class="nv">$Path</span> <span class="n">-Encoding</span> <span class="n">utf8</span>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>        <span class="nv">$Path</span>
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>    <span class="p">}</span>
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="p">}</span>
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="n">Describe</span> <span class="s1">&#39;Get-DLLPickleLoadedTrackedAssembly&#39;</span> <span class="n">-Tag</span> <span class="s1">&#39;Unit&#39;</span> <span class="p">{</span>
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>    <span class="n">It</span> <span class="s1">&#39;returns a loaded assembly that is in trackedAssemblies, with version + ALC&#39;</span> <span class="p">{</span>
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>        <span class="nv">$Policy</span> <span class="p">=</span> <span class="nb">Get-TempPolicyPath</span> <span class="n">-TrackedAssemblies</span> <span class="p">@(</span><span class="s1">&#39;System.Management.Automation&#39;</span><span class="p">)</span>
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>        <span class="nv">$Result</span> <span class="p">=</span> <span class="p">&amp;</span> <span class="nv">$LoadedScript</span> <span class="n">-PolicyPath</span> <span class="nv">$Policy</span>
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>        <span class="nv">$Row</span> <span class="p">=</span> <span class="nv">$Result</span> <span class="p">|</span> <span class="nb">Where-Object</span> <span class="n">Name</span> <span class="o">-EQ</span> <span class="s1">&#39;System.Management.Automation&#39;</span>
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>        <span class="nv">$Row</span> <span class="p">|</span> <span class="n">Should</span> <span class="o">-Not</span> <span class="n">-BeNullOrEmpty</span>
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>        <span class="nv">$Row</span><span class="p">.</span><span class="n">Alc</span> <span class="p">|</span> <span class="n">Should</span> <span class="o">-Not</span> <span class="n">-BeNullOrEmpty</span>
+<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>        <span class="nv">$Row</span><span class="p">.</span><span class="n">Version</span> <span class="p">|</span> <span class="n">Should</span> <span class="o">-Not</span> <span class="n">-BeNullOrEmpty</span>
+<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>    <span class="p">}</span>
+<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>
+<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>    <span class="n">It</span> <span class="s1">&#39;excludes loaded assemblies that are not in trackedAssemblies&#39;</span> <span class="p">{</span>
+<a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>        <span class="nv">$Policy</span> <span class="p">=</span> <span class="nb">Get-TempPolicyPath</span> <span class="n">-TrackedAssemblies</span> <span class="p">@(</span><span class="s1">&#39;System.Management.Automation&#39;</span><span class="p">)</span>
+<a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a>        <span class="nv">$Result</span> <span class="p">=</span> <span class="p">&amp;</span> <span class="nv">$LoadedScript</span> <span class="n">-PolicyPath</span> <span class="nv">$Policy</span>
+<a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a>        <span class="p">(</span><span class="nv">$Result</span> <span class="p">|</span> <span class="nb">Where-Object</span> <span class="n">Name</span> <span class="o">-EQ</span> <span class="s1">&#39;System.Private.CoreLib&#39;</span><span class="p">)</span> <span class="p">|</span> <span class="n">Should</span> <span class="n">-BeNullOrEmpty</span>
+<a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a>    <span class="p">}</span>
+<a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a>
+<a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a>    <span class="n">It</span> <span class="s1">&#39;returns nothing when -NameLike matches no tracked+loaded assembly&#39;</span> <span class="p">{</span>
+<a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a>        <span class="nv">$Policy</span> <span class="p">=</span> <span class="nb">Get-TempPolicyPath</span> <span class="n">-TrackedAssemblies</span> <span class="p">@(</span><span class="s1">&#39;System.Management.Automation&#39;</span><span class="p">)</span>
+<a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a>        <span class="nv">$Result</span> <span class="p">=</span> <span class="p">&amp;</span> <span class="nv">$LoadedScript</span> <span class="n">-PolicyPath</span> <span class="nv">$Policy</span> <span class="n">-NameLike</span> <span class="s1">&#39;Microsoft.OData*&#39;</span>
+<a id="__codelineno-0-35" name="__codelineno-0-35" href="#__codelineno-0-35"></a>        <span class="p">@(</span><span class="nv">$Result</span><span class="p">)</span> <span class="p">|</span> <span class="n">Should</span> <span class="n">-BeNullOrEmpty</span>
+<a id="__codelineno-0-36" name="__codelineno-0-36" href="#__codelineno-0-36"></a>    <span class="p">}</span>
+<a id="__codelineno-0-37" name="__codelineno-0-37" href="#__codelineno-0-37"></a>
+<a id="__codelineno-0-38" name="__codelineno-0-38" href="#__codelineno-0-38"></a>    <span class="n">It</span> <span class="s1">&#39;returns the row when -NameLike matches a tracked+loaded assembly&#39;</span> <span class="p">{</span>
+<a id="__codelineno-0-39" name="__codelineno-0-39" href="#__codelineno-0-39"></a>        <span class="nv">$Policy</span> <span class="p">=</span> <span class="nb">Get-TempPolicyPath</span> <span class="n">-TrackedAssemblies</span> <span class="p">@(</span><span class="s1">&#39;System.Management.Automation&#39;</span><span class="p">)</span>
+<a id="__codelineno-0-40" name="__codelineno-0-40" href="#__codelineno-0-40"></a>        <span class="nv">$Result</span> <span class="p">=</span> <span class="p">&amp;</span> <span class="nv">$LoadedScript</span> <span class="n">-PolicyPath</span> <span class="nv">$Policy</span> <span class="n">-NameLike</span> <span class="s1">&#39;System.Management.*&#39;</span>
+<a id="__codelineno-0-41" name="__codelineno-0-41" href="#__codelineno-0-41"></a>        <span class="p">(</span><span class="nv">$Result</span> <span class="p">|</span> <span class="nb">Where-Object</span> <span class="n">Name</span> <span class="o">-EQ</span> <span class="s1">&#39;System.Management.Automation&#39;</span><span class="p">)</span> <span class="p">|</span> <span class="n">Should</span> <span class="o">-Not</span> <span class="n">-BeNullOrEmpty</span>
+<a id="__codelineno-0-42" name="__codelineno-0-42" href="#__codelineno-0-42"></a>    <span class="p">}</span>
+<a id="__codelineno-0-43" name="__codelineno-0-43" href="#__codelineno-0-43"></a><span class="p">}</span>
+</code></pre></div>
+<ul>
+<li>[ ] <strong>Step 2: Run the tests to verify they fail</strong></li>
+</ul>
+<p>Run: <code>pwsh -NoProfile -Command "Invoke-Pester -Path ./tests/Unit/RuntimeAssemblyProbe.Tests.ps1 -Output Detailed"</code>
+Expected: FAIL — the script does not exist yet (<code>&amp; $LoadedScript</code> errors with &ldquo;The term &lsquo;&hellip;Get-DLLPickleLoadedTrackedAssembly.ps1&rsquo; is not recognized&rdquo; / path not found).</p>
+<ul>
+<li>[ ] <strong>Step 3: Create the script</strong></li>
+</ul>
+<p>Create <code>tools/Get-DLLPickleLoadedTrackedAssembly.ps1</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="cm">&lt;#</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="sd">.SYNOPSIS</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="cm">    Reports the assemblies loaded in the CURRENT session whose simple name is tracked by the</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="cm">    dependency policy, with version and AssemblyLoadContext (ALC).</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="sd">.DESCRIPTION</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="cm">    Enumerates [System.AppDomain]::CurrentDomain.GetAssemblies(), keeps those whose GetName().Name is</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="cm">    in the policy&#39;s trackedAssemblies (optionally further filtered by -NameLike wildcards), and</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="cm">    resolves each one&#39;s ALC name (or &#39;Default&#39;). A private ALC name signals the owning module</span>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="cm">    self-manages that assembly. Shared by the #174 live-probe runbook and by the child process of</span>
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="cm">    Get-DLLPickleRuntimeAssemblySnapshot.ps1, so the merge-gate filter logic lives in one place.</span>
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="cm">    Requires a session where direct .NET API access is permitted (Full Language Mode, or Constrained</span>
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="cm">    Language AUDIT mode); these reflection calls are blocked under enforced Constrained Language Mode.</span>
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="sd">.PARAMETER</span><span class="cm"> PolicyPath</span>
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="cm">    Path to dependency-policy.json. Defaults to build/dependency-policy.json relative to the repo root</span>
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a><span class="cm">    (the parent of this script&#39;s tools/ folder).</span>
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a><span class="sd">.PARAMETER</span><span class="cm"> NameLike</span>
+<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a><span class="cm">    Optional wildcard patterns; when supplied, an assembly must ALSO match one of them to be returned.</span>
+<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a><span class="sd">.OUTPUTS</span>
+<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a><span class="cm">    PSCustomObject[] with Name, Version, Alc, Path. Sorted by Name.</span>
+<a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a><span class="cm">#&gt;</span>
+<a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a><span class="p">[</span><span class="k">CmdletBinding</span><span class="p">()]</span>
+<a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a><span class="k">param</span><span class="p">(</span>
+<a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a>    <span class="p">[</span><span class="k">Parameter</span><span class="p">()]</span>
+<a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a>    <span class="no">[string]</span><span class="nv">$PolicyPath</span><span class="p">,</span>
+<a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a>
+<a id="__codelineno-1-27" name="__codelineno-1-27" href="#__codelineno-1-27"></a>    <span class="p">[</span><span class="k">Parameter</span><span class="p">()]</span>
+<a id="__codelineno-1-28" name="__codelineno-1-28" href="#__codelineno-1-28"></a>    <span class="no">[string[]]</span><span class="nv">$NameLike</span>
+<a id="__codelineno-1-29" name="__codelineno-1-29" href="#__codelineno-1-29"></a><span class="p">)</span>
+<a id="__codelineno-1-30" name="__codelineno-1-30" href="#__codelineno-1-30"></a>
+<a id="__codelineno-1-31" name="__codelineno-1-31" href="#__codelineno-1-31"></a><span class="nv">$ErrorActionPreference</span> <span class="p">=</span> <span class="s1">&#39;Stop&#39;</span>
+<a id="__codelineno-1-32" name="__codelineno-1-32" href="#__codelineno-1-32"></a>
+<a id="__codelineno-1-33" name="__codelineno-1-33" href="#__codelineno-1-33"></a><span class="k">if</span> <span class="p">(</span><span class="o">-not</span> <span class="nv">$PolicyPath</span><span class="p">)</span> <span class="p">{</span>
+<a id="__codelineno-1-34" name="__codelineno-1-34" href="#__codelineno-1-34"></a>    <span class="nv">$PolicyPath</span> <span class="p">=</span> <span class="nb">Join-Path</span> <span class="n">-Path</span> <span class="p">(</span><span class="nb">Resolve-Path</span> <span class="p">(</span><span class="nb">Join-Path</span> <span class="nv">$PSScriptRoot</span> <span class="s1">&#39;..&#39;</span><span class="p">)).</span><span class="n">Path</span> <span class="n">-ChildPath</span> <span class="s1">&#39;build/dependency-policy.json&#39;</span>
+<a id="__codelineno-1-35" name="__codelineno-1-35" href="#__codelineno-1-35"></a><span class="p">}</span>
+<a id="__codelineno-1-36" name="__codelineno-1-36" href="#__codelineno-1-36"></a>
+<a id="__codelineno-1-37" name="__codelineno-1-37" href="#__codelineno-1-37"></a><span class="nv">$TrackedNames</span> <span class="p">=</span> <span class="p">@((</span><span class="nb">Get-Content</span> <span class="n">-LiteralPath</span> <span class="nv">$PolicyPath</span> <span class="n">-Raw</span> <span class="p">|</span> <span class="nb">ConvertFrom-Json</span><span class="p">).</span><span class="n">trackedAssemblies</span><span class="p">)</span>
+<a id="__codelineno-1-38" name="__codelineno-1-38" href="#__codelineno-1-38"></a>
+<a id="__codelineno-1-39" name="__codelineno-1-39" href="#__codelineno-1-39"></a><span class="no">[System.AppDomain]</span><span class="p">::</span><span class="n">CurrentDomain</span><span class="p">.</span><span class="n">GetAssemblies</span><span class="p">()</span> <span class="p">|</span>
+<a id="__codelineno-1-40" name="__codelineno-1-40" href="#__codelineno-1-40"></a>    <span class="nb">Where-Object</span> <span class="p">{</span> <span class="nv">$TrackedNames</span> <span class="o">-contains</span> <span class="nv">$_</span><span class="p">.</span><span class="n">GetName</span><span class="p">().</span><span class="n">Name</span> <span class="p">}</span> <span class="p">|</span>
+<a id="__codelineno-1-41" name="__codelineno-1-41" href="#__codelineno-1-41"></a>    <span class="nb">Where-Object</span> <span class="p">{</span>
+<a id="__codelineno-1-42" name="__codelineno-1-42" href="#__codelineno-1-42"></a>        <span class="k">if</span> <span class="p">(</span><span class="o">-not</span> <span class="nv">$NameLike</span><span class="p">)</span> <span class="p">{</span> <span class="k">return</span> <span class="nv">$true</span> <span class="p">}</span>
+<a id="__codelineno-1-43" name="__codelineno-1-43" href="#__codelineno-1-43"></a>        <span class="nv">$AssemblyName</span> <span class="p">=</span> <span class="nv">$_</span><span class="p">.</span><span class="n">GetName</span><span class="p">().</span><span class="n">Name</span>
+<a id="__codelineno-1-44" name="__codelineno-1-44" href="#__codelineno-1-44"></a>        <span class="k">foreach</span> <span class="p">(</span><span class="nv">$Pattern</span> <span class="k">in</span> <span class="nv">$NameLike</span><span class="p">)</span> <span class="p">{</span>
+<a id="__codelineno-1-45" name="__codelineno-1-45" href="#__codelineno-1-45"></a>            <span class="k">if</span> <span class="p">(</span><span class="nv">$AssemblyName</span> <span class="o">-like</span> <span class="nv">$Pattern</span><span class="p">)</span> <span class="p">{</span> <span class="k">return</span> <span class="nv">$true</span> <span class="p">}</span>
+<a id="__codelineno-1-46" name="__codelineno-1-46" href="#__codelineno-1-46"></a>        <span class="p">}</span>
+<a id="__codelineno-1-47" name="__codelineno-1-47" href="#__codelineno-1-47"></a>        <span class="k">return</span> <span class="nv">$false</span>
+<a id="__codelineno-1-48" name="__codelineno-1-48" href="#__codelineno-1-48"></a>    <span class="p">}</span> <span class="p">|</span>
+<a id="__codelineno-1-49" name="__codelineno-1-49" href="#__codelineno-1-49"></a>    <span class="k">ForEach</span><span class="n">-Object</span> <span class="p">{</span>
+<a id="__codelineno-1-50" name="__codelineno-1-50" href="#__codelineno-1-50"></a>        <span class="nv">$Alc</span> <span class="p">=</span> <span class="no">[System.Runtime.Loader.AssemblyLoadContext]</span><span class="p">::</span><span class="n">GetLoadContext</span><span class="p">(</span><span class="nv">$_</span><span class="p">)</span>
+<a id="__codelineno-1-51" name="__codelineno-1-51" href="#__codelineno-1-51"></a>        <span class="no">[PSCustomObject]</span><span class="p">@{</span>
+<a id="__codelineno-1-52" name="__codelineno-1-52" href="#__codelineno-1-52"></a>            <span class="n">Name</span>    <span class="p">=</span> <span class="nv">$_</span><span class="p">.</span><span class="n">GetName</span><span class="p">().</span><span class="n">Name</span>
+<a id="__codelineno-1-53" name="__codelineno-1-53" href="#__codelineno-1-53"></a>            <span class="n">Version</span> <span class="p">=</span> <span class="nv">$_</span><span class="p">.</span><span class="n">GetName</span><span class="p">().</span><span class="n">Version</span><span class="p">.</span><span class="n">ToString</span><span class="p">()</span>
+<a id="__codelineno-1-54" name="__codelineno-1-54" href="#__codelineno-1-54"></a>            <span class="n">Alc</span>     <span class="p">=</span> <span class="k">if</span> <span class="p">(</span><span class="nv">$Alc</span> <span class="o">-and</span> <span class="nv">$Alc</span><span class="p">.</span><span class="n">Name</span><span class="p">)</span> <span class="p">{</span> <span class="nv">$Alc</span><span class="p">.</span><span class="n">Name</span> <span class="p">}</span> <span class="k">else</span> <span class="p">{</span> <span class="s1">&#39;Default&#39;</span> <span class="p">}</span>
+<a id="__codelineno-1-55" name="__codelineno-1-55" href="#__codelineno-1-55"></a>            <span class="n">Path</span>    <span class="p">=</span> <span class="nv">$_</span><span class="p">.</span><span class="n">Location</span>
+<a id="__codelineno-1-56" name="__codelineno-1-56" href="#__codelineno-1-56"></a>        <span class="p">}</span>
+<a id="__codelineno-1-57" name="__codelineno-1-57" href="#__codelineno-1-57"></a>    <span class="p">}</span> <span class="p">|</span>
+<a id="__codelineno-1-58" name="__codelineno-1-58" href="#__codelineno-1-58"></a>    <span class="nb">Sort-Object</span> <span class="n">Name</span>
+</code></pre></div>
+<ul>
+<li>[ ] <strong>Step 4: Run the tests to verify they pass</strong></li>
+</ul>
+<p>Run: <code>pwsh -NoProfile -Command "Invoke-Pester -Path ./tests/Unit/RuntimeAssemblyProbe.Tests.ps1 -Output Detailed"</code>
+Expected: PASS — 4/4.</p>
+<ul>
+<li>[ ] <strong>Step 5: Run the analyzer on tools/ + tests/ to verify clean</strong></li>
+</ul>
+<p>Run: <code>pwsh -NoProfile -Command "Invoke-Build -File ./build/DLLPickle.Build.ps1 -Task Analyze"</code>
+Expected: PASS — <code>Analyze</code>, <code>AnalyzeTests</code>, <code>AnalyzeTools</code> all complete with no findings (the build fails on any finding). The script uses the approved <code>Get-</code> verb and no <code>Write-Host</code>, so no <code>PSUseShouldProcessForStateChangingFunctions</code>/<code>PSAvoidUsingWriteHost</code> findings.</p>
+<ul>
+<li>[ ] <strong>Step 6: Commit</strong></li>
+</ul>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>git<span class="w"> </span>add<span class="w"> </span>tools/Get-DLLPickleLoadedTrackedAssembly.ps1<span class="w"> </span>tests/Unit/RuntimeAssemblyProbe.Tests.ps1
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;feat(tools): add Get-DLLPickleLoadedTrackedAssembly (policy-driven in-session ALC dump)&quot;</span>
+</code></pre></div>
+<hr />
+<h2 id="task-2-component-b-refactor-toolsget-dllpickleruntimeassemblysnapshotps1">Task 2: Component B — refactor <code>tools/Get-DLLPickleRuntimeAssemblySnapshot.ps1</code><a class="headerlink" href="#task-2-component-b-refactor-toolsget-dllpickleruntimeassemblysnapshotps1" title="Permanent link">&para;</a></h2>
+<p><strong>Files:</strong>
+- Modify: <code>tools/Get-DLLPickleRuntimeAssemblySnapshot.ps1</code>
+- Test: <code>tests/Unit/RuntimeAssemblyProbe.Tests.ps1</code> (add a Describe block)</p>
+<ul>
+<li>[ ] <strong>Step 1: Write the failing test</strong></li>
+</ul>
+<p>Append this <code>Describe</code> block to <code>tests/Unit/RuntimeAssemblyProbe.Tests.ps1</code> (the <code>BeforeAll</code> from Task 1 already defines <code>$RepoRoot</code> and <code>Get-TempPolicyPath</code>; add <code>$SnapshotScript</code> there too — see Step 1a):</p>
+<p>Step 1a — extend the existing <code>BeforeAll</code> (after the <code>$LoadedScript = ...</code> line) with:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>    <span class="nv">$SnapshotScript</span> <span class="p">=</span> <span class="nb">Join-Path</span> <span class="nv">$RepoRoot</span> <span class="s1">&#39;tools\Get-DLLPickleRuntimeAssemblySnapshot.ps1&#39;</span>
+</code></pre></div>
+<p>Step 1b — append this block at the end of the file:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">Describe</span> <span class="s1">&#39;Get-DLLPickleRuntimeAssemblySnapshot&#39;</span> <span class="n">-Tag</span> <span class="s1">&#39;Unit&#39;</span> <span class="p">{</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>    <span class="n">It</span> <span class="s1">&#39;sources its filter from -PolicyPath and returns tracked assemblies loaded in the child session&#39;</span> <span class="p">{</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>        <span class="nv">$Policy</span> <span class="p">=</span> <span class="nb">Get-TempPolicyPath</span> <span class="n">-TrackedAssemblies</span> <span class="p">@(</span><span class="s1">&#39;System.Management.Automation&#39;</span><span class="p">)</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>        <span class="c"># Microsoft.PowerShell.Management is always importable; the child always has SMA loaded.</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>        <span class="nv">$Result</span> <span class="p">=</span> <span class="p">&amp;</span> <span class="nv">$SnapshotScript</span> <span class="n">-ModuleName</span> <span class="s1">&#39;Microsoft.PowerShell.Management&#39;</span> <span class="n">-PolicyPath</span> <span class="nv">$Policy</span>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>        <span class="p">(</span><span class="nv">$Result</span> <span class="p">|</span> <span class="nb">Where-Object</span> <span class="n">Name</span> <span class="o">-EQ</span> <span class="s1">&#39;System.Management.Automation&#39;</span><span class="p">)</span> <span class="p">|</span> <span class="n">Should</span> <span class="o">-Not</span> <span class="n">-BeNullOrEmpty</span>
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>    <span class="p">}</span>
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="p">}</span>
+</code></pre></div>
+<ul>
+<li>[ ] <strong>Step 2: Run the test to verify it fails</strong></li>
+</ul>
+<p>Run: <code>pwsh -NoProfile -Command "Invoke-Pester -Path ./tests/Unit/RuntimeAssemblyProbe.Tests.ps1 -Output Detailed"</code>
+Expected: FAIL — the current script has no <code>-PolicyPath</code> parameter, so binding errors (&ldquo;A parameter cannot be found that matches parameter name &lsquo;PolicyPath&rsquo;&rdquo;).</p>
+<ul>
+<li>[ ] <strong>Step 3: Refactor the snapshot script</strong></li>
+</ul>
+<p>Replace the entire contents of <code>tools/Get-DLLPickleRuntimeAssemblySnapshot.ps1</code> with:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="cm">&lt;#</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="sd">.SYNOPSIS</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="cm">    Snapshots which tracked assemblies a module loads, and into which AssemblyLoadContext.</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="sd">.DESCRIPTION</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="cm">    Spawns a fresh pwsh process, optionally preloads DLLPickle, imports the named module(s) in order,</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="cm">    optionally runs a probe command, then reports each loaded assembly whose name is in the dependency</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="cm">    policy&#39;s trackedAssemblies, with its version, path, and ALC name. The set of tracked names (and the</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="cm">    ALC capture) is sourced from build/dependency-policy.json via Get-DLLPickleLoadedTrackedAssembly.ps1,</span>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="cm">    so this tool and the live-probe runbook share one filter. A private ALC (name other than &#39;Default&#39;)</span>
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="cm">    indicates the module self-manages that assembly — a strong signal that DLLPickle must NOT preload it.</span>
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a><span class="sd">.PARAMETER</span><span class="cm"> ModuleName</span>
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a><span class="cm">    One or more modules to import, in order.</span>
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a><span class="sd">.PARAMETER</span><span class="cm"> PreloadDllPickleManifest</span>
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a><span class="cm">    Optional path to a DLLPickle manifest; when supplied, Import-DPLibrary runs before the imports.</span>
+<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a><span class="sd">.PARAMETER</span><span class="cm"> ProbeCommand</span>
+<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a><span class="cm">    Optional command string run after imports (e.g. &#39;Get-AzContext&#39;) to force lazy ALC init.</span>
+<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a><span class="sd">.PARAMETER</span><span class="cm"> PolicyPath</span>
+<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a><span class="cm">    Path to dependency-policy.json. Defaults to build/dependency-policy.json relative to the repo root.</span>
+<a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a><span class="sd">.OUTPUTS</span>
+<a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a><span class="cm">    PSCustomObject[] one row per loaded tracked assembly: Name, Version, Alc, Path.</span>
+<a id="__codelineno-5-21" name="__codelineno-5-21" href="#__codelineno-5-21"></a><span class="cm">#&gt;</span>
+<a id="__codelineno-5-22" name="__codelineno-5-22" href="#__codelineno-5-22"></a><span class="p">[</span><span class="k">CmdletBinding</span><span class="p">()]</span>
+<a id="__codelineno-5-23" name="__codelineno-5-23" href="#__codelineno-5-23"></a><span class="k">param</span><span class="p">(</span>
+<a id="__codelineno-5-24" name="__codelineno-5-24" href="#__codelineno-5-24"></a>    <span class="p">[</span><span class="k">Parameter</span><span class="p">(</span><span class="k">Mandatory</span><span class="p">)]</span>
+<a id="__codelineno-5-25" name="__codelineno-5-25" href="#__codelineno-5-25"></a>    <span class="no">[string[]]</span><span class="nv">$ModuleName</span><span class="p">,</span>
+<a id="__codelineno-5-26" name="__codelineno-5-26" href="#__codelineno-5-26"></a>
+<a id="__codelineno-5-27" name="__codelineno-5-27" href="#__codelineno-5-27"></a>    <span class="p">[</span><span class="k">Parameter</span><span class="p">()]</span>
+<a id="__codelineno-5-28" name="__codelineno-5-28" href="#__codelineno-5-28"></a>    <span class="no">[string]</span><span class="nv">$PreloadDllPickleManifest</span><span class="p">,</span>
+<a id="__codelineno-5-29" name="__codelineno-5-29" href="#__codelineno-5-29"></a>
+<a id="__codelineno-5-30" name="__codelineno-5-30" href="#__codelineno-5-30"></a>    <span class="p">[</span><span class="k">Parameter</span><span class="p">()]</span>
+<a id="__codelineno-5-31" name="__codelineno-5-31" href="#__codelineno-5-31"></a>    <span class="no">[string]</span><span class="nv">$ProbeCommand</span><span class="p">,</span>
+<a id="__codelineno-5-32" name="__codelineno-5-32" href="#__codelineno-5-32"></a>
+<a id="__codelineno-5-33" name="__codelineno-5-33" href="#__codelineno-5-33"></a>    <span class="p">[</span><span class="k">Parameter</span><span class="p">()]</span>
+<a id="__codelineno-5-34" name="__codelineno-5-34" href="#__codelineno-5-34"></a>    <span class="no">[string]</span><span class="nv">$PolicyPath</span>
+<a id="__codelineno-5-35" name="__codelineno-5-35" href="#__codelineno-5-35"></a><span class="p">)</span>
+<a id="__codelineno-5-36" name="__codelineno-5-36" href="#__codelineno-5-36"></a>
+<a id="__codelineno-5-37" name="__codelineno-5-37" href="#__codelineno-5-37"></a><span class="nv">$ErrorActionPreference</span> <span class="p">=</span> <span class="s1">&#39;Stop&#39;</span>
+<a id="__codelineno-5-38" name="__codelineno-5-38" href="#__codelineno-5-38"></a>
+<a id="__codelineno-5-39" name="__codelineno-5-39" href="#__codelineno-5-39"></a><span class="nv">$HelperScript</span> <span class="p">=</span> <span class="nb">Join-Path</span> <span class="n">-Path</span> <span class="nv">$PSScriptRoot</span> <span class="n">-ChildPath</span> <span class="s1">&#39;Get-DLLPickleLoadedTrackedAssembly.ps1&#39;</span>
+<a id="__codelineno-5-40" name="__codelineno-5-40" href="#__codelineno-5-40"></a><span class="k">if</span> <span class="p">(</span><span class="o">-not</span> <span class="nv">$PolicyPath</span><span class="p">)</span> <span class="p">{</span>
+<a id="__codelineno-5-41" name="__codelineno-5-41" href="#__codelineno-5-41"></a>    <span class="nv">$PolicyPath</span> <span class="p">=</span> <span class="nb">Join-Path</span> <span class="n">-Path</span> <span class="p">(</span><span class="nb">Resolve-Path</span> <span class="p">(</span><span class="nb">Join-Path</span> <span class="nv">$PSScriptRoot</span> <span class="s1">&#39;..&#39;</span><span class="p">)).</span><span class="n">Path</span> <span class="n">-ChildPath</span> <span class="s1">&#39;build/dependency-policy.json&#39;</span>
+<a id="__codelineno-5-42" name="__codelineno-5-42" href="#__codelineno-5-42"></a><span class="p">}</span>
+<a id="__codelineno-5-43" name="__codelineno-5-43" href="#__codelineno-5-43"></a>
+<a id="__codelineno-5-44" name="__codelineno-5-44" href="#__codelineno-5-44"></a><span class="nv">$ChildScript</span> <span class="p">=</span> <span class="sh">@&#39;</span>
+<a id="__codelineno-5-45" name="__codelineno-5-45" href="#__codelineno-5-45"></a><span class="sh">param($ModuleNames, $PreloadManifest, $ProbeCommand, $HelperScript, $PolicyPath)</span>
+<a id="__codelineno-5-46" name="__codelineno-5-46" href="#__codelineno-5-46"></a><span class="sh">$ModuleNames = $ModuleNames -split &#39;,&#39;</span>
+<a id="__codelineno-5-47" name="__codelineno-5-47" href="#__codelineno-5-47"></a><span class="sh">$ErrorActionPreference = &#39;Continue&#39;</span>
+<a id="__codelineno-5-48" name="__codelineno-5-48" href="#__codelineno-5-48"></a><span class="sh">if ($PreloadManifest) {</span>
+<a id="__codelineno-5-49" name="__codelineno-5-49" href="#__codelineno-5-49"></a><span class="sh">    Import-Module $PreloadManifest -Force</span>
+<a id="__codelineno-5-50" name="__codelineno-5-50" href="#__codelineno-5-50"></a><span class="sh">    Import-DPLibrary -SuppressLogo | Out-Null</span>
+<a id="__codelineno-5-51" name="__codelineno-5-51" href="#__codelineno-5-51"></a><span class="sh">}</span>
+<a id="__codelineno-5-52" name="__codelineno-5-52" href="#__codelineno-5-52"></a><span class="sh">foreach ($Name in $ModuleNames) { Import-Module $Name -Force -ErrorAction Continue }</span>
+<a id="__codelineno-5-53" name="__codelineno-5-53" href="#__codelineno-5-53"></a><span class="sh">if ($ProbeCommand) { try { Invoke-Expression $ProbeCommand | Out-Null } catch { } }</span>
+<a id="__codelineno-5-54" name="__codelineno-5-54" href="#__codelineno-5-54"></a><span class="sh">&amp; $HelperScript -PolicyPath $PolicyPath | ConvertTo-Json -Depth 5</span>
+<a id="__codelineno-5-55" name="__codelineno-5-55" href="#__codelineno-5-55"></a><span class="sh">&#39;@</span>
+<a id="__codelineno-5-56" name="__codelineno-5-56" href="#__codelineno-5-56"></a>
+<a id="__codelineno-5-57" name="__codelineno-5-57" href="#__codelineno-5-57"></a><span class="nv">$TempScript</span> <span class="p">=</span> <span class="nb">Join-Path</span> <span class="p">(</span><span class="no">[System.IO.Path]</span><span class="p">::</span><span class="n">GetTempPath</span><span class="p">())</span> <span class="p">(</span><span class="s2">&quot;dpp-snap-{0}.ps1&quot;</span> <span class="o">-f</span> <span class="p">(</span><span class="no">[System.Guid]</span><span class="p">::</span><span class="n">NewGuid</span><span class="p">().</span><span class="n">ToString</span><span class="p">(</span><span class="s1">&#39;n&#39;</span><span class="p">)))</span>
+<a id="__codelineno-5-58" name="__codelineno-5-58" href="#__codelineno-5-58"></a><span class="nb">Set-Content</span> <span class="n">-LiteralPath</span> <span class="nv">$TempScript</span> <span class="n">-Value</span> <span class="nv">$ChildScript</span> <span class="n">-Encoding</span> <span class="n">utf8NoBOM</span>
+<a id="__codelineno-5-59" name="__codelineno-5-59" href="#__codelineno-5-59"></a><span class="k">try</span> <span class="p">{</span>
+<a id="__codelineno-5-60" name="__codelineno-5-60" href="#__codelineno-5-60"></a>    <span class="nv">$ChildArguments</span> <span class="p">=</span> <span class="p">@(</span>
+<a id="__codelineno-5-61" name="__codelineno-5-61" href="#__codelineno-5-61"></a>        <span class="s1">&#39;-NoProfile&#39;</span><span class="p">,</span> <span class="s1">&#39;-NonInteractive&#39;</span><span class="p">,</span> <span class="s1">&#39;-File&#39;</span><span class="p">,</span> <span class="nv">$TempScript</span><span class="p">,</span>
+<a id="__codelineno-5-62" name="__codelineno-5-62" href="#__codelineno-5-62"></a>        <span class="s1">&#39;-ModuleNames&#39;</span><span class="p">,</span> <span class="p">(</span><span class="nv">$ModuleName</span> <span class="n">-join</span> <span class="s1">&#39;,&#39;</span><span class="p">),</span>
+<a id="__codelineno-5-63" name="__codelineno-5-63" href="#__codelineno-5-63"></a>        <span class="s1">&#39;-HelperScript&#39;</span><span class="p">,</span> <span class="nv">$HelperScript</span><span class="p">,</span>
+<a id="__codelineno-5-64" name="__codelineno-5-64" href="#__codelineno-5-64"></a>        <span class="s1">&#39;-PolicyPath&#39;</span><span class="p">,</span> <span class="nv">$PolicyPath</span>
+<a id="__codelineno-5-65" name="__codelineno-5-65" href="#__codelineno-5-65"></a>    <span class="p">)</span>
+<a id="__codelineno-5-66" name="__codelineno-5-66" href="#__codelineno-5-66"></a>    <span class="k">if</span> <span class="p">(</span><span class="nv">$PreloadDllPickleManifest</span><span class="p">)</span> <span class="p">{</span> <span class="nv">$ChildArguments</span> <span class="p">+=</span> <span class="p">@(</span><span class="s1">&#39;-PreloadManifest&#39;</span><span class="p">,</span> <span class="nv">$PreloadDllPickleManifest</span><span class="p">)</span> <span class="p">}</span>
+<a id="__codelineno-5-67" name="__codelineno-5-67" href="#__codelineno-5-67"></a>    <span class="k">if</span> <span class="p">(</span><span class="nv">$ProbeCommand</span><span class="p">)</span> <span class="p">{</span> <span class="nv">$ChildArguments</span> <span class="p">+=</span> <span class="p">@(</span><span class="s1">&#39;-ProbeCommand&#39;</span><span class="p">,</span> <span class="nv">$ProbeCommand</span><span class="p">)</span> <span class="p">}</span>
+<a id="__codelineno-5-68" name="__codelineno-5-68" href="#__codelineno-5-68"></a>    <span class="nv">$Raw</span> <span class="p">=</span> <span class="p">&amp;</span> <span class="n">pwsh</span> <span class="nv">@ChildArguments</span>
+<a id="__codelineno-5-69" name="__codelineno-5-69" href="#__codelineno-5-69"></a>    <span class="nv">$Json</span> <span class="p">=</span> <span class="p">(</span><span class="nv">$Raw</span> <span class="p">|</span> <span class="nb">Out-String</span><span class="p">).</span><span class="n">Trim</span><span class="p">()</span>
+<a id="__codelineno-5-70" name="__codelineno-5-70" href="#__codelineno-5-70"></a>    <span class="k">if</span> <span class="p">(</span><span class="no">[string]</span><span class="p">::</span><span class="n">IsNullOrWhiteSpace</span><span class="p">(</span><span class="nv">$Json</span><span class="p">))</span> <span class="p">{</span> <span class="k">return</span> <span class="p">@()</span> <span class="p">}</span>
+<a id="__codelineno-5-71" name="__codelineno-5-71" href="#__codelineno-5-71"></a>    <span class="p">@(</span><span class="nv">$Json</span> <span class="p">|</span> <span class="nb">ConvertFrom-Json</span><span class="p">)</span>
+<a id="__codelineno-5-72" name="__codelineno-5-72" href="#__codelineno-5-72"></a><span class="p">}</span> <span class="k">finally</span> <span class="p">{</span>
+<a id="__codelineno-5-73" name="__codelineno-5-73" href="#__codelineno-5-73"></a>    <span class="nb">Remove-Item</span> <span class="n">-LiteralPath</span> <span class="nv">$TempScript</span> <span class="n">-Force</span> <span class="n">-ErrorAction</span> <span class="n">SilentlyContinue</span>
+<a id="__codelineno-5-74" name="__codelineno-5-74" href="#__codelineno-5-74"></a><span class="p">}</span>
+</code></pre></div>
+<p>Key changes from the previous version: added the <code>-PolicyPath</code> parameter; the child now calls <code>Get-DLLPickleLoadedTrackedAssembly.ps1</code> (passed as <code>-HelperScript</code>) instead of the inline <code>$Pattern</code> regex + AppDomain enumeration, so the filter is the policy&rsquo;s <code>trackedAssemblies</code> (now including OData/Spatial). Behavior trade-off (per spec): the old regex also captured incidental BCL assemblies (<code>System.Text.Json</code>, <code>System.Memory.Data</code>, <code>Microsoft.Bcl.AsyncInterfaces</code>) that are not tracked; those are dropped (runtime-provided, not conflict sources).</p>
+<ul>
+<li>[ ] <strong>Step 4: Run the test to verify it passes</strong></li>
+</ul>
+<p>Run: <code>pwsh -NoProfile -Command "Invoke-Pester -Path ./tests/Unit/RuntimeAssemblyProbe.Tests.ps1 -Output Detailed"</code>
+Expected: PASS — 5/5 (the 4 from Task 1 + the new snapshot test). Note: the snapshot test spawns a child <code>pwsh</code> (~1-3s).</p>
+<ul>
+<li>[ ] <strong>Step 5: Run the analyzer to verify clean</strong></li>
+</ul>
+<p>Run: <code>pwsh -NoProfile -Command "Invoke-Build -File ./build/DLLPickle.Build.ps1 -Task Analyze"</code>
+Expected: PASS — no findings.</p>
+<ul>
+<li>[ ] <strong>Step 6: Commit</strong></li>
+</ul>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>git<span class="w"> </span>add<span class="w"> </span>tools/Get-DLLPickleRuntimeAssemblySnapshot.ps1<span class="w"> </span>tests/Unit/RuntimeAssemblyProbe.Tests.ps1
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;refactor(tools): source runtime-snapshot filter from trackedAssemblies (captures OData)&quot;</span>
+</code></pre></div>
+<hr />
+<h2 id="task-3-update-the-architecture-component-map">Task 3: Update the architecture component map<a class="headerlink" href="#task-3-update-the-architecture-component-map" title="Permanent link">&para;</a></h2>
+<p><strong>Files:</strong>
+- Modify: <code>docs/Architecture.md</code> (§4 component map row for analysis tools)</p>
+<ul>
+<li>[ ] <strong>Step 1: Update the §4 &ldquo;Analysis tools&rdquo; row</strong></li>
+</ul>
+<p>In <code>docs/Architecture.md</code>, find the §4 table row that begins with <code>| Analysis tools |</code> and listing the <code>tools/</code> scripts. Add <code>Get-DLLPickleLoadedTrackedAssembly.ps1</code> to that list and note the policy-sourced filter. Replace the row&rsquo;s path cell so it reads (keep the table formatting):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>| Analysis tools | <span class="sb">`tools/Get-DLLPickleLoadedTrackedAssembly.ps1`</span>, <span class="sb">`New-DLLPickleConflictMatrix.ps1`</span>, <span class="sb">`Compare-DLLPickleConflictMatrix.ps1`</span>, <span class="sb">`Get-DLLPickleRuntimeAssemblySnapshot.ps1`</span>, <span class="sb">`Get-DLLPickleUpstreamInventory.ps1`</span>, <span class="sb">`Update-DLLPickleDependencyPins.ps1`</span> | Inventory upstream modules, build the conflict matrix, probe runtime ALC ownership (filter sourced from <span class="sb">`trackedAssemblies`</span>), detect drift, and apply policy pins. |
+</code></pre></div>
+<ul>
+<li>[ ] <strong>Step 2: Verify the table still renders (no broken pipes)</strong></li>
+</ul>
+<p>Run: <code>pwsh -NoProfile -Command "Get-Content ./docs/Architecture.md | Select-String 'Get-DLLPickleLoadedTrackedAssembly'"</code>
+Expected: one line — the §4 row containing the new script.</p>
+<ul>
+<li>[ ] <strong>Step 3: Commit</strong></li>
+</ul>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>git<span class="w"> </span>add<span class="w"> </span>docs/Architecture.md
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;docs: list Get-DLLPickleLoadedTrackedAssembly in the architecture component map&quot;</span>
+</code></pre></div>
+<hr />
+<h2 id="task-4-validate-the-full-gate-and-hand-off-the-live-probe-runbook">Task 4: Validate the full gate and hand off the live-probe runbook<a class="headerlink" href="#task-4-validate-the-full-gate-and-hand-off-the-live-probe-runbook" title="Permanent link">&para;</a></h2>
+<p><strong>Files:</strong> none (verification + handoff)</p>
+<ul>
+<li>[ ] <strong>Step 1: Run the full PR-smoke gate</strong></li>
+</ul>
+<p>Run: <code>pwsh -NoProfile -Command "Invoke-Build -File ./build/DLLPickle.Build.ps1 -Task Analyze,Test"</code>
+Expected: PASS — analyzer clean on <code>src/</code>, <code>tests/</code>, <code>tools/</code>; all unit tests pass (the existing suite + the 5 new probe tests). &ldquo;Build succeeded&rdquo;.</p>
+<ul>
+<li>[ ] <strong>Step 2: Smoke-test the helper locally (no auth, no spawn)</strong></li>
+</ul>
+<p>Run: <code>pwsh -NoProfile -Command "Import-Module ./module/DLLPickle/DLLPickle.psd1 -Force; &amp; ./tools/Get-DLLPickleLoadedTrackedAssembly.ps1 | Format-Table -AutoSize"</code>
+Expected: a table of tracked assemblies loaded by importing the DLLPickle module (e.g. the MSAL / IdentityModel preload set), each with an <code>Alc</code> (likely <code>Default</code>). Confirms the policy-driven filter + ALC resolution work end-to-end.</p>
+<ul>
+<li>[ ] <strong>Step 3: Hand off the live-probe runbook to the maintainer</strong></li>
+</ul>
+<p>The probe is now usable. Surface the §5 runbook from the spec to the maintainer, with the <code>probe</code> helper bound to the built script. The maintainer runs each scenario in a fresh <code>pwsh</code> (Full Language Mode or CLM audit), against their dev tenant, and pastes back the per-step <code>probe</code> output (OData version(s) + ALC + cmdlet success/error). That evidence feeds the Phase 2 (#174) adjudication — OUT OF SCOPE for this plan.</p>
+<p>One-line <code>probe</code> binding to paste once per session:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="nv">$RepoRoot</span> <span class="p">=</span> <span class="p">(</span><span class="n">git</span> <span class="n">rev-parse</span> <span class="p">-</span><span class="n">-show-toplevel</span><span class="p">)</span>   <span class="c"># run from inside your DLLPickle clone</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="k">function</span> <span class="n">probe</span> <span class="p">{</span> <span class="p">&amp;</span> <span class="s2">&quot;$RepoRoot/tools/Get-DLLPickleLoadedTrackedAssembly.ps1&quot;</span> <span class="n">-NameLike</span> <span class="s1">&#39;Microsoft.OData*&#39;</span><span class="p">,</span><span class="s1">&#39;Microsoft.Spatial&#39;</span> <span class="p">|</span> <span class="nb">Format-Table</span> <span class="n">-AutoSize</span> <span class="p">}</span>
+</code></pre></div>
+<ul>
+<li>[ ] <strong>Step 4: Final commit (if any doc/runbook tweaks were made); otherwise none</strong></li>
+</ul>
+<p>No code change in this task. If the runbook handoff prompted a spec tweak, commit it; otherwise nothing to commit.</p>
+<hr />
+<h2 id="notes-for-the-implementer">Notes for the implementer<a class="headerlink" href="#notes-for-the-implementer" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Pester version:</strong> the repo pins Pester 5.2.2–5.99.99. <code>Invoke-Pester -Path &lt;file&gt;</code> works with Pester 5; if <code>Invoke-Pester</code> is missing, run <code>Import-Module Pester -MinimumVersion 5.2.2</code> first (the build bootstrap installs it).</li>
+<li><strong>Analyzer gate:</strong> <code>AnalyzeTests</code> excludes only <code>PSUseDeclaredVarsMoreThanAssignments</code>; <code>AnalyzeTools</code> excludes nothing. Do <strong>not</strong> name test-helper <em>functions</em> with state-changing verbs (<code>New-*</code>, <code>Set-*</code>, <code>Remove-*</code>): they trip <code>PSUseShouldProcessForStateChangingFunctions</code> and fail the gate. That is why the temp-policy helper is <code>Get-TempPolicyPath</code> (returns a path; file creation is incidental), matching the existing <code>Get-TestInventory</code>/<code>Get-DriftRow</code> test helpers in this repo.</li>
+<li><strong>CLM:</strong> the probe uses <code>[AppDomain]</code>/<code>[AssemblyLoadContext]</code> reflection, blocked under enforced Constrained Language Mode. The maintainer&rsquo;s session was CLM <strong>audit</strong> (allowed). CI runs Full Language Mode.</li>
+<li><strong>No release impact:</strong> <code>tools/</code>, <code>tests/</code>, and <code>docs/</code> are outside the Release-and-Publish bundle paths, so merging this triggers no PSGallery publish.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      (c) 2026 Sam Erde
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["navigation.path", "navigation.instant", "navigation.instant.prefetch", "navigation.tracking", "navigation.sections", "navigation.expand", "navigation.top", "toc.follow", "toc.integrate"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
