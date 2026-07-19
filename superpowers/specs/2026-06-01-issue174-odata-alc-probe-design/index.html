@@ -1,0 +1,575 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A PowerShell module that helps you get un-stuck from version conflicts (aka DLL pickle) that occur when using modules that depend on multiple versions of the same dependencies such as the Microsoft Authentication Library (MSAL).">
+      
+      
+        <meta name="author" content="Sam Erde">
+      
+      
+        <link rel="canonical" href="https://day3bits.com/DLLPickle/superpowers/specs/2026-06-01-issue174-odata-alc-probe-design/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Issue #174 OData ALC Probe & Adjudication — Design - DLLPickle PowerShell Module</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#issue-174-odata-alc-probe-adjudication-design" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../.." title="DLLPickle PowerShell Module" class="md-header__button md-logo" aria-label="DLLPickle PowerShell Module" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            DLLPickle PowerShell Module
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Issue #174 OData ALC Probe &amp; Adjudication — Design
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m14.3 16-.7-2h-3.2l-.7 2H7.8L11 7h2l3.2 9zM20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12zm-9.15 3.96h2.3L12 9z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_2" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to system preference"  type="radio" name="__palette" id="__palette_2">
+    
+      <label class="md-header__button md-icon" title="Switch to system preference" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/SamErde/DLLPickle" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    SamErde/DLLPickle
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="DLLPickle PowerShell Module" class="md-nav__button md-logo" aria-label="DLLPickle PowerShell Module" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    DLLPickle PowerShell Module
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/SamErde/DLLPickle" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    SamErde/DLLPickle
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../Architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../Deep-Dive/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deep Dive
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../DEPENDENCIES/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dependencies
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../Troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+  
+
+
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="issue-174-odata-alc-probe-adjudication-design">Issue #174 OData ALC Probe &amp; Adjudication — Design<a class="headerlink" href="#issue-174-odata-alc-probe-adjudication-design" title="Permanent link">&para;</a></h1>
+<p><strong>Goal:</strong> Gather runtime AssemblyLoadContext (ALC) evidence for the <code>Microsoft.OData.*</code> stack across Az.Storage / ExchangeOnlineManagement (and Teams), then adjudicate issue #174 with a workaround-first, preload-last decision framework.</p>
+<p><strong>Architecture:</strong> Extend the existing runtime-probe tooling to source its assembly filter from <code>build/dependency-policy.json</code> (so it captures OData, which is already a tracked assembly), add a small in-session dump helper, provide a self-contained live-probe runbook the maintainer runs against a dev tenant, and define a decision tree that prefers zero-cost workarounds over bundling OData.</p>
+<p><strong>Tech stack:</strong> PowerShell 7.4+, <code>System.Runtime.Loader.AssemblyLoadContext</code>, the existing <code>tools/</code> probe scripts, Pester for the unit test.</p>
+<hr />
+<h2 id="1-problem-context">1. Problem &amp; context<a class="headerlink" href="#1-problem-context" title="Permanent link">&para;</a></h2>
+<p><strong>#174 (OPEN):</strong> With <code>Az.Storage</code> imported first, its <code>Microsoft.OData.Core</code> (e.g. 7.6.4) loads into the <strong>default ALC</strong>. When <code>ExchangeOnlineManagement</code>&rsquo;s <code>Get-EXO*</code> cmdlets then lazily require a <strong>higher</strong> <code>Microsoft.OData.Core</code> (e.g. 7.22.0), the load fails: <code>Could not load file or assembly 'Microsoft.OData.Core, Version=7.22.0.0 ...'</code>. DLLPickle currently classifies the OData stack as <code>block</code> (report-only) and does <strong>not</strong> preload it, because preloading one version breaks the module that needs the other. The repro tests (<code>tests/Integration/DLLPickle.Issue174.OData.Tests.ps1</code>) <strong>characterize</strong> this; they do not fix it.</p>
+<p><strong>Probe gap:</strong> <code>tools/Get-DLLPickleRuntimeAssemblySnapshot.ps1</code> already spawns a clean child pwsh, imports modules in order, runs an optional <code>-ProbeCommand</code>, and reports each loaded identity-stack assembly with its ALC. But its hardcoded assembly-name regex omits <code>Microsoft.OData.*</code> / <code>Microsoft.Spatial</code>, so it cannot currently show OData ALC ownership.</p>
+<p><strong>Key unknowns the evidence must resolve:</strong>
+- Does either module load OData into a <strong>private</strong> ALC (self-isolated → no real default-ALC conflict), or the <strong>default</strong> ALC (shared → genuine conflict)?
+- Does <strong>import order</strong> change the outcome (does loading the higher OData version first satisfy both)?
+- Does Az.Storage tolerate the <strong>higher</strong> OData version EXO needs?</p>
+<h2 id="2-scope">2. Scope<a class="headerlink" href="#2-scope" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Phase 1 (this spec / implementable now):</strong> the probe extension (Components A–B), the live-probe runbook (Component C), and the adjudication framework (Component D) recorded in the repo.</li>
+<li><strong>Phase 2 (evidence-gated, separate follow-up):</strong> the actual #174 resolution — chosen by applying Component D to the maintainer-provided probe output. The resolution (documented workaround, a built-in assist, or — last resort — an OData preload) is <strong>not</strong> decided in this spec.</li>
+</ul>
+<p><strong>Out of scope:</strong> Stage 2b secretless auth automation (deferred; the live probe stays maintainer-run for now).</p>
+<blockquote>
+<p><strong>Placement (A &amp; B):</strong> both live in <strong><code>tools/</code></strong> as maintainer/analysis scripts — the same family as <code>New-DLLPickleConflictMatrix</code>, <code>Compare-DLLPickleConflictMatrix</code>, <code>Get-DLLPickleUpstreamInventory</code>, and <code>Update-DLLPickleDependencyPins</code> (<code>docs/Architecture.md</code> §4), kept analyzer-clean by the <code>AnalyzeTools</code> build task. They are <strong>not</strong> module code (<code>src/DLLPickle/</code>) — they run at adjudication time, not at <code>Import-DPLibrary</code> time, so shipping them to the Gallery would bloat the module and turn dev tooling into public API. They are <strong>not</strong> <code>.github/ci-scripts/</code> (CI glue: bootstrap, version bump, publish); like the other <code>tools/</code> scripts they may be <em>invoked</em> by CI but live in <code>tools/</code>. (If Phase 2&rsquo;s resolution is a built-in assist, that would be <strong>module</strong> code — a Private function callable from <code>Import-DPLibrary</code> — which is a separate decision from these probe tools.)</p>
+</blockquote>
+<h2 id="3-component-a-toolsget-dllpickleloadedtrackedassemblyps1-new-in-session-dump">3. Component A — <code>tools/Get-DLLPickleLoadedTrackedAssembly.ps1</code> (new, in-session dump)<a class="headerlink" href="#3-component-a-toolsget-dllpickleloadedtrackedassemblyps1-new-in-session-dump" title="Permanent link">&para;</a></h2>
+<p>A small helper that reports, <strong>for the current session</strong>, every loaded assembly whose name is in the policy&rsquo;s <code>trackedAssemblies</code>, with version + ALC. This is the shared core used both by the live runbook (interactive, where <code>Connect-ExchangeOnline</code> auth cannot run inside a spawned child) and by the snapshot tool&rsquo;s child process.</p>
+<p><strong>Interface:</strong>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>Get-DLLPickleLoadedTrackedAssembly.ps1
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>  [-PolicyPath &lt;string&gt;]   # default: &lt;repoRoot&gt;/build/dependency-policy.json
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>  [-NameLike &lt;string[]&gt;]   # optional post-filter, e.g. &#39;Microsoft.OData*&#39;,&#39;Microsoft.Spatial&#39;
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>  -&gt; PSCustomObject[]: Name, Version, Alc, Path
+</code></pre></div></p>
+<p><strong>Behavior:</strong> read <code>trackedAssemblies</code> from the policy; enumerate <code>[AppDomain]::CurrentDomain.GetAssemblies()</code>; keep those whose <code>GetName().Name</code> is in the tracked set (and, if <code>-NameLike</code> given, also match one of those wildcards); resolve each assembly&rsquo;s ALC via <code>AssemblyLoadContext::GetLoadContext</code> (name, or <code>Default</code>). Returns objects (sortable/formattable by the caller).</p>
+<h2 id="4-component-b-refactor-get-dllpickleruntimeassemblysnapshotps1">4. Component B — refactor <code>Get-DLLPickleRuntimeAssemblySnapshot.ps1</code><a class="headerlink" href="#4-component-b-refactor-get-dllpickleruntimeassemblysnapshotps1" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Add <code>-PolicyPath</code> (default: <code>build/dependency-policy.json</code> resolved <strong>relative to the repo root via <code>$PSScriptRoot</code></strong> — same as Component A — not the caller&rsquo;s working directory). The parent reads <code>trackedAssemblies</code> and passes the names to the child instead of the hardcoded regex.</li>
+<li>The child filters loaded assemblies by membership in that tracked-name set (replacing the <code>$Pattern</code> regex). This automatically includes <code>Microsoft.OData.Core/Edm/Spatial</code>.</li>
+<li><code>-ProbeCommand</code>, <code>-PreloadDllPickleManifest</code>, <code>-ModuleName</code>, and the spawn-clean-child design are unchanged.</li>
+<li>Trade-off (accepted): the old regex also captured incidental BCL assemblies (<code>System.Text.Json</code>, <code>System.Memory.Data</code>, <code>Microsoft.Bcl.AsyncInterfaces</code>) that are not in <code>trackedAssemblies</code>; those are runtime-provided and not conflict sources, so dropping them is fine. If diagnostic breadth is ever needed, an optional <code>-AdditionalName &lt;string[]&gt;</code> can be added later (YAGNI for now).</li>
+</ul>
+<h2 id="5-component-c-live-probe-runbook-maintainer-runs-pastes-output">5. Component C — live-probe runbook (maintainer runs, pastes output)<a class="headerlink" href="#5-component-c-live-probe-runbook-maintainer-runs-pastes-output" title="Permanent link">&para;</a></h2>
+<p>Each scenario runs in a <strong>fresh <code>pwsh</code></strong> to avoid cross-contamination; <code>Connect-ExchangeOnline</code> uses the maintainer&rsquo;s dev tenant. The runbook <strong>calls the Component A script</strong> after each step rather than pasting a function — a multi-line function does not paste reliably into an interactive pwsh session (confirmed: the <code>Show-Loaded</code> paste produced a <code>ParserError</code>), whereas a single-line script call is robust. <strong>Therefore Component A is built first</strong> and the runbook depends on it:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nv">$RepoRoot</span> <span class="p">=</span> <span class="p">(</span><span class="n">git</span> <span class="n">rev-parse</span> <span class="p">-</span><span class="n">-show-toplevel</span><span class="p">)</span>   <span class="c"># run from inside your DLLPickle clone</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="k">function</span> <span class="n">probe</span> <span class="p">{</span> <span class="p">&amp;</span> <span class="s2">&quot;$RepoRoot/tools/Get-DLLPickleLoadedTrackedAssembly.ps1&quot;</span> <span class="n">-NameLike</span> <span class="s1">&#39;Microsoft.OData*&#39;</span><span class="p">,</span><span class="s1">&#39;Microsoft.Spatial&#39;</span> <span class="p">|</span> <span class="nb">Format-Table</span> <span class="n">-AutoSize</span> <span class="p">}</span>
+</code></pre></div>
+<p><code>probe</code> is a one-line alias the maintainer pastes once (single line = no paste-parse issues); call it after each step. Note: the probe reads <code>[AppDomain]::CurrentDomain.GetAssemblies()</code> and <code>AssemblyLoadContext</code> — under PowerShell <strong>Constrained Language Mode</strong> these .NET calls are restricted (the maintainer&rsquo;s session showed CLM <strong>audit</strong> mode, which permits them); the runbook assumes a session where these APIs are allowed.</p>
+<p><strong>Scenarios</strong> (each = a fresh session; capture <code>probe</code> output after each step):</p>
+<ol>
+<li><strong>Az.Storage alone:</strong> <code>Import-Module Az.Storage</code>; <code>probe</code> (after-import); run a non-network storage cmdlet that touches OData (e.g. <code>New-AzStorageContext -StorageAccountName x -Anonymous</code> or <code>Get-Command -Module Az.Storage | Out-Null</code>); <code>probe</code> (after-cmdlet).</li>
+<li><strong>EXO alone:</strong> <code>Import-Module ExchangeOnlineManagement</code>; <code>probe</code> (after-import); <code>Connect-ExchangeOnline</code>; <code>Get-EXOMailbox -ResultSize 1</code>; <code>probe</code> (after-getexo).</li>
+<li><strong>Az.Storage → EXO (failing order):</strong> import Az.Storage, <code>probe</code>; import EXO + <code>Connect-ExchangeOnline</code> + <code>Get-EXOMailbox -ResultSize 1</code> (record success/error); <code>probe</code> (after-getexo).</li>
+<li><strong>EXO → Az.Storage (candidate workaround order):</strong> import EXO + <code>Connect-ExchangeOnline</code> + <code>Get-EXOMailbox -ResultSize 1</code>; <code>probe</code>; then import Az.Storage + a storage cmdlet (record whether Az.Storage works); <code>probe</code> (after-azstorage).</li>
+<li><strong>With DLLPickle preloading the candidate OData version</strong> (only if scenarios 1–4 suggest a coherent version exists): <code>Import-Module $RepoRoot/module/DLLPickle/DLLPickle.psd1</code>; <code>Import-DPLibrary</code>; then repeat scenario 3&rsquo;s imports/cmdlets, capturing <code>probe</code> at each step.</li>
+</ol>
+<p><strong>Captured per scenario:</strong> the <code>OData.*</code> version(s) loaded, each one&rsquo;s ALC (Default vs a private name), and whether each module&rsquo;s representative cmdlet succeeded.</p>
+<h2 id="6-component-d-174-adjudication-framework-workaround-first-preload-last">6. Component D — #174 adjudication framework (workaround-first, preload-last)<a class="headerlink" href="#6-component-d-174-adjudication-framework-workaround-first-preload-last" title="Permanent link">&para;</a></h2>
+<p>Apply in order to the probe evidence:</p>
+<ol>
+<li><strong>Self-isolation</strong> — if Az.Storage and/or EXO load OData into a <strong>private</strong> ALC and run their own versions side-by-side without conflict, there is no default-ALC clash. → Document #174 as a runtime non-issue (order-independent) and close it; no bundling.</li>
+<li><strong>Import-order / no-bundle workaround</strong> — if loading the <strong>higher</strong> OData version first (EXO before Az.Storage) makes both modules work:</li>
+<li>Ship <strong>documented guidance</strong> (import EXO, or run a <code>Get-EXO*</code> command, before importing Az.Storage). Zero module-size cost.</li>
+<li>Evaluate a lightweight <strong>built-in assist</strong>: <code>Import-DPLibrary</code> (or a new helper) force-loads the higher <strong>already-installed</strong> <code>Microsoft.OData.Core</code> from the consuming module&rsquo;s own files into the default ALC — <strong>without bundling it in DLLPickle</strong> (still zero bundle-size cost). Feasible only if the higher version is present on the machine and load-order-first resolves the conflict.</li>
+<li><strong>Preload fix (last resort)</strong> — only if no workaround is reliable/efficient: bundle a coherent <code>Microsoft.OData.Core/Edm/Spatial</code> version in DLLPickle. <strong>Explicitly weigh</strong> the added module size (~1–2 MB for the OData stack) and validate that the bundled version works for <strong>both</strong> Az.Storage and EXO before adopting.</li>
+</ol>
+<p><strong>Decision is recorded</strong> in <code>build/dependency-policy.json</code> (classification + evidence) and <code>docs/Architecture.md</code> per the standard adjudication loop (§8 of the blueprint). The weighing of option 2 (≈0 cost) vs option 3 (size cost) is documented so the call is evidence-based.</p>
+<h2 id="7-testing">7. Testing<a class="headerlink" href="#7-testing" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Component A/B (unit):</strong> a Pester test in <code>tests/Unit/</code> that runs <code>Get-DLLPickleLoadedTrackedAssembly.ps1</code> against a synthetic policy (a temp <code>dependency-policy.json</code> listing a known-loaded assembly such as <code>System.Management.Automation</code>) and asserts the helper returns it with a resolved ALC; and that <code>Get-DLLPickleRuntimeAssemblySnapshot.ps1</code> includes an OData name in the names it passes to the child (assert via a policy containing <code>Microsoft.OData.Core</code>). Analyzer-clean per <code>AnalyzeTools</code>.</li>
+<li><strong>Existing #174 repro tests</strong> remain as characterization and as the regression guard once a resolution lands.</li>
+<li><strong>Component C</strong> scenarios are manual/maintainer-run (auth tier); not in CI.</li>
+<li><strong>Component D</strong> produces no code in Phase 1; its output is the recorded decision in Phase 2.</li>
+</ul>
+<h2 id="8-follow-ups">8. Follow-ups<a class="headerlink" href="#8-follow-ups" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Phase 2:</strong> apply Component D to the maintainer&rsquo;s probe output and implement the chosen resolution (its own spec/plan if it&rsquo;s a preload or a built-in assist).</li>
+<li><strong>Stage 2b auth automation</strong> would let scenarios 2–5 run in CI; deferred.</li>
+</ul>
+<h2 id="9-success-criteria">9. Success criteria<a class="headerlink" href="#9-success-criteria" title="Permanent link">&para;</a></h2>
+<ul>
+<li>The probe captures <code>Microsoft.OData.*</code> / <code>Microsoft.Spatial</code> ALC ownership + versions, driven by <code>trackedAssemblies</code> (stays in sync with policy).</li>
+<li>The maintainer can run the runbook and produce a clear evidence table (version + ALC + cmdlet success) for scenarios 1–5.</li>
+<li>The adjudication framework yields an unambiguous, recorded decision for #174 that favors a reliable zero-bundle workaround and only bundles OData if nothing else works.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      (c) 2026 Sam Erde
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["navigation.path", "navigation.instant", "navigation.instant.prefetch", "navigation.tracking", "navigation.sections", "navigation.expand", "navigation.top", "toc.follow", "toc.integrate"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

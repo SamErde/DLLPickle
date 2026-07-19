@@ -1,0 +1,664 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A PowerShell module that helps you get un-stuck from version conflicts (aka DLL pickle) that occur when using modules that depend on multiple versions of the same dependencies such as the Microsoft Authentication Library (MSAL).">
+      
+      
+        <meta name="author" content="Sam Erde">
+      
+      
+        <link rel="canonical" href="https://day3bits.com/DLLPickle/superpowers/specs/2026-06-21-release-dependency-contract-gaps-design/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Release & Dependency-Update Contract — §10 Gap Closure Design - DLLPickle PowerShell Module</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#release-dependency-update-contract-10-gap-closure-design" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../.." title="DLLPickle PowerShell Module" class="md-header__button md-logo" aria-label="DLLPickle PowerShell Module" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            DLLPickle PowerShell Module
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Release &amp; Dependency-Update Contract — §10 Gap Closure Design
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m14.3 16-.7-2h-3.2l-.7 2H7.8L11 7h2l3.2 9zM20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12zm-9.15 3.96h2.3L12 9z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_2" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to system preference"  type="radio" name="__palette" id="__palette_2">
+    
+      <label class="md-header__button md-icon" title="Switch to system preference" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/SamErde/DLLPickle" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    SamErde/DLLPickle
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="DLLPickle PowerShell Module" class="md-nav__button md-logo" aria-label="DLLPickle PowerShell Module" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    DLLPickle PowerShell Module
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/SamErde/DLLPickle" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    SamErde/DLLPickle
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../Architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../Deep-Dive/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deep Dive
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../DEPENDENCIES/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dependencies
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../Troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+  
+
+
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="release-dependency-update-contract-10-gap-closure-design">Release &amp; Dependency-Update Contract — §10 Gap Closure Design<a class="headerlink" href="#release-dependency-update-contract-10-gap-closure-design" title="Permanent link">&para;</a></h1>
+<h2 id="goal">Goal<a class="headerlink" href="#goal" title="Permanent link">&para;</a></h2>
+<p>Make the CI/release automation implement the <strong>intended</strong> release &amp; dependency-update
+contract that <code>docs/Architecture.md</code> §8 documents, closing the three deltas recorded in
+§10:</p>
+<ol>
+<li><strong>Gap 1</strong> — a merged Dependabot NuGet bump (commit prefix <code>deps:</code>) satisfies the publish
+   path gate but is not recognized by <code>Get-VersionBump.ps1</code>, so <code>ShouldRelease = $false</code>
+   and no module version is published (decisions 3 &amp; 4).</li>
+<li><strong>Gap 2</strong> — major dependency PRs are excluded from auto-merge but only receive a generic
+   &ldquo;requires manual review&rdquo; comment, not the draft + fully detailed notes decision 4
+   requires.</li>
+<li><strong>Gap 3</strong> — &ldquo;TFM alignment&rdquo; (§8.2 Step 0) is only half-enforced: the Build gate (0a)
+   exists, but the explicit <code>net8.0</code>/<code>netstandard2.0</code> asset inspection (0b) does not.</li>
+</ol>
+<h2 id="supported-baseline">Supported Baseline<a class="headerlink" href="#supported-baseline" title="Permanent link">&para;</a></h2>
+<ul>
+<li>PowerShell 7.4+ on the <code>net8.0</code> dependency bundle (unchanged).</li>
+<li>This change touches release/CI automation, tooling, tests, and docs only. <strong>No bundle
+  path</strong> (<code>src/DLLPickle/**</code>, <code>DLLPickle.csproj</code>, <code>packages.lock.json</code>) is modified, so per
+  §8.1 the implementation PR does not itself publish a module version. The first real
+  validation of Gap 1 is the next dependency bump merged after this lands.</li>
+</ul>
+<h2 id="settled-decisions-inputs-not-re-litigated">Settled Decisions (inputs, not re-litigated)<a class="headerlink" href="#settled-decisions-inputs-not-re-litigated" title="Permanent link">&para;</a></h2>
+<ul>
+<li>A routine tracked-dependency minor/patch bump produces a <strong>minor</strong> module release
+  (<code>deps → minor</code>).</li>
+<li>TFM alignment = Build gate (0a) <strong>and</strong> explicit TFM inspection (0b) — both halves.</li>
+<li>Major dependency releases land as a <strong>tested draft PR with fully detailed notes</strong>, never
+  auto-merged, never auto-published.</li>
+</ul>
+<h2 id="gap-1-deps-minor-in-get-versionbumpps1">Gap 1 — <code>deps → minor</code> in Get-VersionBump.ps1<a class="headerlink" href="#gap-1-deps-minor-in-get-versionbumpps1" title="Permanent link">&para;</a></h2>
+<h3 id="approach">Approach<a class="headerlink" href="#approach" title="Permanent link">&para;</a></h3>
+<p>Add <code>deps</code> to the existing <strong>minor</strong> prefix alternation in
+<code>.github/ci-scripts/Get-VersionBump.ps1</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>^(feat|minor)(\(.+\))?:   →   ^(feat|minor|deps)(\(.+\))?:
+</code></pre></div>
+<p><code>.github/dependabot.yml</code> is left unchanged.</p>
+<h3 id="rationale">Rationale<a class="headerlink" href="#rationale" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Keeps the single &ldquo;what triggers a release&rdquo; decision in <code>Get-VersionBump.ps1</code>, and leaves
+  the Dependabot config conventional.</li>
+<li><strong>Scoping confirmed against <code>dependabot.yml</code>:</strong> only the NuGet ecosystem uses the <code>deps</code>
+  prefix. github-actions uses <code>ci</code>, pip uses <code>docs</code>, and docker/devcontainers use the
+  Dependabot default (<code>Bump …</code>, no colon-prefix). So <code>deps → minor</code> affects NuGet bumps
+  only.</li>
+<li>NuGet bumps only ever change <code>DLLPickle.csproj</code> / <code>packages.lock.json</code> (both bundle
+  paths), so <code>deps:</code> correctly yields path gate ✔ + version gate ✔ = a <strong>minor</strong> publish.</li>
+<li>Major precedence is preserved: the analysis loop still <code>break</code>s to <code>major</code> when a
+  <code>breaking:</code> / <code>BREAKING CHANGE:</code> / <code>major-release</code> commit is present, so a
+  maintainer-promoted major dependency PR carried as <code>breaking:</code> still resolves to major.</li>
+</ul>
+<h3 id="verification">Verification<a class="headerlink" href="#verification" title="Permanent link">&para;</a></h3>
+<p>New <code>tests/Unit/GetVersionBump.Tests.ps1</code> runs the script against an ephemeral <code>$TestDrive</code>
+git repository with synthetic commits (signing/hooks disabled for hermetic, deterministic
+runs — these are throwaway test-repo commits, not repository commits):</p>
+<ul>
+<li><code>deps:</code> (and <code>deps(scope):</code>) → <code>ShouldRelease = $true</code>, <code>NewVersionType = 'minor'</code>.</li>
+<li><code>docs:</code> / <code>ci:</code> / <code>style:</code> → <code>NewVersionType = 'none'</code>, <code>ShouldRelease = $false</code>.</li>
+<li>Regression guards: <code>feat:</code> → minor, <code>fix:</code> → patch, <code>breaking:</code> → major still hold,
+  and major wins when mixed with <code>deps:</code>.</li>
+</ul>
+<h2 id="gap-3-explicit-tfm-alignment-inspection-step-0b">Gap 3 — Explicit TFM-alignment inspection (Step 0b)<a class="headerlink" href="#gap-3-explicit-tfm-alignment-inspection-step-0b" title="Permanent link">&para;</a></h2>
+<h3 id="approach_1">Approach<a class="headerlink" href="#approach_1" title="Permanent link">&para;</a></h3>
+<p>Add a read-only tool <code>tools/Test-DLLPickleTfmAlignment.ps1</code>:</p>
+<ul>
+<li>A <strong>pure compatibility core</strong> decides whether a single target-framework moniker is
+  consumable by <code>net8.0</code>:</li>
+<li>consumable: <code>.NET 5+</code> style (<code>net8.0</code>, lower <code>netX.0</code>), <code>netcoreapp*</code>, and
+    <code>.NET Standard</code> (<code>netstandard2.1</code> / <code>2.0</code> / <code>1.x</code>);</li>
+<li>not consumable: <code>.NET Framework</code> (<code>net48</code>, <code>net472</code>, <code>net4xx</code>, <code>net2x</code>/<code>net3x</code>) and
+    unknown/garbage monikers (fail-closed).</li>
+<li>Platform suffixes (<code>net8.0-windows</code>) are reduced to their base TFM before parsing.</li>
+<li>A <strong>package inspector</strong> enumerates <code>lib/&lt;tfm&gt;/</code> folders of a restored NuGet package and
+  marks the package <strong>aligned</strong> iff at least one lib asset is net8.0-consumable.
+  No <code>lib/</code> (or no consumable asset) ⇒ <strong>not aligned</strong>.</li>
+<li>The script resolves the <code>preload</code> set from <code>build/dependency-policy.json</code>, resolved
+  versions from <code>packages.lock.json</code>, and package roots from the NuGet global-packages
+  folder (<code>$env:NUGET_PACKAGES</code> else <code>~/.nuget/packages</code>), then emits a structured
+  per-package result plus an aggregate, and writes a JSON report.</li>
+</ul>
+<p>This is a focused subset of NuGet&rsquo;s compatibility model — sufficient for the in-scope MSAL +
+IdentityModel families (all ship <code>netstandard2.0</code> and/or <code>net8.0</code>) — not a full resolver.
+It is documented as such.</p>
+<h3 id="wiring">Wiring<a class="headerlink" href="#wiring" title="Permanent link">&para;</a></h3>
+<p>A new <strong>fail-closed</strong> step in the <strong>scheduled</strong> job of
+<code>.github/workflows/Upstream-Compatibility.yml</code>, after the existing
+<code>Generate candidate dependency updates</code> step (which already runs <code>-Restore</code>), runs the tool
+against the restored packages, writes a job-summary table, uploads the report as a
+candidate artifact, and fails the job if any preload package is not TFM-aligned (consistent
+with the existing fail-closed scheduled flow and §8.2: &ldquo;a release that fails either half …
+must not be merged on the automated path&rdquo;).</p>
+<h3 id="verification_1">Verification<a class="headerlink" href="#verification_1" title="Permanent link">&para;</a></h3>
+<p>New <code>tests/Unit/TfmAlignment.Tests.ps1</code>:</p>
+<ul>
+<li>pure-core decisions: <code>net8.0</code> ✓, <code>netstandard2.0</code> ✓, <code>netstandard2.1</code> ✓, <code>net6.0</code> ✓,
+  <code>netcoreapp3.1</code> ✓, <code>net48</code> ✗, <code>net472</code> ✗, <code>garbage</code> ✗;</li>
+<li>directory inspection with aligned fixtures (<code>lib/net8.0/</code>, <code>lib/netstandard2.0/</code>) and
+  misaligned fixtures (<code>lib/net48/</code> only; a package with no <code>lib/</code>). Fixtures are empty
+  files in directories — no real assemblies required.</li>
+</ul>
+<h2 id="gap-2-major-dependency-draft-pr-flow">Gap 2 — Major-dependency draft-PR flow<a class="headerlink" href="#gap-2-major-dependency-draft-pr-flow" title="Permanent link">&para;</a></h2>
+<h3 id="approach_2">Approach<a class="headerlink" href="#approach_2" title="Permanent link">&para;</a></h3>
+<p>In the <code>version-update:semver-major</code> branch of
+<code>.github/workflows/Dependabot-Auto-Approve.yml</code>:</p>
+<ol>
+<li>Convert the PR to <strong>draft</strong>: <code>gh pr ready --undo "$PR_URL"</code>.</li>
+<li>Replace the generic comment with <strong>structured notes</strong>:</li>
+<li>version delta (from <code>dependabot/fetch-metadata</code> outputs: dependency names, previous /
+     new version);</li>
+<li>a real NuGet package page link (no fabricated changelog URL — brand rule: never
+     fabricate specifics);</li>
+<li><strong>TFM-alignment</strong> line (see decision below);</li>
+<li><strong>Build gate / CI</strong> link (<code>$PR_URL/checks</code>) for the Pester/CI outcome;</li>
+<li><strong>conflict-surface / <code>dependency-policy.json</code></strong> impact, referencing the
+     Upstream-Compatibility drift gate.</li>
+<li>A <strong>maintainer checklist</strong> to complete before marking the PR ready: re-adjudicate the §3
+   preload/block classifications; auth-tier real-environment sign-off per §9; confirm TFM
+   alignment (0a + 0b); refresh the <code>dependency-policy.json</code> baseline if the conflict surface
+   moved; merge carrying a <code>breaking:</code> prefix for the intended major release.</li>
+</ol>
+<p>Majors remain excluded from <code>gh pr merge --auto</code> (unchanged — the approve/auto-merge step
+keeps its <code>update-type != 'version-update:semver-major'</code> guard, and the major branch never
+calls <code>--auto</code>).</p>
+<h3 id="tfm-alignment-line-decision-2a-approved">TFM-alignment line — decision 2a (approved)<a class="headerlink" href="#tfm-alignment-line-decision-2a-approved" title="Permanent link">&para;</a></h3>
+<p>The major-PR comment <strong>references</strong> rather than recomputes the TFM result: it states that
+TFM alignment is proven by the <code>Build gate</code> required check (0a) and points to
+<code>tools/Test-DLLPickleTfmAlignment.ps1</code> (0b) as a checklist item. This keeps the
+write-scoped comment workflow lightweight; the live 0b gate runs in the candidate flow
+(Gap 3), and the major path is never auto-published, so a referenced (not inlined) verdict
+is sufficient. (Rejected alternative 2b: checkout + setup-dotnet + restore + inline tool run
+in the major branch — materially heavier on a rare, non-auto-merged path.)</p>
+<h3 id="verification_2">Verification<a class="headerlink" href="#verification_2" title="Permanent link">&para;</a></h3>
+<p>Extend <code>tests/Unit/WorkflowGuardrails.Tests.ps1</code> to assert the workflow contains the draft
+conversion (<code>gh pr ready --undo</code>), the structured-notes scaffold markers (TFM-alignment /
+conflict-surface / maintainer-checklist headings), and that majors remain excluded from
+<code>--auto</code>. The live draft path cannot be exercised without a real Dependabot PR, so the test
+is a structural assertion on the workflow text (validated alongside a careful read).</p>
+<h2 id="documentation-changes">Documentation Changes<a class="headerlink" href="#documentation-changes" title="Permanent link">&para;</a></h2>
+<p>Because closing these gaps makes the documented contract true, the §10 gap notes and the
+§8 caveats are corrected (not new policy):</p>
+<ul>
+<li><code>docs/Architecture.md</code> §8.1 — move <code>deps:</code> from the &ldquo;no publish&rdquo; list into the <strong>minor</strong>
+  prefix row.</li>
+<li><code>docs/Architecture.md</code> §8.2 — drop the &ldquo;must carry <code>feat:</code>&rdquo; workaround caveat for routine
+  bumps; note 0b is now enforced.</li>
+<li><code>docs/Architecture.md</code> §10 — mark the three gaps resolved (what implements each).</li>
+<li><code>docs/DEPENDENCIES.md</code> and <code>CHANGELOG.md</code> — reflect <code>deps → minor</code>, the major draft-PR notes,
+  and the TFM-alignment tool.</li>
+</ul>
+<p>In-progress working-tree edits to these docs are diffed first so they are not clobbered.</p>
+<h2 id="constraints-gates">Constraints &amp; Gates<a class="headerlink" href="#constraints-gates" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>TDD</strong>: a failing test precedes each gap&rsquo;s implementation.</li>
+<li><code>tests/</code> and <code>tools/</code> stay analyzer-clean: test helpers use <code>Get-*</code> verbs (the
+  <code>AnalyzeTests</code> task excludes only <code>PSUseDeclaredVarsMoreThanAssignments</code>); the new tool is
+  read-only, so it needs no <code>ShouldProcess</code>. <code>PSScriptAnalyzerSettings.psd1</code> is not weakened.</li>
+<li><strong>No commits or pushes</strong> until the maintainer asks; branch off <code>main</code>.</li>
+<li>Release-automation changes are not auto-merged; they need maintainer review and, for the
+  bundled set, the auth-tier sign-off — though this PR touches no bundle path.</li>
+</ul>
+<h2 id="verification-whole-change">Verification (whole change)<a class="headerlink" href="#verification-whole-change" title="Permanent link">&para;</a></h2>
+<ul>
+<li><code>Invoke-Build -Task Analyze,Test -File ./build/DLLPickle.Build.ps1</code> stays green, including
+  the new <code>GetVersionBump</code>, <code>TfmAlignment</code>, and extended <code>WorkflowGuardrails</code> tests.</li>
+<li>Dry-run the version-bump logic against synthetic commit messages.</li>
+<li>Careful read / <code>act</code>-style validation of the Dependabot workflow YAML (the draft path
+  can&rsquo;t be exercised without a real Dependabot PR).</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      (c) 2026 Sam Erde
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["navigation.path", "navigation.instant", "navigation.instant.prefetch", "navigation.tracking", "navigation.sections", "navigation.expand", "navigation.top", "toc.follow", "toc.integrate"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

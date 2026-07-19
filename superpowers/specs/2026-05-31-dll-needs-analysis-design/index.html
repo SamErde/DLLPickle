@@ -1,0 +1,718 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A PowerShell module that helps you get un-stuck from version conflicts (aka DLL pickle) that occur when using modules that depend on multiple versions of the same dependencies such as the Microsoft Authentication Library (MSAL).">
+      
+      
+        <meta name="author" content="Sam Erde">
+      
+      
+        <link rel="canonical" href="https://day3bits.com/DLLPickle/superpowers/specs/2026-05-31-dll-needs-analysis-design/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>2026 05 31 dll needs analysis design - DLLPickle PowerShell Module</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#design-dependency-preload-set-needs-analysis-net80" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../.." title="DLLPickle PowerShell Module" class="md-header__button md-logo" aria-label="DLLPickle PowerShell Module" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            DLLPickle PowerShell Module
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              2026 05 31 dll needs analysis design
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m14.3 16-.7-2h-3.2l-.7 2H7.8L11 7h2l3.2 9zM20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12zm-9.15 3.96h2.3L12 9z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_2" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to system preference"  type="radio" name="__palette" id="__palette_2">
+    
+      <label class="md-header__button md-icon" title="Switch to system preference" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/SamErde/DLLPickle" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    SamErde/DLLPickle
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="DLLPickle PowerShell Module" class="md-nav__button md-logo" aria-label="DLLPickle PowerShell Module" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    DLLPickle PowerShell Module
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/SamErde/DLLPickle" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    SamErde/DLLPickle
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../Architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../Deep-Dive/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deep Dive
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../DEPENDENCIES/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dependencies
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../Troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+  
+
+
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<!-- markdownlint-disable MD024 -->
+<h1 id="design-dependency-preload-set-needs-analysis-net80">Design: Dependency / Preload-Set Needs Analysis (net8.0)<a class="headerlink" href="#design-dependency-preload-set-needs-analysis-net80" title="Permanent link">&para;</a></h1>
+<ul>
+<li><strong>Status:</strong> Draft (design approved in brainstorming; pending written-spec review)</li>
+<li><strong>Date:</strong> 2026-05-31</li>
+<li><strong>Author:</strong> Sam Erde (with AI assistance)</li>
+<li><strong>Scope:</strong> PowerShell 7.4+ / <code>net8.0</code> profile only. Multi-TFM (net9.0/net10.0) is explicitly deferred.</li>
+<li><strong>Related:</strong> Resolves the <em>class</em> of bug behind the Azure.Core/<code>Connect-AzAccount</code> fix (2.0.1) and targets issue #193. Issue #174 (OData) is out of scope (see &ldquo;Deferred / out of scope&rdquo;).</li>
+</ul>
+<h2 id="1-problem">1. Problem<a class="headerlink" href="#1-problem" title="Permanent link">&para;</a></h2>
+<p>DLLPickle resolves assembly-version conflicts that occur when multiple Microsoft service modules are used in one PowerShell session, by <strong>preloading a curated set of assemblies into the default <code>AssemblyLoadContext</code> (ALC) before those modules load</strong>. The preload set has historically been assembled by intuition and reactive fixes, which caused two failure modes:</p>
+<ol>
+<li><strong>Over-preloading.</strong> Bundling an assembly that a self-isolating module (e.g., Az.Accounts 5.x, which loads its Azure SDK stack into a private <code>AzSharedAssemblyLoadContext</code>) manages itself <strong>splits that assembly&rsquo;s type identity across ALCs</strong>. This is exactly what broke <code>Connect-AzAccount</code> (Azure.Core <code>TokenRequestContext</code> split → <code>MissingMethodException</code>), fixed in 2.0.1, and is the same mechanism behind #193 (<code>Microsoft.Extensions.DependencyInjection.Abstractions</code> vs Az.Resources).</li>
+<li><strong>No principled basis.</strong> Static version-matching is demonstrably insufficient — the ALC split is only observable at runtime — so decisions need runtime evidence, and there is no repeatable way to keep the set correct as upstream modules evolve.</li>
+</ol>
+<p>This design establishes a <strong>repeatable methodology + decision artifact</strong> that determines which assemblies are <em>truly needed</em> in the preload set, grounded in real load behavior, and a <strong>drift-detection gate</strong> that keeps the decision valid as monitored modules (and our own Dependabot bumps) change over time.</p>
+<h2 id="2-primary-objective-and-key-decisions">2. Primary objective and key decisions<a class="headerlink" href="#2-primary-objective-and-key-decisions" title="Permanent link">&para;</a></h2>
+<p><strong>Primary objective:</strong> the four-module <em>simultaneous</em> scenario — <code>Az.Accounts</code> + <code>Microsoft.Graph.Authentication</code> + <code>ExchangeOnlineManagement</code> + <code>MicrosoftTeams</code> imported and connected in one session, in varying orders. The unit of analysis is each module&rsquo;s <strong>transitive dependency closure</strong>.</p>
+<p>Decisions made during brainstorming (decision log):</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Decision</th>
+<th>Rationale</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>D1</td>
+<td>Deliverable = a <strong>methodology + decision artifact</strong> (not a full standalone tooling subsystem).</td>
+<td>Highest-value, lowest-risk: get the decision logic right; prove it by hand once.</td>
+</tr>
+<tr>
+<td>D2</td>
+<td>Evidence basis = <strong>hybrid</strong> — static narrows candidates, <strong>runtime adjudicates</strong>.</td>
+<td>Static alone produced the Azure.Core mistake; pure-runtime over everything is expensive.</td>
+</tr>
+<tr>
+<td>D3</td>
+<td>Phasing = <strong>Stage 1 (baseline + decision) and Stage 2 (drift detection) now</strong>; Stage 2b (auth automation) optional; Stage 3 (auto-derive set) deferred.</td>
+<td>Stage 2 makes floating versions safe; Stage 3 needs the methodology proven first.</td>
+</tr>
+<tr>
+<td>D4</td>
+<td><strong>No exact pins.</strong> <code>preload</code> is realized as major-locked floating refs (<code>N.*</code>); <strong>Dependabot</strong> owns minor/patch (auto-merge gated by the upstream-compatibility checks); major bumps are manual.</td>
+<td>Removes pin-maintenance burden; the Stage 2 gate is the safety net.</td>
+</tr>
+<tr>
+<td>D5</td>
+<td>Build on the <strong>existing</strong> pipeline (<code>Get-DLLPickleUpstreamInventory.ps1</code>, <code>dependency-policy.json</code>, Upstream-Compatibility workflow) rather than a parallel subsystem.</td>
+<td>Reuses maintained surfaces; one source of truth.</td>
+</tr>
+<tr>
+<td>D6</td>
+<td>Produce a durable, <strong>in-repo architectural blueprint</strong> structured for agentic workstreams (separate from this dated design spec).</td>
+<td>Tracking, validation, and future agent-driven maintenance.</td>
+</tr>
+<tr>
+<td>D7</td>
+<td><strong>net8.0 only</strong>; multi-TFM deferred.</td>
+<td>#193/#174 do not require multi-TFM; keep scope focused.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="3-architecture-and-data-flow">3. Architecture and data flow<a class="headerlink" href="#3-architecture-and-data-flow" title="Permanent link">&para;</a></h2>
+<p>Five single-purpose components; the first extends an existing tool, the rest are new and small.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>PSGallery (4 core modules)
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>        │
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>        ▼
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>[1] Inventory  ──────────────►  inventory.json
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>   (extend Get-DLLPickleUpstreamInventory.ps1)
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>   per-module transitive DLL closure + bundled-ALC hints
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>        │
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>        ▼
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>[2] Conflict-matrix builder  ─►  conflict-matrix.json
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>   assembly → { which modules ship it, versions, diverge?, ALC owner }
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>        │
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>        ▼
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>[3] Runtime probe  ───────────►  runtime-evidence.json
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>   (a) per-module isolation snapshot: loaded assemblies + their ALC
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>   (b) combined 4-module scenario (Invoke-DLLPickleScenario),
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>       with/without candidate preload set, multiple import orders
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>        │
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>        ▼
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>[4] Classification (human-adjudicated, recorded)
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>   each assembly → preload | block | ignore  + evidence
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>        │
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>        ├──►  dependency-policy.json   (decision + rationale: source of truth)
+<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>        └──►  DLLPickle.csproj          (realizes it: preload = bundled ref;
+<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>                                          block/ignore = not bundled)
+<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>        ▼
+<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>[5] Stage-2 drift gate  (in Upstream-Compatibility workflow)
+<a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>   on monitored-module release OR Dependabot bump: re-run [1]+[2],
+<a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a>   diff vs recorded baseline, flag material change → fail check / open issue
+</code></pre></div>
+<p><strong>Principles:</strong> static narrows, runtime decides (D2). The decision lives in two linked places — <code>dependency-policy.json</code> holds <em>what + why</em>; <code>DLLPickle.csproj</code> <em>realizes</em> it (an assembly is preloaded <strong>iff</strong> it is a direct/transitive package reference). The methodology can both <strong>trim</strong> the set (Azure.Core, #193&rsquo;s <code>M.E.DI.Abstractions</code>) and <strong>add</strong> to it. <strong>ALC ownership is a first-class signal</strong> throughout.</p>
+<h2 id="4-classification-taxonomy-and-decision-artifact">4. Classification taxonomy and decision artifact<a class="headerlink" href="#4-classification-taxonomy-and-decision-artifact" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Class</th>
+<th>Meaning</th>
+<th>Decision rule (testable)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>preload</strong></td>
+<td>Bundle it; load it early</td>
+<td>Loaded into the <strong>default ALC</strong> by ≥2 target modules at <strong>diverging versions</strong>, <em>and</em> the runtime probe shows preloading one coherent version <strong>fixes/prevents</strong> a failure in the 4-module scenario <strong>without</strong> breaking a self-isolating module.</td>
+</tr>
+<tr>
+<td><strong>block</strong></td>
+<td>Never bundle</td>
+<td>Owned by a module&rsquo;s <strong>private ALC</strong> (e.g., <code>AzSharedAssemblyLoadContext</code>), <em>or</em> preloading it is observed to <strong>break</strong> a scenario.</td>
+</tr>
+<tr>
+<td><strong>ignore</strong></td>
+<td>No action</td>
+<td>No cross-module version divergence (single consumer or all agree) and not harmful.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Operational definition of &ldquo;needed&rdquo;:</strong> an assembly is <code>preload</code> <strong>iff</strong> excluding it breaks a target scenario that including it fixes, <em>and</em> including it harms nothing. This is the with/without differential from the runtime probe — the test static data could never satisfy.</p>
+<p><strong>Mapping onto the existing <code>dependency-policy.json</code>:</strong></p>
+<ul>
+<li><code>preload</code> → <code>preload</code> entry with a <strong><code>versionPolicy</code></strong> (default: <em>minor/patch float, major-locked</em>; realized as <code>N.*</code> in the csproj). Replaces the retired <code>exactPins</code> + <code>maximumPackageVersion</code> shape (<code>maximumPackageVersion</code> survives only as a rare escape hatch for a known-bad-minor).</li>
+<li><code>block</code> → <code>blockedPreloadAssemblies</code> (report-only; not bundled).</li>
+<li><code>ignore</code> → tracked-but-unclassified, or simply untracked.</li>
+</ul>
+<p>Array membership is the canonical denotation of class; each entry additionally records an explicit <code>classification</code> and an <strong><code>evidence</code></strong> object so the rationale travels with the decision:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>{ &quot;assemblyName&quot;: &quot;Azure.Core&quot;, &quot;classification&quot;: &quot;block&quot;,
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>  &quot;evidence&quot;: {
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    &quot;alcOwner&quot;: &quot;AzSharedAssemblyLoadContext&quot;,
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    &quot;shippedBy&quot;: { &quot;Az.Accounts&quot;: &quot;1.50.0.0&quot;, &quot;Microsoft.Graph.Authentication&quot;: &quot;1.46.x&quot; },
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    &quot;runtime&quot;: &quot;preloading splits TokenRequestContext across ALCs; Connect-AzAccount MissingMethodException&quot;,
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>    &quot;decidedOn&quot;: &quot;2026-05-31&quot; } }
+</code></pre></div>
+<p>Two new top-level keys: <strong><code>targetScenario</code></strong> (the 4 modules + the import/connect orders validated against) and <strong><code>baseline</code></strong> (recorded module versions + a conflict-matrix fingerprint that Stage 2 diffs against).</p>
+<h2 id="5-runtime-adjudication-component-3">5. Runtime adjudication (component [3])<a class="headerlink" href="#5-runtime-adjudication-component-3" title="Permanent link">&para;</a></h2>
+<p>Two depths:</p>
+<ol>
+<li><strong>Non-auth tier — CI-automatable.</strong> Fresh process per case. (a) <em>Isolation snapshot:</em> import one target module alone; record every loaded assembly and its ALC → the ground-truth ALC-ownership map. (b) <em>Combined smoke:</em> import all four modules in several orders, with and without the candidate preload set; assert no load failures and <strong>no preloaded assembly appears in two ALCs at once</strong> (the structural signature of the Azure.Core break).</li>
+<li><strong>Auth tier — maintainer-run (or automated via Stage 2b).</strong> <code>Connect-*</code> to a tenant in the orders that matter; the only tier that catches auth-time-only failures. Until Stage 2b is set up, this is on the <strong>pre-release checklist</strong>.</li>
+</ol>
+<h2 id="6-stage-2-drift-detection">6. Stage 2 — drift detection<a class="headerlink" href="#6-stage-2-drift-detection" title="Permanent link">&para;</a></h2>
+<p>The gate recomputes the conflict matrix and diffs it against the recorded <code>baseline</code>. It <strong>flags (fails the check + opens an issue)</strong> only on <em>material</em> drift:</p>
+<ul>
+<li>a <strong>new</strong> assembly enters the conflict surface (now shipped by ≥2 target modules at diverging versions) and is <strong>unclassified</strong>;</li>
+<li>a preloaded assembly&rsquo;s required version crosses its <strong>major lock</strong> (a target module now needs <code>N+1</code>);</li>
+<li>an <strong>ALC-ownership change</strong> (an assembly moves between default and a private ALC) — the Azure.Core-class signal.</li>
+</ul>
+<blockquote>
+<p><strong>Superseded by the version-aware drift gate (2026-06-01):</strong> patch/minor moves no longer pass silently. The accepted fingerprint includes versions and contributing modules, so either kind of change fails closed for re-adjudication. <code>Compare-DLLPickleConflictMatrix.ps1</code> reports the same structured reasons.</p>
+</blockquote>
+<p><strong>Two contexts:</strong> scheduled (monitored-module releases) and <strong>Dependabot bump PRs</strong> (re-evaluate the bumped library against the 4 modules). The drift comparison is <strong>bundled-version vs the 4 modules&rsquo; expected versions</strong>, not merely module-vs-module, so a bump that drifts from what the modules expect is caught.</p>
+<p><strong>Residual risk (explicit):</strong> the auth tier cannot run in CI without tenant credentials, so a minor bump could pass CI yet break a <code>Connect-*</code>. Bounded because: the worst class (Az private-ALC assemblies) is <code>block</code> and never bundled, so Dependabot never bumps it in our set; preloaded assemblies are default-ALC/shared, where bad minors tend to surface at import/non-auth time. The maintainer auth tier (or Stage 2b) is the backstop.</p>
+<h2 id="7-stage-2b-optional-secretless-auth-automation">7. Stage 2b (optional) — secretless auth automation<a class="headerlink" href="#7-stage-2b-optional-secretless-auth-automation" title="Permanent link">&para;</a></h2>
+<p>Promotes the auth tier from maintainer-run to an environment-gated automated job using <strong>GitHub OIDC + Microsoft Entra Workload Identity Federation (a federated credential)</strong> — no stored secret/cert in GitHub, consistent with the org &ldquo;no secrets in CI&rdquo; rule. <strong>Setup is a follow-up task owned by the maintainer</strong> (Entra app, federated credential, role assignments, Key Vault); this spec does not implement it, and the methodology works without it.</p>
+<p>Per-service feasibility (verified against Microsoft Learn, 2026-05-31):</p>
+<ul>
+<li><strong>Az.Accounts</strong> — <code>azure/login</code> OIDC → fully secretless. Highest value (the original bug).</li>
+<li><strong>Microsoft.Graph</strong> — <code>Connect-MgGraph -AccessToken</code> (or <code>-Identity</code>); exchange the federated token → secretless.</li>
+<li><strong>MicrosoftTeams</strong> — app-only via certificate or access token; access-token path is secretless.</li>
+<li><strong>Exchange Online</strong> — app-only is <strong>certificate-based</strong> (no OIDC/access-token path; <code>-ManagedIdentity</code> only on Azure-hosted compute). Mitigation: store the cert in <strong>Azure Key Vault</strong>, fetch at runtime via the federated SP. The one non-secretless wrinkle.</li>
+</ul>
+<p>Abuse-prevention controls: dedicated dev-tenant app; federated credential scoped to <code>repo:SamErde/DLLPickle:environment:&lt;env&gt;</code> (Environment entity type; exact subject match, no pattern matching); a GitHub Environment with required reviewers + protected-branch restriction; auth job runs only on trusted triggers (post-merge / scheduled / <code>workflow_dispatch</code>), never fork PRs; <strong>least-privilege read-only roles</strong> (Az Reader on one empty RG; minimal Graph read scope; EXO View-Only; Teams minimal read); short-lived tokens; Conditional Access on workload identities if licensed.</p>
+<h2 id="8-stage-1-deliverables-the-first-run-produces">8. Stage 1 deliverables (the first run produces)<a class="headerlink" href="#8-stage-1-deliverables-the-first-run-produces" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>Baseline</strong> — transitive-closure inventory of the 4 modules at current versions (net8/PS 7.4+), plus the conflict matrix and ALC-ownership map.</li>
+<li><strong>Classified, evidence-backed decision</strong> in <code>dependency-policy.json</code> (every tracked assembly → <code>preload | block | ignore</code> + evidence). Formalizes the Azure.Core <code>block</code>; produces the verdict on <code>Microsoft.Extensions.DependencyInjection.Abstractions</code> that <strong>closes #193</strong>.</li>
+<li><strong>csproj realized to match</strong> — surviving MSAL exact pins converted to floating <code>N.*</code>; anything newly <code>block</code> excluded from the bundle.</li>
+<li><strong>In-repo architectural blueprint</strong> (see §9).</li>
+</ol>
+<h2 id="9-in-repo-architectural-blueprint-agent-oriented">9. In-repo architectural blueprint (agent-oriented)<a class="headerlink" href="#9-in-repo-architectural-blueprint-agent-oriented" title="Permanent link">&para;</a></h2>
+<p>A durable, living document — <strong><code>docs/Architecture.md</code></strong> — distinct from this dated design spec. The design spec is a point-in-time decision record; the blueprint is the <strong>maintained source of truth</strong> that agentic workstreams read before changing the project and validate against after.</p>
+<p>Required structure:</p>
+<ul>
+<li><strong>Component map:</strong> module source (<code>src/DLLPickle</code>), build project (<code>src/DLLPickle.Build</code>), the <code>Import-DPLibrary</code> loader, <code>dependency-policy.json</code>, the <code>tools/</code> inventory/analysis scripts, CI workflows, and the tag-driven release pipeline — each with its responsibility and authoritative file path.</li>
+<li><strong>Source-of-truth map:</strong> which file is authoritative for what (e.g., preload decision = <code>dependency-policy.json</code>; realization = <code>DLLPickle.csproj</code>; user guidance = <code>docs/Deep-Dive.md</code>; dependency policy/automation = <code>docs/DEPENDENCIES.md</code>).</li>
+<li><strong>Invariants (machine-checkable where possible):</strong> e.g., <em>no assembly classified <code>block</code> may appear in <code>module/DLLPickle/bin</code></em>; <em>the preloaded set ⟺ <code>dependency-policy.json</code> <code>preload</code> entries</em>; <em>Az private-ALC-owned assemblies are never preloaded</em>; <em>runtime-provided BCL assemblies are never preloaded</em>. Each invariant links to the test/CI gate that enforces it.</li>
+<li><strong>Validation gates:</strong> map each invariant to the test (<code>tests/</code>) or workflow check that verifies it, so an agent knows how to prove a change is safe.</li>
+<li><strong>Workstream conventions for agents:</strong> the standard change loop (update policy → regenerate inventory/matrix → run runtime probe → realize in csproj → validate → update blueprint), the hard gates (design approval before implementation; commit/push only when asked), and where new decisions get recorded.</li>
+</ul>
+<p>The blueprint is produced as part of Stage 1 implementation and updated by every subsequent workstream that changes the preload contract.</p>
+<h2 id="10-testing">10. Testing<a class="headerlink" href="#10-testing" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Unit</strong> (mirrors <code>tests/Unit/DependencyAutomation.Tests.ps1</code>): conflict-matrix builder + classifier fed synthetic inventories → asserted matrix/classification; drift gate fed synthetic before/after inventories → asserted flag/no-flag.</li>
+<li><strong>Integration:</strong> the non-auth runtime probe via <code>Invoke-DLLPickleScenario</code> (synthetic modules for deterministic CI; real modules for maintainer runs).</li>
+<li><strong>Regression guards:</strong> keep the 2.0.1 &ldquo;Azure.Core not preloaded&rdquo; guard; add an equivalent guard per newly-blocked assembly.</li>
+</ul>
+<h2 id="11-edge-cases">11. Edge cases<a class="headerlink" href="#11-edge-cases" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Runtime-provided assemblies</strong> (e.g., <code>System.Text.Json</code>, <code>System.Security.Cryptography.ProtectedData</code> — the &ldquo;Already Loaded&rdquo; entries): the .NET runtime owns them; detect the shared-framework load path in the ALC snapshot → never classify <code>preload</code>.</li>
+<li><strong>Blocking a <em>transitive</em></strong> (e.g., <code>M.E.DI.Abstractions</code>, pulled by <code>Microsoft.IdentityModel.Tokens</code>) is harder than a direct ref — requires <code>ExcludeAssets</code>/asset filtering in the csproj so the transitive DLL is not copied to <code>bin</code>.</li>
+<li><strong>Modules not installed</strong> for the runtime tier → probe marks &ldquo;not validated&rdquo; rather than failing; CI leans on download-inventory + synthetic scenarios.</li>
+<li><strong>&ldquo;Diverging versions&rdquo; defined:</strong> same assembly name, differing assembly <code>Version</code> among <strong>default-ALC</strong> consumers triggers a conflict <em>candidate</em>; runtime adjudicates whether preloading helps.</li>
+<li><strong>Floating + drift interaction:</strong> the drift gate compares the bundled version against the 4 modules&rsquo; expected versions (not only module-vs-module).</li>
+</ul>
+<h2 id="12-deferred-out-of-scope">12. Deferred / out of scope<a class="headerlink" href="#12-deferred-out-of-scope" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Multi-TFM (net9.0/net10.0).</strong> The methodology is TFM-parameterizable; only net8.0 is executed now.</li>
+<li><strong>Stage 3 — auto-deriving the preload set</strong> from inventory. Revisit after the methodology is proven by hand.</li>
+<li><strong>Issue #174 (OData).</strong> Not a preload problem and not TFM-related: Az.Storage and ExchangeOnlineManagement need <em>major-incompatible</em> <code>Microsoft.OData.Core</code> in the same runtime. Resolution would require ALC-isolation or process isolation — a separate, harder effort. Documented workaround (process isolation) stands.</li>
+</ul>
+<h2 id="13-open-questions-assumptions">13. Open questions / assumptions<a class="headerlink" href="#13-open-questions-assumptions" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>A1:</strong> Live validation depends on the real modules being installed locally; the auth tier needs a tenant. Accepted (two-tier validation; Stage 2b optional).</li>
+<li><strong>A2:</strong> The verdict on <code>M.E.DI.Abstractions</code> (block vs coherent-version preload) is determined by the first runtime adjudication, not pre-judged here; either way it must close #193.</li>
+<li><strong>A3:</strong> <code>docs/Architecture.md</code> is the chosen blueprint location; adjust if a different path is preferred.</li>
+</ul>
+<h2 id="14-session-findings-runtime-evidence-2026-05-31">14. Session findings (runtime evidence — 2026-05-31)<a class="headerlink" href="#14-session-findings-runtime-evidence-2026-05-31" title="Permanent link">&para;</a></h2>
+<p>Adjudication evidence gathered by running the new tooling against the real four modules. These update the design&rsquo;s assumptions:</p>
+<ul>
+<li><strong>Both Az and Graph now self-isolate.</strong> <code>Az.Accounts</code> loads its Azure SDK stack into <code>AzSharedAssemblyLoadContext</code>; <code>Microsoft.Graph.Authentication</code> loads its into <code>msgraph-load-context</code>. They run <strong>different <code>Azure.Core</code> versions side-by-side</strong> (Az <code>1.50</code>, Graph <code>1.51.1</code>) without conflict. Graph self-isolating is new since #183.</li>
+<li><strong>Adjudicated verdicts (net8.0):</strong> <code>block</code> the Azure SDK stack (<code>Azure.Core</code>, <code>Azure.Identity</code>, <code>Azure.Identity.Broker</code>, <code>System.ClientModel</code>); <code>preload</code> the MSAL + IdentityModel stack; <code>block</code> (report-only) the OData family (#174). The current 2.0.1 bundle already matches this, so recording it is not a behavior change.</li>
+<li><strong>Static narrows, runtime decides — confirmed.</strong> <code>Microsoft.Identity.Client.Extensions.Msal</code> is owned by Az&rsquo;s private ALC (a <code>block</code> <em>candidate</em>) yet preloading the MSAL/IdentityModel stack is proven safe (2.0.1). Only the Azure SDK stack breaks when preloaded.</li>
+<li><strong>DLLPickle&rsquo;s scope shrinks on PS 7.4+.</strong> As modules self-isolate, the only assemblies that still need a shared preload are MSAL/IdentityModel (for default-ALC consumers EXO/Teams + the #156 broker fix).</li>
+<li><strong>The <code>block</code> verdicts are ALC-conditional, not universal.</strong> Windows PowerShell 5.1 / .NET Framework 4.8 has <strong>no <code>AssemblyLoadContext</code></strong>, so modules cannot self-isolate there. If net48 / WinPS 5.1 support is re-added, the Azure SDK stack must be <strong>preloaded again, conditionally per-TFM (net48 only)</strong> — the inverse of the net8 verdict. See the re-introduction checklist in <code>docs/Architecture.md</code> §9. (The 2.0 regression was exactly an unconditional application of the net48-era preload to net8.)</li>
+<li><strong>#193 methodology gap:</strong> <code>Microsoft.Extensions.DependencyInjection.Abstractions</code> is a DLLPickle <em>transitive</em> not in <code>trackedAssemblies</code>, so the conflict matrix can&rsquo;t see it. Fix: track DLLPickle&rsquo;s full bundled set, re-run inventory, confirm the Az.Resources repro on current <code>main</code>, then decide/validate exclusion.</li>
+<li><strong>EXO/Teams ALC ownership not yet captured</strong> — bare <code>Import-Module</code> doesn&rsquo;t eager-load their identity assemblies; the probe needs a representative <code>-ProbeCommand</code>.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      (c) 2026 Sam Erde
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["navigation.path", "navigation.instant", "navigation.instant.prefetch", "navigation.tracking", "navigation.sections", "navigation.expand", "navigation.top", "toc.follow", "toc.integrate"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

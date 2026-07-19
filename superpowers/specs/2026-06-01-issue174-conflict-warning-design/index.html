@@ -1,0 +1,563 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A PowerShell module that helps you get un-stuck from version conflicts (aka DLL pickle) that occur when using modules that depend on multiple versions of the same dependencies such as the Microsoft Authentication Library (MSAL).">
+      
+      
+        <meta name="author" content="Sam Erde">
+      
+      
+        <link rel="canonical" href="https://day3bits.com/DLLPickle/superpowers/specs/2026-06-01-issue174-conflict-warning-design/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Issue #174 Phase 2 — Conflict Detection & Warning Design - DLLPickle PowerShell Module</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#issue-174-phase-2-conflict-detection-warning-design" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../.." title="DLLPickle PowerShell Module" class="md-header__button md-logo" aria-label="DLLPickle PowerShell Module" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            DLLPickle PowerShell Module
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Issue #174 Phase 2 — Conflict Detection &amp; Warning Design
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m14.3 16-.7-2h-3.2l-.7 2H7.8L11 7h2l3.2 9zM20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12zm-9.15 3.96h2.3L12 9z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_2" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to system preference"  type="radio" name="__palette" id="__palette_2">
+    
+      <label class="md-header__button md-icon" title="Switch to system preference" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/SamErde/DLLPickle" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    SamErde/DLLPickle
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="DLLPickle PowerShell Module" class="md-nav__button md-logo" aria-label="DLLPickle PowerShell Module" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    DLLPickle PowerShell Module
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/SamErde/DLLPickle" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    SamErde/DLLPickle
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../Architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../Deep-Dive/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deep Dive
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../DEPENDENCIES/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dependencies
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../Troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+  
+
+
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="issue-174-phase-2-conflict-detection-warning-design">Issue #174 Phase 2 — Conflict Detection &amp; Warning Design<a class="headerlink" href="#issue-174-phase-2-conflict-detection-warning-design" title="Permanent link">&para;</a></h1>
+<p><strong>Goal:</strong> Warn DLLPickle users about the Az.Storage ↔ ExchangeOnlineManagement OData incompatibility (which DLLPickle cannot fix by preloading), driven by a data-defined <code>knownConflicts</code> list, plus record the runtime evidence and document the workaround.</p>
+<p><strong>Architecture:</strong> Conflicts are declared as data in <code>build/dependency-policy.json</code>; the build ships a small extracted copy into the module; a Private detector compares that data against the session&rsquo;s loaded modules; a public <code>Test-DPLibraryConflict</code> and an <code>Import-DPLibrary</code>-registered one-shot <code>AssemblyLoad</code> handler surface a warning when a conflicting pair becomes co-loaded.</p>
+<p><strong>Tech Stack:</strong> PowerShell 7.4+, <code>System.AppDomain.AssemblyLoad</code>, Invoke-Build (<code>PrepareModuleOutput</code>), Pester 5.</p>
+<p><strong>Predecessor:</strong> <code>docs/superpowers/specs/2026-06-01-issue174-odata-alc-probe-design.md</code> (Phase 1 probe). Phase 1 runtime evidence (2026-06-01): Az.Storage force-loads <code>Microsoft.OData.Core</code> 7.6.4 at import; EXO&rsquo;s <code>Get-EXO*</code> require 7.22.0; both target the <strong>default ALC</strong> and are strong-named; <strong>both import orders fail</strong> (Az.Storage-first → EXO <code>REF_DEF_MISMATCH</code>; EXO-first → Az.Storage &ldquo;assembly with same name is already loaded&rdquo;). Verdict: not fixable by preloading — OData stays <code>block</code>. This phase records that and warns users.</p>
+<hr />
+<h2 id="1-scope">1. Scope<a class="headerlink" href="#1-scope" title="Permanent link">&para;</a></h2>
+<p>In scope: the <code>knownConflicts</code> data model, its runtime availability, detection, the public function, the <code>Import-DPLibrary</code> warning integration, the OData evidence cross-reference, the known-limitation doc, the extended #174 test, and a findings comment on #174 (kept <strong>open</strong>).</p>
+<p>Out of scope: closing #174 (keep open per maintainer); Stage 2b auth automation; any attempt to <em>fix</em> the conflict (e.g., private-ALC isolation) — ruled out by Phase 1.</p>
+<h2 id="2-knownconflicts-data-model-builddependency-policyjson">2. <code>knownConflicts</code> data model (<code>build/dependency-policy.json</code>)<a class="headerlink" href="#2-knownconflicts-data-model-builddependency-policyjson" title="Permanent link">&para;</a></h2>
+<p>New top-level array <code>knownConflicts</code>. Each entry:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="p">{</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;174-odata-azstorage-exo&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span><span class="nt">&quot;modules&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;Az.Storage&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;ExchangeOnlineManagement&quot;</span><span class="p">],</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">  </span><span class="nt">&quot;assembly&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Microsoft.OData.Core&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">  </span><span class="nt">&quot;issue&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;174&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">  </span><span class="nt">&quot;reason&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Az.Storage force-loads Microsoft.OData.Core 7.6.4 at import; ExchangeOnlineManagement&#39;s Get-EXO* cmdlets require 7.22.0. Both target the default ALC and are strong-named, so the two versions cannot coexist in one process - both import orders fail.&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">  </span><span class="nt">&quot;workaround&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Use Az.Storage and ExchangeOnlineManagement (Get-EXO* cmdlets) in separate PowerShell processes - a background job (Start-Job) or a second pwsh. A separate runspace in the same process does NOT help: the conflict is process-wide (one default AssemblyLoadContext per process).&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">  </span><span class="nt">&quot;evidence&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="w">    </span><span class="nt">&quot;versions&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;Az.Storage&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;7.6.4&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;ExchangeOnlineManagement&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;7.22.0&quot;</span><span class="w"> </span><span class="p">},</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="w">    </span><span class="nt">&quot;alc&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Default&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="w">    </span><span class="nt">&quot;runtimeProbe&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-06-01 scenarios 1-4: both load OData into the Default ALC; Az.Storage-first -&gt; EXO REF_DEF_MISMATCH (0x80131040); EXO-first -&gt; Az.Storage &#39;same name already loaded&#39;.&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="w">    </span><span class="nt">&quot;decidedOn&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-06-01&quot;</span>
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="w">  </span><span class="p">}</span>
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="p">}</span>
+</code></pre></div>
+<p>This is the single source of truth. The matching <code>blockedPreloadAssemblies</code> OData entries gain a one-line cross-reference (<code>see knownConflicts 174-odata-azstorage-exo</code>) and remain <code>block</code>.</p>
+<h2 id="3-runtime-availability-build-ships-an-extracted-subset">3. Runtime availability (build ships an extracted subset)<a class="headerlink" href="#3-runtime-availability-build-ships-an-extracted-subset" title="Permanent link">&para;</a></h2>
+<blockquote>
+<p><strong>Superseded (2026-06-02):</strong> This extraction approach shipped in 2.2.0&rsquo;s PR (#231) but was revised before release in response to Codex review (the policy is a <code>build/**</code> file excluded from the release trigger, so a <code>knownConflicts</code>-only edit would not have auto-published). The conflict data is now a <strong>committed source file at <code>src/DLLPickle/KnownConflicts.json</code></strong> (the single source of truth), copied into the module verbatim by <code>CopyModuleFiles</code> — no extraction step, no sync test, and edits under <code>src/DLLPickle/</code> correctly trigger a release. The runtime read path is unchanged (it still reads <code>KnownConflicts.json</code> at the module root). The rest of this section describes the original design.</p>
+<p><strong>Maintenance note (2026-06-25):</strong> GAP-005 closed by strengthening expectation management in known-conflict data, docs, and policy tests. The incompatibility remains intentionally unsolved in one process; OData preload reclassification requires fresh runtime re-adjudication in both import orders.</p>
+</blockquote>
+<p><code>build/dependency-policy.json</code> is a build/CI artifact and is <strong>not</strong> shipped in the module. So a build step extracts just <code>knownConflicts</code> and writes it to the module output as <code>module/DLLPickle/KnownConflicts.json</code> (during <code>PrepareModuleOutput</code>, after <code>CopyModuleFiles</code>). The runtime reads that shipped file (resolved relative to the module root). A unit test asserts the shipped subset equals the policy&rsquo;s <code>knownConflicts</code> (sync guard). Rationale: one source (the policy), small shipped payload (only the conflict list, not the full policy).</p>
+<h2 id="4-detection-private-test-dpmoduleconflict">4. Detection (Private <code>Test-DPModuleConflict</code>)<a class="headerlink" href="#4-detection-private-test-dpmoduleconflict" title="Permanent link">&para;</a></h2>
+<p>A Private, side-effect-free helper. Input: the <code>knownConflicts</code> array (from the shipped file) and the set of currently-imported module names (<code>Get-Module | Select Name</code>). Output: the conflict entries whose <strong>every</strong> <code>modules</code> member is currently loaded. Pure and unit-testable (caller injects the conflict data + a module-name list).</p>
+<h2 id="5-public-test-dplibraryconflict">5. Public <code>Test-DPLibraryConflict</code><a class="headerlink" href="#5-public-test-dplibraryconflict" title="Permanent link">&para;</a></h2>
+<p>New exported function (added to the manifest <code>FunctionsToExport</code>). Reads the shipped <code>KnownConflicts.json</code> (via an optional <code>-KnownConflictsPath</code> parameter defaulting to the shipped module location — the parameter exists for testability so a test can point at synthetic data in <code>TestDrive</code>), runs <code>Test-DPModuleConflict</code> against the current session, and emits one <code>Write-Warning</code> per active conflict: the reason, the workaround, and <code>https://github.com/SamErde/DLLPickle/issues/&lt;issue-number&gt;</code>. Returns the active conflict objects (so it is also usable programmatically). Comment-based help with examples. Runnable anytime the user suspects a conflict.</p>
+<h2 id="6-import-dplibrary-integration">6. <code>Import-DPLibrary</code> integration<a class="headerlink" href="#6-import-dplibrary-integration" title="Permanent link">&para;</a></h2>
+<p>After the preload completes, for each known conflict (all wrapped so a detection failure can never throw into the user&rsquo;s load path):</p>
+<ul>
+<li>If <strong>every</strong> module in the pair is already <strong>loaded</strong> → <code>Write-Warning</code> immediately (reuse <code>Test-DPLibraryConflict</code>&rsquo;s warning text).</li>
+<li>Else if <strong>every</strong> module is <strong>installed</strong> (<code>Get-Module -ListAvailable</code>) but not all loaded → the clash is possible later, so <strong>arm a one-shot handler</strong>: register a single <code>[System.AppDomain]::CurrentDomain.add_AssemblyLoad(...)</code> handler. At arm time, capture the <code>ModuleBase</code> path(s) of the not-yet-loaded conflict module(s). The handler checks the <strong>loaded assembly&rsquo;s path</strong> (the event arg&rsquo;s <code>Assembly.Location</code>) against those base paths (a cheap string check — no cmdlet calls inside the load callback); when an assembly from the watched module loads (meaning the pair is now co-loaded), it emits the warning <strong>once</strong> and <strong>unregisters itself</strong>.</li>
+<li><strong>Guards:</strong> skip arming under Constrained Language Mode (<code>$ExecutionContext.SessionState.LanguageMode -eq 'ConstrainedLanguage'</code> — the AppDomain APIs are blocked there); track handled conflict <code>id</code>s in a module-scoped (<code>$script:</code>) set so a second <code>Import-DPLibrary</code> call does not re-warn or stack handlers; query availability only for the conflict&rsquo;s own module names (not all of PSModulePath); normalize paths before the prefix check; the handler body is wrapped in try/catch and never throws.</li>
+</ul>
+<p><strong>Best-effort limits (acknowledged):</strong> the auto-warn is advisory, not a guarantee. A <em>rejected</em> assembly load raises no <code>AssemblyLoad</code> event, so if the second module&rsquo;s import fails outright before any of its assemblies load (the EXO-first → Az.Storage-import-failure order), the handler may not fire — the user sees the raw error. Detection keys on imported modules (<code>Get-Module</code>), so a module removed with <code>Remove-Module</code> while its assemblies remain resident is not re-detected. <code>Test-DPLibraryConflict</code> (on demand) and the documented separate-process workaround are the reliable paths; assembly-level detection is a possible future enhancement.</p>
+<p>This catches every order automatically while arming only when both modules are installed (no overhead otherwise).</p>
+<h2 id="7-supporting-items">7. Supporting items<a class="headerlink" href="#7-supporting-items" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>OData <code>blockedPreloadAssemblies</code> evidence:</strong> add the cross-reference to the knownConflicts entry; keep <code>block</code>.</li>
+<li><strong>Known-limitation doc:</strong> a short section in <code>docs/Deep-Dive.md</code> (and/or <code>docs/DEPENDENCIES.md</code>) describing the Az.Storage + EXO OData limitation and the separate-session workaround, linking #174.</li>
+<li><strong>#174 synthetic test:</strong> extend <code>tests/Integration/DLLPickle.Issue174.OData.Tests.ps1</code> to also assert the <strong>EXO-first → Az.Storage import fails</strong> order (the current test only covers Az.Storage-first), so both-orders-fail is the recorded characterization.</li>
+<li><strong>#174 issue:</strong> post the Phase 1 evidence + this resolution as a comment; <strong>keep the issue open</strong>.</li>
+</ul>
+<h2 id="8-error-handling">8. Error handling<a class="headerlink" href="#8-error-handling" title="Permanent link">&para;</a></h2>
+<p>The warning is advisory and must never degrade the session: all detection/handler code is <code>try/catch</code>-guarded and emits at most a <code>Write-Warning</code> (never throws, never writes errors). A missing or malformed <code>KnownConflicts.json</code> → no warning (and a <code>Write-Verbose</code> note), not a failure. The armed handler is idempotent and self-unregisters after firing.</p>
+<h2 id="9-testing">9. Testing<a class="headerlink" href="#9-testing" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Unit:</strong> <code>Test-DPModuleConflict</code> (synthetic knownConflicts + injected loaded-module-name lists → returns the right active conflicts / none — the detector takes both as parameters, so no real modules needed); <code>Test-DPLibraryConflict</code> (via <code>-KnownConflictsPath</code> pointing at a synthetic file in <code>TestDrive</code> with a pair of always-loaded modules like <code>Microsoft.PowerShell.Management</code>/<code>Microsoft.PowerShell.Utility</code> → asserts a warning is emitted; and a non-loaded pair → asserts silence); the <strong>extractor test</strong> — run <code>Export-DLLPickleKnownConflicts</code> to a <code>TestDrive</code> path and assert its output equals <code>dependency-policy.json</code>&rsquo;s <code>knownConflicts</code> (this validates the extraction against the policy without reading the build-generated <code>module/KnownConflicts.json</code>, so it does not depend on build order — the <code>Clean</code>/<code>Test</code> phases run before <code>PrepareModuleOutput</code>). Helpers use approved verbs (<code>Get-</code>/<code>Test-</code>) to stay <code>AnalyzeTests</code>-clean.</li>
+<li><strong>Integration:</strong> the extended #174 both-orders repro.</li>
+<li><strong>Import-DPLibrary wiring:</strong> the immediate-warn and armed-handler branches are thin glue over the unit-tested detector; the armed-handler auto-warn path is validated by the maintainer&rsquo;s live probe scenarios rather than a synthetic AssemblyLoad test (to avoid registering real session handlers in CI).</li>
+</ul>
+<h2 id="10-success-criteria">10. Success criteria<a class="headerlink" href="#10-success-criteria" title="Permanent link">&para;</a></h2>
+<ul>
+<li>A user who has both modules loaded sees a clear, actionable warning (reason + separate-session workaround + #174 link) — via <code>Test-DPLibraryConflict</code> on demand, immediately from <code>Import-DPLibrary</code> if already co-loaded, or automatically the moment the second module loads after <code>Import-DPLibrary</code>.</li>
+<li>The conflict is data-defined (<code>knownConflicts</code>); adding a future conflict is a data edit + a sync-test update, no new code.</li>
+<li>OData remains <code>block</code> with the runtime evidence recorded; the known limitation is documented; #174 carries the findings and stays open.</li>
+<li>All gates green (<code>Invoke-Build Analyze,Test</code>); the warning never throws.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      (c) 2026 Sam Erde
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["navigation.path", "navigation.instant", "navigation.instant.prefetch", "navigation.tracking", "navigation.sections", "navigation.expand", "navigation.top", "toc.follow", "toc.integrate"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>
