@@ -28,7 +28,7 @@ Install-Module DLLPickle -Scope CurrentUser
 Or, with **Microsoft.PowerShell.PSResourceGet**:
 
 ```powershell
-Install-PSResource -Name DLLPickle
+Install-PSResource -Name DLLPickle -Scope CurrentUser
 ```
 
 ### Using
@@ -36,7 +36,6 @@ Install-PSResource -Name DLLPickle
 Import DLL Pickle and run `Import-DPLibrary` **before** connecting to other service modules — ideally as the first thing in your PowerShell profile, so it loads first in every session.
 
 ```powershell
-Import-Module DLLPickle
 Import-DPLibrary
 ```
 
@@ -58,7 +57,7 @@ For diagnostic detail, add `-ShowLoaderExceptions -Verbose`.
 - `Get-ModulesWithDependency` — list installed modules that package a given dependency.
 - `Get-ModulesWithVersionSortedIdentityClient` — compare modules by packaged `Microsoft.Identity.Client.dll` version.
 
-> The inspection helpers are **cross-edition**. `Import-DPLibrary` needs PowerShell 7.4+, but these helpers also scan the Windows PowerShell module roots — so a **Windows PowerShell 5.1** user can run them (from a PowerShell 7.4+ session) to find which module to load first and apply the "first one wins" fix manually.
+> The inspection helpers are **cross-edition**. `Import-DPLibrary` needs PowerShell 7.4+, but these helpers also scan the Windows PowerShell module roots — so a **Windows PowerShell 5.1** user can run them to find which module to load first and apply the "first one wins" fix manually.
 
 Full syntax and examples: [docs index](docs/index.md) · [command reference](docs/DLLPickle.md).
 
@@ -68,7 +67,7 @@ Many PowerShell modules — Az, Exchange Online, Microsoft Graph, Teams, and mor
 
 DLL Pickle preloads a current, compatible set of these assemblies **first**, so the "first one wins" rule works in your favor and the modules you load afterward reuse what's already there. A new DLL Pickle release is published automatically whenever a new MSAL version ships — so keep it updated and load it first.
 
-For the full explanation (and the real-world issues that motivated it), read the [Deep Dive](docs/Deep-Dive.md). The supported platform is **PowerShell 7.4+ (Core, net8.0)**; compatibility, versioning, and dependency details live in [DEPENDENCIES.md](docs/DEPENDENCIES.md).
+For the full explanation (and the real-world issues that motivated it), read the [Deep Dive](docs/Deep-Dive.md). The supported platform is **PowerShell 7.4+ (Core, net8.0)**. Compatibility, versioning, and dependency details live in [DEPENDENCIES.md](docs/DEPENDENCIES.md).
 
 ## 📚 Documentation Map
 
