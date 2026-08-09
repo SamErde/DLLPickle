@@ -71,7 +71,12 @@ Describe 'Dependabot auto-merge guardrails' -Tag 'Unit' {
 
     It 'routes a newly introduced conditional TFM pin to maintainer review' {
         $DependabotWorkflow | Should -Match ([regex]::Escape('CONDITIONAL_TFM_ADDITION'))
-        $DependabotWorkflow | Should -Match 'PackageReference.*Condition=.*TargetFramework'
+        $DependabotWorkflow | Should -Match ([regex]::Escape('\$\(TargetFramework\)'))
+    }
+
+    It 'refuses auto-approval when the Files API omits the project patch' {
+        $DependabotWorkflow | Should -Match ([regex]::Escape('__DLLPICKLE_PATCH_UNAVAILABLE__'))
+        $DependabotWorkflow | Should -Match ([regex]::Escape('PATCH_UNAVAILABLE'))
     }
 
     It 'keeps runtime NuGet updates separate from CI toolchain updates' {
@@ -112,7 +117,7 @@ Describe 'Release publish gating guardrails' -Tag 'Unit' {
     It 'requires exact-commit authenticated evidence before version analysis or publication' {
         $ReleaseWorkflow | Should -Match '(?ms)^  authenticated-release-gate:\s+name: Require Authenticated Compatibility'
         $ReleaseWorkflow | Should -Match '(?ms)^  authenticated-release-gate:.*?permissions:\s+actions: read\s+contents: read'
-        $ReleaseWorkflow | Should -Match '(?m)^    needs: authenticated-release-gate$'
+        $ReleaseWorkflow | Should -Match '(?m)^    needs: authenticated-release-gate\r?$'
         $ReleaseWorkflow | Should -Match ([regex]::Escape('Authenticated-Compatibility.yml'))
         $ReleaseWorkflow | Should -Match ([regex]::Escape('authenticated-compatibility-evidence'))
         $ReleaseWorkflow | Should -Match ([regex]::Escape("'--commit', `$EvidenceSha"))
@@ -128,6 +133,8 @@ Describe 'Release publish gating guardrails' -Tag 'Unit' {
         $ReleaseWorkflow | Should -Match ([regex]::Escape('-Mode Release'))
         $ReleaseWorkflow | Should -Match ([regex]::Escape('tools/Get-DLLPicklePowerShellSupportUpdate.ps1'))
         $ReleaseWorkflow | Should -Match ([regex]::Escape('-RequireCurrent'))
+        $ReleaseWorkflow | Should -Match ([regex]::Escape('-LifecycleEvidencePath ./artifacts/lifecycle/powershell-support-update.json'))
+        $ReleaseWorkflow | Should -Match '(?ms)Refresh official PowerShell servicing state.*Validate supported PowerShell lifecycle policy'
     }
 
     It 'runs profile-aware evidence and fail-closed baselines across the exact runtime matrix' {

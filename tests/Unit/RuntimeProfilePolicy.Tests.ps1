@@ -110,8 +110,14 @@ Describe 'Runtime profile lifecycle enforcement' -Tag 'Unit' {
 
     It 'fails closed when a shipped support line is expired' {
         {
-            & $script:PolicyTestScriptPath -Mode Release -AsOfUtc ([datetime]'2026-11-11T00:00:00Z')
+            & $script:PolicyTestScriptPath -Mode Release -AsOfUtc ([datetime]'2026-11-11T08:00:00Z')
         } | Should -Throw '*expired*7.4*7.5*'
+    }
+
+    It 'keeps a line supported through the end of its Pacific lifecycle day' {
+        $result = @(& $script:PolicyTestScriptPath -Mode Scheduled -AsOfUtc ([datetime]'2026-11-11T07:59:59Z') -PassThru -WarningAction SilentlyContinue)
+
+        @($result | Where-Object Status -EQ 'Expired') | Should -BeNullOrEmpty
     }
 
     It 'warns on schedule before an impending retirement' {
@@ -127,5 +133,50 @@ Describe 'Runtime profile lifecycle enforcement' -Tag 'Unit' {
         {
             & $script:PolicyTestScriptPath -Mode Release -AsOfUtc ([datetime]'2026-09-15T00:00:00Z')
         } | Should -Throw '*stale*last verified*'
+    }
+
+    It 'uses a release-current live discovery report as fresh lifecycle evidence' {
+        $EvidencePath = Join-Path $TestDrive 'live-lifecycle-evidence.json'
+        @{
+            schemaVersion = 1
+            generatedAtUtc = '2026-09-15T00:00:00Z'
+            patchUpdates = @()
+            newLines = @()
+            lifecycle = @(
+                @{ releaseLine = '7.4'; status = 'Supported' }
+                @{ releaseLine = '7.5'; status = 'Supported' }
+                @{ releaseLine = '7.6'; status = 'Supported' }
+            )
+            lifecycleDateChanges = @()
+            lifecycleMissingLines = @()
+            undeclaredSupportedLines = @()
+            supportContractReviewRequired = $false
+        } | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $EvidencePath -Encoding utf8
+
+        $result = @(& $script:PolicyTestScriptPath -Mode Release -AsOfUtc ([datetime]'2026-09-15T00:01:00Z') -LifecycleEvidencePath $EvidencePath -PassThru)
+
+        $result | Should -HaveCount 3
+    }
+
+    It 'rejects live discovery evidence with an outstanding support update' {
+        $EvidencePath = Join-Path $TestDrive 'outdated-lifecycle-evidence.json'
+        @{
+            schemaVersion = 1
+            generatedAtUtc = '2026-09-15T00:00:00Z'
+            patchUpdates = @(@{ candidateVersion = '7.5.10' })
+            newLines = @()
+            lifecycle = @(
+                @{ releaseLine = '7.4'; status = 'Supported' }
+                @{ releaseLine = '7.5'; status = 'Supported' }
+                @{ releaseLine = '7.6'; status = 'Supported' }
+            )
+            lifecycleDateChanges = @()
+            lifecycleMissingLines = @()
+            undeclaredSupportedLines = @()
+            supportContractReviewRequired = $false
+        } | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $EvidencePath -Encoding utf8
+
+        { & $script:PolicyTestScriptPath -Mode Release -AsOfUtc ([datetime]'2026-09-15T00:01:00Z') -LifecycleEvidencePath $EvidencePath } |
+            Should -Throw '*not release-current*newer servicing patches*'
     }
 }

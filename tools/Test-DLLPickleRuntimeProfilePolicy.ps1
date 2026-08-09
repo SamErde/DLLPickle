@@ -13,6 +13,11 @@
 .PARAMETER TestMatrixPath
     Path to the non-shipped exact test matrix.
 
+.PARAMETER LifecycleEvidencePath
+    Optional current support-update discovery report. When supplied, the report
+    must describe a release-current support contract, and its generation time is
+    used instead of the committed matrix timestamp for evidence freshness.
+
 .PARAMETER Mode
     Release fails closed. Scheduled emits warnings before retirement and for stale evidence.
 
@@ -40,6 +45,9 @@ param(
     [string]$TestMatrixPath = (Join-Path -Path (Split-Path -Path $PSScriptRoot -Parent) -ChildPath 'build/powershell-test-matrix.json'),
 
     [Parameter()]
+    [string]$LifecycleEvidencePath,
+
+    [Parameter()]
     [ValidateSet('Release', 'Scheduled')]
     [string]$Mode = 'Release',
 
@@ -59,6 +67,9 @@ foreach ($RequiredInput in @(
     if (-not (Test-Path -LiteralPath $RequiredInput.Path -PathType Leaf)) {
         throw "$($RequiredInput.Name) file not found: $($RequiredInput.Path)"
     }
+}
+if (-not [string]::IsNullOrWhiteSpace($LifecycleEvidencePath) -and -not (Test-Path -LiteralPath $LifecycleEvidencePath -PathType Leaf)) {
+    throw "PowerShell support-update evidence file not found: $LifecycleEvidencePath"
 }
 
 $RuntimePolicy = Get-Content -LiteralPath $RuntimePolicyPath -Raw | ConvertFrom-Json -ErrorAction Stop
@@ -89,8 +100,44 @@ if ((@($RuntimeKeys | Sort-Object) -join [char]0) -ne (@($TestKeys | Sort-Object
     throw 'Shipped runtime-profile policy and CI test-matrix profile sets do not align.'
 }
 
+$LifecycleEvidence = if (-not [string]::IsNullOrWhiteSpace($LifecycleEvidencePath)) {
+    Get-Content -LiteralPath $LifecycleEvidencePath -Raw | ConvertFrom-Json -ErrorAction Stop
+} else {
+    $null
+}
+if ($LifecycleEvidence) {
+    $RequiredEvidenceProperties = @(
+        'generatedAtUtc',
+        'patchUpdates',
+        'newLines',
+        'lifecycle',
+        'lifecycleDateChanges',
+        'lifecycleMissingLines',
+        'undeclaredSupportedLines',
+        'supportContractReviewRequired'
+    )
+    $MissingEvidenceProperties = @($RequiredEvidenceProperties | Where-Object { $LifecycleEvidence.PSObject.Properties.Name -notcontains $_ })
+    if ($LifecycleEvidence.schemaVersion -ne 1 -or $MissingEvidenceProperties.Count -gt 0 -or [string]::IsNullOrWhiteSpace([string]$LifecycleEvidence.generatedAtUtc)) {
+        throw 'PowerShell support-update evidence has an unsupported schema or no generation timestamp.'
+    }
+    $LiveEvidenceViolations = [System.Collections.Generic.List[string]]::new()
+    if (@($LifecycleEvidence.patchUpdates).Count -gt 0) { $LiveEvidenceViolations.Add('newer servicing patches') }
+    if (@($LifecycleEvidence.newLines).Count -gt 0) { $LiveEvidenceViolations.Add('new GA PowerShell lines') }
+    if (@($LifecycleEvidence.lifecycleDateChanges).Count -gt 0) { $LiveEvidenceViolations.Add('lifecycle date changes') }
+    if (@($LifecycleEvidence.lifecycleMissingLines).Count -gt 0) { $LiveEvidenceViolations.Add('declared lifecycle lines missing from live evidence') }
+    if (@($LifecycleEvidence.undeclaredSupportedLines).Count -gt 0) { $LiveEvidenceViolations.Add('undeclared Microsoft-supported lines') }
+    if (@($LifecycleEvidence.lifecycle | Where-Object Status -EQ 'Expired').Count -gt 0) { $LiveEvidenceViolations.Add('expired PowerShell lines') }
+    $DeclaredReleaseLines = @($TestProfiles | ForEach-Object { '{0}.{1}' -f $_.powerShellMajor, $_.powerShellMinor } | Sort-Object -Unique)
+    $EvidenceReleaseLines = @($LifecycleEvidence.lifecycle.ReleaseLine | ForEach-Object { [string]$_ } | Sort-Object -Unique)
+    if (($DeclaredReleaseLines -join [char]0) -ne ($EvidenceReleaseLines -join [char]0)) { $LiveEvidenceViolations.Add('live lifecycle rows do not align with declared PowerShell lines') }
+    if ($LiveEvidenceViolations.Count -gt 0) {
+        throw "PowerShell support-update evidence is not release-current: $($LiveEvidenceViolations -join '; ')."
+    }
+}
+
+$VerifiedTimestamp = if ($LifecycleEvidence) { [string]$LifecycleEvidence.generatedAtUtc } else { [string]$TestMatrix.lastVerifiedUtc }
 $VerifiedUtc = [datetime]::Parse(
-    [string]$TestMatrix.lastVerifiedUtc,
+    $VerifiedTimestamp,
     [System.Globalization.CultureInfo]::InvariantCulture,
     [System.Globalization.DateTimeStyles]::AssumeUniversal -bor [System.Globalization.DateTimeStyles]::AdjustToUniversal
 )
@@ -100,6 +147,11 @@ $EvidenceIsStale = $EvidenceAgeDays -gt [double]$TestMatrix.evidenceFreshnessDay
 
 $Results = [System.Collections.Generic.List[object]]::new()
 $ExpiredLines = [System.Collections.Generic.List[string]]::new()
+$PacificTimeZone = try {
+    [System.TimeZoneInfo]::FindSystemTimeZoneById('America/Los_Angeles')
+} catch {
+    [System.TimeZoneInfo]::FindSystemTimeZoneById('Pacific Standard Time')
+}
 foreach ($TestProfile in $TestProfiles) {
     $Version = [version]$TestProfile.powerShellVersion
     if ($Version.Major -ne $TestProfile.powerShellMajor -or $Version.Minor -ne $TestProfile.powerShellMinor) {
@@ -113,9 +165,10 @@ foreach ($TestProfile in $TestProfiles) {
         [string]$TestProfile.lifecycleEndDate,
         'yyyy-MM-dd',
         [System.Globalization.CultureInfo]::InvariantCulture,
-        [System.Globalization.DateTimeStyles]::AssumeUniversal -bor [System.Globalization.DateTimeStyles]::AdjustToUniversal
+        [System.Globalization.DateTimeStyles]::None
     )
-    $EndExclusiveUtc = $EndDate.AddDays(1)
+    $EndExclusivePacific = [datetime]::SpecifyKind($EndDate.AddDays(1), [System.DateTimeKind]::Unspecified)
+    $EndExclusiveUtc = [System.TimeZoneInfo]::ConvertTimeToUtc($EndExclusivePacific, $PacificTimeZone)
     $DaysRemaining = [math]::Floor(($EndExclusiveUtc - $EvaluationUtc).TotalDays)
     $ReleaseLine = '{0}.{1}' -f $TestProfile.powerShellMajor, $TestProfile.powerShellMinor
     $Status = if ($EvaluationUtc -ge $EndExclusiveUtc) {
@@ -148,7 +201,8 @@ if ($ExpiredLines.Count -gt 0) {
     $Violations.Add("expired PowerShell lines: $($ExpiredLines -join ', ')")
 }
 if ($EvidenceIsStale) {
-    $Violations.Add("lifecycle evidence is stale; last verified $($TestMatrix.lastVerifiedUtc), $([math]::Floor($EvidenceAgeDays)) day(s) ago")
+    $EvidenceDescription = if ($LifecycleEvidence) { "live evidence generated $VerifiedTimestamp" } else { "last verified $VerifiedTimestamp" }
+    $Violations.Add("lifecycle evidence is stale; $EvidenceDescription, $([math]::Floor($EvidenceAgeDays)) day(s) ago")
     if ($Mode -eq 'Scheduled') {
         Write-Warning $Violations[$Violations.Count - 1]
     }

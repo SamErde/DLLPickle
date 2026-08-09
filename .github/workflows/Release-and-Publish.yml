@@ -241,13 +241,13 @@ jobs:
           ref: ${{ needs.authenticated-release-gate.outputs.release_sha }}
           persist-credentials: false
 
-      - name: Validate supported PowerShell lifecycle policy
-        shell: pwsh
-        run: ./tools/Test-DLLPickleRuntimeProfilePolicy.ps1 -Mode Release
-
       - name: Refresh official PowerShell servicing state
         shell: pwsh
         run: ./tools/Get-DLLPicklePowerShellSupportUpdate.ps1 -OutputPath ./artifacts/lifecycle/powershell-support-update.json -RequireCurrent
+
+      - name: Validate supported PowerShell lifecycle policy
+        shell: pwsh
+        run: ./tools/Test-DLLPickleRuntimeProfilePolicy.ps1 -Mode Release -LifecycleEvidencePath ./artifacts/lifecycle/powershell-support-update.json
 
       - name: Upload release lifecycle evidence
         if: always()

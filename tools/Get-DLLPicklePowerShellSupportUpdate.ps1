@@ -228,7 +228,7 @@ $LifecycleRows = @(
             LifecycleEnd  = [string]$LiveLifecycle[0].EndDate
             MatrixLifecycleEnd = [string]$MatrixProfile.lifecycleEndDate
             DaysRemaining = $DaysRemaining
-            Status        = if ($DaysRemaining -lt 0) { 'Expired' } elseif ($DaysRemaining -le [int]$TestMatrix.retirementWarningDays) { 'RetiringSoon' } else { 'Supported' }
+            Status        = if ($DaysRemaining -le 0) { 'Expired' } elseif ($DaysRemaining -le [int]$TestMatrix.retirementWarningDays) { 'RetiringSoon' } else { 'Supported' }
         }
     }
 )

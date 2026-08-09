@@ -150,4 +150,23 @@ Describe 'PowerShell support update discovery' -Tag 'Unit' {
         @($First.Lifecycle | Where-Object Status -EQ 'RetiringSoon') | Should -HaveCount 2
         $First.SupportContractFingerprint | Should -BeExactly $Second.SupportContractFingerprint
     }
+
+    It 'marks a release line expired on the first unsupported Pacific date' {
+        $Fixture = Get-SupportUpdateFixture -Root $TestDrive -ReleaseVersions @('7.4.18', '7.5.9', '7.6.4')
+        $ReportPath = Join-Path $TestDrive 'first-unsupported-day.json'
+        $Parameters = @{
+            TestMatrixPath = $Fixture.MatrixPath
+            ReleaseDataPath = $Fixture.ReleasePath
+            LifecycleDataPath = $Fixture.LifecyclePath
+            OutputPath = $ReportPath
+            AsOfUtc = '2026-11-11T08:00:00Z'
+            RequireCurrent = $true
+        }
+
+        { & $script:DiscoveryPath @Parameters } | Should -Throw '*expired lines: 7.4, 7.5*'
+        $Report = Get-Content -LiteralPath $ReportPath -Raw | ConvertFrom-Json
+        $Expired = @($Report.Lifecycle | Where-Object Status -EQ 'Expired')
+        @($Expired.ReleaseLine) | Should -Be @('7.4', '7.5')
+        @($Expired.DaysRemaining | Sort-Object -Unique) | Should -Be @(0)
+    }
 }
