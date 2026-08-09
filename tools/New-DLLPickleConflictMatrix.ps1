@@ -34,6 +34,8 @@ $ErrorActionPreference = 'Stop'
 if ($PSCmdlet.ParameterSetName -eq 'Path') {
     $Inventory = Get-Content -LiteralPath $InventoryPath -Raw | ConvertFrom-Json
 }
+$ProfileKey = if ($Inventory.PSObject.Properties.Name -contains 'ProfileKey') { [string]$Inventory.ProfileKey } else { $null }
+$RequiresCompleteSelectionIdentity = -not [string]::IsNullOrWhiteSpace($ProfileKey)
 
 # Group every tracked assembly across all modules by assembly name.
 $ByAssembly = @{}
@@ -42,21 +44,29 @@ foreach ($Module in $Inventory.Modules) {
         if (-not $ByAssembly.ContainsKey($Assembly.Name)) {
             $ByAssembly[$Assembly.Name] = [System.Collections.Generic.List[object]]::new()
         }
+        $Sha256 = if ($Assembly.PSObject.Properties.Name -contains 'Sha256') {
+            ([string]$Assembly.Sha256).ToLowerInvariant()
+        } else {
+            $null
+        }
+        $AlcOwner = if ($Assembly.PSObject.Properties.Name -contains 'Alc') {
+            [string]$Assembly.Alc
+        } elseif ($Assembly.PSObject.Properties.Name -contains 'AlcOwner') {
+            [string]$Assembly.AlcOwner
+        } else {
+            $null
+        }
+        if ($RequiresCompleteSelectionIdentity -and $Sha256 -notmatch '^[a-f0-9]{64}$') {
+            throw "Profile-keyed inventory '$ProfileKey' selection '$($Module.Name)/$($Assembly.Name)' requires a 64-character SHA-256."
+        }
+        if ($RequiresCompleteSelectionIdentity -and [string]::IsNullOrWhiteSpace($AlcOwner)) {
+            throw "Profile-keyed inventory '$ProfileKey' selection '$($Module.Name)/$($Assembly.Name)' requires an ALC owner."
+        }
         $ByAssembly[$Assembly.Name].Add([PSCustomObject]@{
                 Module   = [string]$Module.Name
                 Version  = [string]$Assembly.Version
-                Sha256   = if ($Assembly.PSObject.Properties.Name -contains 'Sha256') {
-                    ([string]$Assembly.Sha256).ToLowerInvariant()
-                } else {
-                    $null
-                }
-                AlcOwner = if ($Assembly.PSObject.Properties.Name -contains 'Alc') {
-                    [string]$Assembly.Alc
-                } elseif ($Assembly.PSObject.Properties.Name -contains 'AlcOwner') {
-                    [string]$Assembly.AlcOwner
-                } else {
-                    $null
-                }
+                Sha256   = $Sha256
+                AlcOwner = $AlcOwner
             })
     }
 }
@@ -109,7 +119,6 @@ $EvidenceRows = @(
         '{0}|diverges={1}|{2}' -f $_.Name, ([string]$_.Diverges).ToLowerInvariant(), ($CanonicalSelections -join '|')
     }
 )
-$ProfileKey = if ($Inventory.PSObject.Properties.Name -contains 'ProfileKey') { [string]$Inventory.ProfileKey } else { $null }
 $FingerprintInput = if ([string]::IsNullOrWhiteSpace($ProfileKey)) {
     $EvidenceRows -join '|'
 } else {

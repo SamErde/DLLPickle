@@ -106,6 +106,26 @@ Describe 'New-DLLPickleConflictMatrix' -Tag 'Unit' {
             Should -Be 'msgraph-load-context'
     }
 
+    It 'fails closed when a profile-keyed selection lacks a complete SHA-256' {
+        $Inventory = Get-TestInventory
+        $Inventory | Add-Member -NotePropertyName ProfileKey -NotePropertyValue 'ps7.6-net10.0-windows-x64'
+        $Selection = ($Inventory.Modules | Where-Object Name -EQ 'Az.Accounts').TrackedAssemblies |
+            Where-Object Name -EQ 'Azure.Core'
+        $Selection.PSObject.Properties.Remove('Sha256')
+
+        { & $ScriptPath -Inventory $Inventory } | Should -Throw '*requires a 64-character SHA-256*'
+    }
+
+    It 'fails closed when a profile-keyed selection lacks an ALC owner' {
+        $Inventory = Get-TestInventory
+        $Inventory | Add-Member -NotePropertyName ProfileKey -NotePropertyValue 'ps7.6-net10.0-windows-x64'
+        $Selection = ($Inventory.Modules | Where-Object Name -EQ 'Az.Accounts').TrackedAssemblies |
+            Where-Object Name -EQ 'Azure.Core'
+        $Selection.Alc = ''
+
+        { & $ScriptPath -Inventory $Inventory } | Should -Throw '*requires an ALC owner*'
+    }
+
     It 'changes the Fingerprint when a selected hash moves without an assembly-version change' {
         $BaselineInventory = Get-TestInventory
         $ChangedInventory = Get-TestInventory
