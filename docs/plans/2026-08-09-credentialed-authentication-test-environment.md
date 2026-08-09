@@ -216,7 +216,7 @@ Redact access tokens, authorization headers, certificate bytes/passwords, mailbo
 
 The feasibility run is not accepted without evidence that the identity is constrained:
 
-- Azure: an approved harmless write attempt using `-WhatIf` where supported, plus an authorization inspection showing no write actions at the assigned scope. Do not perform a real write merely to prove denial.
+- Azure: inspect effective roles and actions at the assigned scope and use any available non-mutating authorization query. `-WhatIf` may remain a local no-mutation safeguard, but it is not authorization evidence and does not prove that the identity lacks write permission. Do not perform a real write merely to prove denial.
 - Graph: inspect granted application permissions and verify no write permission is consented.
 - Exchange: inspect the assigned application RBAC role and confirm it contains only required read cmdlets/parameters.
 - Teams: inspect API permissions and assigned role; do not execute a state-changing Teams cmdlet.

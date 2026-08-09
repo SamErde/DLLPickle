@@ -4,6 +4,7 @@
   "capturedAtUtc": "2026-08-09T03:43:28Z",
   "approvedAtUtc": "2026-08-09T17:36:05Z",
   "thresholds": {
+    "policy": "Allowed unpacked growth is the larger of maximumIncreasePercent of the baseline or maximumIncreaseBytes; the limits are not cumulative.",
     "maximumIncreasePercent": 10,
     "maximumIncreaseBytes": 2097152
   },

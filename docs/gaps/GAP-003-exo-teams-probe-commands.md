@@ -36,8 +36,8 @@ DLLPickle's preload/block classification depends on observed runtime ownership, 
 
 ## Current evidence
 
-- `build/dependency-policy.json` assigns `Get-ConnectionInformation -ErrorAction SilentlyContinue | Out-Null` and `Get-Command Get-Team | Out-Null` to the deterministic no-auth tier.
-- It separately records `Get-EXOMailbox -ResultSize 1 | Out-Null` and `Get-CsTenant | Out-Null` as authenticated read-only release gates.
+- `build/dependency-policy.json` assigns `Get-ConnectionInformation -ErrorAction SilentlyContinue | Out-Null` and a read-only `Get-Team` execution with errors suppressed to the deterministic no-auth tier. The Teams command executes the cmdlet surface without claiming an authenticated tenant read.
+- It separately records `Get-EXOMailbox -ResultSize 1 | Out-Null` and an access-token-based `Connect-MicrosoftTeams` / `Get-CsTenant` / `Disconnect-MicrosoftTeams` sequence as authenticated read-only release gates.
 - `Get-DLLPickleUpstreamInventory.ps1` passes the profile-specific deterministic command into the exact stock-host snapshot process.
 - Unit tests validate policy parsing, probe separation, exact-host inventory, and selected-asset evidence without service authentication.
 
