@@ -6,7 +6,7 @@ BeforeAll {
 
 Describe 'DLLPickle package artifact policy' -Tag 'Unit' {
     BeforeEach {
-        $script:FixtureRoot = Join-Path $TestDrive 'fixture'
+        $script:FixtureRoot = Join-Path $TestDrive ([System.Guid]::NewGuid().ToString('n'))
         $script:ModulePath = Join-Path $script:FixtureRoot 'module\DLLPickle'
         $script:BuildOutputRoot = Join-Path $script:FixtureRoot 'build-output'
         $script:PolicyPath = Join-Path $script:FixtureRoot 'SupportedRuntimeProfiles.json'

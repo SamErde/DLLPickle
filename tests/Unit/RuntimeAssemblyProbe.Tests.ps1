@@ -83,6 +83,19 @@ Describe 'Get-DLLPickleRuntimeAssemblySnapshot' -Tag 'Unit' {
         $Result[0].IsolatedModulePath | Should -Be (@($ModuleRoot, (Join-Path $PSHOME 'Modules')) -join [System.IO.Path]::PathSeparator)
     }
 
+    It 'keeps module informational output separate from the JSON result' {
+        $Policy = Get-TempPolicyPath -TrackedAssemblies @('System.Management.Automation')
+        $ModuleRoot = Join-Path $TestDrive 'noisy-module'
+        $null = New-Item -Path $ModuleRoot -ItemType Directory
+        Set-Content -LiteralPath (Join-Path $ModuleRoot 'Synthetic.Noisy.psm1') -Value "Write-Host 'Get started with Synthetic.Noisy'" -Encoding UTF8
+        $ManifestPath = Join-Path $ModuleRoot 'Synthetic.Noisy.psd1'
+        New-ModuleManifest -Path $ManifestPath -RootModule 'Synthetic.Noisy.psm1' -ModuleVersion '1.0.0'
+
+        $Result = & $SnapshotScript -ModuleName 'Synthetic.Noisy' -ModuleManifestPath $ManifestPath -ModuleSearchPath @($ModuleRoot, (Join-Path $PSHOME 'Modules')) -PolicyPath $Policy -PowerShellExecutable ([Environment]::ProcessPath) -Strict
+
+        ($Result | Where-Object Name -EQ 'System.Management.Automation') | Should -Not -BeNullOrEmpty
+    }
+
     It 'never launches a generic pwsh command from PATH' {
         $Source = Get-Content -LiteralPath $SnapshotScript -Raw
 

@@ -91,7 +91,7 @@ if (-not $PolicyPath) {
 }
 
 $ChildScript = @'
-param($ModuleNames, $ModuleManifestPathsEncoded, $IsolatedModulePath, $PreloadManifest, $ProbeCommand, $HelperScript, $PolicyPath, $ExpectedPowerShellVersion, $ExpectedTargetFramework, [switch]$StrictMode)
+param($ModuleNames, $ModuleManifestPathsEncoded, $IsolatedModulePath, $PreloadManifest, $ProbeCommand, $HelperScript, $PolicyPath, $ResultPath, $ExpectedPowerShellVersion, $ExpectedTargetFramework, [switch]$StrictMode)
 $ModuleNames = $ModuleNames -split ','
 $ModuleManifestPaths = if ($ModuleManifestPathsEncoded) {
     $ManifestJson = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($ModuleManifestPathsEncoded))
@@ -149,17 +149,20 @@ foreach ($Row in $Rows) {
     $Row | Add-Member -NotePropertyName IsolatedModulePath -NotePropertyValue $env:PSModulePath
     $Row | Add-Member -NotePropertyName DllPicklePreloaded -NotePropertyValue (-not [string]::IsNullOrWhiteSpace($PreloadManifest))
 }
-$Rows | ConvertTo-Json -Depth 8
+$Rows | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $ResultPath -Encoding utf8NoBOM
 '@
 
-$TempScript = Join-Path ([System.IO.Path]::GetTempPath()) ("dpp-snap-{0}.ps1" -f ([System.Guid]::NewGuid().ToString('n')))
+$TempId = [System.Guid]::NewGuid().ToString('n')
+$TempScript = Join-Path ([System.IO.Path]::GetTempPath()) ("dpp-snap-{0}.ps1" -f $TempId)
+$TempResult = Join-Path ([System.IO.Path]::GetTempPath()) ("dpp-snap-{0}.json" -f $TempId)
 Set-Content -LiteralPath $TempScript -Value $ChildScript -Encoding utf8NoBOM
 try {
     $ChildArguments = @(
         '-NoProfile', '-NonInteractive', '-File', $TempScript,
         '-ModuleNames', ($ModuleName -join ','),
         '-HelperScript', $HelperScript,
-        '-PolicyPath', $PolicyPath
+        '-PolicyPath', $PolicyPath,
+        '-ResultPath', $TempResult
     )
     if ($PowerShellVersion) { $ChildArguments += @('-ExpectedPowerShellVersion', $PowerShellVersion.ToString()) }
     if ($TargetFramework) { $ChildArguments += @('-ExpectedTargetFramework', $TargetFramework) }
@@ -183,9 +186,13 @@ try {
     } else {
         $Raw = & $ResolvedPowerShellExecutable @ChildArguments
     }
-    $Json = ($Raw | Out-String).Trim()
+    if (-not (Test-Path -LiteralPath $TempResult -PathType Leaf)) {
+        throw 'DLLPickle runtime assembly snapshot did not produce its result file.'
+    }
+    $Json = (Get-Content -LiteralPath $TempResult -Raw).Trim()
     if ([string]::IsNullOrWhiteSpace($Json)) { return @() }
     @($Json | ConvertFrom-Json)
 } finally {
     Remove-Item -LiteralPath $TempScript -Force -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath $TempResult -Force -ErrorAction SilentlyContinue
 }
