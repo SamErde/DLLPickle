@@ -1,5 +1,4 @@
 BeforeAll {
-    Set-Location -Path $PSScriptRoot
     $ProjectRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
     $script:ArtifactInspectionPath = Join-Path $ProjectRoot 'tools\Test-DLLPicklePackageArtifact.ps1'
     $script:ArtifactSizePath = Join-Path $ProjectRoot 'tools\New-DLLPickleArtifactSizeReport.ps1'
@@ -57,9 +56,60 @@ Describe 'DLLPickle package artifact policy' -Tag 'Unit' {
 
     It 'fails closed on an unexpected target framework' {
         $null = New-Item -Path (Join-Path $script:ModulePath 'bin\net11.0') -ItemType Directory -Force
+        $Report = & $script:ArtifactInspectionPath -ModulePath $script:ModulePath -BuildOutputRoot $script:BuildOutputRoot -SupportPolicyPath $script:PolicyPath -ProjectPath $script:ProjectPath -LockFilePath $script:LockPath -OutputPath (Join-Path $TestDrive 'unexpected-report.json')
+
+        $Finding = @($Report.Findings | Where-Object Code -EQ 'UnexpectedTargetFramework')
+        $Finding | Should -HaveCount 1
+        $Finding[0].TargetFramework | Should -BeExactly 'net11.0'
+        $Finding[0].Message | Should -Match 'Unexpected target-framework directory'
         {
             & $script:ArtifactInspectionPath -ModulePath $script:ModulePath -BuildOutputRoot $script:BuildOutputRoot -SupportPolicyPath $script:PolicyPath -ProjectPath $script:ProjectPath -LockFilePath $script:LockPath -OutputPath (Join-Path $TestDrive 'unexpected.json') -Strict
         } | Should -Throw '*Unexpected target-framework directory*'
+    }
+
+    It 'fails preflight with a clear error when the module manifest is absent' {
+        Remove-Item -LiteralPath (Join-Path $script:ModulePath 'DLLPickle.psd1')
+
+        {
+            & $script:ArtifactInspectionPath -ModulePath $script:ModulePath -BuildOutputRoot $script:BuildOutputRoot -SupportPolicyPath $script:PolicyPath -ProjectPath $script:ProjectPath -LockFilePath $script:LockPath -OutputPath (Join-Path $TestDrive 'missing-manifest.json')
+        } | Should -Throw '*Required package-inspection path*DLLPickle.psd1*'
+    }
+
+    It 'ignores non-package managed files when comparing filtered managed and native sets' {
+        foreach ($TargetFramework in @('net8.0', 'net9.0', 'net10.0')) {
+            $ArtifactTfmPath = Join-Path (Join-Path $script:ModulePath 'bin') $TargetFramework
+            'module helper' | Set-Content -LiteralPath (Join-Path $ArtifactTfmPath 'Contoso.ModuleHelper.dll') -Encoding UTF8
+            $ManagedRuntimePath = Join-Path $ArtifactTfmPath 'runtimes/win-x64/lib/net8.0'
+            $null = New-Item -Path $ManagedRuntimePath -ItemType Directory -Force
+            'managed runtime asset' | Set-Content -LiteralPath (Join-Path $ManagedRuntimePath 'Contoso.RuntimeHelper.dll') -Encoding UTF8
+        }
+
+        $Report = & $script:ArtifactInspectionPath -ModulePath $script:ModulePath -BuildOutputRoot $script:BuildOutputRoot -SupportPolicyPath $script:PolicyPath -ProjectPath $script:ProjectPath -LockFilePath $script:LockPath -OutputPath (Join-Path $TestDrive 'filtered-comparison.json') -Strict
+
+        $Report.Passed | Should -BeTrue
+        @($Report.Findings | Where-Object Code -In @('UnexpectedManagedAsset', 'UnexpectedNativeAsset')) | Should -BeNullOrEmpty
+    }
+
+    It 'reports sorted portable relative paths for native assets' {
+        $ArtifactTfmPath = Join-Path (Join-Path $script:ModulePath 'bin') 'net8.0'
+        $BuildTfmPath = Join-Path $script:BuildOutputRoot 'net8.0'
+        $RelativeNativePaths = @(
+            'runtimes/win-x64/native/zeta.dll'
+            'runtimes/linux-x64/native/alpha.so'
+        )
+        foreach ($RelativePath in $RelativeNativePaths) {
+            foreach ($Root in @($ArtifactTfmPath, $BuildTfmPath)) {
+                $NativePath = Join-Path $Root $RelativePath
+                $null = New-Item -Path (Split-Path -Path $NativePath -Parent) -ItemType Directory -Force
+                'native asset' | Set-Content -LiteralPath $NativePath -Encoding UTF8
+            }
+        }
+
+        $Report = & $script:ArtifactInspectionPath -ModulePath $script:ModulePath -BuildOutputRoot $script:BuildOutputRoot -SupportPolicyPath $script:PolicyPath -ProjectPath $script:ProjectPath -LockFilePath $script:LockPath -OutputPath (Join-Path $TestDrive 'native-paths.json') -Strict
+        $NativeAssets = @(($Report.Profiles | Where-Object TargetFramework -EQ 'net8.0').NativeAssets)
+
+        $NativeAssets | Should -Be @('linux-x64/native/alpha.so', 'win-x64/native/zeta.dll')
+        @($NativeAssets | Where-Object { $_ -match '\\' }) | Should -BeNullOrEmpty
     }
 
     It 'fails closed when optional multi-pwsh tooling leaks into artifact content' {

@@ -50,73 +50,82 @@ BeforeAll {
         $PackageDirectory
     }
 
-    # Builds a synthetic policy + lock file + NuGet-style packages root for the policy-driven mode.
+    # Builds a synthetic policy, lock file, and NuGet target graph for policy-driven mode.
     function Get-FixturePolicyContext {
         param(
-            [Parameter(Mandatory)]
-            [string[]]$AlignedLibFramework
+            [Parameter()]
+            [AllowEmptyCollection()]
+            [string[]]$RuntimeAssetFramework = @('net8.0'),
+
+            [Parameter()]
+            [AllowEmptyCollection()]
+            [string[]]$CompileAssetFramework = @(),
+
+            [Parameter()]
+            [string[]]$PolicyTargetFramework = @('net8.0')
         )
 
         $Context = Join-Path $TestDrive ([System.Guid]::NewGuid().ToString('n'))
-        $PackagesRoot = Join-Path $Context 'packages'
-        $null = New-Item -Path $PackagesRoot -ItemType Directory -Force
+        $null = New-Item -Path $Context -ItemType Directory -Force
 
         $PolicyPath = Join-Path $Context 'policy.json'
         @{
             preload = @(
                 @{ packageName = 'Contoso.Fixture'; assemblyName = 'Contoso.Fixture'; classification = 'preload' }
             )
+            runtimeProfiles = @(
+                foreach ($TargetFramework in $PolicyTargetFramework) {
+                    @{ targetFramework = $TargetFramework }
+                }
+            )
         } | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $PolicyPath -Encoding utf8
 
         $LockPath = Join-Path $Context 'packages.lock.json'
+        $LockDependencies = [ordered]@{}
+        foreach ($TargetFramework in $PolicyTargetFramework) {
+            $LockDependencies[$TargetFramework] = @{
+                'Contoso.Fixture' = @{ type = 'Direct'; resolved = '1.2.3' }
+            }
+        }
         @{
             version      = 1
-            dependencies = @{
-                'net8.0' = @{
-                    'Contoso.Fixture' = @{ type = 'Direct'; resolved = '1.2.3' }
-                }
-            }
+            dependencies = $LockDependencies
         } | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $LockPath -Encoding utf8
 
         $AssetsPath = Join-Path $Context 'project.assets.json'
-        $HasCompatibleAsset = @($AlignedLibFramework | Where-Object { $_ -in @('net8.0', 'net6.0', 'netstandard2.0', 'netstandard2.1', 'netcoreapp3.1') }).Count -gt 0
-        $TargetEntry = if ($HasCompatibleAsset) {
-            @{
-                'Contoso.Fixture/1.2.3' = @{
-                    type = 'package'
-                    runtime = @{ 'lib/net8.0/Contoso.Fixture.dll' = @{} }
-                }
+        $Targets = [ordered]@{}
+        foreach ($TargetFramework in $PolicyTargetFramework) {
+            $RuntimeAssets = if ($TargetFramework -in $RuntimeAssetFramework) {
+                @{ "lib/$TargetFramework/Contoso.Fixture.dll" = @{} }
+            } else {
+                @{}
             }
-        } else {
-            @{
+            $CompileAssets = if ($TargetFramework -in $CompileAssetFramework) {
+                @{ "ref/$TargetFramework/Contoso.Fixture.dll" = @{} }
+            } else {
+                @{}
+            }
+            $Targets[$TargetFramework] = @{
                 'Contoso.Fixture/1.2.3' = @{
                     type = 'package'
-                    runtime = @{}
+                    runtime = $RuntimeAssets
+                    compile = $CompileAssets
                 }
             }
         }
-        @{ version = 4; targets = @{ 'net8.0' = $TargetEntry } } |
+        @{ version = 4; targets = $Targets } |
             ConvertTo-Json -Depth 15 |
             Set-Content -LiteralPath $AssetsPath -Encoding utf8
 
-        # NuGet lowercases both the package id folder and the version folder under the global cache.
-        $RestoredLib = Join-Path $PackagesRoot 'contoso.fixture\1.2.3\lib'
-        foreach ($Tfm in $AlignedLibFramework) {
-            $TfmDirectory = Join-Path $RestoredLib $Tfm
-            $null = New-Item -Path $TfmDirectory -ItemType Directory -Force
-            Set-Content -LiteralPath (Join-Path $TfmDirectory 'Contoso.Fixture.dll') -Value 'fixture' -Encoding utf8
-        }
-
         [PSCustomObject]@{
-            PolicyPath   = $PolicyPath
-            LockPath     = $LockPath
-            PackagesRoot = $PackagesRoot
-            AssetsPath   = $AssetsPath
+            PolicyPath = $PolicyPath
+            LockPath   = $LockPath
+            AssetsPath = $AssetsPath
         }
     }
 }
 
-Describe 'Test-DLLPickleTfmAlignment net8.0 compatibility decisions' -Tag 'Unit' {
+Describe 'Test-DLLPickleTfmAlignment package-directory compatibility decisions' -Tag 'Unit' {
     It 'treats <Tfm> as net8.0-aligned' -ForEach @(
         @{ Tfm = 'net8.0' }
         @{ Tfm = 'net6.0' }
@@ -143,6 +152,18 @@ Describe 'Test-DLLPickleTfmAlignment net8.0 compatibility decisions' -Tag 'Unit'
         $Directory = Get-FixturePackageDirectory -LibFramework @($Tfm)
         $Result = & $script:ToolPath -PackageDirectory $Directory
         $Result.IsAligned | Should -BeFalse
+    }
+
+    It 'evaluates package assets against the selected supported target framework' -ForEach @(
+        @{ RuntimeTfm = 'net9.0'; AssetTfm = 'net9.0'; Expected = $true }
+        @{ RuntimeTfm = 'net10.0'; AssetTfm = 'net10.0'; Expected = $true }
+        @{ RuntimeTfm = 'net9.0'; AssetTfm = 'net10.0'; Expected = $false }
+    ) {
+        $Directory = Get-FixturePackageDirectory -LibFramework @($AssetTfm)
+        $Result = & $script:ToolPath -PackageDirectory $Directory -TargetFramework $RuntimeTfm
+
+        $Result.TargetFramework | Should -BeExactly $RuntimeTfm
+        $Result.IsAligned | Should -Be $Expected
     }
 }
 
@@ -185,7 +206,7 @@ Describe 'Test-DLLPickleTfmAlignment package inspection' -Tag 'Unit' {
 
 Describe 'Test-DLLPickleTfmAlignment policy-driven inspection' -Tag 'Unit' {
     It 'reports an aggregate aligned result when every preload package is aligned' {
-        $Fixture = Get-FixturePolicyContext -AlignedLibFramework @('net8.0', 'netstandard2.0')
+        $Fixture = Get-FixturePolicyContext -RuntimeAssetFramework @('net8.0')
         $OutputPath = Join-Path $TestDrive 'aligned-report.json'
         $Report = & $script:ToolPath -PolicyPath $Fixture.PolicyPath -LockFilePath $Fixture.LockPath -ProjectAssetsPath $Fixture.AssetsPath -OutputPath $OutputPath
 
@@ -198,7 +219,7 @@ Describe 'Test-DLLPickleTfmAlignment policy-driven inspection' -Tag 'Unit' {
     }
 
     It 'reports an aggregate misaligned result and names the offending package' {
-        $Fixture = Get-FixturePolicyContext -AlignedLibFramework @('net48')
+        $Fixture = Get-FixturePolicyContext -RuntimeAssetFramework @()
         $Report = & $script:ToolPath -PolicyPath $Fixture.PolicyPath -LockFilePath $Fixture.LockPath -ProjectAssetsPath $Fixture.AssetsPath
 
         $Report.IsAligned | Should -BeFalse
@@ -206,15 +227,42 @@ Describe 'Test-DLLPickleTfmAlignment policy-driven inspection' -Tag 'Unit' {
     }
 
     It 'throws in strict mode when a preload package is misaligned' {
-        $Fixture = Get-FixturePolicyContext -AlignedLibFramework @('net48')
+        $Fixture = Get-FixturePolicyContext -RuntimeAssetFramework @()
         { & $script:ToolPath -PolicyPath $Fixture.PolicyPath -LockFilePath $Fixture.LockPath -ProjectAssetsPath $Fixture.AssetsPath -Strict } |
             Should -Throw '*TFM*'
     }
 
     It 'uses NuGet project.assets.json as the policy-mode compatibility authority' {
-        $Source = Get-Content -LiteralPath $script:ToolPath -Raw
+        $Fixture = Get-FixturePolicyContext -RuntimeAssetFramework @('net8.0')
+        $Assets = Get-Content -LiteralPath $Fixture.AssetsPath -Raw | ConvertFrom-Json
+        $Assets.targets.'net8.0' = [PSCustomObject]@{}
+        $Assets | ConvertTo-Json -Depth 15 | Set-Content -LiteralPath $Fixture.AssetsPath -Encoding utf8
 
-        $Source | Should -Match 'ProjectAssetsPath'
-        $Source | Should -Match ([regex]::Escape('$ProjectAssets.targets'))
+        $Report = & $script:ToolPath -PolicyPath $Fixture.PolicyPath -LockFilePath $Fixture.LockPath -ProjectAssetsPath $Fixture.AssetsPath
+
+        $Report.IsAligned | Should -BeFalse
+        $Report.Packages[0].Reason | Should -Match "selected no 'Contoso\.Fixture/1\.2\.3' entry"
+    }
+
+    It 'rejects compile-only selections because no runtime assembly can be loaded' {
+        $Fixture = Get-FixturePolicyContext -RuntimeAssetFramework @() -CompileAssetFramework @('net8.0')
+
+        $Report = & $script:ToolPath -PolicyPath $Fixture.PolicyPath -LockFilePath $Fixture.LockPath -ProjectAssetsPath $Fixture.AssetsPath
+
+        $Report.IsAligned | Should -BeFalse
+        $Report.Packages[0].SelectedAssets | Should -BeNullOrEmpty
+        $Report.Packages[0].Reason | Should -Match 'compile-only'
+    }
+
+    It 'validates every framework declared by a multi-framework policy' {
+        $Frameworks = @('net8.0', 'net9.0', 'net10.0')
+        $Fixture = Get-FixturePolicyContext -PolicyTargetFramework $Frameworks -RuntimeAssetFramework @('net8.0')
+
+        $Report = & $script:ToolPath -PolicyPath $Fixture.PolicyPath -LockFilePath $Fixture.LockPath -ProjectAssetsPath $Fixture.AssetsPath
+
+        @($Report.Packages) | Should -HaveCount 3
+        ($Report.Packages | Where-Object TargetFramework -EQ 'net8.0').IsAligned | Should -BeTrue
+        ($Report.Packages | Where-Object TargetFramework -EQ 'net9.0').IsAligned | Should -BeFalse
+        ($Report.Packages | Where-Object TargetFramework -EQ 'net10.0').IsAligned | Should -BeFalse
     }
 }

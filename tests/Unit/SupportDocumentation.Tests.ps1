@@ -1,10 +1,9 @@
 BeforeAll {
-    Set-Location -Path $PSScriptRoot
-    $ProjectRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
-    $script:GeneratorPath = Join-Path $ProjectRoot 'tools\New-DLLPickleSupportDocumentation.ps1'
-    $script:ReadmePath = Join-Path $ProjectRoot 'README.md'
-    $script:ArchitecturePath = Join-Path $ProjectRoot 'docs\Architecture.md'
-    $script:DependencyDocPath = Join-Path $ProjectRoot 'docs\DEPENDENCIES.md'
+    $script:ProjectRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+    $script:GeneratorPath = Join-Path $script:ProjectRoot 'tools\New-DLLPickleSupportDocumentation.ps1'
+    $script:ReadmePath = Join-Path $script:ProjectRoot 'README.md'
+    $script:ArchitecturePath = Join-Path $script:ProjectRoot 'docs\Architecture.md'
+    $script:DependencyDocPath = Join-Path $script:ProjectRoot 'docs\DEPENDENCIES.md'
 }
 
 Describe 'Generated support documentation' -Tag 'Unit' {
@@ -31,8 +30,8 @@ Describe 'Generated support documentation' -Tag 'Unit' {
     }
 
     It 'separates Microsoft support, upstream evidence, and optional CI tooling claims' {
-        $SupportMatrix = Get-Content -LiteralPath (Join-Path $ProjectRoot 'docs\generated\Support-Matrix.md') -Raw
-        $Compatibility = Get-Content -LiteralPath (Join-Path $ProjectRoot 'docs\generated\Compatibility-Evidence.md') -Raw
+        $SupportMatrix = Get-Content -LiteralPath (Join-Path $script:ProjectRoot 'docs\generated\Support-Matrix.md') -Raw
+        $Compatibility = Get-Content -LiteralPath (Join-Path $script:ProjectRoot 'docs\generated\Compatibility-Evidence.md') -Raw
         $SupportMatrix | Should -Match 'Microsoft-supported runtime contract'
         $SupportMatrix | Should -Match 'multi-pwsh.*optional'
         $Compatibility | Should -Match 'release-gating gaps'

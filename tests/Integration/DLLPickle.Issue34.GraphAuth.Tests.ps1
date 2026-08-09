@@ -113,13 +113,13 @@ Describe 'Issue 34 Microsoft Graph authentication API regression' -Tag 'Integrat
         ($ConnectStep.Output -join [Environment]::NewLine) | Should -Match 'WithLogging\(IIdentityLogger, Boolean\)'
 
         $FinalAssemblies = @($ConnectStep.AssembliesAfter)
-        $MsalAssembly = $FinalAssemblies | Where-Object Name -EQ 'Microsoft.Identity.Client' | Select-Object -First 1
-        $IdentityAssembly = $FinalAssemblies | Where-Object Name -EQ 'Microsoft.IdentityModel.Abstractions' | Select-Object -First 1
-        $MsalAssembly | Should -Not -BeNullOrEmpty
-        $IdentityAssembly | Should -Not -BeNullOrEmpty
-        $MsalAssembly.LoadContext | Should -Be 'Default'
-        $IdentityAssembly.LoadContext | Should -Be 'Default'
-        $MsalAssembly.Location | Should -Match ([regex]::Escape($Result.Host.SelectedBundlePath))
-        $IdentityAssembly.Location | Should -Match ([regex]::Escape($Result.Host.SelectedBundlePath))
+        foreach ($AssemblyName in @('Microsoft.Identity.Client', 'Microsoft.IdentityModel.Abstractions')) {
+            $MatchingAssemblies = @($FinalAssemblies | Where-Object Name -EQ $AssemblyName)
+            $MatchingAssemblies | Should -HaveCount 1
+            foreach ($Assembly in $MatchingAssemblies) {
+                $Assembly.LoadContext | Should -Be 'Default'
+                $Assembly.Location | Should -Match ([regex]::Escape($Result.Host.SelectedBundlePath))
+            }
+        }
     }
 }

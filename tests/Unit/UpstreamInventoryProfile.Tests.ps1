@@ -30,6 +30,10 @@ BeforeAll {
         $moduleVersionRoot = Join-Path -Path $moduleCache -ChildPath 'Contoso.ProfileProbe/1.0.0'
         $null = New-Item -Path $moduleVersionRoot -ItemType Directory -Force
         Set-Content -LiteralPath (Join-Path $moduleVersionRoot 'Contoso.ProfileProbe.psm1') -Value '# profile probe fixture' -Encoding utf8
+        $decoyDirectory = Join-Path -Path $moduleVersionRoot -ChildPath 'lib/decoy'
+        $null = New-Item -Path $decoyDirectory -ItemType Directory -Force
+        $decoyAssemblyPath = Join-Path -Path $decoyDirectory -ChildPath 'System.Management.Automation.dll'
+        Copy-Item -LiteralPath ([System.Management.Automation.PSObject].Assembly.Location) -Destination $decoyAssemblyPath
         @'
 @{
     RootModule = 'Contoso.ProfileProbe.psm1'
@@ -58,6 +62,7 @@ BeforeAll {
             PolicyPath = $policyPath
             ModuleCachePath = $moduleCache
             OutputPath = Join-Path -Path $root -ChildPath 'inventory.json'
+            DecoyAssemblyPath = $decoyAssemblyPath
         }
     }
 }
@@ -97,12 +102,8 @@ Describe 'Profile-aware upstream inventory' -Tag 'Unit' {
         $row.Sha256 | Should -Match '^[a-f0-9]{64}$'
         $row.Alc | Should -Not -BeNullOrEmpty
         $row.TargetFramework | Should -Be $report.Profile.TargetFramework
-    }
-
-    It 'does not recursively mix every DLL asset in a saved module' {
-        $source = Get-Content -LiteralPath $script:InventoryToolPath -Raw
-
-        $source | Should -Not -Match "Get-ChildItem[^\r\n]+-Filter '\*\.dll'[^\r\n]+-Recurse"
-        $source | Should -Match ([regex]::Escape('Get-DLLPickleRuntimeAssemblySnapshot.ps1'))
+        @($module.TrackedAssemblies) | Should -HaveCount 1
+        $row.SelectedAssetPath | Should -Not -BeExactly $fixture.DecoyAssemblyPath
+        @($module.TrackedAssemblies.SelectedAssetPath) | Should -Not -Contain $fixture.DecoyAssemblyPath
     }
 }

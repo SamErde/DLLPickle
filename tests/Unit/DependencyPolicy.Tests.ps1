@@ -29,6 +29,29 @@ Describe 'Dependency policy baseline' -Tag 'Unit' {
         }
     }
 
+    It 'keeps every duplicated runtime-profile list aligned with its shared policy source' {
+        $ExpectedModules = @($script:Policy.monitoredModules.name | Sort-Object)
+        $ExpectedPreloads = @($script:Policy.preload.assemblyName | Sort-Object)
+        $ExpectedBlocks = @($script:Policy.blockedPreloadAssemblies.assemblyName | Sort-Object)
+        $ExpectedTargetFrameworks = @(
+            @($script:Policy.preload + $script:Policy.blockedPreloadAssemblies).targetFrameworks |
+                Sort-Object -Unique
+        )
+        $CanonicalImportOrders = $script:Policy.runtimeProfiles[0].importOrders | ConvertTo-Json -Depth 5 -Compress
+        $CanonicalKnownConflictIds = @($script:Policy.runtimeProfiles[0].knownConflictIds | Sort-Object)
+        $CanonicalValidationTiers = $script:Policy.runtimeProfiles[0].validationTiers | ConvertTo-Json -Depth 5 -Compress
+
+        @($script:Policy.runtimeProfiles.targetFramework | Sort-Object) | Should -Be $ExpectedTargetFrameworks
+        foreach ($RuntimeProfile in @($script:Policy.runtimeProfiles)) {
+            @($RuntimeProfile.monitoredModuleSet | Sort-Object) | Should -Be $ExpectedModules
+            @($RuntimeProfile.preloadAssemblyNames | Sort-Object) | Should -Be $ExpectedPreloads
+            @($RuntimeProfile.blockedAssemblyNames | Sort-Object) | Should -Be $ExpectedBlocks
+            ($RuntimeProfile.importOrders | ConvertTo-Json -Depth 5 -Compress) | Should -BeExactly $CanonicalImportOrders
+            @($RuntimeProfile.knownConflictIds | Sort-Object) | Should -Be $CanonicalKnownConflictIds
+            ($RuntimeProfile.validationTiers | ConvertTo-Json -Depth 5 -Compress) | Should -BeExactly $CanonicalValidationTiers
+        }
+    }
+
     It 'records deterministic and authenticated read-only probes separately' {
         foreach ($module in @($script:Policy.monitoredModules)) {
             $module.umbrellaModule | Should -Not -BeNullOrEmpty
@@ -36,7 +59,12 @@ Describe 'Dependency policy baseline' -Tag 'Unit' {
             $module.authenticatedReadOnlyProbeCommand | Should -Not -BeNullOrEmpty
         }
         ($script:Policy.monitoredModules | Where-Object name -eq 'ExchangeOnlineManagement').authenticatedReadOnlyProbeCommand | Should -Match 'Get-EXOMailbox'
-        ($script:Policy.monitoredModules | Where-Object name -eq 'MicrosoftTeams').authenticatedReadOnlyProbeCommand | Should -Match 'Get-CsTenant'
+        $TeamsPolicy = $script:Policy.monitoredModules | Where-Object name -eq 'MicrosoftTeams'
+        $TeamsPolicy.deterministicProbeCommand | Should -Match '^Get-Team\b'
+        $TeamsPolicy.deterministicProbeCommand | Should -Not -Match 'Get-Command'
+        $TeamsPolicy.authenticatedReadOnlyProbeCommand | Should -Match 'Connect-MicrosoftTeams'
+        $TeamsPolicy.authenticatedReadOnlyProbeCommand | Should -Match 'Get-CsTenant'
+        $TeamsPolicy.authenticatedReadOnlyProbeCommand | Should -Match 'Disconnect-MicrosoftTeams'
     }
 
     It 'explicitly monitors Az.Resources as the #193 collision source' {

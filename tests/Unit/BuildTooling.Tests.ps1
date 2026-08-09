@@ -93,6 +93,53 @@ Describe 'Deterministic build tooling' -Tag 'Unit' {
         $bootstrap | Should -Match ([regex]::Escape('& $ModuleInstallCommand @ModuleCommandSplat'))
     }
 
+    It 'parses the canonical policy and resolves one exact tool version' {
+        $Policy = Get-DLLPickleBuildToolPolicy -Path $script:ToolPolicyPath
+
+        $Policy.schemaVersion | Should -Be 1
+        Get-DLLPickleBuildToolVersion -Policy $Policy -Name 'Pester' | Should -Be ([version]'5.7.1')
+        { Get-DLLPickleBuildToolVersion -Policy $Policy -Name 'Missing.Tool' } | Should -Throw '*exactly one*'
+    }
+
+    It 'rejects policy versions that are not Major.Minor.Patch' {
+        $PolicyPath = Join-Path $TestDrive 'invalid-tool-policy.json'
+        @{
+            schemaVersion = 1
+            modules = @(@{ name = 'Fixture.Tool'; version = '5.7' })
+        } | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $PolicyPath -Encoding utf8
+
+        { Get-DLLPickleBuildToolPolicy -Path $PolicyPath } | Should -Throw '*Major.Minor.Patch*'
+    }
+
+    It 'compares tool versions by the requested precision' {
+        Test-DLLPickleToolVersionMatch -ActualVersion ([version]'1.2.3.4') -RequiredVersion ([version]'1.2.3') |
+            Should -BeTrue
+        Test-DLLPickleToolVersionMatch -ActualVersion ([version]'1.2.4') -RequiredVersion ([version]'1.2.3') |
+            Should -BeFalse
+        Test-DLLPickleToolVersionMatch -ActualVersion ([version]'1.2.3.5') -RequiredVersion ([version]'1.2.3.4') |
+            Should -BeFalse
+    }
+
+    It 'imports and reuses the exact requested module version' {
+        $ModuleRoot = Join-Path $TestDrive 'modules/Fixture.Tool/1.2.3'
+        $null = New-Item -Path $ModuleRoot -ItemType Directory -Force
+        Set-Content -LiteralPath (Join-Path $ModuleRoot 'Fixture.Tool.psm1') -Value "function Get-FixtureTool { 'ok' }" -Encoding utf8
+        New-ModuleManifest -Path (Join-Path $ModuleRoot 'Fixture.Tool.psd1') -RootModule 'Fixture.Tool.psm1' -ModuleVersion '1.2.3' -FunctionsToExport @('Get-FixtureTool')
+
+        $OriginalModulePath = $env:PSModulePath
+        try {
+            $env:PSModulePath = (Split-Path -Path (Split-Path -Path $ModuleRoot -Parent) -Parent) + [System.IO.Path]::PathSeparator + $OriginalModulePath
+            $First = Import-DLLPickleBuildTool -Name 'Fixture.Tool' -RequiredVersion ([version]'1.2.3')
+            $Second = Import-DLLPickleBuildTool -Name 'Fixture.Tool' -RequiredVersion ([version]'1.2.3')
+
+            $First.Version | Should -Be ([version]'1.2.3')
+            $Second.Path | Should -BeExactly $First.Path
+        } finally {
+            Remove-Module -Name 'Fixture.Tool' -Force -ErrorAction SilentlyContinue
+            $env:PSModulePath = $OriginalModulePath
+        }
+    }
+
     It 'does not change StrictMode in the caller process' {
         $tooling = Get-Content -LiteralPath $script:ToolingScriptPath -Raw
 

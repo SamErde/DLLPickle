@@ -265,17 +265,21 @@ Describe 'Dependency automation tooling' -Tag 'Unit' {
         $Report.BlockedFindings[0].AssemblyName | Should -Be 'Microsoft.OData.Core'
     }
 
-    It 'flags existing per-TFM conditional pins for maintainer review' {
+    It 'resolves and flags package pins in framework-conditioned ItemGroups' {
         $ProjectPath = Join-Path -Path $TestDrive -ChildPath 'conditional.csproj'
         @'
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
   </PropertyGroup>
-  <ItemGroup>
-    <PackageReference Include="Contoso.Library" Version="1.0.0" Condition="'$(TargetFramework)' == 'net8.0'" />
-    <PackageReference Include="Contoso.Library" Version="1.0.0" Condition="'$(TargetFramework)' == 'net9.0'" />
-    <PackageReference Include="Contoso.Library" Version="1.0.0" Condition="'$(TargetFramework)' == 'net10.0'" />
+  <ItemGroup Condition="'$(TargetFramework)' == 'net8.0'">
+    <PackageReference Include="Contoso.Library" Version="1.0.0" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'net9.0'">
+    <PackageReference Include="Contoso.Library" Version="1.0.0" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
+    <PackageReference Include="Contoso.Library" Version="1.0.0" />
   </ItemGroup>
 </Project>
 '@ | Set-Content -LiteralPath $ProjectPath -Encoding UTF8

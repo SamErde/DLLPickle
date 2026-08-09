@@ -107,9 +107,14 @@ Describe 'PowerShell support update discovery' -Tag 'Unit' {
                 TargetFramework = 'net9.0'
             } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $IdentityDirectory "$Platform.json") -Encoding UTF8
         }
+        @{ PowerShellVersion = '7.5.10'; Platform = 'windows' } |
+            ConvertTo-Json |
+            Set-Content -LiteralPath (Join-Path $IdentityDirectory 'malformed.json') -Encoding UTF8
         $FinalPath = Join-Path $TestDrive 'final-matrix.json'
-        $Final = & $script:MatrixUpdatePath -TestMatrixPath $Fixture.MatrixPath -UpdateReportPath $ReportPath -OutputPath $FinalPath -RuntimeIdentityPath $IdentityDirectory -VerifiedAtUtc '2026-08-08T12:34:56Z'
+        $IdentityWarnings = @()
+        $Final = & $script:MatrixUpdatePath -TestMatrixPath $Fixture.MatrixPath -UpdateReportPath $ReportPath -OutputPath $FinalPath -RuntimeIdentityPath $IdentityDirectory -VerifiedAtUtc '2026-08-08T12:34:56Z' -WarningVariable IdentityWarnings
         $Final.Mode | Should -Be 'VerifiedProposal'
+        ($IdentityWarnings -join [Environment]::NewLine) | Should -Match 'malformed\.json.*DotNetVersion.*Architecture'
         $Updated = Get-Content -LiteralPath $FinalPath -Raw | ConvertFrom-Json
         @($Updated.profiles | Where-Object powerShellVersion -EQ '7.5.10') | Should -HaveCount 1
         @($Updated.profiles | Where-Object powerShellVersion -EQ '7.5.10')[0].dotnetRuntimeVersion | Should -Be '9.0.19'

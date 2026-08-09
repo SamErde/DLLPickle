@@ -113,7 +113,9 @@ Describe 'Release publish gating guardrails' -Tag 'Unit' {
         $ReleaseWorkflow | Should -Match ([regex]::Escape('Authenticated-Compatibility.yml'))
         $ReleaseWorkflow | Should -Match ([regex]::Escape('authenticated-compatibility-evidence'))
         $ReleaseWorkflow | Should -Match ([regex]::Escape("'--commit', `$EvidenceSha"))
-        $ReleaseWorkflow | Should -Match ([regex]::Escape('github.event.pull_request.head.sha'))
+        $ReleaseWorkflow | Should -Match ([regex]::Escape('steps.release-candidate.outputs.release_sha'))
+        $ReleaseWorkflow | Should -Match ([regex]::Escape('needs.authenticated-release-gate.outputs.release_sha'))
+        $ReleaseWorkflow | Should -Not -Match ([regex]::Escape('github.event.pull_request.head.sha'))
         $ReleaseWorkflow | Should -Match ([regex]::Escape('requiredBeforeRelease'))
         $ReleaseWorkflow | Should -Match ([regex]::Escape('writesAllowed -ne $false'))
     }
@@ -260,10 +262,18 @@ Describe 'Exact PowerShell runtime matrix workflow guardrails' -Tag 'Unit' {
 
     It 'keeps Build gate stable and aggregates both hosted and exact-runtime jobs' {
         $BuildWorkflow | Should -Match '(?m)^\s+name: Build gate\s*$'
-        $BuildWorkflow | Should -Match 'needs: \[build, runtime-tests, dependency-change-report\]'
+        $BuildWorkflow | Should -Match 'needs: \[changes, runtime-matrix, build, runtime-tests, dependency-change-report\]'
+        $BuildWorkflow | Should -Match ([regex]::Escape("foreach (`$RequiredJob in @('runtimeMatrix', 'build', 'runtimeTests'))"))
+        $BuildWorkflow | Should -Match ([regex]::Escape('needs.runtime-matrix.result'))
         $BuildWorkflow | Should -Match ([regex]::Escape('runtimeTests ='))
         $BuildWorkflow | Should -Match ([regex]::Escape('needs.runtime-tests.result'))
         $BuildWorkflow | Should -Match ([regex]::Escape('needs.dependency-change-report.result'))
+    }
+
+    It 'requires successful profile-matrix generation whenever live upstream evidence is required' {
+        $UpstreamWorkflow | Should -Match 'needs: \[pr-changes, profile-matrix, profile-evidence\]'
+        $UpstreamWorkflow | Should -Match ([regex]::Escape("if (`$MatrixResult -ne 'success')"))
+        $UpstreamWorkflow | Should -Match ([regex]::Escape('Required exact profile matrix generation did not succeed'))
     }
 
     It 'enforces artifact composition and material size growth in the hosted build gate' {

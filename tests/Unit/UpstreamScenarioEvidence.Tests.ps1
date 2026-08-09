@@ -73,6 +73,18 @@ Describe 'Deterministic upstream import-order evidence' -Tag 'Unit' {
         @($First.Scenarios) | Should -HaveCount 4
         @($First.Scenarios | Where-Object DllPicklePreloaded) | Should -HaveCount 2
         @($First.Scenarios | Where-Object { -not $_.DllPicklePreloaded }) | Should -HaveCount 2
+        $ExpectedOrders = @(
+            'Synthetic.One,Synthetic.Two'
+            'Synthetic.Two,Synthetic.One'
+        )
+        $ActualOrders = @($First.Scenarios | ForEach-Object { @($_.ImportOrder) -join ',' } | Sort-Object -Unique)
+        $ActualOrders | Should -Be $ExpectedOrders
+        foreach ($ExpectedOrder in $ExpectedOrders) {
+            $OrderScenarios = @($First.Scenarios | Where-Object { (@($_.ImportOrder) -join ',') -eq $ExpectedOrder })
+            $OrderScenarios | Should -HaveCount 2
+            @($OrderScenarios.DllPicklePreloaded | Sort-Object -Unique) | Should -Be @($false, $true)
+            @($OrderScenarios.OutcomeMatchesExpectation | Select-Object -Unique) | Should -Be @($true)
+        }
         $First.Passed | Should -BeTrue
         $First.WritesPerformed | Should -BeFalse
         $First.ScenarioFingerprint | Should -BeExactly $Second.ScenarioFingerprint

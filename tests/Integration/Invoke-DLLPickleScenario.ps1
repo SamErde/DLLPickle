@@ -232,15 +232,16 @@ $ScenarioModuleManifestPath = [string]$Payload.ModuleManifestPath
 $ScenarioOutputPath = [string]$Payload.OutputPath
 $RuntimeProfile = $null
 if (-not [string]::IsNullOrWhiteSpace($ScenarioModuleManifestPath)) {
-    $RuntimePolicyPath = Join-Path -Path (Split-Path -Path $ScenarioModuleManifestPath -Parent) -ChildPath 'SupportedRuntimeProfiles.json'
-    if (Test-Path -LiteralPath $RuntimePolicyPath -PathType Leaf) {
-        $RuntimePolicy = Get-Content -LiteralPath $RuntimePolicyPath -Raw | ConvertFrom-Json
-        $RuntimeProfile = @($RuntimePolicy.profiles | Where-Object {
-                $_.powerShellMajor -eq $PSVersionTable.PSVersion.Major -and
-                $_.powerShellMinor -eq $PSVersionTable.PSVersion.Minor -and
-                $_.dotnetMajor -eq [Environment]::Version.Major
-            }) | Select-Object -First 1
+    $ScenarioModuleRoot = Split-Path -Path $ScenarioModuleManifestPath -Parent
+    $RuntimePolicyPath = Join-Path -Path $ScenarioModuleRoot -ChildPath 'SupportedRuntimeProfiles.json'
+    $RuntimeProfileResolverPath = Join-Path -Path $ScenarioModuleRoot -ChildPath 'Private/Get-DPRuntimeProfile.ps1'
+    foreach ($RequiredRuntimeProfilePath in @($RuntimePolicyPath, $RuntimeProfileResolverPath)) {
+        if (-not (Test-Path -LiteralPath $RequiredRuntimeProfilePath -PathType Leaf)) {
+            throw "Scenario runtime-profile input was not found: $RequiredRuntimeProfilePath"
+        }
     }
+    . $RuntimeProfileResolverPath
+    $RuntimeProfile = Get-DPRuntimeProfile -PolicyPath $RuntimePolicyPath -PowerShellVersion $PSVersionTable.PSVersion -DotNetMajor ([Environment]::Version.Major)
 }
 $Scenario = [ordered]@{
     ScenarioName       = [string]$Payload.Name
@@ -254,7 +255,7 @@ $Scenario = [ordered]@{
         OS               = if ($PSVersionTable.ContainsKey('OS')) { $PSVersionTable.OS } else { [System.Environment]::OSVersion.VersionString }
         CLRVersion       = if ($PSVersionTable.ContainsKey('CLRVersion')) { $PSVersionTable.CLRVersion.ToString() } else { $null }
         RuntimeVersion   = [System.Environment]::Version.ToString()
-        TargetFramework  = if ($RuntimeProfile) { [string]$RuntimeProfile.targetFramework } else { 'net{0}.0' -f [Environment]::Version.Major }
+        TargetFramework  = if ($RuntimeProfile) { [string]$RuntimeProfile.targetFramework } else { $null }
         SelectedBundlePath = if ($RuntimeProfile) {
             Join-Path -Path (Split-Path -Path $ScenarioModuleManifestPath -Parent) -ChildPath (Join-Path 'bin' $RuntimeProfile.targetFramework)
         } else {

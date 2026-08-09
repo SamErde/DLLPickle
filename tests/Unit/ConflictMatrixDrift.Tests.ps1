@@ -124,9 +124,12 @@ Describe 'Compare-DLLPickleConflictMatrix' -Tag 'Unit' {
 
         $first = & $ScriptPath -Baseline $b -Current $c
         $second = & $ScriptPath -Baseline $b -Current $c
+        $changed = Get-DriftMatrix @(Get-DriftRow 'Azure.Core' $true 'Default' @('1.52.0.0') @('Az.Accounts'))
+        $different = & $ScriptPath -Baseline $b -Current $changed
 
         $first.FindingFingerprint | Should -Match '^[a-f0-9]{64}$'
         $first.FindingFingerprint | Should -BeExactly $second.FindingFingerprint
+        $different.FindingFingerprint | Should -Not -BeExactly $first.FindingFingerprint
     }
 
     It 'rejects comparisons across different runtime profiles' {
@@ -136,5 +139,13 @@ Describe 'Compare-DLLPickleConflictMatrix' -Tag 'Unit' {
         $c | Add-Member -NotePropertyName ProfileKey -NotePropertyValue 'ps7.5-net9.0-windows-x64'
 
         { & $ScriptPath -Baseline $b -Current $c } | Should -Throw '*different runtime profiles*'
+    }
+
+    It 'rejects a comparison when only one matrix declares a runtime profile' {
+        $b = Get-DriftMatrix @(Get-DriftRow 'Azure.Core' $true)
+        $b | Add-Member -NotePropertyName ProfileKey -NotePropertyValue 'ps7.4-net8.0-windows-x64'
+        $c = Get-DriftMatrix @(Get-DriftRow 'Azure.Core' $true)
+
+        { & $ScriptPath -Baseline $b -Current $c } | Should -Throw '*only one declares*'
     }
 }

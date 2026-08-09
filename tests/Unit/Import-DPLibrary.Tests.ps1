@@ -24,6 +24,11 @@ Describe 'Import-DPLibrary' -Tag 'Unit' {
                     SkipLibraries = @()
                 }
             }
+            Mock -CommandName Get-DPRuntimeProfile -MockWith {
+                [PSCustomObject]@{
+                    targetFramework = 'net8.0'
+                }
+            }
         }
 
         It 'Throws when the target framework directory does not exist' {
@@ -293,7 +298,8 @@ if ($ConsumerType.GetMethod('GetValue').Invoke($null, @()) -ne 'resolved') {
             $ChildScriptPath = Join-Path -Path $TestDrive -ChildPath 'Invoke-SyntheticDependencyTest.ps1'
             Set-Content -LiteralPath $ChildScriptPath -Value $ChildScript -Encoding UTF8
 
-            $ProcessOutput = @(& pwsh -NoProfile -NonInteractive -File $ChildScriptPath 2>&1)
+            $ChildPowerShellExecutable = [Environment]::ProcessPath
+            $ProcessOutput = @(& $ChildPowerShellExecutable -NoProfile -NonInteractive -File $ChildScriptPath 2>&1)
             $ProcessExitCode = $LASTEXITCODE
 
             $ProcessExitCode | Should -Be 0 -Because ($ProcessOutput -join [Environment]::NewLine)
@@ -445,7 +451,8 @@ if ($ProbeLoadedAssemblies.Count -gt 0) {
             $ChildScriptPath = Join-Path -Path $TestDrive -ChildPath 'Invoke-MetadataOnlyDependencyTest.ps1'
             Set-Content -LiteralPath $ChildScriptPath -Value $ChildScript -Encoding UTF8
 
-            $ProcessOutput = @(& pwsh -NoProfile -NonInteractive -File $ChildScriptPath 2>&1)
+            $ChildPowerShellExecutable = [Environment]::ProcessPath
+            $ProcessOutput = @(& $ChildPowerShellExecutable -NoProfile -NonInteractive -File $ChildScriptPath 2>&1)
             $ProcessExitCode = $LASTEXITCODE
             $ProcessOutputText = $ProcessOutput -join [Environment]::NewLine
 
