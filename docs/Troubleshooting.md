@@ -20,13 +20,15 @@ credentials, VS Code, Azure Automation, or PSGallery module installation.
 
 ## Supported runtime (and Windows PowerShell 5.1)
 
-The automated fix — `Import-DPLibrary` and `Import-DPBaseProfile` — requires
-**PowerShell 7.4+ on .NET 8**. It relies on `AssemblyLoadContext`, which does not
-exist on .NET Framework 4.8, so it does not run on **Windows PowerShell 5.1**.
+The automated fix — `Import-DPLibrary` and `Import-DPBaseProfile` — requires one
+of the exact PowerShell/.NET pairs in the
+[generated support matrix](generated/Support-Matrix.md). It relies on
+`AssemblyLoadContext`, which does not exist on .NET Framework 4.8, so it does not
+run on **Windows PowerShell 5.1**.
 
 If you are on Windows PowerShell 5.1 and hitting the same conflict, you can still
 use DLLPickle's **inspection helpers** to solve it manually. Run them from a
-PowerShell 7.4+ session — they still inspect the current-user Windows PowerShell
+a supported PowerShell session — they still inspect the current-user Windows PowerShell
 module roots from there — to find which installed module ships the newest
 identity DLL, then connect to that service *first* (the "first one wins"
 workaround). For example:
@@ -91,17 +93,28 @@ differences by name, version, and location.
 
 ## Common loader errors
 
-### `Binary directory not found for target framework 'net8.0'`
+### `Unsupported PowerShell runtime` or `CLR mismatch`
 
-`Import-DPLibrary` loads the bundled assemblies from the module's `bin/net8.0`
-folder and throws this error if that folder is missing:
+DLLPickle does not use runtime roll-forward as support evidence. Confirm
+`$PSVersionTable.PSVersion`, `[Environment]::Version`, `$PSHOME`, and
+`[Environment]::ProcessPath` against the [generated support matrix](generated/Support-Matrix.md).
+An undeclared PowerShell line or a PowerShell/CLR pair that does not match the shipped
+policy is rejected before any bundled assembly loads. Install a declared stock
+PowerShell runtime or update DLLPickle after a new support-contract release; do not
+rename a shim or copy another TFM directory to bypass the check.
+
+### `Binary directory not found for target framework '<tfm>'`
+
+`Import-DPLibrary` maps the running PowerShell minor and CLR major to `net8.0`,
+`net9.0`, or `net10.0`, then loads the bundled assemblies from that directory.
+It throws this error if the selected folder is missing:
 
 ```text
-Binary directory not found for target framework 'net8.0' at: <path>\bin\net8.0
+Binary directory not found for target framework '<tfm>' at: <path>\bin\<tfm>
 ```
 
 This usually means the installed module is incomplete, or you are importing from a
-source tree that has not been built (the `bin/net8.0` output is generated, not
+source tree that has not been built (the `bin/<tfm>` output is generated, not
 committed). Re-install the module from the PowerShell Gallery:
 
 ```powershell
@@ -124,9 +137,9 @@ and friends) for the supported base profile. The issue repro tests assert that
 the protected import path keeps the broker/MSAL line aligned to avoid
 `WithBroker` missing-method failures across mixed imports.
 
-`Azure.Core` is intentionally not preloaded on the PowerShell 7.4+ (net8.0)
+`Azure.Core` is intentionally not preloaded on any supported ALC-capable
 profile. The original `Azure.Core` preload (#183) was scoped to Windows
-PowerShell (net48), which 2.0 no longer supports. On .NET 8, Graph, Exchange,
+PowerShell (net48), which 2.0 no longer supports. On the supported .NET runtimes, Graph, Exchange,
 and Teams resolve a compatible `Azure.Core` themselves, and preloading it breaks
 `Connect-AzAccount` (see the Az.Accounts note below).
 
@@ -162,7 +175,7 @@ in the default context splits the identity of `Azure.Core.TokenRequestContext`
 across the two load contexts, so Az's `InteractiveBrowserCredential` method
 signature no longer matches its caller.
 
-DLLPickle no longer preloads `Azure.Core` on the net8.0 profile, so Az.Accounts
+DLLPickle does not preload `Azure.Core` on any supported profile, so Az.Accounts
 resolves a single, consistent `Azure.Core` and `Connect-AzAccount` succeeds
 alongside the Graph/Exchange/Teams stack. If you still see this error, confirm
 no other module or profile script preloaded `Azure.Core` into the session, or
