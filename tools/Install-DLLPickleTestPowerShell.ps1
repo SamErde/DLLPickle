@@ -234,6 +234,15 @@ if ($Profiles.Count -ne 1) {
     throw "PowerShell $ExactVersion is not an exact, unique servicing patch in the DLLPickle test matrix."
 }
 $ExpectedProfile = $Profiles[0]
+$ExpectedDotNetRuntimeVersionText = [string]$ExpectedProfile.dotnetRuntimeVersion
+if ([string]::IsNullOrWhiteSpace($ExpectedDotNetRuntimeVersionText)) {
+    throw "PowerShell $ExactVersion has no dotnetRuntimeVersion in the DLLPickle test matrix."
+}
+try {
+    $ExpectedDotNetRuntimeVersion = [version]$ExpectedDotNetRuntimeVersionText
+} catch {
+    throw "PowerShell $ExactVersion has an invalid dotnetRuntimeVersion '$ExpectedDotNetRuntimeVersionText' in the DLLPickle test matrix."
+}
 
 $ExpectedPayloadRoot = $null
 if ($PSCmdlet.ParameterSetName -eq 'Executable') {
@@ -344,6 +353,9 @@ if ([version]$Identity.powerShellVersion -ne $PowerShellVersion) {
 }
 if ([int]$Identity.dotNetMajor -ne [int]$ExpectedProfile.dotnetMajor) {
     throw "CLR mismatch for PowerShell $ExactVersion. Expected CLR $($ExpectedProfile.dotnetMajor) but '$ResolvedExecutable' reported CLR $($Identity.dotNetMajor)."
+}
+if ([version]$Identity.dotNetVersion -ne $ExpectedDotNetRuntimeVersion) {
+    throw "CLR runtime version mismatch for PowerShell $ExactVersion. Expected CLR $ExpectedDotNetRuntimeVersion but '$ResolvedExecutable' reported CLR $($Identity.dotNetVersion)."
 }
 if ($PSCmdlet.ParameterSetName -eq 'Provider') {
     if ($Identity.platform -ne $Platform -or $Identity.architecture -ne $Architecture) {

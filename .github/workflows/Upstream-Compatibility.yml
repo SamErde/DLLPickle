@@ -63,6 +63,7 @@ jobs:
               # the guardrail itself from being repaired.
               $LivePatterns = @(
                 '^build/dependency-policy\.json$',
+                '^build/DLLPickle\.Build\.ps1$',
                 '^src/DLLPickle\.Build/DLLPickle\.csproj$',
                 '^src/DLLPickle\.Build/packages\.lock\.json$',
                 '^build/powershell-test-matrix\.json$',

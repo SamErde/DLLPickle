@@ -17,6 +17,7 @@ BeforeAll {
                     powerShellMajor   = $PSVersionTable.PSVersion.Major
                     powerShellMinor   = $PSVersionTable.PSVersion.Minor
                     dotnetMajor       = [Environment]::Version.Major
+                    dotnetRuntimeVersion = [Environment]::Version.ToString()
                     targetFramework   = 'net{0}.0' -f [Environment]::Version.Major
                 }
             )
@@ -36,6 +37,7 @@ Describe 'Exact PowerShell runtime provisioning' -Tag 'Unit' {
 
         $result.Provider | Should -Be 'ExplicitExecutable'
         $result.PowerShellVersion | Should -Be $currentVersion
+        $result.DotNetVersion | Should -Be ([Environment]::Version.ToString())
         $result.DotNetMajor | Should -Be ([Environment]::Version.Major)
         $result.TargetFramework | Should -Be ('net{0}.0' -f [Environment]::Version.Major)
         $result.ExecutablePath | Should -Be (Resolve-Path -LiteralPath $currentExecutable).Path
@@ -52,6 +54,20 @@ Describe 'Exact PowerShell runtime provisioning' -Tag 'Unit' {
         {
             & $script:ProvisionerPath -PowerShellExecutable $currentExecutable -PowerShellVersion $differentDeclaredVersion
         } | Should -Throw '*version mismatch*'
+    }
+
+    It 'rejects a matrix entry with a different bundled .NET runtime patch' {
+        $currentExecutable = (Get-Process -Id $PID).Path
+        $currentVersion = $PSVersionTable.PSVersion.ToString()
+        $TestMatrixPath = Write-RuntimeProvisioningMatrixFixture -Path (Join-Path $TestDrive 'runtime-version-mismatch.json')
+        $matrix = Get-Content -LiteralPath $TestMatrixPath -Raw | ConvertFrom-Json
+        $runtimeVersion = [Environment]::Version
+        $matrix.profiles[0].dotnetRuntimeVersion = '{0}.{1}.{2}' -f $runtimeVersion.Major, $runtimeVersion.Minor, ($runtimeVersion.Build + 1)
+        $matrix | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $TestMatrixPath -Encoding UTF8
+
+        {
+            & $script:ProvisionerPath -PowerShellExecutable $currentExecutable -PowerShellVersion $currentVersion -MatrixPath $TestMatrixPath
+        } | Should -Throw '*CLR runtime version mismatch*'
     }
 
     It 'contains no floating release selector or PATH mutation' {
