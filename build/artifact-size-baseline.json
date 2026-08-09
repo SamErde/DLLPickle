@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "approvalStatus": "requires-maintainer-approval",
+  "approvalStatus": "accepted",
   "capturedAtUtc": "2026-08-09T03:43:28Z",
-  "approvedAtUtc": null,
+  "approvedAtUtc": "2026-08-09T17:36:05Z",
   "thresholds": {
     "maximumIncreasePercent": 10,
     "maximumIncreaseBytes": 2097152
