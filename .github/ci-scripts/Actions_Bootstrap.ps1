@@ -52,6 +52,13 @@ Get-PackageProvider -Name Nuget -ForceBootstrap | Out-Null
 Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
 
 Write-Host '📦 Installing exact PowerShell build-tool versions'
+$ModuleInstallCommandName = if ([string]::IsNullOrWhiteSpace($ModuleInstallPath)) {
+    'Install-Module'
+} else {
+    'Save-Module'
+}
+$ModuleInstallCommand = Get-Command -Name $ModuleInstallCommandName -ErrorAction Stop
+
 foreach ($Module in @($ToolPolicy.modules)) {
     $RequiredVersion = [version]$Module.version
     $InstalledModule = Get-Module -ListAvailable -Name $Module.name |
@@ -66,17 +73,20 @@ foreach ($Module in @($ToolPolicy.modules)) {
             Force           = $true
             ErrorAction     = 'Stop'
         }
-        if ($Module.skipPublisherCheck) {
+        if (
+            $Module.skipPublisherCheck -and
+            (Test-DLLPickleCommandParameter -Command $ModuleInstallCommand -ParameterName 'SkipPublisherCheck')
+        ) {
             $ModuleCommandSplat['SkipPublisherCheck'] = $true
         }
 
         try {
             if ([string]::IsNullOrWhiteSpace($ModuleInstallPath)) {
                 $ModuleCommandSplat['Scope'] = 'CurrentUser'
-                Install-Module @ModuleCommandSplat
+                & $ModuleInstallCommand @ModuleCommandSplat
             } else {
                 $ModuleCommandSplat['Path'] = $ModuleInstallPath
-                Save-Module @ModuleCommandSplat
+                & $ModuleInstallCommand @ModuleCommandSplat
             }
         } catch {
             Write-Host "  - Failed to install $($Module.name) $RequiredVersion"

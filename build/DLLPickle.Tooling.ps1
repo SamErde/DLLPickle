@@ -53,12 +53,28 @@ function Get-DLLPickleBuildToolVersion {
         [string]$Name
     )
 
-    $Matches = @($Policy.modules | Where-Object { $_.name -eq $Name })
-    if ($Matches.Count -ne 1) {
-        throw "Expected exactly one build-tool policy entry for '$Name'; found $($Matches.Count)."
+    $MatchingModules = @($Policy.modules | Where-Object { $_.name -eq $Name })
+    if ($MatchingModules.Count -ne 1) {
+        throw "Expected exactly one build-tool policy entry for '$Name'; found $($MatchingModules.Count)."
     }
 
-    return [version]$Matches[0].version
+    return [version]$MatchingModules[0].version
+}
+
+function Test-DLLPickleCommandParameter {
+    [CmdletBinding()]
+    [OutputType([bool])]
+    param(
+        [Parameter(Mandatory)]
+        [ValidateNotNull()]
+        [System.Management.Automation.CommandInfo]$Command,
+
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
+        [string]$ParameterName
+    )
+
+    return $Command.Parameters.ContainsKey($ParameterName)
 }
 
 function Test-DLLPickleToolVersionMatch {

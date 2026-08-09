@@ -56,6 +56,43 @@ Describe 'Deterministic build tooling' -Tag 'Unit' {
         $wrapper | Should -Not -Match 'MinimumVersion|MaximumVersion'
     }
 
+    It 'detects whether the active module command supports SkipPublisherCheck' {
+        function Test-CommandWithPublisherCheck {
+            param(
+                [Parameter()]
+                [switch]$SkipPublisherCheck
+            )
+
+            $null = $SkipPublisherCheck
+        }
+
+        function Test-CommandWithoutPublisherCheck {
+            param(
+                [Parameter()]
+                [switch]$Force
+            )
+
+            $null = $Force
+        }
+
+        $WithPublisherCheck = Get-Command -Name Test-CommandWithPublisherCheck
+        $WithoutPublisherCheck = Get-Command -Name Test-CommandWithoutPublisherCheck
+
+        Test-DLLPickleCommandParameter -Command $WithPublisherCheck -ParameterName 'SkipPublisherCheck' |
+            Should -BeTrue
+        Test-DLLPickleCommandParameter -Command $WithoutPublisherCheck -ParameterName 'SkipPublisherCheck' |
+            Should -BeFalse
+    }
+
+    It 'guards optional publisher-check parameters before invoking the module command' {
+        $bootstrap = Get-Content -LiteralPath $script:BootstrapPath -Raw
+
+        $bootstrap | Should -Match ([regex]::Escape(
+                'Test-DLLPickleCommandParameter -Command $ModuleInstallCommand -ParameterName ''SkipPublisherCheck'''
+            ))
+        $bootstrap | Should -Match ([regex]::Escape('& $ModuleInstallCommand @ModuleCommandSplat'))
+    }
+
     It 'does not change StrictMode in the caller process' {
         $tooling = Get-Content -LiteralPath $script:ToolingScriptPath -Raw
 
