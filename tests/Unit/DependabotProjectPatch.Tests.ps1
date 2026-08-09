@@ -68,4 +68,22 @@ Describe 'Dependabot project patch validation' -Tag 'Unit' {
         { & $script:ValidatorPath -BaseProjectPath $script:BasePath -CandidateProjectPath $script:CandidatePath } |
             Should -Throw '*unsupported candidate version*'
     }
+
+    It 'rejects a wildcard in the middle of a numeric version' {
+        $script:BaseProject.Replace('Version="1.0.0"', 'Version="1.*.3"') |
+            Set-Content -LiteralPath $script:CandidatePath -Encoding UTF8
+
+        { & $script:ValidatorPath -BaseProjectPath $script:BasePath -CandidateProjectPath $script:CandidatePath } |
+            Should -Throw '*unsupported candidate version*'
+    }
+
+    It 'accepts documented prerelease floating-version forms' {
+        foreach ($CandidateVersion in @('1.1.*-*', '1.2.0-rc.*')) {
+            $script:BaseProject.Replace('Version="1.0.0"', "Version=`"$CandidateVersion`"") |
+                Set-Content -LiteralPath $script:CandidatePath -Encoding UTF8
+
+            $Result = & $script:ValidatorPath -BaseProjectPath $script:BasePath -CandidateProjectPath $script:CandidatePath
+            $Result.IsVersionOnlyUpdate | Should -BeTrue
+        }
+    }
 }

@@ -95,12 +95,18 @@ if ($BaseKeys.Count -ne $CandidateKeys.Count -or
     throw 'The candidate project adds, removes, or renames a PackageReference.'
 }
 
+$NuGetVersionExpressionPattern = '^(?:' +
+    '\d+(?:\.\d+){0,3}(?:-[0-9A-Za-z](?:[0-9A-Za-z.-]*[0-9A-Za-z])?)?(?:\+[0-9A-Za-z](?:[0-9A-Za-z.-]*[0-9A-Za-z])?)?' +
+    '|\d+(?:\.\d+){0,2}\.\*(?:-\*)?' +
+    '|\d+(?:\.\d+){0,3}-(?:\*|[0-9A-Za-z](?:[0-9A-Za-z.-]*[0-9A-Za-z])?\.\*)' +
+    '|\*|\*-\*' +
+    ')$'
 $ChangedPackages = @(
     foreach ($PackageKey in $BaseKeys) {
         $BaseVersion = [string]$Base.PackageVersions[$PackageKey]
         $CandidateVersion = [string]$Candidate.PackageVersions[$PackageKey]
         if ($BaseVersion -ne $CandidateVersion) {
-            if ($CandidateVersion -notmatch '^\d+(?:\.(?:\d+|\*)){1,3}(?:-[0-9A-Za-z][0-9A-Za-z.-]*)?(?:\+[0-9A-Za-z][0-9A-Za-z.-]*)?$') {
+            if ($CandidateVersion -notmatch $NuGetVersionExpressionPattern) {
                 throw "PackageReference '$PackageKey' has unsupported candidate version '$CandidateVersion'."
             }
             $PackageKey
