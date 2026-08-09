@@ -4,9 +4,11 @@ Builds a validated exact-patch matrix proposal from support-update discovery evi
 
 .DESCRIPTION
 Preparation mode writes a non-authoritative candidate matrix used only to provision
-checksum-verified official archives. Finalization requires one runtime identity for
-every declared operating-system lane of every patch update, proves the identities
-agree on the bundled .NET runtime, and writes the reviewable matrix proposal.
+checksum-verified official archives. The exact bundled .NET patch is marked pending
+until those archives report their runtime identities. Finalization requires one
+runtime identity for every declared operating-system lane of every patch update,
+proves the identities agree on the bundled .NET runtime, and writes the reviewable
+matrix proposal.
 
 This command only writes local files. It never commits, pushes, opens a pull request,
 or modifies an issue.
@@ -121,7 +123,7 @@ foreach ($PatchUpdate in $PatchUpdates) {
         $ExistingArchive[0].downloadUrl = [string]$CandidateArchive[0].DownloadUrl
     }
 
-    $DotNetRuntimeVersion = [string]$MatrixProfile[0].dotnetRuntimeVersion
+    $DotNetRuntimeVersion = if ($IsPreparation) { $null } else { [string]$MatrixProfile[0].dotnetRuntimeVersion }
     if (-not $IsPreparation) {
         $CandidateIdentities = @($IdentityRecords | Where-Object { [string]$_.PowerShellVersion -eq $CandidateVersion })
         if ($CandidateIdentities.Count -ne @($Matrix.lanes).Count) {
@@ -158,7 +160,7 @@ foreach ($PatchUpdate in $PatchUpdates) {
             ReleaseLine = [string]$PatchUpdate.ReleaseLine
             CurrentVersion = $CurrentVersion
             CandidateVersion = $CandidateVersion
-            DotNetRuntimeVersion = $DotNetRuntimeVersion
+            DotNetRuntimeVersion = if ($IsPreparation) { 'pending-runtime-identity' } else { $DotNetRuntimeVersion }
             RuntimeIdentityStatus = if ($IsPreparation) { 'pending-all-lanes' } else { 'verified-all-lanes' }
         })
 }

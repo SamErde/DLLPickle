@@ -94,7 +94,10 @@ Describe 'PowerShell support update discovery' -Tag 'Unit' {
         $CandidatePath = Join-Path $TestDrive 'candidate-matrix.json'
         $Preparation = & $script:MatrixUpdatePath -TestMatrixPath $Fixture.MatrixPath -UpdateReportPath $ReportPath -OutputPath $CandidatePath -PrepareCandidate
         $Preparation.Mode | Should -Be 'CandidatePreparation'
-        (Get-Content -LiteralPath $CandidatePath -Raw | ConvertFrom-Json).candidateValidationPending | Should -BeTrue
+        $PreparedMatrix = Get-Content -LiteralPath $CandidatePath -Raw | ConvertFrom-Json
+        $PreparedMatrix.candidateValidationPending | Should -BeTrue
+        @($PreparedMatrix.profiles | Where-Object powerShellVersion -EQ '7.5.10')[0].dotnetRuntimeVersion | Should -BeNullOrEmpty
+        $Preparation.UpdatedLines[0].DotNetRuntimeVersion | Should -Be 'pending-runtime-identity'
 
         $IdentityDirectory = Join-Path $TestDrive 'identities'
         $null = New-Item -Path $IdentityDirectory -ItemType Directory

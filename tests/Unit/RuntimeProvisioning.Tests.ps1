@@ -70,6 +70,49 @@ Describe 'Exact PowerShell runtime provisioning' -Tag 'Unit' {
         } | Should -Throw '*CLR runtime version mismatch*'
     }
 
+    It 'discovers the runtime patch for an explicitly pending lifecycle candidate' {
+        $currentExecutable = (Get-Process -Id $PID).Path
+        $currentVersion = $PSVersionTable.PSVersion.ToString()
+        $TestMatrixPath = Write-RuntimeProvisioningMatrixFixture -Path (Join-Path $TestDrive 'pending-runtime-version.json')
+        $matrix = Get-Content -LiteralPath $TestMatrixPath -Raw | ConvertFrom-Json
+        $matrix.profiles[0].dotnetRuntimeVersion = $null
+        $matrix | Add-Member -NotePropertyName candidateValidationPending -NotePropertyValue $true
+        $matrix | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $TestMatrixPath -Encoding UTF8
+
+        $result = & $script:ProvisionerPath -PowerShellExecutable $currentExecutable -PowerShellVersion $currentVersion -MatrixPath $TestMatrixPath -PassThru
+
+        $result.DotNetVersion | Should -Be ([Environment]::Version.ToString())
+        $result.DotNetMajor | Should -Be ([Environment]::Version.Major)
+    }
+
+    It 'rejects a missing runtime patch outside lifecycle candidate validation' {
+        $currentExecutable = (Get-Process -Id $PID).Path
+        $currentVersion = $PSVersionTable.PSVersion.ToString()
+        $TestMatrixPath = Write-RuntimeProvisioningMatrixFixture -Path (Join-Path $TestDrive 'missing-runtime-version.json')
+        $matrix = Get-Content -LiteralPath $TestMatrixPath -Raw | ConvertFrom-Json
+        $matrix.profiles[0].dotnetRuntimeVersion = $null
+        $matrix | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $TestMatrixPath -Encoding UTF8
+
+        {
+            & $script:ProvisionerPath -PowerShellExecutable $currentExecutable -PowerShellVersion $currentVersion -MatrixPath $TestMatrixPath
+        } | Should -Throw '*has no dotnetRuntimeVersion*'
+    }
+
+    It 'still enforces the declared CLR major for a pending lifecycle candidate' {
+        $currentExecutable = (Get-Process -Id $PID).Path
+        $currentVersion = $PSVersionTable.PSVersion.ToString()
+        $TestMatrixPath = Write-RuntimeProvisioningMatrixFixture -Path (Join-Path $TestDrive 'pending-runtime-major-mismatch.json')
+        $matrix = Get-Content -LiteralPath $TestMatrixPath -Raw | ConvertFrom-Json
+        $matrix.profiles[0].dotnetRuntimeVersion = $null
+        $matrix.profiles[0].dotnetMajor = [Environment]::Version.Major + 1
+        $matrix | Add-Member -NotePropertyName candidateValidationPending -NotePropertyValue $true
+        $matrix | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $TestMatrixPath -Encoding UTF8
+
+        {
+            & $script:ProvisionerPath -PowerShellExecutable $currentExecutable -PowerShellVersion $currentVersion -MatrixPath $TestMatrixPath
+        } | Should -Throw '*CLR mismatch*'
+    }
+
     It 'contains no floating release selector or PATH mutation' {
         $source = Get-Content -LiteralPath $script:ProvisionerPath -Raw
 

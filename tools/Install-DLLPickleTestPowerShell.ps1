@@ -6,6 +6,9 @@ Provision or validate an exact stock PowerShell executable for DLLPickle tests.
 Uses either an explicit executable, a checksum-verified official PowerShell archive,
 or the pinned optional multi-pwsh CI provider. The returned executable is always the
 official payload pwsh/pwsh.exe, never an alias, shim, hosted process, or PATH lookup.
+For a lifecycle candidate matrix that explicitly marks validation pending, the
+provisioner records the observed .NET patch while still enforcing the declared CLR
+major. Authoritative matrices always require an exact .NET runtime-version match.
 
 .PARAMETER PowerShellExecutable
 An already-provisioned stock PowerShell executable to validate and return.
@@ -234,14 +237,23 @@ if ($Profiles.Count -ne 1) {
     throw "PowerShell $ExactVersion is not an exact, unique servicing patch in the DLLPickle test matrix."
 }
 $ExpectedProfile = $Profiles[0]
+$CandidateValidationPending = (
+    $Matrix.PSObject.Properties.Name -contains 'candidateValidationPending' -and
+    $Matrix.candidateValidationPending -is [bool] -and
+    $Matrix.candidateValidationPending
+)
 $ExpectedDotNetRuntimeVersionText = [string]$ExpectedProfile.dotnetRuntimeVersion
+$ExpectedDotNetRuntimeVersion = $null
 if ([string]::IsNullOrWhiteSpace($ExpectedDotNetRuntimeVersionText)) {
-    throw "PowerShell $ExactVersion has no dotnetRuntimeVersion in the DLLPickle test matrix."
-}
-try {
-    $ExpectedDotNetRuntimeVersion = [version]$ExpectedDotNetRuntimeVersionText
-} catch {
-    throw "PowerShell $ExactVersion has an invalid dotnetRuntimeVersion '$ExpectedDotNetRuntimeVersionText' in the DLLPickle test matrix."
+    if (-not $CandidateValidationPending) {
+        throw "PowerShell $ExactVersion has no dotnetRuntimeVersion in the DLLPickle test matrix."
+    }
+} else {
+    try {
+        $ExpectedDotNetRuntimeVersion = [version]$ExpectedDotNetRuntimeVersionText
+    } catch {
+        throw "PowerShell $ExactVersion has an invalid dotnetRuntimeVersion '$ExpectedDotNetRuntimeVersionText' in the DLLPickle test matrix."
+    }
 }
 
 $ExpectedPayloadRoot = $null
@@ -354,7 +366,7 @@ if ([version]$Identity.powerShellVersion -ne $PowerShellVersion) {
 if ([int]$Identity.dotNetMajor -ne [int]$ExpectedProfile.dotnetMajor) {
     throw "CLR mismatch for PowerShell $ExactVersion. Expected CLR $($ExpectedProfile.dotnetMajor) but '$ResolvedExecutable' reported CLR $($Identity.dotNetMajor)."
 }
-if ([version]$Identity.dotNetVersion -ne $ExpectedDotNetRuntimeVersion) {
+if ($null -ne $ExpectedDotNetRuntimeVersion -and [version]$Identity.dotNetVersion -ne $ExpectedDotNetRuntimeVersion) {
     throw "CLR runtime version mismatch for PowerShell $ExactVersion. Expected CLR $ExpectedDotNetRuntimeVersion but '$ResolvedExecutable' reported CLR $($Identity.dotNetVersion)."
 }
 if ($PSCmdlet.ParameterSetName -eq 'Provider') {
