@@ -28,7 +28,7 @@ run on **Windows PowerShell 5.1**.
 
 If you are on Windows PowerShell 5.1 and hitting the same conflict, you can still
 use DLLPickle's **inspection helpers** to solve it manually. Run them from a
-a supported PowerShell session — they still inspect the current-user Windows PowerShell
+supported PowerShell session — they still inspect the current-user Windows PowerShell
 module roots from there — to find which installed module ships the newest
 identity DLL, then connect to that service *first* (the "first one wins"
 workaround). For example:
