@@ -26,7 +26,8 @@
     Path where the JSON candidate report is written.
 
 .PARAMETER Restore
-    Runs dotnet restore --force-evaluate when a project file change is applied.
+    Runs dotnet restore --force-evaluate when a project file change is applied or
+    when an unchanged floating reference must be reevaluated against upstream state.
 
 .EXAMPLE
     ./tools/Update-DLLPickleDependencyPins.ps1 -InventoryPath ./artifacts/upstream/inventory.json -Restore
@@ -226,6 +227,8 @@ $Inventories = @(
 $Policy = Get-Content -LiteralPath $ResolvedPolicyPath -Raw | ConvertFrom-Json
 $ProjectContent = @(Get-Content -LiteralPath $ResolvedProjectPath)
 $ProjectChanged = $false
+$RestoreRequired = $false
+$RestoreExecuted = $false
 
 $Changes = New-Object System.Collections.Generic.List[object]
 $Warnings = New-Object System.Collections.Generic.List[string]
@@ -385,6 +388,7 @@ foreach ($Pin in @($Policy.preload)) {
         CrossPlatformConsistent   = $CrossPlatformConsistent
         ReviewRequired            = $UsesConditionalReferences -or $ConditionalPinRequired -or -not $CrossPlatformConsistent
         TfmResults                = @($TfmResults)
+        RestoreRequired           = $false
         Applied               = $false
         Reason                = [string]$Pin.reason
     }
@@ -397,6 +401,10 @@ foreach ($Pin in @($Policy.preload)) {
     if (-not $CrossPlatformConsistent) {
         $Changes.Add($Change)
         continue
+    }
+    if ($VersionPolicy -eq 'minorPatchFloat' -and -not $IsCapped) {
+        $RestoreRequired = $true
+        $Change.RestoreRequired = $true
     }
 
     foreach ($ReferenceIndex in $UniqueReferenceIndices) {
@@ -451,8 +459,11 @@ $BlockedFindings = @(
 
 if ($ProjectChanged) {
     Set-Content -LiteralPath $ResolvedProjectPath -Value $ProjectContent -Encoding UTF8
+}
 
-    if ($Restore.IsPresent) {
+if ($Restore.IsPresent -and ($ProjectChanged -or $RestoreRequired)) {
+    $RestoreApproved = $ProjectChanged -or $PSCmdlet.ShouldProcess($ResolvedProjectPath, 'Reevaluate unchanged floating PackageReference entries and refresh the lock file')
+    if ($RestoreApproved) {
         $ProjectDirectory = Split-Path -Path $ResolvedProjectPath -Parent
         Push-Location -LiteralPath $ProjectDirectory
         try {
@@ -460,6 +471,7 @@ if ($ProjectChanged) {
             if ($LASTEXITCODE -ne 0) {
                 throw "dotnet restore failed with exit code $LASTEXITCODE."
             }
+            $RestoreExecuted = $true
         } finally {
             Pop-Location
         }
@@ -472,6 +484,8 @@ $Report = [PSCustomObject]@{
     PolicyPath       = $ResolvedPolicyPath
     ProjectPath      = $ResolvedProjectPath
     ProjectChanged   = $ProjectChanged
+    RestoreRequired  = $RestoreRequired
+    RestoreExecuted  = $RestoreExecuted
     ReviewRequired   = @($Changes | Where-Object ReviewRequired).Count -gt 0
     Changes          = @($Changes.ToArray())
     BlockedFindings  = @($BlockedFindings)

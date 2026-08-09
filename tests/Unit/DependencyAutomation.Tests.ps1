@@ -302,6 +302,68 @@ Describe 'Dependency automation tooling' -Tag 'Unit' {
         $Report.BlockedFindings[0].AssemblyName | Should -Be 'Microsoft.OData.Core'
     }
 
+    It 'reevaluates an unchanged floating reference so the lock file can advance' {
+        $ProjectPath = Join-Path $TestDrive 'floating.csproj'
+        @'
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Contoso.Library" Version="4.*" />
+  </ItemGroup>
+</Project>
+'@ | Set-Content -LiteralPath $ProjectPath -Encoding UTF8
+
+        $PolicyPath = Join-Path $TestDrive 'floating-policy.json'
+        @{
+            preload = @(
+                @{
+                    packageName = 'Contoso.Library'
+                    assemblyName = 'Contoso.Library'
+                    targetFrameworks = @('net8.0')
+                    versionPolicy = 'minorPatchFloat'
+                    sourceModules = @('Contoso.Module')
+                    reason = 'Synthetic floating-lock refresh test.'
+                }
+            )
+            blockedPreloadAssemblies = @()
+        } | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $PolicyPath -Encoding UTF8
+
+        $InventoryPath = Join-Path $TestDrive 'floating-inventory.json'
+        @{
+            Modules = @(
+                @{
+                    Name = 'Contoso.Module'
+                    Version = '2.0.0'
+                    TrackedAssemblies = @(
+                        @{ Name = 'Contoso.Library'; Version = '4.9.0.0'; RelativePath = 'Contoso.Library.dll' }
+                    )
+                }
+            )
+        } | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $InventoryPath -Encoding UTF8
+
+        $DotnetStateKey = 'DLLPickle.DependencyAutomation.DotnetCalls'
+        $DotnetCalls = [System.Collections.Generic.List[string]]::new()
+        [System.AppDomain]::CurrentDomain.SetData($DotnetStateKey, $DotnetCalls)
+        Mock dotnet {
+            $State = [System.AppDomain]::CurrentDomain.GetData('DLLPickle.DependencyAutomation.DotnetCalls')
+            $State.Add(($args -join ' '))
+            $global:LASTEXITCODE = 0
+        }
+
+        $Report = & $script:UpdateScriptPath -InventoryPath $InventoryPath -PolicyPath $PolicyPath -ProjectPath $ProjectPath -OutputPath (Join-Path $TestDrive 'floating-report.json') -Restore -Confirm:$false
+
+        $CapturedDotnetCalls = @($DotnetCalls)
+        [System.AppDomain]::CurrentDomain.SetData($DotnetStateKey, $null)
+        $Report.ProjectChanged | Should -BeFalse
+        $Report.RestoreRequired | Should -BeTrue
+        $Report.RestoreExecuted | Should -BeTrue
+        $Report.Changes[0].RestoreRequired | Should -BeTrue
+        $CapturedDotnetCalls | Should -HaveCount 1
+        $CapturedDotnetCalls[0] | Should -Match 'restore.*floating\.csproj.*--force-evaluate'
+    }
+
     It 'resolves and flags package pins in framework-conditioned ItemGroups' {
         $ProjectPath = Join-Path -Path $TestDrive -ChildPath 'conditional.csproj'
         @'
