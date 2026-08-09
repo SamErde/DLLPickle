@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "approvalStatus": "requires-maintainer-approval",
+  "capturedAtUtc": "2026-08-09T03:43:28Z",
+  "approvedAtUtc": null,
+  "thresholds": {
+    "maximumIncreasePercent": 10,
+    "maximumIncreaseBytes": 2097152
+  },
+  "profiles": [
+    {
+      "name": "net8.0",
+      "unpackedBytes": 65217096,
+      "compressedBytes": 21966070
+    },
+    {
+      "name": "net9.0",
+      "unpackedBytes": 65217056,
+      "compressedBytes": 21966426
+    },
+    {
+      "name": "net10.0",
+      "unpackedBytes": 65217176,
+      "compressedBytes": 21966409
+    }
+  ],
+  "fullArtifact": {
+    "unpackedBytes": 195783343,
+    "compressedBytes": 65935253
+  }
+}

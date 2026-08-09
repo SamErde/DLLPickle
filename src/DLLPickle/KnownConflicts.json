@@ -18,6 +18,53 @@
       "runtimeProbe": "2026-06-01 scenarios 1-4: both load OData into the Default ALC; Az.Storage-first -> EXO REF_DEF_MISMATCH (0x80131040); EXO-first -> Az.Storage 'same name already loaded'.",
       "decidedOn": "2026-06-01",
       "reAdjudicationRequired": "Any OData classification change requires fresh runtime evidence for both import orders in one process; static dependency updates alone are insufficient."
+    },
+    "importOrders": [
+      [
+        "Az.Storage",
+        "ExchangeOnlineManagement"
+      ],
+      [
+        "ExchangeOnlineManagement",
+        "Az.Storage"
+      ]
+    ],
+    "requiresProcessIsolation": true,
+    "runtimeProfiles": [
+      {
+        "powerShellLine": "7.4",
+        "targetFramework": "net8.0",
+        "platforms": [
+          "windows",
+          "linux",
+          "macos"
+        ],
+        "evidenceStatus": "legacy-windows-evidence-requires-refresh"
+      },
+      {
+        "powerShellLine": "7.5",
+        "targetFramework": "net9.0",
+        "platforms": [
+          "windows",
+          "linux",
+          "macos"
+        ],
+        "evidenceStatus": "pending-ci-evidence"
+      },
+      {
+        "powerShellLine": "7.6",
+        "targetFramework": "net10.0",
+        "platforms": [
+          "windows",
+          "linux",
+          "macos"
+        ],
+        "evidenceStatus": "pending-ci-evidence"
+      }
+    ],
+    "validationTiers": {
+      "deterministicImportNoAuth": "required",
+      "authenticatedReadOnly": "not-run-no-approved-credentials"
     }
   }
 ]

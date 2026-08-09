@@ -35,7 +35,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: '10.0.302'
           cache: true
           cache-dependency-path: 'src/DLLPickle.Build/packages.lock.json'
 
@@ -46,3 +46,20 @@ jobs:
       - name: Build
         shell: pwsh
         run: dotnet build src/DLLPickle.Build/DLLPickle.csproj --configuration Release --no-restore
+
+      - name: Verify all target-framework assets selected by NuGet
+        shell: pwsh
+        run: |
+          $Parameters = @{
+            OutputPath = './artifacts/package/tfm-alignment.json'
+            Strict = $true
+          }
+          ./tools/Test-DLLPickleTfmAlignment.ps1 @Parameters
+
+      - name: Upload TFM alignment report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: package-tfm-alignment
+          path: ./artifacts/package/tfm-alignment.json
+          if-no-files-found: error

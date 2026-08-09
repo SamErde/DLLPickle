@@ -78,6 +78,27 @@ BeforeAll {
             }
         } | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $LockPath -Encoding utf8
 
+        $AssetsPath = Join-Path $Context 'project.assets.json'
+        $HasCompatibleAsset = @($AlignedLibFramework | Where-Object { $_ -in @('net8.0', 'net6.0', 'netstandard2.0', 'netstandard2.1', 'netcoreapp3.1') }).Count -gt 0
+        $TargetEntry = if ($HasCompatibleAsset) {
+            @{
+                'Contoso.Fixture/1.2.3' = @{
+                    type = 'package'
+                    runtime = @{ 'lib/net8.0/Contoso.Fixture.dll' = @{} }
+                }
+            }
+        } else {
+            @{
+                'Contoso.Fixture/1.2.3' = @{
+                    type = 'package'
+                    runtime = @{}
+                }
+            }
+        }
+        @{ version = 4; targets = @{ 'net8.0' = $TargetEntry } } |
+            ConvertTo-Json -Depth 15 |
+            Set-Content -LiteralPath $AssetsPath -Encoding utf8
+
         # NuGet lowercases both the package id folder and the version folder under the global cache.
         $RestoredLib = Join-Path $PackagesRoot 'contoso.fixture\1.2.3\lib'
         foreach ($Tfm in $AlignedLibFramework) {
@@ -90,6 +111,7 @@ BeforeAll {
             PolicyPath   = $PolicyPath
             LockPath     = $LockPath
             PackagesRoot = $PackagesRoot
+            AssetsPath   = $AssetsPath
         }
     }
 }
@@ -165,7 +187,7 @@ Describe 'Test-DLLPickleTfmAlignment policy-driven inspection' -Tag 'Unit' {
     It 'reports an aggregate aligned result when every preload package is aligned' {
         $Fixture = Get-FixturePolicyContext -AlignedLibFramework @('net8.0', 'netstandard2.0')
         $OutputPath = Join-Path $TestDrive 'aligned-report.json'
-        $Report = & $script:ToolPath -PolicyPath $Fixture.PolicyPath -LockFilePath $Fixture.LockPath -PackagesRoot $Fixture.PackagesRoot -OutputPath $OutputPath
+        $Report = & $script:ToolPath -PolicyPath $Fixture.PolicyPath -LockFilePath $Fixture.LockPath -ProjectAssetsPath $Fixture.AssetsPath -OutputPath $OutputPath
 
         $Report.IsAligned | Should -BeTrue
         @($Report.Packages).Count | Should -Be 1
@@ -177,15 +199,22 @@ Describe 'Test-DLLPickleTfmAlignment policy-driven inspection' -Tag 'Unit' {
 
     It 'reports an aggregate misaligned result and names the offending package' {
         $Fixture = Get-FixturePolicyContext -AlignedLibFramework @('net48')
-        $Report = & $script:ToolPath -PolicyPath $Fixture.PolicyPath -LockFilePath $Fixture.LockPath -PackagesRoot $Fixture.PackagesRoot
+        $Report = & $script:ToolPath -PolicyPath $Fixture.PolicyPath -LockFilePath $Fixture.LockPath -ProjectAssetsPath $Fixture.AssetsPath
 
         $Report.IsAligned | Should -BeFalse
-        @($Report.Misaligned) | Should -Contain 'Contoso.Fixture'
+        @($Report.Misaligned) | Should -Contain 'net8.0/Contoso.Fixture'
     }
 
     It 'throws in strict mode when a preload package is misaligned' {
         $Fixture = Get-FixturePolicyContext -AlignedLibFramework @('net48')
-        { & $script:ToolPath -PolicyPath $Fixture.PolicyPath -LockFilePath $Fixture.LockPath -PackagesRoot $Fixture.PackagesRoot -Strict } |
+        { & $script:ToolPath -PolicyPath $Fixture.PolicyPath -LockFilePath $Fixture.LockPath -ProjectAssetsPath $Fixture.AssetsPath -Strict } |
             Should -Throw '*TFM*'
+    }
+
+    It 'uses NuGet project.assets.json as the policy-mode compatibility authority' {
+        $Source = Get-Content -LiteralPath $script:ToolPath -Raw
+
+        $Source | Should -Match 'ProjectAssetsPath'
+        $Source | Should -Match ([regex]::Escape('$ProjectAssets.targets'))
     }
 }

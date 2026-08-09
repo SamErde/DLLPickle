@@ -20,6 +20,16 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+$BaselineProfileKey = if ($Baseline.PSObject.Properties.Name -contains 'ProfileKey') { [string]$Baseline.ProfileKey } else { $null }
+$CurrentProfileKey = if ($Current.PSObject.Properties.Name -contains 'ProfileKey') { [string]$Current.ProfileKey } else { $null }
+if (
+    -not [string]::IsNullOrWhiteSpace($BaselineProfileKey) -and
+    -not [string]::IsNullOrWhiteSpace($CurrentProfileKey) -and
+    $BaselineProfileKey -ne $CurrentProfileKey
+) {
+    throw "Cannot compare conflict matrices from different runtime profiles: '$BaselineProfileKey' and '$CurrentProfileKey'."
+}
+
 function Test-DLLPickleStringSetEqual {
     [CmdletBinding()]
     param(
@@ -97,7 +107,20 @@ $Findings = [PSCustomObject]@{
     AlcOwnershipChanges = $AlcChanges
 }
 
+$FindingCanonicalText = @(
+    "profile=$CurrentProfileKey"
+    "new=$(@($NewConflicts | Sort-Object) -join ',')"
+    "removed=$(@($RemovedConflicts | Sort-Object) -join ',')"
+    "versions=$(@($VersionChanges | Sort-Object Name | ForEach-Object { '{0}:{1}>{2}' -f $_.Name, (@($_.Baseline) -join ','), (@($_.Current) -join ',') }) -join ';')"
+    "contributors=$(@($ContributorChanges | Sort-Object Name | ForEach-Object { '{0}:{1}>{2}' -f $_.Name, (@($_.Baseline) -join ','), (@($_.Current) -join ',') }) -join ';')"
+    "alc=$(@($AlcChanges | Sort-Object) -join ',')"
+) -join '|'
+$FindingFingerprintBytes = [System.Text.Encoding]::UTF8.GetBytes($FindingCanonicalText)
+$FindingFingerprint = [System.BitConverter]::ToString([System.Security.Cryptography.SHA256]::HashData($FindingFingerprintBytes)).Replace('-', '').ToLowerInvariant()
+
 [PSCustomObject]@{
+    ProfileKey       = $CurrentProfileKey
+    FindingFingerprint = $FindingFingerprint
     HasMaterialDrift = (
         $NewConflicts.Count -gt 0 -or
         $RemovedConflicts.Count -gt 0 -or

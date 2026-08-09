@@ -119,6 +119,14 @@ jobs:
           # commit even for manual workflow_dispatch runs started from a non-main branch.
           ref: main
 
+      - name: Validate supported PowerShell lifecycle policy
+        shell: pwsh
+        run: ./tools/Test-DLLPickleRuntimeProfilePolicy.ps1 -Mode Release
+
+      - name: Refresh official PowerShell servicing state
+        shell: pwsh
+        run: ./tools/Get-DLLPicklePowerShellSupportUpdate.ps1 -OutputPath ./artifacts/lifecycle/powershell-support-update.json -RequireCurrent
+
       - name: Determine version and bump type
         id: determine_version
         shell: pwsh
@@ -381,6 +389,31 @@ jobs:
               Write-Error "Version stamping failed: $_"
               exit 1
           }
+
+      - name: Revalidate stamped release artifact
+        shell: pwsh
+        run: |
+          $CompositionParameters = @{
+            ModulePath = './module/DLLPickle'
+            SkipBuildOutputComparison = $true
+            OutputPath = './artifacts/release/artifact-composition.json'
+            Strict = $true
+          }
+          ./tools/Test-DLLPicklePackageArtifact.ps1 @CompositionParameters
+
+          $SizeParameters = @{
+            ModulePath = './module/DLLPickle'
+            OutputPath = './artifacts/release/artifact-size.json'
+            Strict = $true
+          }
+          ./tools/New-DLLPickleArtifactSizeReport.ps1 @SizeParameters
+
+      - name: Upload stamped release policy reports
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: stamped-release-policy-reports
+          path: ./artifacts/release
+          if-no-files-found: error
 
       - name: Upload updated module
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

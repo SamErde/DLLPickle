@@ -47,21 +47,46 @@ Describe 'Get-DLLPickleRuntimeAssemblySnapshot' -Tag 'Unit' {
     It 'sources its filter from -PolicyPath and returns tracked assemblies loaded in the child session' {
         $Policy = Get-TempPolicyPath -TrackedAssemblies @('System.Management.Automation')
         # Microsoft.PowerShell.Management is always importable; the child always has SMA loaded.
-        $Result = & $SnapshotScript -ModuleName 'Microsoft.PowerShell.Management' -PolicyPath $Policy
+        $Result = & $SnapshotScript -ModuleName 'Microsoft.PowerShell.Management' -PolicyPath $Policy -PowerShellExecutable ([Environment]::ProcessPath) -PowerShellVersion $PSVersionTable.PSVersion -TargetFramework ('net{0}.0' -f [Environment]::Version.Major)
         ($Result | Where-Object Name -EQ 'System.Management.Automation') | Should -Not -BeNullOrEmpty
+        $Result[0].PowerShellVersion | Should -Be $PSVersionTable.PSVersion.ToString()
+        $Result[0].TargetFramework | Should -Be ('net{0}.0' -f [Environment]::Version.Major)
+        $Result[0].ExecutablePath | Should -Not -BeNullOrEmpty
+        $Result[0].Architecture | Should -Not -BeNullOrEmpty
     }
 
     It 'throws in strict mode when a module cannot be imported' {
         $Policy = Get-TempPolicyPath -TrackedAssemblies @('System.Management.Automation')
 
-        { & $SnapshotScript -ModuleName 'DLLPickle.DefinitelyMissing' -PolicyPath $Policy -Strict } |
+        { & $SnapshotScript -ModuleName 'DLLPickle.DefinitelyMissing' -PolicyPath $Policy -PowerShellExecutable ([Environment]::ProcessPath) -Strict } |
             Should -Throw '*runtime assembly snapshot failed*'
     }
 
     It 'throws in strict mode when the probe command fails' {
         $Policy = Get-TempPolicyPath -TrackedAssemblies @('System.Management.Automation')
 
-        { & $SnapshotScript -ModuleName 'Microsoft.PowerShell.Management' -PolicyPath $Policy -ProbeCommand "throw 'probe failed'" -Strict } |
+        { & $SnapshotScript -ModuleName 'Microsoft.PowerShell.Management' -PolicyPath $Policy -PowerShellExecutable ([Environment]::ProcessPath) -ProbeCommand "throw 'probe failed'" -Strict } |
             Should -Throw '*runtime assembly snapshot failed*'
+    }
+
+    It 'imports an exact manifest under an explicitly isolated module path' {
+        $Policy = Get-TempPolicyPath -TrackedAssemblies @('System.Management.Automation')
+        $ModuleRoot = Join-Path $TestDrive 'isolated-module'
+        $null = New-Item -Path $ModuleRoot -ItemType Directory
+        Set-Content -LiteralPath (Join-Path $ModuleRoot 'Synthetic.Isolated.psm1') -Value '# isolated import target' -Encoding UTF8
+        $ManifestPath = Join-Path $ModuleRoot 'Synthetic.Isolated.psd1'
+        New-ModuleManifest -Path $ManifestPath -RootModule 'Synthetic.Isolated.psm1' -ModuleVersion '1.0.0'
+
+        $Result = & $SnapshotScript -ModuleName 'Synthetic.Isolated' -ModuleManifestPath $ManifestPath -ModuleSearchPath @($ModuleRoot, (Join-Path $PSHOME 'Modules')) -PolicyPath $Policy -PowerShellExecutable ([Environment]::ProcessPath) -Strict
+
+        $Result[0].ImportedModulePaths | Should -Contain $ManifestPath
+        $Result[0].IsolatedModulePath | Should -Be (@($ModuleRoot, (Join-Path $PSHOME 'Modules')) -join [System.IO.Path]::PathSeparator)
+    }
+
+    It 'never launches a generic pwsh command from PATH' {
+        $Source = Get-Content -LiteralPath $SnapshotScript -Raw
+
+        $Source | Should -Match 'PowerShellExecutable'
+        $Source | Should -Not -Match '(?m)&\s+pwsh\b'
     }
 }

@@ -2,7 +2,10 @@ BeforeAll {
     $ProjectRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
     $UpstreamWorkflow = Get-Content -LiteralPath (Join-Path $ProjectRoot '.github\workflows\Upstream-Compatibility.yml') -Raw
     $DependabotWorkflow = Get-Content -LiteralPath (Join-Path $ProjectRoot '.github\workflows\Dependabot-Auto-Approve.yml') -Raw
+    $DependabotConfig = Get-Content -LiteralPath (Join-Path $ProjectRoot '.github\dependabot.yml') -Raw
     $ReleaseWorkflow = Get-Content -LiteralPath (Join-Path $ProjectRoot '.github\workflows\Release-and-Publish.yml') -Raw
+    $LifecycleWorkflowPath = Join-Path $ProjectRoot '.github\workflows\PowerShell-Support-Lifecycle.yml'
+    $BuildWorkflow = Get-Content -LiteralPath (Join-Path $ProjectRoot '.github\workflows\Build Module.yml') -Raw
 }
 
 Describe 'Upstream compatibility workflow guardrails' -Tag 'Unit' {
@@ -11,7 +14,7 @@ Describe 'Upstream compatibility workflow guardrails' -Tag 'Unit' {
     }
 
     It 'exposes an always-reported aggregate required check' {
-        $UpstreamWorkflow | Should -Match '(?ms)^  pr-gate:\s+name: Validate upstream compatibility tooling\s+needs: \[pr-changes, pr-smoke-validation\]\s+if: \$\{\{ always\(\) \}\}'
+        $UpstreamWorkflow | Should -Match '(?ms)^  pr-gate:\s+name: Validate upstream compatibility tooling\s+needs: \[pr-changes, pr-smoke-validation, profile-evidence-gate\]\s+if: \$\{\{ always\(\) \}\}'
     }
 
     It 'routes policy and fingerprint-generator changes through live validation' {
@@ -33,6 +36,22 @@ Describe 'Upstream compatibility workflow guardrails' -Tag 'Unit' {
         $UpstreamWorkflow | Should -Match ([regex]::Escape('tools/Test-DLLPickleTfmAlignment.ps1'))
         $UpstreamWorkflow | Should -Match ([regex]::Escape('tfm-alignment.json'))
     }
+
+    It 'publishes profile-aware findings once per stable fingerprint' {
+        $UpstreamWorkflow | Should -Match ([regex]::Escape('tools/New-DLLPickleProfileEvidenceSummary.ps1'))
+        $UpstreamWorkflow | Should -Match ([regex]::Escape('tools/Test-DLLPickleFindingFingerprintReported.ps1'))
+        $UpstreamWorkflow | Should -Match ([regex]::Escape('$Summary.FindingMarker'))
+        $UpstreamWorkflow | Should -Match 'issues: write'
+        $UpstreamWorkflow | Should -Match ([regex]::Escape('suppressing a duplicate comment'))
+    }
+
+    It 'uses exact-profile baselines and fingerprint-derived candidate branches for scheduled writes' {
+        $UpstreamWorkflow | Should -Match ([regex]::Escape('$ProfilePolicy[0].baselines.windows'))
+        $UpstreamWorkflow | Should -Not -Match ([regex]::Escape('$policy.baseline.conflictSurfaceFingerprint'))
+        $UpstreamWorkflow | Should -Match ([regex]::Escape('automation/upstream-compatibility-$($Fingerprint.Substring(0, 16))'))
+        $UpstreamWorkflow | Should -Match ([regex]::Escape('publication_fingerprint='))
+        $UpstreamWorkflow | Should -Not -Match ([regex]::Escape('automation/upstream-compatibility-${{ github.run_id }}'))
+    }
 }
 
 Describe 'Dependabot auto-merge guardrails' -Tag 'Unit' {
@@ -46,6 +65,17 @@ Describe 'Dependabot auto-merge guardrails' -Tag 'Unit' {
         $DependabotWorkflow | Should -Match ([regex]::Escape('Validate upstream compatibility tooling'))
         $DependabotWorkflow | Should -Match ([regex]::Escape('dependency-review'))
     }
+
+    It 'routes a newly introduced conditional TFM pin to maintainer review' {
+        $DependabotWorkflow | Should -Match ([regex]::Escape('CONDITIONAL_TFM_ADDITION'))
+        $DependabotWorkflow | Should -Match 'PackageReference.*Condition=.*TargetFramework'
+    }
+
+    It 'keeps runtime NuGet updates separate from CI toolchain updates' {
+        $DependabotConfig | Should -Match 'runtime-bundle-minor-patch'
+        $DependabotConfig | Should -Match 'ci-tooling-actions'
+        $DependabotConfig | Should -Match 'multi-pwsh.*CI provisioning policy'
+    }
 }
 
 Describe 'Dependabot major-version draft-PR flow' -Tag 'Unit' {
@@ -57,11 +87,14 @@ Describe 'Dependabot major-version draft-PR flow' -Tag 'Unit' {
         $DependabotWorkflow | Should -Match ([regex]::Escape("update-type == 'version-update:semver-major'"))
     }
 
-    It 'posts structured notes covering the version delta, TFM alignment, conflict surface, and a maintainer checklist' {
+    It 'posts a per-TFM evidence index covering graph, assets, assembly and conflict deltas, size, scenarios, and maintainer review' {
         $DependabotWorkflow | Should -Match 'Version change'
-        $DependabotWorkflow | Should -Match 'TFM alignment'
-        $DependabotWorkflow | Should -Match ([regex]::Escape('Test-DLLPickleTfmAlignment.ps1'))
-        $DependabotWorkflow | Should -Match ([regex]::Escape('dependency-policy.json'))
+        $DependabotWorkflow | Should -Match 'Resolved graph \+ selected assets'
+        $DependabotWorkflow | Should -Match 'Added/removed/changed assemblies'
+        $DependabotWorkflow | Should -Match 'Conflict-surface delta'
+        $DependabotWorkflow | Should -Match 'Scenario outcomes'
+        $DependabotWorkflow | Should -Match ([regex]::Escape('artifact-size-baseline.json'))
+        $DependabotWorkflow | Should -Match ([regex]::Escape('Compatibility-Evidence.md'))
         $DependabotWorkflow | Should -Match 'Maintainer checklist'
     }
 
@@ -73,6 +106,33 @@ Describe 'Dependabot major-version draft-PR flow' -Tag 'Unit' {
 }
 
 Describe 'Release publish gating guardrails' -Tag 'Unit' {
+    It 'fails closed on the runtime lifecycle policy before version analysis' {
+        $ReleaseWorkflow | Should -Match ([regex]::Escape('tools/Test-DLLPickleRuntimeProfilePolicy.ps1'))
+        $ReleaseWorkflow | Should -Match ([regex]::Escape('-Mode Release'))
+        $ReleaseWorkflow | Should -Match ([regex]::Escape('tools/Get-DLLPicklePowerShellSupportUpdate.ps1'))
+        $ReleaseWorkflow | Should -Match ([regex]::Escape('-RequireCurrent'))
+    }
+
+    It 'runs profile-aware evidence and fail-closed baselines across the exact runtime matrix' {
+        $UpstreamWorkflow | Should -Match ([regex]::Escape('tools/New-DLLPicklePowerShellTestMatrix.ps1'))
+        $UpstreamWorkflow | Should -Match ([regex]::Escape('tools/Install-DLLPickleTestPowerShell.ps1'))
+        $UpstreamWorkflow | Should -Match ([regex]::Escape('tools/Test-DLLPickleProfileConflictBaseline.ps1'))
+        $UpstreamWorkflow | Should -Match ([regex]::Escape('tools/New-DLLPickleUpstreamScenarioEvidence.ps1'))
+        $UpstreamWorkflow | Should -Match ([regex]::Escape('ScenarioEvidencePath'))
+        $UpstreamWorkflow | Should -Match 'executed-two-orders-with-and-without-dllpickle'
+        $UpstreamWorkflow | Should -Match ([regex]::Escape('-PowerShellExecutable'))
+        $UpstreamWorkflow | Should -Match ([regex]::Escape('fromJson(needs.profile-matrix.outputs.matrix)'))
+        $UpstreamWorkflow | Should -Match ([regex]::Escape('not-run-no-approved-credentials'))
+        $UpstreamWorkflow | Should -Match ([regex]::Escape('writesPerformed = $false'))
+    }
+
+    It 'revalidates composition and size after stamping the release artifact' {
+        $ReleaseWorkflow | Should -Match ([regex]::Escape('Test-DLLPicklePackageArtifact.ps1'))
+        $ReleaseWorkflow | Should -Match ([regex]::Escape('New-DLLPickleArtifactSizeReport.ps1'))
+        $ReleaseWorkflow | Should -Match ([regex]::Escape('SkipBuildOutputComparison'))
+        $ReleaseWorkflow | Should -Match ([regex]::Escape('stamped-release-policy-reports'))
+    }
+
     It 'auto-triggers only on closed pull requests to main' {
         $ReleaseWorkflow | Should -Match '(?ms)on:\s+pull_request:\s+types:\s*\[closed\]'
         $ReleaseWorkflow | Should -Match '(?ms)branches:\s+- main'
@@ -122,5 +182,88 @@ Describe 'Release publish gating guardrails' -Tag 'Unit' {
         $ReleaseWorkflow | Should -Match '(?m)^\s+workflow_dispatch:'
         $ReleaseWorkflow | Should -Match ([regex]::Escape('version_bump'))
         $ReleaseWorkflow | Should -Match '(?ms)options:\s+- auto\s+- major\s+- minor\s+- patch'
+    }
+}
+
+Describe 'PowerShell support lifecycle workflow guardrails' -Tag 'Unit' {
+    It 'runs a scheduled and manually dispatchable lifecycle check' {
+        $LifecycleWorkflowPath | Should -Exist
+        $lifecycleWorkflow = Get-Content -LiteralPath $LifecycleWorkflowPath -Raw
+
+        $lifecycleWorkflow | Should -Match '(?m)^\s+schedule:'
+        $lifecycleWorkflow | Should -Match '(?m)^\s+workflow_dispatch:'
+        $lifecycleWorkflow | Should -Match ([regex]::Escape('tools/Test-DLLPickleRuntimeProfilePolicy.ps1'))
+        $lifecycleWorkflow | Should -Match ([regex]::Escape('-Mode Scheduled'))
+        $lifecycleWorkflow | Should -Match ([regex]::Escape('tools/Get-DLLPicklePowerShellSupportUpdate.ps1'))
+        $lifecycleWorkflow | Should -Match ([regex]::Escape('powershell-support-update.json'))
+        $lifecycleWorkflow | Should -Match ([regex]::Escape('tools/Update-DLLPicklePowerShellTestMatrix.ps1'))
+        $lifecycleWorkflow | Should -Match ([regex]::Escape('tools/Install-DLLPickleTestPowerShell.ps1'))
+        $lifecycleWorkflow | Should -Match ([regex]::Escape('fromJson(needs.discover.outputs.runtime_matrix)'))
+        $lifecycleWorkflow | Should -Match ([regex]::Escape('PatchProposalFingerprint'))
+        $lifecycleWorkflow | Should -Match ([regex]::Escape('SupportContractFingerprint'))
+    }
+
+    It 'keeps discovery read-only and scopes repository writes to fingerprinted publication jobs' {
+        $lifecycleWorkflow = Get-Content -LiteralPath $LifecycleWorkflowPath -Raw
+
+        $lifecycleWorkflow | Should -Match '(?ms)^permissions:\s+contents: read\s*$'
+        $lifecycleWorkflow | Should -Match '(?ms)^  finalize-patch-proposal:.*?permissions:\s+contents: write\s+pull-requests: write'
+        $lifecycleWorkflow | Should -Match '(?ms)^  support-contract-warning:.*?permissions:\s+contents: read\s+issues: write'
+        $lifecycleWorkflow | Should -Match ([regex]::Escape('automation/powershell-patch-$($Fingerprint.Substring(0, 16))'))
+        $lifecycleWorkflow | Should -Match ([regex]::Escape('tools/Test-DLLPickleFindingFingerprintReported.ps1'))
+        $lifecycleWorkflow | Should -Match 'gh\s+pr\s+create|@\(''pr'', ''create'''
+        $lifecycleWorkflow | Should -Match 'gh\s+issue\s+(create|comment)'
+        $lifecycleWorkflow | Should -Not -Match 'gh\s+pr\s+merge|git\s+push\s+--force'
+    }
+
+    It 'treats runtime policy and SDK changes as build relevant' {
+        $BuildWorkflow | Should -Match ([regex]::Escape("'^global\.json$'"))
+        $BuildWorkflow | Should -Match ([regex]::Escape("'^build/powershell-test-matrix\.json$'"))
+    }
+}
+
+Describe 'Exact PowerShell runtime matrix workflow guardrails' -Tag 'Unit' {
+    It 'generates the authoritative matrix from policy rather than a handwritten version list' {
+        $BuildWorkflow | Should -Match ([regex]::Escape('tools/New-DLLPicklePowerShellTestMatrix.ps1'))
+        $BuildWorkflow | Should -Match ([regex]::Escape('fromJson(needs.runtime-matrix.outputs.matrix)'))
+    }
+
+    It 'provisions and directly invokes each exact stock executable in fresh processes' {
+        $BuildWorkflow | Should -Match ([regex]::Escape('tools/Install-DLLPickleTestPowerShell.ps1'))
+        $BuildWorkflow | Should -Match ([regex]::Escape('$env:DLLPICKLE_TEST_PWSH -NoLogo -NoProfile -NonInteractive'))
+        $BuildWorkflow | Should -Not -Match 'multi-pwsh\s+host|pwsh-7\.'
+    }
+
+    It 'captures structured selected-bundle and assembly load-context evidence' {
+        $BuildWorkflow | Should -Match ([regex]::Escape('tools/New-DLLPickleRuntimeProfileEvidence.ps1'))
+        $BuildWorkflow | Should -Match ([regex]::Escape('runtime-evidence-'))
+        $BuildWorkflow | Should -Match 'upload-artifact@'
+    }
+
+    It 'runs strict package composition and resolved-TFM checks in every exact-runtime cell' {
+        $RuntimeJob = [regex]::Match($BuildWorkflow, '(?ms)^  runtime-tests:.*?(?=^  dependency-change-report:)').Value
+        $RuntimeJob | Should -Match ([regex]::Escape('tools/Test-DLLPicklePackageArtifact.ps1 -Strict'))
+        $RuntimeJob | Should -Match ([regex]::Escape('tools/Test-DLLPickleTfmAlignment.ps1 -Strict'))
+    }
+
+    It 'keeps Build gate stable and aggregates both hosted and exact-runtime jobs' {
+        $BuildWorkflow | Should -Match '(?m)^\s+name: Build gate\s*$'
+        $BuildWorkflow | Should -Match 'needs: \[build, runtime-tests, dependency-change-report\]'
+        $BuildWorkflow | Should -Match ([regex]::Escape('runtimeTests ='))
+        $BuildWorkflow | Should -Match ([regex]::Escape('needs.runtime-tests.result'))
+        $BuildWorkflow | Should -Match ([regex]::Escape('needs.dependency-change-report.result'))
+    }
+
+    It 'enforces artifact composition and material size growth in the hosted build gate' {
+        $BuildWorkflow | Should -Match ([regex]::Escape('Test-DLLPicklePackageArtifact.ps1'))
+        $BuildWorkflow | Should -Match ([regex]::Escape('New-DLLPickleArtifactSizeReport.ps1'))
+        $BuildWorkflow | Should -Match ([regex]::Escape('package-policy-reports'))
+    }
+
+    It 'attaches a base-versus-candidate per-TFM report for Dependabot changes' {
+        $BuildWorkflow | Should -Match ([regex]::Escape('tools/New-DLLPickleDependencyChangeReport.ps1'))
+        $BuildWorkflow | Should -Match ([regex]::Escape('dependency-change-report.json'))
+        $BuildWorkflow | Should -Match ([regex]::Escape('BaselineProjectAssetsPath'))
+        $BuildWorkflow | Should -Match ([regex]::Escape('ScenarioEvidencePath'))
     }
 }

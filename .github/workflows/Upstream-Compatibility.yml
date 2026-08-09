@@ -65,8 +65,12 @@ jobs:
                 '^build/dependency-policy\.json$',
                 '^src/DLLPickle\.Build/DLLPickle\.csproj$',
                 '^src/DLLPickle\.Build/packages\.lock\.json$',
+                '^build/powershell-test-matrix\.json$',
                 '^tools/Get-DLLPickleUpstreamInventory\.ps1$',
-                '^tools/New-DLLPickleConflictMatrix\.ps1$'
+                '^tools/Get-DLLPickleRuntimeAssemblySnapshot\.ps1$',
+                '^tools/New-DLLPickleConflictMatrix\.ps1$',
+                '^tools/Test-DLLPickleProfileConflictBaseline\.ps1$',
+                '^tools/Install-DLLPickleTestPowerShell\.ps1$'
               )
               $Relevant = $false
               $LiveValidation = $false
@@ -109,7 +113,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
-          dotnet-version: "8.0.x"
+          dotnet-version: "10.0.302"
           # This job runs only Analyze,Test (PowerShell) and performs no `dotnet restore`, so the
           # NuGet global-packages folder is never created. Enabling the setup-dotnet cache makes its
           # post-job save step fail ("Cache folder path ... doesn't exist on disk") on any cache miss
@@ -125,96 +129,21 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          Invoke-Build -File ./build/DLLPickle.Build.ps1 -Task Analyze,Test
+          ./tools/Invoke-DLLPickleBuild.ps1 -Task Analyze,Test
 
-      - name: Validate live upstream conflict-surface freshness
+      - name: Confirm exact-profile live validation routing
         if: needs.pr-changes.outputs.live_validation == 'true'
         shell: pwsh
         run: |
-          # Freshness check, NOT a bundle validation. Recompute the upstream module conflict surface
-          # whenever the policy, bundle dependency files, or fingerprint-producing tools change.
-          #
-          # This step does NOT validate the bumped bundle itself. A self-bump of DLLPickle's own NuGet
-          # references does not change what the upstream modules ship, so it will not move this
-          # fingerprint. The bumped bundle is validated separately by the "Build Module" workflow, which
-          # on every PR touching src/** runs the full build under --locked-mode plus the #193 / Azure.Core
-          # integration repro guards, bounded by the csproj floating-with-cap constraints. For auto-merge
-          # to actually wait on those signals, the Build Module and Dependency Review checks must be
-          # configured as required status checks (see Dependabot-Auto-Approve.yml).
-          $ErrorActionPreference = 'Stop'
-          ./tools/Get-DLLPickleUpstreamInventory.ps1 `
-            -PolicyPath ./build/dependency-policy.json `
-            -ModuleCachePath ./artifacts/upstreamCompatibility/modules `
-            -OutputPath ./artifacts/upstreamCompatibility/upstream-inventory.json `
-            -Force
-          ./tools/New-DLLPickleConflictMatrix.ps1 `
-            -InventoryPath ./artifacts/upstreamCompatibility/upstream-inventory.json `
-            -OutputPath ./artifacts/upstreamCompatibility/conflict-matrix.json | Out-Null
-          $policy = Get-Content ./build/dependency-policy.json -Raw | ConvertFrom-Json
-          $current = Get-Content ./artifacts/upstreamCompatibility/conflict-matrix.json -Raw | ConvertFrom-Json
-          $inventory = Get-Content ./artifacts/upstreamCompatibility/upstream-inventory.json -Raw | ConvertFrom-Json
-          $fingerprint = [string]$current.Fingerprint
-          $baseline = [string]$policy.baseline.conflictSurfaceFingerprint
-          $comparison = $null
-          if ($policy.baseline.PSObject.Properties.Name -contains 'conflictSurface') {
-            $baselineMatrix = [PSCustomObject]@{
-              Assemblies = @($policy.baseline.conflictSurface | ForEach-Object {
-                [PSCustomObject]@{
-                  Name = [string]$_.name
-                  Versions = @($_.versions)
-                  ShippedBy = @($_.shippedBy)
-                  Diverges = $true
-                  AlcOwner = $null
-                }
-              })
-            }
-            $comparison = ./tools/Compare-DLLPickleConflictMatrix.ps1 -Baseline $baselineMatrix -Current $current
-          }
-
-          $report = [PSCustomObject]@{
-            BaselineFingerprint = $baseline
-            CurrentFingerprint = $fingerprint
-            ModuleVersions = [ordered]@{}
-            Comparison = $comparison
-          }
-          foreach ($module in $inventory.Modules) { $report.ModuleVersions[[string]$module.Name] = [string]$module.Version }
-          $report | ConvertTo-Json -Depth 20 | Set-Content ./artifacts/upstreamCompatibility/comparison-report.json -Encoding utf8NoBOM
-
-          @(
-            '# Upstream conflict-surface freshness'
-            ''
-            "- Baseline fingerprint: ``$baseline``"
-            "- Current fingerprint: ``$fingerprint``"
-            ''
-            '| Module | Version |'
-            '| --- | --- |'
-            ($inventory.Modules | Sort-Object Name | ForEach-Object { "| $($_.Name) | $($_.Version) |" })
-          ) | Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Encoding utf8
-
-          if ($comparison -and $comparison.HasMaterialDrift) {
-            @(
-              ''
-              '## Structured drift'
-              ''
-              '```json'
-              ($comparison | ConvertTo-Json -Depth 20)
-              '```'
-            ) | Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Encoding utf8
-          }
-
-          if ($fingerprint -ne $baseline) {
-            Write-Host "::error::Upstream conflict surface changed (baseline '$baseline' -> '$fingerprint'). The preload/block decision this bundle is built against may be stale: re-adjudicate and update build/dependency-policy.json (classification + evidence + baseline) per docs/Architecture.md section 8 before merging."
-            throw 'Upstream conflict-surface drift detected; blocking merge until re-adjudicated.'
-          }
-          Write-Host "Upstream conflict surface unchanged (fingerprint '$fingerprint'); the recorded preload/block baseline still holds. (Bundle correctness is validated separately by the Build Module workflow.)"
-
+          Write-Host 'Live upstream inventory and baseline comparison run in the exact nine-cell profile-evidence matrix.'
+          Write-Host 'Test-DLLPickleProfileConflictBaseline fails closed for missing, unaccepted, or drifted profile/OS baselines.'
       - name: Validate preload TFM alignment (Step 0b)
         if: needs.pr-changes.outputs.live_validation == 'true'
         shell: pwsh
         run: |
           # docs/Architecture.md section 8.2 Step 0(b): when a PR changes the bundled dependency set
-          # (csproj / packages.lock.json), prove each preload package ships a portable net8.0/
-          # netstandard2.0 asset before it can be auto-merged. This runs on the PR gate that
+          # (csproj / packages.lock.json), prove NuGet selects a concrete assembly asset for every
+          # preload package under net8.0, net9.0, and net10.0. This runs on the PR gate that
           # Dependabot auto-merge waits on, so a bundle bump cannot merge on 0a (Build gate) alone.
           $ErrorActionPreference = 'Stop'
           dotnet restore ./src/DLLPickle.Build/DLLPickle.csproj --locked-mode
@@ -224,13 +153,13 @@ jobs:
             -OutputPath ./artifacts/upstreamCompatibility/tfm-alignment.json `
             -Strict
           @(
-            '# Preload TFM alignment (net8.0)'
+            '# Preload TFM alignment (all supported profiles)'
             ''
             "- Aligned: ``$($report.IsAligned)``"
             ''
-            '| Package | Version | Aligned | Compatible assets |'
-            '| --- | --- | --- | --- |'
-            ($report.Packages | ForEach-Object { "| $($_.PackageName) | $($_.ResolvedVersion) | $($_.IsAligned) | $((@($_.CompatibleAssets) -join ', ')) |" })
+            '| TFM | Package | Version | Aligned | NuGet-selected assets |'
+            '| --- | --- | --- | --- | --- |'
+            ($report.Packages | ForEach-Object { "| $($_.TargetFramework) | $($_.PackageName) | $($_.ResolvedVersion) | $($_.IsAligned) | $((@($_.SelectedAssets) -join ', ')) |" })
           ) | Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Encoding utf8
 
       - name: Upload PR upstream compatibility evidence
@@ -246,9 +175,278 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
+  profile-matrix:
+    name: Generate profile-aware upstream matrix
+    needs: pr-changes
+    if: ${{ always() && (github.event_name != 'pull_request' || needs.pr-changes.outputs.live_validation == 'true') }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    outputs:
+      matrix: ${{ steps.generate.outputs.matrix }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Generate exact profile matrix
+        id: generate
+        shell: pwsh
+        run: |
+          $Matrix = ./tools/New-DLLPicklePowerShellTestMatrix.ps1 -Compress
+          "matrix=$Matrix" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+  profile-evidence:
+    name: Upstream evidence ${{ matrix.powerShellVersion }} on ${{ matrix.platform }}
+    needs: profile-matrix
+    if: ${{ needs.profile-matrix.result == 'success' }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.profile-matrix.outputs.matrix) }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: "10.0.302"
+          cache: true
+          cache-dependency-path: "src/DLLPickle.Build/packages.lock.json"
+
+      - name: Cache exact stock PowerShell archive and payload
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/dllpickle-test-powershell
+          key: upstream-${{ runner.os }}-${{ runner.arch }}-${{ matrix.provider }}-${{ matrix.powerShellVersion }}-${{ hashFiles('build/powershell-test-matrix.json', 'tools/Install-DLLPickleTestPowerShell.ps1') }}
+
+      - name: Cache compatible upstream modules
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/dllpickle-upstream-modules/${{ matrix.powerShellVersion }}
+          key: upstream-modules-${{ runner.os }}-${{ runner.arch }}-${{ matrix.powerShellVersion }}-${{ hashFiles('build/dependency-policy.json') }}
+
+      - name: Cache isolated build modules
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/dllpickle-upstream-build-modules
+          key: upstream-build-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('build/build-tool-versions.json', 'build/DLLPickle.Tooling.ps1') }}
+
+      - name: Build the candidate DLLPickle module for differential scenarios
+        shell: pwsh
+        run: |
+          $BuildModuleRoot = '${{ runner.temp }}/dllpickle-upstream-build-modules'
+          ./.github/ci-scripts/Actions_Bootstrap.ps1 -ModuleInstallPath $BuildModuleRoot
+          ./tools/Invoke-DLLPickleBuild.ps1 -Task PrepareModuleOutput
+
+      - name: Provision exact stock PowerShell
+        shell: pwsh
+        run: |
+          $InstallParameters = @{
+              Provider = '${{ matrix.provider }}'
+              PowerShellVersion = '${{ matrix.powerShellVersion }}'
+              Platform = '${{ matrix.platform }}'
+              Architecture = '${{ matrix.architecture }}'
+              InstallRoot = '${{ runner.temp }}/dllpickle-test-powershell'
+              PassThru = $true
+          }
+          $Identity = ./tools/Install-DLLPickleTestPowerShell.ps1 @InstallParameters
+          "DLLPICKLE_UPSTREAM_PWSH=$($Identity.ExecutablePath)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Capture and validate profile-selected upstream evidence
+        shell: pwsh
+        run: |
+          $EvidenceRoot = './artifacts/upstreamCompatibility/${{ matrix.powerShellVersion }}/${{ matrix.platform }}'
+          $ModuleCache = '${{ runner.temp }}/dllpickle-upstream-modules/${{ matrix.powerShellVersion }}'
+          $InventoryPath = Join-Path -Path $EvidenceRoot -ChildPath 'upstream-inventory.json'
+          $ConflictMatrixPath = Join-Path -Path $EvidenceRoot -ChildPath 'conflict-matrix.json'
+          $InventoryArguments = @(
+              '-NoLogo', '-NoProfile', '-NonInteractive', '-File', './tools/Get-DLLPickleUpstreamInventory.ps1'
+              '-PolicyPath', './build/dependency-policy.json'
+              '-TestMatrixPath', './build/powershell-test-matrix.json'
+              '-ModuleCachePath', $ModuleCache
+              '-OutputPath', $InventoryPath
+              '-PowerShellExecutable', $env:DLLPICKLE_UPSTREAM_PWSH
+              '-Force'
+          )
+          & $env:DLLPICKLE_UPSTREAM_PWSH @InventoryArguments
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ./tools/New-DLLPickleConflictMatrix.ps1 -InventoryPath $InventoryPath -OutputPath $ConflictMatrixPath | Out-Null
+          $ScenarioEvidencePath = Join-Path -Path $EvidenceRoot -ChildPath 'scenario-evidence.json'
+          $ScenarioParameters = @{
+              PolicyPath = './build/dependency-policy.json'
+              InventoryPath = $InventoryPath
+              PowerShellExecutable = $env:DLLPICKLE_UPSTREAM_PWSH
+              DLLPickleManifestPath = './module/DLLPickle/DLLPickle.psd1'
+              KnownConflictsPath = './src/DLLPickle/KnownConflicts.json'
+              OutputPath = $ScenarioEvidencePath
+              Strict = $true
+          }
+          ./tools/New-DLLPickleUpstreamScenarioEvidence.ps1 @ScenarioParameters | Out-Null
+
+          $Policy = Get-Content -LiteralPath ./build/dependency-policy.json -Raw | ConvertFrom-Json
+          $GapReport = [ordered]@{
+              schemaVersion = 1
+              profile = '${{ matrix.powerShellVersion }}/${{ matrix.targetFramework }}/${{ matrix.platform }}/${{ matrix.architecture }}'
+              deterministicImportNoAuth = 'executed-two-orders-with-and-without-dllpickle'
+              authenticatedReadOnly = 'not-run-no-approved-credentials'
+              writesPerformed = $false
+              unexecutedCommands = @($Policy.monitoredModules.authenticatedReadOnlyProbeCommand)
+          }
+          $GapReport | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath (Join-Path $EvidenceRoot 'validation-gaps.json') -Encoding utf8
+          $BaselineParameters = @{
+              PolicyPath = './build/dependency-policy.json'
+              ConflictMatrixPath = $ConflictMatrixPath
+              ScenarioEvidencePath = $ScenarioEvidencePath
+              OutputPath = (Join-Path $EvidenceRoot 'baseline-comparison.json')
+          }
+          ./tools/Test-DLLPickleProfileConflictBaseline.ps1 @BaselineParameters
+
+      - name: Upload profile-aware upstream evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: upstream-${{ matrix.powerShellVersion }}-${{ matrix.platform }}-${{ matrix.architecture }}
+          path: ./artifacts/upstreamCompatibility/${{ matrix.powerShellVersion }}/${{ matrix.platform }}
+          if-no-files-found: error
+          retention-days: 14
+
+  profile-evidence-gate:
+    name: Aggregate profile-aware upstream evidence
+    needs: profile-evidence
+    if: ${{ always() }}
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Report exact-profile evidence result
+        shell: pwsh
+        run: |
+          $Result = '${{ needs.profile-evidence.result }}'
+          if ($Result -notin @('success', 'skipped')) {
+              throw "Profile-aware upstream evidence or baseline validation failed: $Result"
+          }
+          Write-Host "Profile-aware upstream evidence result: $Result"
+
+  scheduled-profile-evidence-report:
+    name: Summarize scheduled profile-aware evidence
+    needs: profile-evidence
+    if: ${{ always() && github.event_name != 'pull_request' }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Download all available profile evidence
+        continue-on-error: true
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: upstream-*
+          path: ./downloaded-upstream
+          merge-multiple: true
+
+      - name: Build one stable profile-aware finding
+        shell: pwsh
+        run: |
+          $Parameters = @{
+              EvidenceRoot = './downloaded-upstream'
+              OutputPath = './artifacts/upstreamCompatibility/profile-evidence-summary.json'
+          }
+          $Summary = ./tools/New-DLLPickleProfileEvidenceSummary.ps1 @Parameters
+          @(
+              '### Profile-aware upstream evidence'
+              ''
+              "- Complete profile set: $($Summary.AllProfileEvidencePresent)"
+              "- Ready for candidate updates: $($Summary.ReadyForCandidateUpdate)"
+              "- Findings: $(@($Summary.Findings).Count)"
+              "- Stable finding fingerprint: ``$($Summary.AggregateFindingFingerprint)``"
+              '- Publication: one issue comment per stable finding fingerprint'
+          ) | Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY
+
+      - name: Publish one profile finding per stable fingerprint
+        if: ${{ hashFiles('artifacts/upstreamCompatibility/profile-evidence-summary.json') != '' }}
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $Summary = Get-Content -LiteralPath './artifacts/upstreamCompatibility/profile-evidence-summary.json' -Raw | ConvertFrom-Json
+          if ($Summary.ReadyForCandidateUpdate) {
+              Write-Host 'All exact-profile baselines are accepted and unchanged; no finding will be published.'
+              exit 0
+          }
+
+          $Fingerprint = [string]$Summary.AggregateFindingFingerprint
+          if ($Fingerprint -notmatch '^[a-f0-9]{64}$') {
+              throw 'The profile evidence summary did not contain a stable SHA-256 finding fingerprint.'
+          }
+          $Title = 'Profile-aware upstream compatibility finding'
+          $Body = @(
+              'The scheduled exact-profile compatibility sweep found evidence that requires maintainer review.'
+              ''
+              "Complete profile set: $($Summary.AllProfileEvidencePresent)"
+              "Missing profiles: $(@($Summary.MissingProfileKeys) -join ', ')"
+              "Unexpected profiles: $(@($Summary.UnexpectedProfileKeys) -join ', ')"
+              "Duplicate profiles: $(@($Summary.DuplicateProfileKeys) -join ', ')"
+              ''
+              'Profile findings:'
+              $(if (@($Summary.Findings).Count -eq 0) { '- None' } else { @($Summary.Findings | Sort-Object ProfileKey | ForEach-Object { "- $($_.ProfileKey): $($_.Status); baseline $($_.BaselineFingerprint); current $($_.CurrentFingerprint); scenario baseline $($_.BaselineScenarioFingerprint); scenario current $($_.CurrentScenarioFingerprint)" }) })
+              ''
+              "Workflow evidence: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+              ''
+              [string]$Summary.FindingMarker
+          ) -join [System.Environment]::NewLine
+
+          $Candidates = @(gh issue list --state all --search "$Title in:title" --limit 20 --json number,state,title | ConvertFrom-Json | Where-Object title -EQ $Title)
+          if ($LASTEXITCODE -ne 0) { throw 'Failed to query existing profile-aware compatibility issues.' }
+          $ExistingIssue = $Candidates | Select-Object -First 1
+          $AlreadyReported = $false
+          if ($ExistingIssue) {
+              $ExistingContent = gh issue view $ExistingIssue.number --json body,comments | ConvertFrom-Json
+              if ($LASTEXITCODE -ne 0) { throw 'Failed to read the existing profile-aware compatibility issue.' }
+              $PublishedText = @($ExistingContent.body) + @($ExistingContent.comments.body)
+              $AlreadyReported = ./tools/Test-DLLPickleFindingFingerprintReported.ps1 -Fingerprint $Fingerprint -Text $PublishedText
+          }
+
+          if ($AlreadyReported) {
+              Write-Host "Profile finding fingerprint $Fingerprint is already reported; suppressing a duplicate comment."
+          } elseif ($ExistingIssue) {
+              if ([string]$ExistingIssue.state -eq 'CLOSED') {
+                  gh issue reopen $ExistingIssue.number
+                  if ($LASTEXITCODE -ne 0) { throw 'Failed to reopen the profile-aware compatibility issue.' }
+              }
+              gh issue comment $ExistingIssue.number --body $Body
+              if ($LASTEXITCODE -ne 0) { throw 'Failed to publish the new profile-aware compatibility finding.' }
+          } else {
+              gh issue create --title $Title --body $Body
+              if ($LASTEXITCODE -ne 0) { throw 'Failed to open the profile-aware compatibility issue.' }
+          }
+
+      - name: Fail closed when profile evidence requires review
+        if: ${{ hashFiles('artifacts/upstreamCompatibility/profile-evidence-summary.json') != '' }}
+        shell: pwsh
+        run: |
+          $Summary = Get-Content -LiteralPath './artifacts/upstreamCompatibility/profile-evidence-summary.json' -Raw | ConvertFrom-Json
+          if (-not $Summary.ReadyForCandidateUpdate) {
+              throw 'Profile-aware upstream evidence requires review; publication was deduplicated by its stable fingerprint.'
+          }
+
+      - name: Upload the aggregate profile evidence report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: upstream-profile-evidence-summary
+          path: ./artifacts/upstreamCompatibility/profile-evidence-summary.json
+          if-no-files-found: error
+          retention-days: 30
+
   pr-gate:
     name: Validate upstream compatibility tooling
-    needs: [pr-changes, pr-smoke-validation]
+    needs: [pr-changes, pr-smoke-validation, profile-evidence-gate]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
@@ -262,7 +460,9 @@ jobs:
 
           $DetectionResult = '${{ needs.pr-changes.result }}'
           $Relevant = '${{ needs.pr-changes.outputs.relevant }}'
+          $LiveValidation = '${{ needs.pr-changes.outputs.live_validation }}'
           $ValidationResult = '${{ needs.pr-smoke-validation.result }}'
+          $ProfileEvidenceResult = '${{ needs.profile-evidence-gate.result }}'
           if ($DetectionResult -ne 'success') {
             throw "Changed-file detection did not succeed: $DetectionResult"
           }
@@ -272,11 +472,15 @@ jobs:
           if ($Relevant -eq 'false' -and $ValidationResult -notin @('skipped', 'success')) {
             throw "Irrelevant-path validation had an unexpected result: $ValidationResult"
           }
-          Write-Host "Upstream compatibility aggregate gate passed (relevant=$Relevant, validation=$ValidationResult)."
+          if ($LiveValidation -eq 'true' -and $ProfileEvidenceResult -ne 'success') {
+            throw "Profile-aware upstream evidence did not succeed: $ProfileEvidenceResult"
+          }
+          Write-Host "Upstream compatibility aggregate gate passed (relevant=$Relevant, validation=$ValidationResult, profileEvidence=$ProfileEvidenceResult)."
 
   scheduled-upstream-compatibility:
     name: Validate latest upstream module compatibility
-    if: github.event_name != 'pull_request'
+    needs: scheduled-profile-evidence-report
+    if: ${{ always() && github.event_name != 'pull_request' && needs.scheduled-profile-evidence-report.result == 'success' }}
     runs-on: windows-2025
     permissions:
       contents: write
@@ -289,10 +493,16 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Download accepted exact-profile evidence summary
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: upstream-profile-evidence-summary
+          path: ./downloaded-profile-summary
+
       - name: Setup .NET
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
-          dotnet-version: "8.0.x"
+          dotnet-version: "10.0.302"
           cache: true
           cache-dependency-path: "src/DLLPickle.Build/packages.lock.json"
 
@@ -300,15 +510,33 @@ jobs:
         shell: pwsh
         run: ./.github/ci-scripts/Actions_Bootstrap.ps1
 
+      - name: Provision exact stock PowerShell for candidate validation
+        shell: pwsh
+        run: |
+          $InstallParameters = @{
+              Provider = 'DirectArchive'
+              PowerShellVersion = '7.6.4'
+              Platform = 'windows'
+              Architecture = 'x64'
+              InstallRoot = '${{ runner.temp }}/dllpickle-test-powershell'
+              PassThru = $true
+          }
+          $Identity = ./tools/Install-DLLPickleTestPowerShell.ps1 @InstallParameters
+          "DLLPICKLE_UPSTREAM_PWSH=$($Identity.ExecutablePath)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
       - name: Inventory latest upstream modules
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          ./tools/Get-DLLPickleUpstreamInventory.ps1 `
-            -PolicyPath ./build/dependency-policy.json `
-            -ModuleCachePath ./artifacts/upstreamCompatibility/modules `
-            -OutputPath ./artifacts/upstreamCompatibility/upstream-inventory.json `
-            -Force
+          $InventoryParameters = @{
+              PolicyPath = './build/dependency-policy.json'
+              TestMatrixPath = './build/powershell-test-matrix.json'
+              ModuleCachePath = './artifacts/upstreamCompatibility/modules'
+              OutputPath = './artifacts/upstreamCompatibility/upstream-inventory.json'
+              PowerShellExecutable = $env:DLLPICKLE_UPSTREAM_PWSH
+              Force = $true
+          }
+          ./tools/Get-DLLPickleUpstreamInventory.ps1 @InventoryParameters
 
       - name: Detect conflict-surface drift
         id: drift
@@ -324,31 +552,32 @@ jobs:
           $current = Get-Content ./artifacts/upstreamCompatibility/conflict-matrix.json -Raw | ConvertFrom-Json
           $inventory = Get-Content ./artifacts/upstreamCompatibility/upstream-inventory.json -Raw | ConvertFrom-Json
           $surface = @($current.ConflictSurface | Sort-Object)
-          # Versions-aware fingerprint produced by New-DLLPickleConflictMatrix (single source of the
-          # algorithm) so a within-major version move on a still-conflicting assembly is detected,
-          # not just name-set changes. (ALC-ownership drift is the runtime-probe / maintainer tier.)
+          # Versions-aware fingerprint produced by New-DLLPickleConflictMatrix. This final sanity
+          # check is profile-specific; the nine-cell aggregate job has already proved that all
+          # accepted profile baselines are unchanged before candidate automation can reach this job.
           $fingerprint = [string]$current.Fingerprint
-          $baseline = [string]$policy.baseline.conflictSurfaceFingerprint
-          $comparison = $null
-          if ($policy.baseline.PSObject.Properties.Name -contains 'conflictSurface') {
-            $baselineMatrix = [PSCustomObject]@{
-              Assemblies = @($policy.baseline.conflictSurface | ForEach-Object {
-                [PSCustomObject]@{
-                  Name = [string]$_.name
-                  Versions = @($_.versions)
-                  ShippedBy = @($_.shippedBy)
-                  Diverges = $true
-                  AlcOwner = $null
-                }
-              })
-            }
-            $comparison = ./tools/Compare-DLLPickleConflictMatrix.ps1 -Baseline $baselineMatrix -Current $current
+          $ProfilePolicy = @($policy.runtimeProfiles | Where-Object {
+              $_.powerShellLine -eq '7.6' -and $_.targetFramework -eq 'net10.0'
+          })
+          if ($ProfilePolicy.Count -ne 1) {
+              throw 'Expected exactly one 7.6/net10.0 profile policy for scheduled candidate generation.'
           }
+          $ProfileBaseline = $ProfilePolicy[0].baselines.windows
+          if ([string]$ProfileBaseline.status -ne 'accepted') {
+              throw "The 7.6/net10.0/windows baseline is not accepted (status '$($ProfileBaseline.status)')."
+          }
+          $baseline = [string]$ProfileBaseline.conflictSurfaceFingerprint
+          $ProfileKey = 'ps7.6-net10.0-windows-x64'
+          $FindingText = "$ProfileKey|$baseline|$fingerprint"
+          $FindingBytes = [System.Text.Encoding]::UTF8.GetBytes($FindingText)
+          $FindingFingerprint = [System.BitConverter]::ToString([System.Security.Cryptography.SHA256]::HashData($FindingBytes)).Replace('-', '').ToLowerInvariant()
+          $FindingMarker = '<!-- dllpickle-finding-fingerprint:{0} -->' -f $FindingFingerprint
           $report = [PSCustomObject]@{
+            ProfileKey = $ProfileKey
             BaselineFingerprint = $baseline
             CurrentFingerprint = $fingerprint
+            FindingFingerprint = $FindingFingerprint
             ModuleVersions = [ordered]@{}
-            Comparison = $comparison
           }
           foreach ($module in $inventory.Modules) { $report.ModuleVersions[[string]$module.Name] = [string]$module.Version }
           $report | ConvertTo-Json -Depth 20 | Set-Content ./artifacts/upstreamCompatibility/comparison-report.json -Encoding utf8NoBOM
@@ -383,10 +612,32 @@ jobs:
               '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
               ''
               'Re-run the runtime ALC adjudication and update build/dependency-policy.json (classification + evidence + baseline) per docs/Architecture.md section 8.'
+              ''
+              $FindingMarker
             ) -join [System.Environment]::NewLine
-            $Existing = gh issue list --state open --search "$Title in:title" --json number --jq '.[0].number'
-            if ([string]::IsNullOrWhiteSpace($Existing)) { gh issue create --title $Title --body $Body }
-            else { gh issue comment $Existing --body $Body }
+            $Candidates = @(gh issue list --state all --search "$Title in:title" --limit 20 --json number,state,title | ConvertFrom-Json | Where-Object title -EQ $Title)
+            if ($LASTEXITCODE -ne 0) { throw 'Failed to query existing conflict-surface drift issues.' }
+            $ExistingIssue = $Candidates | Select-Object -First 1
+            $AlreadyReported = $false
+            if ($ExistingIssue) {
+              $ExistingContent = gh issue view $ExistingIssue.number --json body,comments | ConvertFrom-Json
+              if ($LASTEXITCODE -ne 0) { throw 'Failed to read the existing conflict-surface drift issue.' }
+              $PublishedText = @($ExistingContent.body) + @($ExistingContent.comments.body)
+              $AlreadyReported = ./tools/Test-DLLPickleFindingFingerprintReported.ps1 -Fingerprint $FindingFingerprint -Text $PublishedText
+            }
+            if ($AlreadyReported) {
+              Write-Host "Conflict finding fingerprint $FindingFingerprint is already reported; suppressing a duplicate comment."
+            } elseif ($ExistingIssue) {
+              if ([string]$ExistingIssue.state -eq 'CLOSED') {
+                gh issue reopen $ExistingIssue.number
+                if ($LASTEXITCODE -ne 0) { throw 'Failed to reopen the conflict-surface drift issue.' }
+              }
+              gh issue comment $ExistingIssue.number --body $Body
+              if ($LASTEXITCODE -ne 0) { throw 'Failed to publish the new conflict-surface drift finding.' }
+            } else {
+              gh issue create --title $Title --body $Body
+              if ($LASTEXITCODE -ne 0) { throw 'Failed to open the conflict-surface drift issue.' }
+            }
           } else {
             Write-Host "Conflict surface unchanged (fingerprint '$fingerprint')."
             "drift=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
@@ -410,7 +661,7 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           dotnet restore ./src/DLLPickle.Build/DLLPickle.csproj --locked-mode
-          Invoke-Build -File ./build/DLLPickle.Build.ps1 -Task IssueReproTest
+          ./tools/Invoke-DLLPickleBuild.ps1 -Task IssueReproTest
 
       - name: Inspect preload TFM alignment (Step 0b)
         if: steps.drift.outputs.drift != 'true'
@@ -418,9 +669,9 @@ jobs:
         run: |
           # docs/Architecture.md section 8.2 Step 0(b): the explicit half of "TFM alignment". The
           # Build gate (0a) proves restore+build green under --locked-mode; this proves each preload
-          # package actually ships a net8.0/netstandard2.0-compatible asset (not just transitive luck).
-          # The preceding --locked-mode restore populated the NuGet global-packages folder, so the
-          # tool can inspect each resolved package's lib/<tfm>/ assets. Fail-closed: a misaligned
+          # package receives an actual resolved assembly asset in every supported target graph.
+          # The preceding --locked-mode restore generated project.assets.json, which is the authority
+          # for NuGet asset selection. Fail-closed: a missing selection
           # candidate must not proceed on the automated path.
           $ErrorActionPreference = 'Stop'
           $report = ./tools/Test-DLLPickleTfmAlignment.ps1 `
@@ -428,19 +679,19 @@ jobs:
             -LockFilePath ./src/DLLPickle.Build/packages.lock.json `
             -OutputPath ./artifacts/upstreamCompatibility/tfm-alignment.json
           @(
-            '# Preload TFM alignment (net8.0)'
+            '# Preload TFM alignment (all supported profiles)'
             ''
             "- Aligned: ``$($report.IsAligned)``"
             ''
-            '| Package | Version | Aligned | Compatible assets |'
-            '| --- | --- | --- | --- |'
-            ($report.Packages | ForEach-Object { "| $($_.PackageName) | $($_.ResolvedVersion) | $($_.IsAligned) | $((@($_.CompatibleAssets) -join ', ')) |" })
+            '| TFM | Package | Version | Aligned | NuGet-selected assets |'
+            '| --- | --- | --- | --- | --- |'
+            ($report.Packages | ForEach-Object { "| $($_.TargetFramework) | $($_.PackageName) | $($_.ResolvedVersion) | $($_.IsAligned) | $((@($_.SelectedAssets) -join ', ')) |" })
           ) | Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Encoding utf8
           if (-not $report.IsAligned) {
-            Write-Host "::error::Preload TFM alignment failed for: $((@($report.Misaligned)) -join ', '). A candidate that fails the explicit net8.0/netstandard2.0 asset check (docs/Architecture.md section 8.2 Step 0b) must not proceed."
+            Write-Host "::error::Preload TFM alignment failed for: $((@($report.Misaligned)) -join ', '). A candidate missing a NuGet-selected asset in any supported TFM must not proceed."
             throw 'TFM alignment check failed; blocking candidate generation.'
           }
-          Write-Host "Preload TFM alignment passed: every preload package ships a net8.0-compatible asset."
+          Write-Host "Preload TFM alignment passed: every preload package has a NuGet-selected asset in every supported TFM."
 
       - name: Detect generated changes
         if: steps.drift.outputs.drift != 'true'
@@ -449,7 +700,20 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           $Changed = -not [string]::IsNullOrWhiteSpace((git status --short -- src/DLLPickle.Build/DLLPickle.csproj src/DLLPickle.Build/packages.lock.json))
+          $ProfileSummary = Get-Content -LiteralPath './downloaded-profile-summary/profile-evidence-summary.json' -Raw | ConvertFrom-Json
+          if (-not $ProfileSummary.ReadyForCandidateUpdate) {
+              throw 'Candidate publication requires a complete, accepted, unchanged exact-profile evidence summary.'
+          }
+          $CanonicalLines = [System.Collections.Generic.List[string]]::new()
+          $CanonicalLines.Add("profile-evidence|$($ProfileSummary.AggregateFindingFingerprint)")
+          foreach ($Path in @('src/DLLPickle.Build/DLLPickle.csproj', 'src/DLLPickle.Build/packages.lock.json')) {
+              $Hash = (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant()
+              $CanonicalLines.Add("candidate-file|$Path|$Hash")
+          }
+          $FingerprintBytes = [System.Text.Encoding]::UTF8.GetBytes((@($CanonicalLines | Sort-Object) -join [char]10))
+          $PublicationFingerprint = [System.BitConverter]::ToString([System.Security.Cryptography.SHA256]::HashData($FingerprintBytes)).Replace('-', '').ToLowerInvariant()
           "has_changes=$($Changed.ToString().ToLowerInvariant())" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "publication_fingerprint=$PublicationFingerprint" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
 
       - name: Create candidate pull request
         if: steps.drift.outputs.drift != 'true' && steps.generated_changes.outputs.has_changes == 'true' && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.create_pull_request))
@@ -458,18 +722,41 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $ErrorActionPreference = 'Stop'
-          $BranchName = 'automation/upstream-compatibility-${{ github.run_id }}'
+          $Fingerprint = '${{ steps.generated_changes.outputs.publication_fingerprint }}'
+          if ($Fingerprint -notmatch '^[a-f0-9]{64}$') {
+              throw 'Candidate publication did not receive a stable SHA-256 fingerprint.'
+          }
+          $BranchName = "automation/upstream-compatibility-$($Fingerprint.Substring(0, 16))"
+          $ExistingPullRequests = @(gh pr list --state all --head $BranchName --limit 10 --json number,state,url,body | ConvertFrom-Json)
+          if ($LASTEXITCODE -ne 0) { throw 'Failed to query existing upstream candidate pull requests.' }
+          if ($ExistingPullRequests.Count -gt 0) {
+              Write-Host "Candidate fingerprint $Fingerprint is already published as $($ExistingPullRequests[0].url); suppressing a duplicate pull request."
+              exit 0
+          }
+
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git switch -c $BranchName
           git add src/DLLPickle.Build/DLLPickle.csproj src/DLLPickle.Build/packages.lock.json
           git commit -m 'deps: update upstream compatibility pins'
+          if ($LASTEXITCODE -ne 0) { throw 'Failed to commit the validated upstream candidate.' }
           git push --set-upstream origin $BranchName
-          gh pr create `
-            --title 'deps: update upstream compatibility pins' `
-            --body 'Automated upstream compatibility validation detected a safe candidate dependency pin update. The workflow regenerated the NuGet lock file and validated the issue reproduction suite before opening this PR.' `
-            --base main `
-            --head $BranchName
+          if ($LASTEXITCODE -ne 0) { throw 'Failed to publish the validated upstream candidate branch.' }
+
+          $Body = @(
+              'Automated upstream compatibility validation detected a safe candidate dependency pin update.'
+              ''
+              '- All nine accepted exact-profile fingerprints were complete and unchanged.'
+              '- The workflow regenerated the NuGet lock file.'
+              '- Restore, issue-reproduction tests, and per-TFM asset alignment passed before publication.'
+              ''
+              "Validation run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+              ''
+              "<!-- dllpickle-finding-fingerprint:$Fingerprint -->"
+          ) -join [System.Environment]::NewLine
+          $Arguments = @('pr', 'create', '--title', 'deps: update upstream compatibility pins', '--body', $Body, '--base', 'main', '--head', $BranchName)
+          & gh @Arguments
+          if ($LASTEXITCODE -ne 0) { throw 'Failed to open the validated upstream candidate pull request.' }
 
       - name: Upload upstream compatibility artifacts
         if: always()
@@ -491,18 +778,60 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          $ErrorActionPreference = 'Stop'
           $Title = 'Upstream compatibility automation failed'
+          $FailedSurfaces = [System.Collections.Generic.List[string]]::new()
+          $RunJobsJson = gh api "repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/jobs?filter=latest&per_page=100"
+          if ($LASTEXITCODE -eq 0) {
+            $RunJobs = $RunJobsJson | ConvertFrom-Json
+            foreach ($RunJob in @($RunJobs.jobs)) {
+              foreach ($RunStep in @($RunJob.steps | Where-Object conclusion -EQ 'failure')) {
+                $FailedSurfaces.Add("$($RunJob.name)|$($RunStep.number)|$($RunStep.name)")
+              }
+            }
+          }
+          if ($FailedSurfaces.Count -eq 0) {
+            $FailedSurfaces.Add('${{ github.job }}|unresolved-failure-surface')
+          }
+          $FailureCanonicalText = @($FailedSurfaces | Sort-Object) -join [char]10
+          $FailureBytes = [System.Text.Encoding]::UTF8.GetBytes($FailureCanonicalText)
+          $FailureFingerprint = [System.BitConverter]::ToString([System.Security.Cryptography.SHA256]::HashData($FailureBytes)).Replace('-', '').ToLowerInvariant()
+          $FailureMarker = '<!-- dllpickle-finding-fingerprint:{0} -->' -f $FailureFingerprint
           $Body = @(
             'The scheduled upstream compatibility workflow failed.'
+            ''
+            'Failed job/step surface:'
+            @($FailedSurfaces | Sort-Object | ForEach-Object { "- $_" })
             ''
             'Review the workflow run and uploaded artifacts for details:'
             '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
             ''
             'This workflow is fail-closed. It does not publish or merge dependency preload changes unless inventory, candidate generation, restore, build, and issue repro validation all pass.'
+            ''
+            $FailureMarker
           ) -join [System.Environment]::NewLine
-          $ExistingIssue = gh issue list --state open --search "$Title in:title" --json number --jq '.[0].number'
-          if ([string]::IsNullOrWhiteSpace($ExistingIssue)) {
-            gh issue create --title $Title --body $Body
+
+          $Candidates = @(gh issue list --state all --search "$Title in:title" --limit 20 --json number,state,title | ConvertFrom-Json | Where-Object title -EQ $Title)
+          if ($LASTEXITCODE -ne 0) { throw 'Failed to query existing upstream automation failure issues.' }
+          $ExistingIssue = $Candidates | Select-Object -First 1
+          $AlreadyReported = $false
+          if ($ExistingIssue) {
+            $ExistingContent = gh issue view $ExistingIssue.number --json body,comments | ConvertFrom-Json
+            if ($LASTEXITCODE -ne 0) { throw 'Failed to read the existing upstream automation failure issue.' }
+            $PublishedText = @($ExistingContent.body) + @($ExistingContent.comments.body)
+            $AlreadyReported = ./tools/Test-DLLPickleFindingFingerprintReported.ps1 -Fingerprint $FailureFingerprint -Text $PublishedText
+          }
+
+          if ($AlreadyReported) {
+            Write-Host "Failure fingerprint $FailureFingerprint is already reported; suppressing a duplicate comment."
+          } elseif ($ExistingIssue) {
+            if ([string]$ExistingIssue.state -eq 'CLOSED') {
+              gh issue reopen $ExistingIssue.number
+              if ($LASTEXITCODE -ne 0) { throw 'Failed to reopen the upstream automation failure issue.' }
+            }
+            gh issue comment $ExistingIssue.number --body $Body
+            if ($LASTEXITCODE -ne 0) { throw 'Failed to publish the new upstream automation failure finding.' }
           } else {
-            gh issue comment $ExistingIssue --body $Body
+            gh issue create --title $Title --body $Body
+            if ($LASTEXITCODE -ne 0) { throw 'Failed to open the upstream automation failure issue.' }
           }

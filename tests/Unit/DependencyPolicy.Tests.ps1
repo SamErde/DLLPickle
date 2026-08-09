@@ -4,6 +4,41 @@ BeforeAll {
 }
 
 Describe 'Dependency policy baseline' -Tag 'Unit' {
+    It 'keys classifications and validation gates by every supported PowerShell/TFM profile' {
+        @($script:Policy.runtimeProfiles) | Should -HaveCount 3
+        @($script:Policy.runtimeProfiles.powerShellLine) | Should -Be @('7.4', '7.5', '7.6')
+        @($script:Policy.runtimeProfiles.targetFramework) | Should -Be @('net8.0', 'net9.0', 'net10.0')
+
+        foreach ($RuntimeProfile in @($script:Policy.runtimeProfiles)) {
+            @($RuntimeProfile.platforms) | Should -Be @('windows', 'linux', 'macos')
+            @($RuntimeProfile.monitoredModuleSet) | Should -Not -BeNullOrEmpty
+            @($RuntimeProfile.importOrders) | Should -HaveCount 2
+            @($RuntimeProfile.preloadAssemblyNames) | Should -Not -BeNullOrEmpty
+            @($RuntimeProfile.blockedAssemblyNames) | Should -Not -BeNullOrEmpty
+            $RuntimeProfile.validationTiers.deterministicImportNoAuth.required | Should -BeTrue
+            $RuntimeProfile.validationTiers.authenticatedReadOnly.writesAllowed | Should -BeFalse
+            foreach ($Platform in @('windows', 'linux', 'macos')) {
+                $RuntimeProfile.baselines.$Platform.PSObject.Properties.Name | Should -Contain 'scenarioFingerprint'
+            }
+        }
+    }
+
+    It 'applies every preload and block decision to all three isolated TFMs' {
+        foreach ($decision in @($script:Policy.preload + $script:Policy.blockedPreloadAssemblies)) {
+            @($decision.targetFrameworks) | Should -Be @('net8.0', 'net9.0', 'net10.0')
+        }
+    }
+
+    It 'records deterministic and authenticated read-only probes separately' {
+        foreach ($module in @($script:Policy.monitoredModules)) {
+            $module.umbrellaModule | Should -Not -BeNullOrEmpty
+            $module.deterministicProbeCommand | Should -Not -BeNullOrEmpty
+            $module.authenticatedReadOnlyProbeCommand | Should -Not -BeNullOrEmpty
+        }
+        ($script:Policy.monitoredModules | Where-Object name -eq 'ExchangeOnlineManagement').authenticatedReadOnlyProbeCommand | Should -Match 'Get-EXOMailbox'
+        ($script:Policy.monitoredModules | Where-Object name -eq 'MicrosoftTeams').authenticatedReadOnlyProbeCommand | Should -Match 'Get-CsTenant'
+    }
+
     It 'explicitly monitors Az.Resources as the #193 collision source' {
         $MonitoredNames = @($script:Policy.monitoredModules.name)
         $MonitoredNames | Should -Contain 'Az.Resources'

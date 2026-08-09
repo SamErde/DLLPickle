@@ -79,4 +79,24 @@ Describe 'Compare-DLLPickleConflictMatrix' -Tag 'Unit' {
         $r.HasMaterialDrift | Should -BeTrue
         $r.Findings.RemovedConflicts | Should -Contain 'Microsoft.OData.Core'
     }
+
+    It 'emits a stable finding fingerprint for report deduplication' {
+        $b = Get-DriftMatrix @(Get-DriftRow 'Azure.Core' $true 'Default' @('1.50.0.0') @('Az.Accounts'))
+        $c = Get-DriftMatrix @(Get-DriftRow 'Azure.Core' $true 'Default' @('1.51.0.0') @('Az.Accounts'))
+
+        $first = & $ScriptPath -Baseline $b -Current $c
+        $second = & $ScriptPath -Baseline $b -Current $c
+
+        $first.FindingFingerprint | Should -Match '^[a-f0-9]{64}$'
+        $first.FindingFingerprint | Should -BeExactly $second.FindingFingerprint
+    }
+
+    It 'rejects comparisons across different runtime profiles' {
+        $b = Get-DriftMatrix @(Get-DriftRow 'Azure.Core' $true)
+        $b | Add-Member -NotePropertyName ProfileKey -NotePropertyValue 'ps7.4-net8.0-windows-x64'
+        $c = Get-DriftMatrix @(Get-DriftRow 'Azure.Core' $true)
+        $c | Add-Member -NotePropertyName ProfileKey -NotePropertyValue 'ps7.5-net9.0-windows-x64'
+
+        { & $ScriptPath -Baseline $b -Current $c } | Should -Throw '*different runtime profiles*'
+    }
 }

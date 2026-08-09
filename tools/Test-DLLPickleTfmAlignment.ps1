@@ -1,24 +1,18 @@
 <#
 .SYNOPSIS
-    Asserts that bundled (preload) NuGet packages ship a net8.0-compatible assembly asset.
+    Assert that every preload package resolves an assembly asset for every supported TFM.
 
 .DESCRIPTION
-    Implements Step 0(b) of the tracked-dependency release lifecycle in docs/Architecture.md
-    section 8.2: the explicit "TFM-alignment" inspection. The Build gate (Step 0(a)) proves a
-    package restores and builds green under --locked-mode; this tool proves the complementary
-    half - that each preload package actually contains a target-framework asset net8.0 can
-    consume (net8.0 or a lower netX.0/netcoreapp asset, or a netstandard2.0/2.1/1.x asset),
-    rather than appearing to work only by luck of transitive resolution.
+    Implements Step 0(b) of the tracked-dependency release lifecycle. Policy mode reads NuGet's
+    restored project.assets.json and verifies the actual compile/runtime asset selection for every
+    preload package under net8.0, net9.0, and net10.0. It does not approximate NuGet compatibility
+    with a handwritten TFM model.
 
     Two modes:
       - PackageDirectory: inspect a single extracted NuGet package directory (one with a lib/
         folder) and return its alignment result.
-      - Policy: resolve the preload set from build/dependency-policy.json, the restored versions
-        from packages.lock.json, locate each package under the NuGet global-packages folder, and
-        return an aggregate report (optionally failing in -Strict mode).
-
-    This is a focused subset of NuGet's compatibility model sufficient for the in-scope MSAL +
-    IdentityModel families (all ship netstandard2.0 and/or net8.0); it is not a full resolver.
+      - Policy: inspect NuGet's resolved target graph and selected assets for all supported TFMs,
+        then return an aggregate report (optionally failing in -Strict mode).
 
 .PARAMETER PackageDirectory
     Path to a single extracted NuGet package directory (containing a lib/ folder) to inspect.
@@ -32,9 +26,8 @@
 .PARAMETER LockFilePath
     Path to packages.lock.json, used to resolve each preload package's restored version (Policy mode).
 
-.PARAMETER PackagesRoot
-    NuGet global-packages folder that holds the restored packages. Defaults to $env:NUGET_PACKAGES,
-    then to ~/.nuget/packages (Policy mode).
+.PARAMETER ProjectAssetsPath
+    Restored NuGet project.assets.json used as the authority for TFM asset selection.
 
 .PARAMETER OutputPath
     Optional path where the JSON alignment report is written (Policy mode).
@@ -71,7 +64,8 @@ param(
     [string]$LockFilePath = (Join-Path -Path (Split-Path -Parent $PSScriptRoot) -ChildPath 'src\DLLPickle.Build\packages.lock.json'),
 
     [Parameter(ParameterSetName = 'Policy')]
-    [string]$PackagesRoot,
+    [ValidateNotNullOrEmpty()]
+    [string]$ProjectAssetsPath = (Join-Path -Path (Split-Path -Parent $PSScriptRoot) -ChildPath 'src\DLLPickle.Build\obj\project.assets.json'),
 
     [Parameter(ParameterSetName = 'Policy')]
     [string]$OutputPath,
@@ -223,22 +217,20 @@ function Get-DLLPickleResolvedPackageVersion {
         [object]$LockObject,
 
         [Parameter(Mandatory)]
-        [string]$Name
+        [string]$Name,
+
+        [Parameter(Mandatory)]
+        [string]$TargetFramework
     )
 
     if (-not $LockObject.dependencies) {
         return $null
     }
 
-    # Prefer the net8.0 dependency group, then any other, when reading the resolved version.
-    $Groups = @($LockObject.dependencies.PSObject.Properties |
-            Sort-Object -Property { if ($_.Name -eq 'net8.0') { 0 } else { 1 } })
-
-    foreach ($Group in $Groups) {
+    $Group = $LockObject.dependencies.PSObject.Properties | Where-Object Name -eq $TargetFramework | Select-Object -First 1
+    if ($Group) {
         $Entry = $Group.Value.PSObject.Properties | Where-Object { $_.Name -eq $Name } | Select-Object -First 1
-        if ($Entry) {
-            return [string]$Entry.Value.resolved
-        }
+        if ($Entry) { return [string]$Entry.Value.resolved }
     }
 
     return $null
@@ -250,49 +242,83 @@ if ($PSCmdlet.ParameterSetName -eq 'PackageDirectory') {
     return
 }
 
-if ([string]::IsNullOrWhiteSpace($PackagesRoot)) {
-    $PackagesRoot = if (-not [string]::IsNullOrWhiteSpace($env:NUGET_PACKAGES)) {
-        $env:NUGET_PACKAGES
-    } else {
-        Join-Path -Path $HOME -ChildPath '.nuget' -AdditionalChildPath 'packages'
-    }
-}
-
 $ResolvedPolicyPath = (Resolve-Path -LiteralPath $PolicyPath).Path
 $ResolvedLockPath = (Resolve-Path -LiteralPath $LockFilePath).Path
+$ResolvedProjectAssetsPath = (Resolve-Path -LiteralPath $ProjectAssetsPath).Path
 $Policy = Get-Content -LiteralPath $ResolvedPolicyPath -Raw | ConvertFrom-Json
 $Lock = Get-Content -LiteralPath $ResolvedLockPath -Raw | ConvertFrom-Json
+$ProjectAssets = Get-Content -LiteralPath $ResolvedProjectAssetsPath -Raw | ConvertFrom-Json
+$TargetFrameworks = if ($Policy.PSObject.Properties.Name -contains 'runtimeProfiles') {
+    @($Policy.runtimeProfiles.targetFramework | Sort-Object -Unique)
+} else {
+    @($Lock.dependencies.PSObject.Properties.Name | Sort-Object -Unique)
+}
 
-$PackageResults = foreach ($Pin in @($Policy.preload)) {
-    $Name = [string]$Pin.packageName
-    $Version = Get-DLLPickleResolvedPackageVersion -LockObject $Lock -Name $Name
+$PackageResults = foreach ($TargetFramework in $TargetFrameworks) {
+    $TargetGraphProperty = $ProjectAssets.targets.PSObject.Properties |
+        Where-Object Name -eq $TargetFramework |
+        Select-Object -First 1
 
-    if ([string]::IsNullOrWhiteSpace($Version)) {
+    foreach ($Pin in @($Policy.preload)) {
+        $Name = [string]$Pin.packageName
+        $Version = Get-DLLPickleResolvedPackageVersion -LockObject $Lock -Name $Name -TargetFramework $TargetFramework
+        $SelectedAssets = @()
+        $Reason = $null
+
+        if ([string]::IsNullOrWhiteSpace($Version)) {
+            $Reason = "No resolved version for '$Name' was found in '$ResolvedLockPath' under '$TargetFramework'."
+        } elseif (-not $TargetGraphProperty) {
+            $Reason = "NuGet project.assets.json contains no restored target graph for '$TargetFramework'."
+        } else {
+            $PackageKey = '{0}/{1}' -f $Name, $Version
+            $PackageProperty = $TargetGraphProperty.Value.PSObject.Properties |
+                Where-Object Name -ieq $PackageKey |
+                Select-Object -First 1
+            if (-not $PackageProperty) {
+                $Reason = "NuGet selected no '$PackageKey' entry for '$TargetFramework'."
+            } else {
+                $RuntimeAssets = if ($PackageProperty.Value.runtime) {
+                    @($PackageProperty.Value.runtime.PSObject.Properties.Name | Where-Object { $_ -match '\.dll$' })
+                } else {
+                    @()
+                }
+                $CompileAssets = if ($PackageProperty.Value.compile) {
+                    @($PackageProperty.Value.compile.PSObject.Properties.Name | Where-Object { $_ -match '\.dll$' })
+                } else {
+                    @()
+                }
+                $SelectedAssets = if ($RuntimeAssets.Count -gt 0) { $RuntimeAssets } else { $CompileAssets }
+                if ($SelectedAssets.Count -gt 0) {
+                    $Reason = "NuGet selected asset(s) for ${TargetFramework}: $($SelectedAssets -join ', ')."
+                } else {
+                    $Reason = "NuGet selected '$PackageKey' for '$TargetFramework' but no assembly compile/runtime asset."
+                }
+            }
+        }
+
         [PSCustomObject]@{
             PackageName      = $Name
-            ResolvedVersion  = $null
-            PackageDirectory = $null
-            IsAligned        = $false
-            CompatibleAssets = @()
-            AvailableAssets  = @()
-            Reason           = "No resolved version for '$Name' was found in '$ResolvedLockPath'."
+            ResolvedVersion  = $Version
+            TargetFramework  = $TargetFramework
+            IsAligned        = $SelectedAssets.Count -gt 0
+            SelectedAssets   = @($SelectedAssets)
+            CompatibleAssets = @($SelectedAssets)
+            AvailableAssets  = @($SelectedAssets)
+            Reason           = $Reason
         }
-        continue
     }
-
-    $PackagePath = Join-Path -Path $PackagesRoot -ChildPath $Name.ToLowerInvariant() -AdditionalChildPath $Version.ToLowerInvariant()
-    Test-DLLPickleSinglePackageAlignment -PackagePath $PackagePath -Name $Name -ResolvedVersion $Version
 }
 
 $PackageResultArray = @($PackageResults)
-$Misaligned = @($PackageResultArray | Where-Object { -not $_.IsAligned } | ForEach-Object { $_.PackageName })
+$Misaligned = @($PackageResultArray | Where-Object { -not $_.IsAligned } | ForEach-Object { '{0}/{1}' -f $_.TargetFramework, $_.PackageName })
 $IsAligned = ($PackageResultArray.Count -gt 0) -and ($Misaligned.Count -eq 0)
 
 $Report = [PSCustomObject]@{
     GeneratedAtUtc = [System.DateTimeOffset]::UtcNow.ToString('o')
     PolicyPath     = $ResolvedPolicyPath
     LockFilePath   = $ResolvedLockPath
-    PackagesRoot   = $PackagesRoot
+    ProjectAssetsPath = $ResolvedProjectAssetsPath
+    TargetFrameworks = $TargetFrameworks
     IsAligned      = $IsAligned
     Packages       = $PackageResultArray
     Misaligned     = $Misaligned
@@ -307,7 +333,7 @@ if (-not [string]::IsNullOrWhiteSpace($OutputPath)) {
 }
 
 if ($Strict.IsPresent -and -not $IsAligned) {
-    throw ("TFM alignment check failed: the following preload package(s) ship no net8.0/netstandard2.0-compatible asset: {0}." -f ($Misaligned -join ', '))
+    throw ("TFM alignment check failed: NuGet selected no assembly asset for: {0}." -f ($Misaligned -join ', '))
 }
 
 $Report

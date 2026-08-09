@@ -1,4 +1,4 @@
-# Auto-approves and auto-merges Dependabot pull requests that update the NuGet packages in src/DLLPickle.Build (patch/minor only).
+# Auto-approves and registers auto-merge for Dependabot pull requests that update the NuGet runtime bundle in src/DLLPickle.Build (patch/minor only).
 # Major updates are converted to a draft PR with detailed review notes (decision 4 / docs/Architecture.md section 8.2) -- never auto-merged or auto-published.
 #
 # Requirements:
@@ -93,14 +93,19 @@ jobs:
           FILES=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/files" --paginate --jq '.[].filename')
           MATCHING_FILES=$(printf '%s\n' "$FILES" | sed '/^$/d' | grep -E '^src/DLLPickle\.Build/(DLLPickle\.csproj|packages\.lock\.json)$' || true)
           UNEXPECTED_FILES=$(printf '%s\n' "$FILES" | sed '/^$/d' | grep -Ev '^src/DLLPickle\.Build/(DLLPickle\.csproj|packages\.lock\.json)$' || true)
+          CONDITIONAL_TFM_ADDITION=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/files" --paginate --jq '.[] | select(.filename == "src/DLLPickle.Build/DLLPickle.csproj") | (.patch // "")' | grep -E '^\+.*PackageReference.*Condition=.*TargetFramework' || true)
 
-          if [ -n "$MATCHING_FILES" ] && [ -z "$UNEXPECTED_FILES" ]; then
+          if [ -n "$MATCHING_FILES" ] && [ -z "$UNEXPECTED_FILES" ] && [ -z "$CONDITIONAL_TFM_ADDITION" ]; then
             echo "is_exact_nuget_update=true" >> "$GITHUB_OUTPUT"
           else
             echo "is_exact_nuget_update=false" >> "$GITHUB_OUTPUT"
             if [ -n "$UNEXPECTED_FILES" ]; then
               echo "Refusing auto-approval because the PR changes files outside the NuGet allow-list:"
               printf '%s\n' "$UNEXPECTED_FILES"
+            fi
+            if [ -n "$CONDITIONAL_TFM_ADDITION" ]; then
+              echo "Refusing auto-approval because the PR introduces a conditional per-TFM PackageReference:"
+              printf '%s\n' "$CONDITIONAL_TFM_ADDITION"
             fi
           fi
 
@@ -163,19 +168,24 @@ jobs:
 
           **Package:** ${NUGET_LINK} — see the package's Release Notes / changelog for breaking changes.
 
-          **TFM alignment (§8.2 Step 0)**
+          **Per-TFM major-update evidence (required before marking ready)**
 
-          - 0a — Build gate: restore/build/test green on \`net8.0\` under \`--locked-mode\`. See the Checks tab: ${PR_URL}/checks
-          - 0b — explicit net8.0-consumable asset inspection (including \`netstandard2.0\` and \`netstandard2.1\` where applicable): run \`tools/Test-DLLPickleTfmAlignment.ps1\` against the bumped package(s); the scheduled Upstream-Compatibility candidate flow runs this fail-closed.
+          | TFM | Resolved graph + selected assets | Added/removed/changed assemblies | Conflict-surface delta | Scenario outcomes |
+          |---|---|---|---|---|
+          | \`net8.0\` | \`tfm-alignment.json\` | package composition/size artifacts | PowerShell 7.4 Windows/Linux/macOS profile artifacts | exact PowerShell 7.4 result artifacts |
+          | \`net9.0\` | \`tfm-alignment.json\` | package composition/size artifacts | PowerShell 7.5 Windows/Linux/macOS profile artifacts | exact PowerShell 7.5 result artifacts |
+          | \`net10.0\` | \`tfm-alignment.json\` | package composition/size artifacts | PowerShell 7.6 Windows/Linux/macOS profile artifacts | exact PowerShell 7.6 result artifacts |
 
-          **Pester / CI:** ${PR_URL}/checks
+          The structured JSON reports are attached to the required **Build gate** and **Validate upstream compatibility tooling** checks: ${PR_URL}/checks. Missing, stale, unaccepted, or drifted profile evidence fails closed; this comment is an index, not a substitute for the artifacts.
 
-          **Conflict surface / policy impact:** a major upstream jump can move the conflict surface. Re-check the Upstream-Compatibility drift gate and re-adjudicate \`build/dependency-policy.json\` (classification + evidence + baseline) per §3 if it moved.
+          **Size policy:** \`artifact-size.json\` must remain within \`build/artifact-size-baseline.json\`; a material breach requires explicit review even when the nominal update is minor.
 
           **Maintainer checklist (complete before marking ready)**
 
           - [ ] Re-adjudicate the §3 preload/block classifications for the bumped package(s).
-          - [ ] Confirm TFM alignment: 0a (Build gate green) and 0b (\`Test-DLLPickleTfmAlignment.ps1\`).
-          - [ ] Refresh the \`build/dependency-policy.json\` baseline if the conflict surface moved.
-          - [ ] Auth-tier real-environment sign-off per §9 (the 2.0.1 precedent) for any bundled-set change.
+          - [ ] Confirm all three resolved graphs and selected-asset rows in \`tfm-alignment.json\`.
+          - [ ] Review added, removed, and hash-changed assemblies plus per-TFM/full size deltas.
+          - [ ] Re-adjudicate each profile/platform conflict fingerprint and both import orders.
+          - [ ] Review every exact-runtime scenario outcome and preserve #174 process isolation.
+          - [ ] Complete the authenticated read-only release gates listed in \`docs/generated/Compatibility-Evidence.md\`; do not represent unexecuted probes as passing.
           - [ ] Merge carrying a \`breaking:\` prefix so the release publishes a **major** module version. ⚠️ The default squash subject is Dependabot's \`deps:\` commit message, which \`Get-VersionBump.ps1\` maps to a **minor** bump — edit the squash commit subject to \`breaking:\` before confirming the merge, or the release will publish the wrong (minor) version."

@@ -17,7 +17,7 @@
 .PARAMETER NameLike
     Optional wildcard patterns; when supplied, an assembly must ALSO match one of them to be returned.
 .OUTPUTS
-    PSCustomObject[] with Name, Version, Alc, Path. Sorted by Name.
+    PSCustomObject[] with Name, Version, ALC, path, hash, OS, and architecture. Sorted by Name.
 #>
 [CmdletBinding()]
 param(
@@ -48,11 +48,21 @@ $TrackedNames = @((Get-Content -LiteralPath $PolicyPath -Raw | ConvertFrom-Json)
     } |
     ForEach-Object {
         $Alc = [System.Runtime.Loader.AssemblyLoadContext]::GetLoadContext($_)
+        $AssemblyPath = $_.Location
         [PSCustomObject]@{
-            Name    = $_.GetName().Name
-            Version = $_.GetName().Version.ToString()
-            Alc     = if ($Alc -and $Alc.Name) { $Alc.Name } else { 'Default' }
-            Path    = $_.Location
+            Name         = $_.GetName().Name
+            Version      = $_.GetName().Version.ToString()
+            FullName     = $_.FullName
+            Alc          = if ($Alc -and $Alc.Name) { $Alc.Name } else { 'Default' }
+            IsCollectible = if ($Alc) { $Alc.IsCollectible } else { $false }
+            Path         = $AssemblyPath
+            Sha256       = if (-not [string]::IsNullOrWhiteSpace($AssemblyPath) -and (Test-Path -LiteralPath $AssemblyPath -PathType Leaf)) {
+                (Get-FileHash -LiteralPath $AssemblyPath -Algorithm SHA256).Hash.ToLowerInvariant()
+            } else {
+                $null
+            }
+            OS           = [System.Runtime.InteropServices.RuntimeInformation]::OSDescription
+            Architecture = [System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString().ToLowerInvariant()
         }
     } |
     Sort-Object Name

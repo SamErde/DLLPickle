@@ -120,4 +120,17 @@ Describe 'New-DLLPickleConflictMatrix' -Tag 'Unit' {
             Should -Be @($viaTeams.Assemblies | Where-Object Name -EQ 'Azure.Core').Versions   # same version set
         $viaGraph.Fingerprint | Should -Not -Be $viaTeams.Fingerprint            # different contributors
     }
+
+    It 'keys otherwise identical fingerprints by exact runtime profile' {
+        $FirstInventory = Get-TestInventory
+        $FirstInventory | Add-Member -NotePropertyName ProfileKey -NotePropertyValue 'ps7.4-net8.0-windows-x64'
+        $SecondInventory = Get-TestInventory
+        $SecondInventory | Add-Member -NotePropertyName ProfileKey -NotePropertyValue 'ps7.5-net9.0-windows-x64'
+
+        $first = & $ScriptPath -Inventory $FirstInventory
+        $second = & $ScriptPath -Inventory $SecondInventory
+
+        $first.ProfileKey | Should -Be 'ps7.4-net8.0-windows-x64'
+        $first.Fingerprint | Should -Not -Be $second.Fingerprint
+    }
 }

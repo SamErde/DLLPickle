@@ -79,11 +79,20 @@ $SurfaceRows = @(
         '{0}={1};by={2}' -f $_.Name, (@($_.Versions | Sort-Object) -join ','), (@($_.ShippedBy | Sort-Object) -join ',')
     }
 )
-$FingerprintBytes = [System.Text.Encoding]::UTF8.GetBytes(($SurfaceRows -join '|'))
+$ProfileKey = if ($Inventory.PSObject.Properties.Name -contains 'ProfileKey') { [string]$Inventory.ProfileKey } else { $null }
+$FingerprintInput = if ([string]::IsNullOrWhiteSpace($ProfileKey)) {
+    $SurfaceRows -join '|'
+} else {
+    '{0}|{1}' -f $ProfileKey, ($SurfaceRows -join '|')
+}
+$FingerprintBytes = [System.Text.Encoding]::UTF8.GetBytes($FingerprintInput)
 $Fingerprint = [System.BitConverter]::ToString([System.Security.Cryptography.SHA256]::HashData($FingerprintBytes)).Replace('-', '').ToLowerInvariant()
 
 $Matrix = [PSCustomObject]@{
     GeneratedAtUtc  = $null   # stamped by the caller; avoids non-deterministic test output
+    ProfileKey      = $ProfileKey
+    Profile         = if ($Inventory.PSObject.Properties.Name -contains 'Profile') { $Inventory.Profile } else { $null }
+    ValidationTier  = if ($Inventory.PSObject.Properties.Name -contains 'ValidationTier') { $Inventory.ValidationTier } else { $null }
     Assemblies      = @($AssemblyRows)
     ConflictSurface = @($AssemblyRows | Where-Object Diverges | ForEach-Object Name)
     Fingerprint     = $Fingerprint
