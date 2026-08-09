@@ -179,6 +179,10 @@ Describe 'Dependency policy realization' -Tag 'Integration' {
                     continue
                 }
 
+                if ([bool]$BlockedPoliciesByPackageName[$PackageName].universalArtifactRequired) {
+                    continue
+                }
+
                 $ExcludeAssets = @(Get-ExcludedAssetName -PackageReference $PackageReferenceByName[$PackageName])
                 if ($ExcludeAssets -notcontains 'runtime' -and $ExcludeAssets -notcontains 'all') {
                     $PackageName
@@ -187,6 +191,21 @@ Describe 'Dependency policy realization' -Tag 'Integration' {
         )
 
         $BlockedReferencesWithoutRuntimeExclusion | Should -BeNullOrEmpty
+    }
+
+    It 'retains runtime assets required by the universal cross-platform artifact' {
+        $MissingUniversalRuntimeAssets = @(
+            $Policy.blockedPreloadAssemblies |
+                Where-Object { [bool]$_.universalArtifactRequired } |
+                Where-Object {
+                    -not $PackageReferenceByName.ContainsKey([string]$_.packageName) -or
+                    @(Get-ExcludedAssetName -PackageReference $PackageReferenceByName[[string]$_.packageName]) -contains 'runtime' -or
+                    [string]$_.assemblyName -notin $BuiltAssemblyNames
+                } |
+                ForEach-Object { $_.assemblyName }
+        )
+
+        $MissingUniversalRuntimeAssets | Should -BeNullOrEmpty
     }
 
     It 'bundles every preload assembly' {
@@ -202,7 +221,10 @@ Describe 'Dependency policy realization' -Tag 'Integration' {
         # Filter blocked assemblies to only those applicable to the current platform
         $ApplicableBlockedAssemblyNames = @(
             $Policy.blockedPreloadAssemblies |
-                Where-Object { Test-PackageApplicableToCurrentPlatform -PackageName $_.packageName } |
+                Where-Object {
+                    (Test-PackageApplicableToCurrentPlatform -PackageName $_.packageName) -and
+                    -not [bool]$_.universalArtifactRequired
+                } |
                 ForEach-Object { $_.assemblyName } |
                 Sort-Object -Unique
         )
@@ -220,7 +242,10 @@ Describe 'Dependency policy realization' -Tag 'Integration' {
         # (i.e., blocked on other platforms, legitimately bundled on this platform)
         $AllowedBlockedAssemblyNames = @(
             $Policy.blockedPreloadAssemblies |
-                Where-Object { -not (Test-PackageApplicableToCurrentPlatform -PackageName $_.packageName) } |
+                Where-Object {
+                    -not (Test-PackageApplicableToCurrentPlatform -PackageName $_.packageName) -or
+                    [bool]$_.universalArtifactRequired
+                } |
                 ForEach-Object { $_.assemblyName } |
                 Sort-Object -Unique
         )

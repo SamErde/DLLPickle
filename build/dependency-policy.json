@@ -686,14 +686,15 @@
       "platforms": [
         "Windows"
       ],
+      "universalArtifactRequired": true,
       "sourceModules": [
         "PowerShell"
       ],
       "updateMode": "reportOnly",
-      "reason": "Runtime-provided BCL assembly supplied by PowerShell on Windows; does not require bundling. On non-Windows platforms, PowerShell does not provide this assembly, so it is allowed to be bundled transitively via Microsoft.Identity.Client.Extensions.Msal without creating a conflict.",
+      "reason": "Runtime-provided BCL assembly supplied by PowerShell on Windows, so Import-DPLibrary must not preload the bundled copy there. PowerShell does not provide it on Linux or macOS, so the single platform-neutral release artifact must include it for the MSAL extensions dependency chain.",
       "evidence": {
         "alcOwner": "PowerShell host / Default (Windows)",
-        "basis": "Windows build validation on 2026-06-23 found that the MSAL extensions dependency copied NuGet System.Security.Cryptography.ProtectedData 4.5.0 into the bundle while PowerShell already supplied the runtime assembly. A direct ExcludeAssets=runtime reference keeps that host-provided assembly out of DLLPickle's preload set. On non-Windows platforms, the runtime assets are retained to satisfy the dependency chain.",
+        "basis": "Windows validation on 2026-06-23 established that PowerShell supplies this assembly. The release pipeline publishes one module artifact assembled on Windows, so excluding the runtime asset at build time also removed it for Linux and macOS. The universal artifact now retains the file, while the shipped runtime profile policy filters it from Windows preloading and permits it on non-Windows hosts.",
         "decidedOn": "2026-06-23"
       },
       "targetFrameworks": [

@@ -80,7 +80,7 @@ function Get-DPRuntimeProfile {
     }
 
     $ProfileByPowerShellLine = @{}
-    $RequiredPropertyNames = @('powerShellMajor', 'powerShellMinor', 'dotnetMajor', 'targetFramework')
+    $RequiredPropertyNames = @('powerShellMajor', 'powerShellMinor', 'dotnetMajor', 'targetFramework', 'hostProvidedAssemblyNames')
     foreach ($RuntimeProfileEntry in $Profiles) {
         foreach ($RequiredPropertyName in $RequiredPropertyNames) {
             if ($RuntimeProfileEntry.PSObject.Properties.Name -notcontains $RequiredPropertyName) {
@@ -105,6 +105,19 @@ function Get-DPRuntimeProfile {
         $ExpectedTargetFramework = 'net{0}.0' -f $ProfileDotNetMajor
         if ([string]$RuntimeProfileEntry.targetFramework -cne $ExpectedTargetFramework) {
             throw "DLLPickle runtime profile policy targetFramework '$($RuntimeProfileEntry.targetFramework)' does not match declared CLR major $ProfileDotNetMajor; expected '$ExpectedTargetFramework'."
+        }
+
+        foreach ($RuntimePlatform in @('windows', 'linux', 'macos')) {
+            if ($RuntimeProfileEntry.hostProvidedAssemblyNames.PSObject.Properties.Name -notcontains $RuntimePlatform) {
+                throw "DLLPickle runtime profile policy is malformed: hostProvidedAssemblyNames is missing '$RuntimePlatform'."
+            }
+            $HostProvidedNames = @($RuntimeProfileEntry.hostProvidedAssemblyNames.$RuntimePlatform | ForEach-Object { [string]$_ })
+            if (@($HostProvidedNames | Where-Object { [string]::IsNullOrWhiteSpace($_) }).Count -gt 0) {
+                throw "DLLPickle runtime profile policy is malformed: hostProvidedAssemblyNames.$RuntimePlatform contains an empty assembly name."
+            }
+            if (@($HostProvidedNames | Sort-Object -Unique).Count -ne $HostProvidedNames.Count) {
+                throw "DLLPickle runtime profile policy is malformed: hostProvidedAssemblyNames.$RuntimePlatform contains duplicate assembly names."
+            }
         }
 
         $PowerShellLine = '{0}.{1}' -f $PowerShellMajor, $PowerShellMinor

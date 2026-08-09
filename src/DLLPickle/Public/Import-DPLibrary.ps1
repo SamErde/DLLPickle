@@ -96,12 +96,21 @@
     }
 
     $NativeRuntimeRoot = Join-Path -Path $TFMDirectory -ChildPath 'runtimes'
+    $RuntimePlatform = if ([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::Windows)) {
+        'windows'
+    } elseif ([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::OSX)) {
+        'macos'
+    } else {
+        'linux'
+    }
+    $HostProvidedAssemblyNames = @($RuntimeProfile.hostProvidedAssemblyNames.$RuntimePlatform)
+    $HostProvidedDLLNames = @($HostProvidedAssemblyNames | ForEach-Object { '{0}.dll' -f $_ })
+
     if (Test-Path -LiteralPath $NativeRuntimeRoot -PathType Container) {
         $ProcessArchitecture = [System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString().ToLowerInvariant()
-        $IsWindowsHost = [System.Environment]::OSVersion.Platform -eq [System.PlatformID]::Win32NT
-        $RuntimePrefix = if ($IsWindowsHost) {
+        $RuntimePrefix = if ($RuntimePlatform -eq 'windows') {
             'win'
-        } elseif ($IsMacOS) {
+        } elseif ($RuntimePlatform -eq 'macos') {
             'osx'
         } else {
             'linux'
@@ -141,8 +150,14 @@
     # Get all DLL files in the target framework moniker (TFM) directory. If no DLLs are found, throw an error to alert the user about potential installation issues.
     $DLLFiles = @(
         Get-ChildItem -Path $TFMDirectory -Filter '*.dll' -File -Recurse -ErrorAction Stop |
-            Where-Object { $_.FullName -notmatch '[\\/]runtimes[\\/].*[\\/]native[\\/]' }
+            Where-Object {
+                $_.FullName -notmatch '[\\/]runtimes[\\/].*[\\/]native[\\/]' -and
+                $_.Name -notin $HostProvidedDLLNames
+            }
     )
+    if ($HostProvidedDLLNames.Count -gt 0) {
+        Write-Verbose "Skipped host-provided assemblies for ${RuntimePlatform}: $($HostProvidedDLLNames -join ', ')"
+    }
     if (-not $DLLFiles -or $DLLFiles.Count -eq 0) {
         throw "No DLL files found in '$TFMDirectory'. Ensure that the module is properly installed and the bin directory contains the expected assemblies."
     }

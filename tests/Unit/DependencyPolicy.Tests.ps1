@@ -145,6 +145,8 @@ Describe 'Dependency policy baseline' -Tag 'Unit' {
         @($ConflictRow[0].versions) | Should -Be @('4.0.3.0', '7.0.0.0', '9.0.0.0')
         @($ConflictRow[0].shippedBy) | Should -Be @('Az.Accounts', 'ExchangeOnlineManagement', 'Microsoft.Graph.Authentication', 'MicrosoftTeams')
         $BlockEntry | Should -HaveCount 1
+        @($BlockEntry[0].platforms) | Should -Be @('Windows')
+        $BlockEntry[0].universalArtifactRequired | Should -BeTrue
     }
 
 }

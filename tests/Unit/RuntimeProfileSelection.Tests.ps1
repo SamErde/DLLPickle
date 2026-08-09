@@ -13,6 +13,7 @@ Describe 'Get-DPRuntimeProfile' -Tag 'Unit' {
         $result = Get-DPRuntimeProfile -PolicyPath $script:RuntimePolicyPath -PowerShellVersion $PowerShellVersion -DotNetMajor $DotNetMajor
 
         $result.targetFramework | Should -Be $TargetFramework
+        @($result.hostProvidedAssemblyNames.windows) | Should -Be @('System.Security.Cryptography.ProtectedData')
     }
 
     It 'fails closed for an unsupported PowerShell line' {
@@ -56,5 +57,16 @@ Describe 'Get-DPRuntimeProfile' -Tag 'Unit' {
         {
             Get-DPRuntimeProfile -PolicyPath $policyPath -PowerShellVersion ([version]'7.6.4') -DotNetMajor 10
         } | Should -Throw '*targetFramework*net10.0*'
+    }
+
+    It 'rejects a profile without complete host-provided assembly mappings' {
+        $policyPath = Join-Path -Path $TestDrive -ChildPath 'missing-host-map.json'
+        $policy = Get-Content -LiteralPath $script:RuntimePolicyPath -Raw | ConvertFrom-Json
+        $policy.profiles[0].hostProvidedAssemblyNames.PSObject.Properties.Remove('linux')
+        $policy | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $policyPath -Encoding utf8
+
+        {
+            Get-DPRuntimeProfile -PolicyPath $policyPath -PowerShellVersion ([version]'7.4.18') -DotNetMajor 8
+        } | Should -Throw '*hostProvidedAssemblyNames*linux*'
     }
 }

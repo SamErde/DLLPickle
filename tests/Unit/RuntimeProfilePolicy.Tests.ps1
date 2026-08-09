@@ -30,6 +30,16 @@ Describe 'Runtime profile policy data' -Tag 'Unit' {
         @($actual | Sort-Object -Unique) | Should -HaveCount $actual.Count
     }
 
+    It 'declares platform-provided assemblies for the universal module payload' {
+        $policy = Get-Content -LiteralPath $script:RuntimePolicyPath -Raw | ConvertFrom-Json
+
+        foreach ($RuntimeProfileRow in @($policy.profiles)) {
+            @($RuntimeProfileRow.hostProvidedAssemblyNames.windows) | Should -Be @('System.Security.Cryptography.ProtectedData')
+            @($RuntimeProfileRow.hostProvidedAssemblyNames.linux) | Should -BeNullOrEmpty
+            @($RuntimeProfileRow.hostProvidedAssemblyNames.macos) | Should -BeNullOrEmpty
+        }
+    }
+
     It 'keeps exact patch, lifecycle, stock archive, and optional tool metadata outside the package' {
         $script:TestMatrixPath | Should -Exist
         $rawMatrix = Get-Content -LiteralPath $script:TestMatrixPath -Raw

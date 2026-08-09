@@ -67,4 +67,22 @@ Describe 'Built module integration validation' -Tag 'Integration' {
         $Tokens = $ImportResults | Where-Object DLLName -EQ 'Microsoft.IdentityModel.Tokens.dll'
         $Tokens.Status | Should -Not -Be 'Failed'
     }
+
+    It 'ships ProtectedData universally but skips the bundled copy when Windows provides it' {
+        $BinPath = Join-Path (Split-Path -Path $BuiltModuleManifestPath -Parent) (Join-Path 'bin' $TargetFramework)
+        Join-Path $BinPath 'System.Security.Cryptography.ProtectedData.dll' | Should -Exist
+
+        Remove-Module DLLPickle -Force -ErrorAction SilentlyContinue
+        Import-Module $BuiltModuleManifestPath -Force
+        $ImportResults = @(Import-DPLibrary -SuppressLogo)
+        $ProtectedDataResults = @($ImportResults | Where-Object DLLName -EQ 'System.Security.Cryptography.ProtectedData.dll')
+        $IsWindowsHost = [System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::Windows)
+
+        if ($IsWindowsHost) {
+            $ProtectedDataResults | Should -BeNullOrEmpty
+        } else {
+            $ProtectedDataResults | Should -HaveCount 1
+            $ProtectedDataResults[0].Status | Should -Not -Be 'Failed'
+        }
+    }
 }
