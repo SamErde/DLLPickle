@@ -65,8 +65,12 @@ $BundleRoot = [IO.Path]::GetFullPath($Payload.selectedBundlePath)
 $AssemblyEvidence = @(
     [AppDomain]::CurrentDomain.GetAssemblies() |
         Where-Object {
-            -not [string]::IsNullOrWhiteSpace($_.Location) -and
-            [IO.Path]::GetFullPath($_.Location).StartsWith($BundleRoot, [StringComparison]::OrdinalIgnoreCase)
+            if ([string]::IsNullOrWhiteSpace($_.Location)) {
+                return $false
+            }
+            $RelativePath = [IO.Path]::GetRelativePath($BundleRoot, [IO.Path]::GetFullPath($_.Location))
+            -not $RelativePath.StartsWith('..', [StringComparison]::Ordinal) -and
+                -not [IO.Path]::IsPathRooted($RelativePath)
         } |
         Sort-Object -Property FullName -Unique |
         ForEach-Object {
@@ -107,9 +111,16 @@ $Platform = if ([Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([Runt
 } | ConvertTo-Json -Depth 12 -Compress
 '@.Replace('__PAYLOAD__', $PayloadBase64)
 
-$ProbeOutput = @(& $ResolvedExecutable -NoLogo -NoProfile -NonInteractive -Command $EvidenceProbe 2>&1)
-if ($LASTEXITCODE -ne 0) {
-    throw "Runtime evidence probe failed: $($ProbeOutput -join [Environment]::NewLine)"
+$ProbeErrorPath = [System.IO.Path]::GetTempFileName()
+try {
+    $ProbeOutput = @(& $ResolvedExecutable -NoLogo -NoProfile -NonInteractive -Command $EvidenceProbe 2> $ProbeErrorPath)
+    $ProbeExitCode = $LASTEXITCODE
+    $ProbeError = Get-Content -LiteralPath $ProbeErrorPath -Raw -ErrorAction SilentlyContinue
+} finally {
+    Remove-Item -LiteralPath $ProbeErrorPath -Force -ErrorAction SilentlyContinue
+}
+if ($ProbeExitCode -ne 0) {
+    throw "Runtime evidence probe failed: $ProbeError"
 }
 
 try {
@@ -125,6 +136,22 @@ if ($Evidence.targetFramework -ne $TargetFramework -or [int]$Evidence.dotNetMajo
 }
 if (@($Evidence.importResults | Where-Object Status -eq 'Failed').Count -gt 0) {
     throw 'Runtime evidence captured one or more failed DLL imports.'
+}
+if ([string]$Evidence.selectedBundlePath -cne [string]$Payload.selectedBundlePath) {
+    throw "Runtime evidence reported an unexpected selected bundle path: '$($Evidence.selectedBundlePath)'."
+}
+$ObservedAssemblies = @($Evidence.assemblies)
+if ($ObservedAssemblies.Count -eq 0) {
+    throw "Runtime evidence observed no loaded assemblies under the expected '$TargetFramework' bundle."
+}
+foreach ($Assembly in $ObservedAssemblies) {
+    $RelativeAssemblyPath = [System.IO.Path]::GetRelativePath(
+        [string]$Payload.selectedBundlePath,
+        [System.IO.Path]::GetFullPath([string]$Assembly.path)
+    )
+    if ($RelativeAssemblyPath.StartsWith('..', [System.StringComparison]::Ordinal) -or [System.IO.Path]::IsPathRooted($RelativeAssemblyPath)) {
+        throw "Runtime evidence observed an assembly outside the expected '$TargetFramework' bundle: $($Assembly.path)"
+    }
 }
 
 $OutputDirectory = Split-Path -Path $OutputPath -Parent

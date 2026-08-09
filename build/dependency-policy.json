@@ -39,8 +39,8 @@
       "repository": "PSGallery",
       "purpose": "Teams identity stack compatibility source.",
       "umbrellaModule": "MicrosoftTeams",
-      "deterministicProbeCommand": "Get-Command Get-Team | Out-Null",
-      "authenticatedReadOnlyProbeCommand": "Get-CsTenant | Out-Null"
+      "deterministicProbeCommand": "Get-Team -ErrorAction SilentlyContinue | Select-Object -First 1 | Out-Null",
+      "authenticatedReadOnlyProbeCommand": "Connect-MicrosoftTeams -AccessTokens @($env:DLLPICKLE_GRAPH_ACCESS_TOKEN, $env:DLLPICKLE_TEAMS_ACCESS_TOKEN) | Out-Null; try { Get-CsTenant | Out-Null } finally { Disconnect-MicrosoftTeams | Out-Null }"
     },
     {
       "name": "Az.Resources",
@@ -562,7 +562,7 @@
         "MicrosoftTeams"
       ],
       "updateMode": "reportOnly",
-      "reason": "Azure.Core is intentionally not preloaded on the PowerShell 7.4+ (net8.0) profile. Az.Accounts 5.x isolates its Azure SDK stack in a private AssemblyLoadContext; preloading Azure.Core into the default load context splits Azure.Core.TokenRequestContext across load contexts and breaks Connect-AzAccount with a MissingMethodException on InteractiveBrowserCredential.AuthenticateAsync. Graph, Exchange, and Teams resolve a compatible Azure.Core themselves on .NET 8, so the preload is unnecessary for them. The original net48-only Azure.Core preload (#183) does not apply to the net8.0 baseline.",
+      "reason": "Azure.Core is intentionally not preloaded on any supported modern runtime profile (net8.0, net9.0, or net10.0). Az.Accounts 5.x isolates its Azure SDK stack in a private AssemblyLoadContext; preloading Azure.Core into the default load context splits Azure.Core.TokenRequestContext across load contexts and breaks Connect-AzAccount with a MissingMethodException on InteractiveBrowserCredential.AuthenticateAsync. Graph, Exchange, and Teams resolve a compatible Azure.Core themselves, so the preload is unnecessary for them. The original net48-only Azure.Core preload (#183) does not apply to the modern profiles.",
       "evidence": {
         "alcOwner": "AzSharedAssemblyLoadContext / msgraph-load-context",
         "basis": "Runtime probe 2026-05-31: Az.Accounts and Microsoft.Graph.Authentication both self-isolate Azure.Core in private ALCs and run different versions side-by-side (1.50 vs 1.51.1). Preloading into the default ALC splits TokenRequestContext -> Connect-AzAccount MissingMethodException. Removed from the bundle in 2.0.1.",
@@ -582,7 +582,7 @@
         "Az.Accounts"
       ],
       "updateMode": "reportOnly",
-      "reason": "Azure SDK stack self-isolated by Az.Accounts (and Graph); not preloaded on the net8.0 profile.",
+      "reason": "Azure SDK stack self-isolated by Az.Accounts (and Graph); not preloaded on the supported net8.0, net9.0, or net10.0 profiles.",
       "evidence": {
         "alcOwner": "AzSharedAssemblyLoadContext",
         "basis": "Runtime probe 2026-05-31: loaded into Az's private ALC (1.13.0). Belongs to the Azure SDK stack that breaks when preloaded (Azure.Core class). Not bundled by DLLPickle.",
@@ -602,7 +602,7 @@
         "Az.Accounts"
       ],
       "updateMode": "reportOnly",
-      "reason": "Azure SDK broker stack self-managed by Az; not preloaded on the net8.0 profile.",
+      "reason": "Azure SDK broker stack self-managed by Az; not preloaded on the supported net8.0, net9.0, or net10.0 profiles.",
       "evidence": {
         "alcOwner": "AzSharedAssemblyLoadContext",
         "basis": "In the conflict surface; part of the Az-self-isolated Azure SDK stack. Not bundled by DLLPickle.",
@@ -622,7 +622,7 @@
         "Microsoft.Graph.Authentication"
       ],
       "updateMode": "reportOnly",
-      "reason": "Azure SDK transitive (Azure.Core dependency) self-managed by Graph/Az; not preloaded on the net8.0 profile.",
+      "reason": "Azure SDK transitive (Azure.Core dependency) self-managed by Graph/Az; not preloaded on the supported net8.0, net9.0, or net10.0 profiles.",
       "evidence": {
         "alcOwner": "msgraph-load-context",
         "basis": "Runtime probe 2026-05-31: loaded into Graph's private ALC (1.9.0) alongside Azure.Core. Transitive of the blocked Azure.Core. Not bundled by DLLPickle.",

@@ -74,11 +74,14 @@ foreach ($Module in @($Inventory.Modules)) {
 $ModuleSearchPath = @([string]$Inventory.ModuleCachePath, (Join-Path -Path ([string]$Inventory.Profile.PSHome) -ChildPath 'Modules'))
 $SnapshotScriptPath = Join-Path $PSScriptRoot 'Get-DLLPickleRuntimeAssemblySnapshot.ps1'
 $ScenarioDefinitions = [System.Collections.Generic.List[object]]::new()
+$PolicyOrderIndex = 0
 foreach ($ImportOrder in @($ProfilePolicy[0].importOrders)) {
+    $PolicyOrderIndex++
     $ScenarioDefinitions.Add([PSCustomObject]@{
-            ScenarioId = 'profile-target-scenario'
+            ScenarioId = 'profile-target-scenario-{0:d2}' -f $PolicyOrderIndex
             ImportOrder = @($ImportOrder)
             ExpectedLimitation = $false
+            ExpectedSuccess = $true
         })
 }
 if (-not [string]::IsNullOrWhiteSpace($KnownConflictsPath)) {
@@ -92,6 +95,7 @@ if (-not [string]::IsNullOrWhiteSpace($KnownConflictsPath)) {
                     ScenarioId = [string]$KnownConflict.id
                     ImportOrder = @($ImportOrder)
                     ExpectedLimitation = [bool]$KnownConflict.requiresProcessIsolation
+                    ExpectedSuccess = -not [bool]$KnownConflict.requiresProcessIsolation
                 })
         }
     }
@@ -131,8 +135,10 @@ foreach ($ScenarioDefinition in $ScenarioDefinitions) {
             ImportOrder = @($ImportOrder)
             DllPicklePreloaded = $PreloadDllPickle
             ExpectedLimitation = [bool]$ScenarioDefinition.ExpectedLimitation
+            ExpectedSuccess = [bool]$ScenarioDefinition.ExpectedSuccess
             ProbeCommands = @($ProbeCommands)
             Success = $false
+            OutcomeMatchesExpectation = $false
             Assemblies = @()
             Error = $null
         }
@@ -156,6 +162,7 @@ foreach ($ScenarioDefinition in $ScenarioDefinitions) {
         } catch {
             $Scenario.Error = $_.Exception.Message
         }
+        $Scenario.OutcomeMatchesExpectation = $Scenario.Success -eq $Scenario.ExpectedSuccess
         $ScenarioResults.Add([PSCustomObject]$Scenario)
     }
 }
@@ -163,14 +170,17 @@ foreach ($ScenarioDefinition in $ScenarioDefinitions) {
 $CanonicalRows = @(
     "profile=$($Inventory.ProfileKey)"
     foreach ($Scenario in @($ScenarioResults | Sort-Object OrderIndex,DllPicklePreloaded)) {
-        'scenario={0}|order={1}|preload={2}|expectedLimitation={3}|success={4}|modules={5}|assemblies={6}' -f (
+        'scenario={0}|order={1}|preload={2}|expectedLimitation={3}|expectedSuccess={4}|success={5}|outcomeMatches={6}|error={9}|modules={7}|assemblies={8}' -f (
             $Scenario.ScenarioId,
             $Scenario.OrderIndex,
             $Scenario.DllPicklePreloaded,
             $Scenario.ExpectedLimitation,
+            $Scenario.ExpectedSuccess,
             $Scenario.Success,
+            $Scenario.OutcomeMatchesExpectation,
             (@($Scenario.ImportOrder) -join ','),
-            (@($Scenario.Assemblies | Sort-Object Name,Path | ForEach-Object { '{0},{1},{2},{3},{4}' -f $_.Name, $_.Version, $_.Sha256, $_.Path, $_.Alc }) -join ';')
+            (@($Scenario.Assemblies | Sort-Object Name,Path | ForEach-Object { '{0},{1},{2},{3},{4}' -f $_.Name, $_.Version, $_.Sha256, $_.Path, $_.Alc }) -join ';'),
+            (([string]$Scenario.Error) -replace '\s+', ' ').Trim()
         )
     }
 )
@@ -185,7 +195,7 @@ $Report = [PSCustomObject]@{
     WritesPerformed = $false
     ScenarioFingerprint = $ScenarioFingerprint
     Scenarios = @($ScenarioResults)
-    Passed = @($ScenarioResults | Where-Object { -not $_.Success }).Count -eq 0
+    Passed = @($ScenarioResults | Where-Object { -not $_.OutcomeMatchesExpectation }).Count -eq 0
 }
 
 $OutputDirectory = Split-Path -Path $OutputPath -Parent
@@ -195,7 +205,7 @@ if ($OutputDirectory -and -not (Test-Path -LiteralPath $OutputDirectory -PathTyp
 $Report | ConvertTo-Json -Depth 40 | Set-Content -LiteralPath $OutputPath -Encoding UTF8
 
 if ($Strict.IsPresent -and -not $Report.Passed) {
-    $FailedLabels = @($ScenarioResults | Where-Object { -not $_.Success } | ForEach-Object { "order $($_.OrderIndex), preload=$($_.DllPicklePreloaded)" })
+    $FailedLabels = @($ScenarioResults | Where-Object { -not $_.OutcomeMatchesExpectation } | ForEach-Object { "order $($_.OrderIndex), preload=$($_.DllPicklePreloaded), expectedSuccess=$($_.ExpectedSuccess), actualSuccess=$($_.Success)" })
     throw "Deterministic upstream scenarios failed for '$($Inventory.ProfileKey)': $($FailedLabels -join '; ')."
 }
 $Report

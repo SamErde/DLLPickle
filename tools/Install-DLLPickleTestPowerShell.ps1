@@ -112,7 +112,16 @@ function Get-VerifiedDownload {
         Remove-Item -LiteralPath $DestinationPath -Force
     }
 
-    Invoke-WebRequest -Uri $Uri -OutFile $DestinationPath -UseBasicParsing
+    $DownloadParameters = @{
+        Uri                      = $Uri
+        OutFile                  = $DestinationPath
+        UseBasicParsing          = $true
+        ConnectionTimeoutSeconds = 60
+        OperationTimeoutSeconds  = 300
+        MaximumRetryCount        = 3
+        RetryIntervalSec         = 5
+    }
+    Invoke-WebRequest @DownloadParameters
     $ActualHash = (Get-FileHash -LiteralPath $DestinationPath -Algorithm SHA256).Hash
     if ($ActualHash -ine $Sha256) {
         Remove-Item -LiteralPath $DestinationPath -Force
@@ -130,18 +139,26 @@ function Expand-TestRuntimeArchive {
     )
 
     if (Test-Path -LiteralPath $DestinationPath) {
-        return
+        Remove-Item -LiteralPath $DestinationPath -Recurse -Force
     }
 
-    $null = New-Item -Path $DestinationPath -ItemType Directory -Force
-    if ([System.IO.Path]::GetExtension($ArchivePath) -eq '.zip') {
-        Expand-Archive -LiteralPath $ArchivePath -DestinationPath $DestinationPath -Force
-        return
-    }
+    $StagingPath = '{0}.staging-{1}-{2}' -f $DestinationPath, $PID, ([System.Guid]::NewGuid().ToString('n'))
+    $null = New-Item -Path $StagingPath -ItemType Directory -Force
+    try {
+        if ([System.IO.Path]::GetExtension($ArchivePath) -eq '.zip') {
+            Expand-Archive -LiteralPath $ArchivePath -DestinationPath $StagingPath -Force
+        } else {
+            $TarOutput = @(& tar -xzf $ArchivePath -C $StagingPath 2>&1)
+            if ($LASTEXITCODE -ne 0) {
+                throw "Failed to extract '$ArchivePath': $($TarOutput -join [Environment]::NewLine)"
+            }
+        }
 
-    $TarOutput = @(& tar -xzf $ArchivePath -C $DestinationPath 2>&1)
-    if ($LASTEXITCODE -ne 0) {
-        throw "Failed to extract '$ArchivePath': $($TarOutput -join [Environment]::NewLine)"
+        Move-Item -LiteralPath $StagingPath -Destination $DestinationPath
+    } finally {
+        if (Test-Path -LiteralPath $StagingPath) {
+            Remove-Item -LiteralPath $StagingPath -Recurse -Force
+        }
     }
 }
 

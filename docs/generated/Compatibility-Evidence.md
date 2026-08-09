@@ -80,7 +80,7 @@ The deterministic no-auth tier runs in CI. The following credential-dependent co
 - `ExchangeOnlineManagement`: `Get-EXOMailbox -ResultSize 1 | Out-Null`
 - `Az.Storage`: `Get-AzStorageAccount | Select-Object -First 1 | Out-Null`
 - `Az.Accounts`: `Get-AzContext | Out-Null`
-- `MicrosoftTeams`: `Get-CsTenant | Out-Null`
+- `MicrosoftTeams`: `Connect-MicrosoftTeams -AccessTokens @($env:DLLPICKLE_GRAPH_ACCESS_TOKEN, $env:DLLPICKLE_TEAMS_ACCESS_TOKEN) | Out-Null; try { Get-CsTenant | Out-Null } finally { Disconnect-MicrosoftTeams | Out-Null }`
 - `Az.Resources`: `Get-AzResource | Select-Object -First 1 | Out-Null`
 
 These probes permit reads only; writes are not part of the validation tier. PowerShellEditorServices / VS Code coverage for issue #169 also remains an explicit manual gap unless a run artifact records it.

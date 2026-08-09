@@ -45,15 +45,15 @@
 param(
     [Parameter()]
     [ValidateNotNullOrEmpty()]
-    [string]$PolicyPath = (Join-Path -Path (Split-Path -Parent $PSScriptRoot) -ChildPath 'build\dependency-policy.json'),
+    [string]$PolicyPath = (Join-Path -Path (Split-Path -Parent $PSScriptRoot) -ChildPath 'build/dependency-policy.json'),
 
     [Parameter()]
     [ValidateNotNullOrEmpty()]
-    [string]$OutputPath = (Join-Path -Path (Split-Path -Parent $PSScriptRoot) -ChildPath 'artifacts\upstreamCompatibility\upstream-inventory.json'),
+    [string]$OutputPath = (Join-Path -Path (Split-Path -Parent $PSScriptRoot) -ChildPath 'artifacts/upstreamCompatibility/upstream-inventory.json'),
 
     [Parameter()]
     [ValidateNotNullOrEmpty()]
-    [string]$ModuleCachePath = (Join-Path -Path (Split-Path -Parent $PSScriptRoot) -ChildPath 'artifacts\upstreamCompatibility\modules'),
+    [string]$ModuleCachePath = (Join-Path -Path (Split-Path -Parent $PSScriptRoot) -ChildPath 'artifacts/upstreamCompatibility/modules'),
 
     [Parameter()]
     [ValidateNotNullOrEmpty()]
@@ -71,7 +71,7 @@ param(
 
     [Parameter()]
     [ValidateNotNullOrEmpty()]
-    [string]$TestMatrixPath = (Join-Path -Path (Split-Path -Parent $PSScriptRoot) -ChildPath 'build\powershell-test-matrix.json')
+    [string]$TestMatrixPath = (Join-Path -Path (Split-Path -Parent $PSScriptRoot) -ChildPath 'build/powershell-test-matrix.json')
 )
 
 $ErrorActionPreference = 'Stop'
@@ -238,15 +238,14 @@ $ModuleResults = foreach ($PolicyModule in $PolicyModules) {
     $ModuleManifestPath = Get-ChildItem -LiteralPath $SavedModule.FullName -Filter "$Name.psd1" -File -Recurse |
         Sort-Object -Property { $_.FullName.Length } |
         Select-Object -First 1
-    $Manifest = if ($ModuleManifestPath) {
-        # Real gallery manifests can contain module-manifest expressions such as a
-        # PSEdition-dependent RootModule. Import-PowerShellDataFile deliberately rejects
-        # those expressions; Test-ModuleManifest evaluates the constrained manifest grammar
-        # and returns the compatibility metadata PowerShell itself uses.
-        Test-ModuleManifest -Path $ModuleManifestPath.FullName -ErrorAction Stop
-    } else {
-        $null
+    if (-not $ModuleManifestPath) {
+        throw "Module manifest '$Name.psd1' was not found under '$($SavedModule.FullName)'."
     }
+    # Real gallery manifests can contain module-manifest expressions such as a
+    # PSEdition-dependent RootModule. Import-PowerShellDataFile deliberately rejects
+    # those expressions; Test-ModuleManifest evaluates the constrained manifest grammar
+    # and returns the compatibility metadata PowerShell itself uses.
+    $Manifest = Test-ModuleManifest -Path $ModuleManifestPath.FullName -ErrorAction Stop
 
     $OriginalPSModulePath = $env:PSModulePath
     try {
@@ -282,8 +281,10 @@ $ModuleResults = foreach ($PolicyModule in $PolicyModules) {
                     $FullAssemblyPath
                 )
                 $RelativeToPSHome = [System.IO.Path]::GetRelativePath($FullPSHomePath, $FullAssemblyPath)
-                $IsWithinModuleCache = -not $RelativeToCache.StartsWith('..', [System.StringComparison]::Ordinal)
-                $IsWithinPSHome = -not $RelativeToPSHome.StartsWith('..', [System.StringComparison]::Ordinal)
+                $IsWithinModuleCache = -not $RelativeToCache.StartsWith('..', [System.StringComparison]::Ordinal) -and
+                    -not [System.IO.Path]::IsPathRooted($RelativeToCache)
+                $IsWithinPSHome = -not $RelativeToPSHome.StartsWith('..', [System.StringComparison]::Ordinal) -and
+                    -not [System.IO.Path]::IsPathRooted($RelativeToPSHome)
                 if (-not $IsWithinModuleCache -and -not $IsWithinPSHome) {
                     throw "Runtime evidence selected an assembly outside the isolated module cache and exact PSHOME: $FullAssemblyPath"
                 }

@@ -17,7 +17,7 @@ param (
 
     [Parameter()]
     [ValidateNotNullOrEmpty()]
-    [string]$TestMatrixPath = (Join-Path (Split-Path -Parent $PSScriptRoot) 'build\powershell-test-matrix.json'),
+    [string]$TestMatrixPath = (Join-Path (Split-Path -Parent $PSScriptRoot) 'build/powershell-test-matrix.json'),
 
     [Parameter(Mandatory)]
     [ValidateNotNullOrEmpty()]

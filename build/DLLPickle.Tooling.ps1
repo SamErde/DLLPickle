@@ -33,7 +33,7 @@ function Get-DLLPickleBuildToolPolicy {
         if (-not [version]::TryParse([string]$Module.version, [ref]$ParsedVersion)) {
             throw "Build-tool policy contains invalid version '$($Module.version)' for '$($Module.name)': $Path"
         }
-        if ($ParsedVersion.Revision -ge 0) {
+        if ($ParsedVersion.Build -lt 0 -or $ParsedVersion.Revision -ge 0) {
             throw "Build-tool policy versions must use Major.Minor.Patch syntax; found '$($Module.version)' for '$($Module.name)'."
         }
     }

@@ -44,7 +44,7 @@ param(
 
     [Parameter()]
     [ValidateNotNullOrEmpty()]
-    [string]$OutputPath = (Join-Path (Split-Path -Parent $PSScriptRoot) 'artifacts\dependency\dependency-change-report.json')
+    [string]$OutputPath = (Join-Path (Split-Path -Parent $PSScriptRoot) 'artifacts/dependency/dependency-change-report.json')
 )
 
 $ErrorActionPreference = 'Stop'
@@ -59,6 +59,10 @@ function Get-DLLPickleNuGetTargetGraph {
         [string]$TargetFramework
     )
 
+    if (-not $Assets -or $Assets.PSObject.Properties.Name -notcontains 'targets' -or -not $Assets.targets) {
+        throw 'NuGet project.assets.json contains no targets section; restore may be incomplete.'
+    }
+
     $TargetProperty = $Assets.targets.PSObject.Properties[$TargetFramework]
     if (-not $TargetProperty) {
         return @()
@@ -69,8 +73,16 @@ function Get-DLLPickleNuGetTargetGraph {
             $SeparatorIndex = $LibraryProperty.Name.LastIndexOf('/')
             $PackageName = if ($SeparatorIndex -gt 0) { $LibraryProperty.Name.Substring(0, $SeparatorIndex) } else { $LibraryProperty.Name }
             $PackageVersion = if ($SeparatorIndex -gt 0) { $LibraryProperty.Name.Substring($SeparatorIndex + 1) } else { $null }
-            $CompileAssets = @($LibraryProperty.Value.compile.PSObject.Properties.Name | Where-Object { $_ -ne '_._' } | Sort-Object -Unique)
-            $RuntimeAssets = @($LibraryProperty.Value.runtime.PSObject.Properties.Name | Where-Object { $_ -ne '_._' } | Sort-Object -Unique)
+            $CompileAssets = if ($LibraryProperty.Value.PSObject.Properties.Name -contains 'compile' -and $LibraryProperty.Value.compile) {
+                @($LibraryProperty.Value.compile.PSObject.Properties.Name | Where-Object { $_ -ne '_._' } | Sort-Object -Unique)
+            } else {
+                @()
+            }
+            $RuntimeAssets = if ($LibraryProperty.Value.PSObject.Properties.Name -contains 'runtime' -and $LibraryProperty.Value.runtime) {
+                @($LibraryProperty.Value.runtime.PSObject.Properties.Name | Where-Object { $_ -ne '_._' } | Sort-Object -Unique)
+            } else {
+                @()
+            }
             [PSCustomObject]@{
                 PackageName    = $PackageName
                 PackageVersion = $PackageVersion
@@ -151,9 +163,21 @@ function Compare-DLLPickleNamedRow {
     )
 
     $BaselineByKey = @{}
-    foreach ($Row in $Baseline) { $BaselineByKey[[string]$Row.$KeyProperty] = $Row }
+    foreach ($Row in $Baseline) {
+        $Key = [string]$Row.$KeyProperty
+        if ($BaselineByKey.ContainsKey($Key)) {
+            throw "Baseline rows contain duplicate '$KeyProperty' value '$Key'."
+        }
+        $BaselineByKey[$Key] = $Row
+    }
     $CandidateByKey = @{}
-    foreach ($Row in $Candidate) { $CandidateByKey[[string]$Row.$KeyProperty] = $Row }
+    foreach ($Row in $Candidate) {
+        $Key = [string]$Row.$KeyProperty
+        if ($CandidateByKey.ContainsKey($Key)) {
+            throw "Candidate rows contain duplicate '$KeyProperty' value '$Key'."
+        }
+        $CandidateByKey[$Key] = $Row
+    }
     $Keys = @($BaselineByKey.Keys + $CandidateByKey.Keys | Sort-Object -Unique)
 
     [PSCustomObject]@{
@@ -181,6 +205,14 @@ foreach ($RequiredPath in @($BaselineProjectAssetsPath, $CandidateProjectAssetsP
 
 $BaselineAssets = Get-Content -LiteralPath $BaselineProjectAssetsPath -Raw | ConvertFrom-Json -ErrorAction Stop
 $CandidateAssets = Get-Content -LiteralPath $CandidateProjectAssetsPath -Raw | ConvertFrom-Json -ErrorAction Stop
+foreach ($AssetsInput in @(
+        [PSCustomObject]@{ Name = 'Baseline'; Path = $BaselineProjectAssetsPath; Value = $BaselineAssets }
+        [PSCustomObject]@{ Name = 'Candidate'; Path = $CandidateProjectAssetsPath; Value = $CandidateAssets }
+    )) {
+    if ($AssetsInput.Value.PSObject.Properties.Name -notcontains 'targets' -or -not $AssetsInput.Value.targets) {
+        throw "$($AssetsInput.Name) NuGet assets file has no targets section: $($AssetsInput.Path)"
+    }
+}
 $SupportPolicy = Get-Content -LiteralPath $SupportPolicyPath -Raw | ConvertFrom-Json -ErrorAction Stop
 $DependencyPolicy = Get-Content -LiteralPath $DependencyPolicyPath -Raw | ConvertFrom-Json -ErrorAction Stop
 $TargetFrameworks = @($SupportPolicy.profiles.targetFramework | ForEach-Object { [string]$_ } | Sort-Object -Unique)
@@ -205,7 +237,7 @@ $ProfileReports = @(
         $CandidateInputs = @(Get-DLLPicklePackagedAssemblyInput -BuildOutputRoot $CandidateBuildOutputRoot -TargetFramework $TargetFramework)
         $BaselineConflictInputs = @($BaselineInputs | Where-Object AssemblyName -IN $ConflictSensitiveAssemblyNames)
         $CandidateConflictInputs = @($CandidateInputs | Where-Object AssemblyName -IN $ConflictSensitiveAssemblyNames)
-        $ConflictDelta = Compare-DLLPickleNamedRow -Baseline $BaselineConflictInputs -Candidate $CandidateConflictInputs -KeyProperty AssemblyName -ValueProperty IdentityFingerprint
+        $ConflictDelta = Compare-DLLPickleNamedRow -Baseline $BaselineConflictInputs -Candidate $CandidateConflictInputs -KeyProperty RelativePath -ValueProperty IdentityFingerprint
         $SizeRow = if ($SizeReport) { @($SizeReport.Profiles | Where-Object Name -EQ $TargetFramework | Select-Object -First 1)[0] } else { $null }
 
         [PSCustomObject]@{

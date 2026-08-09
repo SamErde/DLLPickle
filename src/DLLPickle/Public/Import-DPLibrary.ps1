@@ -78,7 +78,11 @@
 
 
     $RuntimePolicyPath = Join-Path -Path $ModuleDirectory -ChildPath 'SupportedRuntimeProfiles.json'
-    $RuntimeProfile = Get-DPRuntimeProfile -PolicyPath $RuntimePolicyPath
+    $RuntimeProfile = if (Test-Path -LiteralPath $RuntimePolicyPath -PathType Leaf) {
+        Get-DPRuntimeProfile -PolicyPath $RuntimePolicyPath
+    } else {
+        Get-DPRuntimeProfile
+    }
     $TargetFramework = [string]$RuntimeProfile.targetFramework
 
     $BinDirectory = Join-Path -Path $ModuleDirectory -ChildPath 'bin'

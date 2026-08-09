@@ -52,9 +52,12 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-foreach ($Path in @($RuntimePolicyPath, $TestMatrixPath)) {
-    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
-        throw "Runtime profile policy file not found: $Path"
+foreach ($RequiredInput in @(
+        [PSCustomObject]@{ Name = 'Runtime profile policy'; Path = $RuntimePolicyPath }
+        [PSCustomObject]@{ Name = 'PowerShell test matrix'; Path = $TestMatrixPath }
+    )) {
+    if (-not (Test-Path -LiteralPath $RequiredInput.Path -PathType Leaf)) {
+        throw "$($RequiredInput.Name) file not found: $($RequiredInput.Path)"
     }
 }
 
@@ -82,7 +85,7 @@ if (@($RuntimeKeys | Sort-Object -Unique).Count -ne $RuntimeKeys.Count) {
 if (@($TestKeys | Sort-Object -Unique).Count -ne $TestKeys.Count) {
     throw 'Test matrix contains duplicate profiles.'
 }
-if (($RuntimeKeys -join [char]0) -ne ($TestKeys -join [char]0)) {
+if ((@($RuntimeKeys | Sort-Object) -join [char]0) -ne (@($TestKeys | Sort-Object) -join [char]0)) {
     throw 'Shipped runtime-profile policy and CI test-matrix profile sets do not align.'
 }
 
@@ -110,9 +113,9 @@ foreach ($TestProfile in $TestProfiles) {
         [string]$TestProfile.lifecycleEndDate,
         'yyyy-MM-dd',
         [System.Globalization.CultureInfo]::InvariantCulture,
-        [System.Globalization.DateTimeStyles]::AssumeUniversal
+        [System.Globalization.DateTimeStyles]::AssumeUniversal -bor [System.Globalization.DateTimeStyles]::AdjustToUniversal
     )
-    $EndExclusiveUtc = [datetime]::SpecifyKind($EndDate, [System.DateTimeKind]::Utc).AddDays(1)
+    $EndExclusiveUtc = $EndDate.AddDays(1)
     $DaysRemaining = [math]::Floor(($EndExclusiveUtc - $EvaluationUtc).TotalDays)
     $ReleaseLine = '{0}.{1}' -f $TestProfile.powerShellMajor, $TestProfile.powerShellMinor
     $Status = if ($EvaluationUtc -ge $EndExclusiveUtc) {

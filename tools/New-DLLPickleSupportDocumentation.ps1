@@ -15,19 +15,19 @@
 param(
     [Parameter()]
     [ValidateNotNullOrEmpty()]
-    [string]$SupportPolicyPath = (Join-Path (Split-Path -Parent $PSScriptRoot) 'src\DLLPickle\SupportedRuntimeProfiles.json'),
+    [string]$SupportPolicyPath = (Join-Path (Split-Path -Parent $PSScriptRoot) 'src/DLLPickle/SupportedRuntimeProfiles.json'),
 
     [Parameter()]
     [ValidateNotNullOrEmpty()]
-    [string]$TestMatrixPath = (Join-Path (Split-Path -Parent $PSScriptRoot) 'build\powershell-test-matrix.json'),
+    [string]$TestMatrixPath = (Join-Path (Split-Path -Parent $PSScriptRoot) 'build/powershell-test-matrix.json'),
 
     [Parameter()]
     [ValidateNotNullOrEmpty()]
-    [string]$DependencyPolicyPath = (Join-Path (Split-Path -Parent $PSScriptRoot) 'build\dependency-policy.json'),
+    [string]$DependencyPolicyPath = (Join-Path (Split-Path -Parent $PSScriptRoot) 'build/dependency-policy.json'),
 
     [Parameter()]
     [ValidateNotNullOrEmpty()]
-    [string]$OutputDirectory = (Join-Path (Split-Path -Parent $PSScriptRoot) 'docs\generated'),
+    [string]$OutputDirectory = (Join-Path (Split-Path -Parent $PSScriptRoot) 'docs/generated'),
 
     [Parameter()]
     [switch]$Check

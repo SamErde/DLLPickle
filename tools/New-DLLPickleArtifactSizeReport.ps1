@@ -15,19 +15,19 @@
 param(
     [Parameter()]
     [ValidateNotNullOrEmpty()]
-    [string]$ModulePath = (Join-Path (Split-Path -Parent $PSScriptRoot) 'module\DLLPickle'),
+    [string]$ModulePath = (Join-Path (Split-Path -Parent $PSScriptRoot) 'module/DLLPickle'),
 
     [Parameter()]
     [ValidateNotNullOrEmpty()]
-    [string]$SupportPolicyPath = (Join-Path (Split-Path -Parent $PSScriptRoot) 'src\DLLPickle\SupportedRuntimeProfiles.json'),
+    [string]$SupportPolicyPath = (Join-Path (Split-Path -Parent $PSScriptRoot) 'src/DLLPickle/SupportedRuntimeProfiles.json'),
 
     [Parameter()]
     [ValidateNotNullOrEmpty()]
-    [string]$BaselinePath = (Join-Path (Split-Path -Parent $PSScriptRoot) 'build\artifact-size-baseline.json'),
+    [string]$BaselinePath = (Join-Path (Split-Path -Parent $PSScriptRoot) 'build/artifact-size-baseline.json'),
 
     [Parameter()]
     [ValidateNotNullOrEmpty()]
-    [string]$OutputPath = (Join-Path (Split-Path -Parent $PSScriptRoot) 'artifacts\package\artifact-size.json'),
+    [string]$OutputPath = (Join-Path (Split-Path -Parent $PSScriptRoot) 'artifacts/package/artifact-size.json'),
 
     [Parameter()]
     [switch]$Strict
@@ -143,10 +143,18 @@ $Measurements = @(
         $TfmPath = Join-Path (Join-Path $ResolvedModulePath 'bin') $TargetFramework
         if (-not (Test-Path -LiteralPath $TfmPath -PathType Container)) {
             [PSCustomObject]@{
-                Name            = $TargetFramework
-                BaselinePresent = $false
-                ReviewRequired  = $true
-                Error           = "Target-framework directory was not found: $TfmPath"
+                Name                         = $TargetFramework
+                FileCount                    = 0
+                UnpackedBytes                = 0
+                CompressedBytes              = 0
+                BaselinePresent              = $false
+                BaselineUnpackedBytes        = 0
+                BaselineCompressedBytes      = 0
+                UnpackedDeltaBytes           = 0
+                CompressedDeltaBytes         = 0
+                AllowedUnpackedIncreaseBytes = 0
+                ReviewRequired               = $true
+                Error                        = "Target-framework directory was not found: $TfmPath"
             }
             continue
         }

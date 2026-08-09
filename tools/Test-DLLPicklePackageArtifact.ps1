@@ -22,30 +22,30 @@
 param(
     [Parameter()]
     [ValidateNotNullOrEmpty()]
-    [string]$ModulePath = (Join-Path (Split-Path -Parent $PSScriptRoot) 'module\DLLPickle'),
+    [string]$ModulePath = (Join-Path (Split-Path -Parent $PSScriptRoot) 'module/DLLPickle'),
 
     [Parameter()]
     [ValidateNotNullOrEmpty()]
-    [string]$BuildOutputRoot = (Join-Path (Split-Path -Parent $PSScriptRoot) 'src\DLLPickle.Build\bin\Release'),
+    [string]$BuildOutputRoot = (Join-Path (Split-Path -Parent $PSScriptRoot) 'src/DLLPickle.Build/bin/Release'),
 
     [Parameter()]
     [switch]$SkipBuildOutputComparison,
 
     [Parameter()]
     [ValidateNotNullOrEmpty()]
-    [string]$SupportPolicyPath = (Join-Path (Split-Path -Parent $PSScriptRoot) 'src\DLLPickle\SupportedRuntimeProfiles.json'),
+    [string]$SupportPolicyPath = (Join-Path (Split-Path -Parent $PSScriptRoot) 'src/DLLPickle/SupportedRuntimeProfiles.json'),
 
     [Parameter()]
     [ValidateNotNullOrEmpty()]
-    [string]$ProjectPath = (Join-Path (Split-Path -Parent $PSScriptRoot) 'src\DLLPickle.Build\DLLPickle.csproj'),
+    [string]$ProjectPath = (Join-Path (Split-Path -Parent $PSScriptRoot) 'src/DLLPickle.Build/DLLPickle.csproj'),
 
     [Parameter()]
     [ValidateNotNullOrEmpty()]
-    [string]$LockFilePath = (Join-Path (Split-Path -Parent $PSScriptRoot) 'src\DLLPickle.Build\packages.lock.json'),
+    [string]$LockFilePath = (Join-Path (Split-Path -Parent $PSScriptRoot) 'src/DLLPickle.Build/packages.lock.json'),
 
     [Parameter()]
     [ValidateNotNullOrEmpty()]
-    [string]$OutputPath = (Join-Path (Split-Path -Parent $PSScriptRoot) 'artifacts\package\artifact-composition.json'),
+    [string]$OutputPath = (Join-Path (Split-Path -Parent $PSScriptRoot) 'artifacts/package/artifact-composition.json'),
 
     [Parameter()]
     [switch]$Strict
@@ -92,7 +92,8 @@ function Get-DLLPickleRelativeFileSet {
     ) | Sort-Object -Unique
 }
 
-$RequiredPaths = @($ModulePath, $SupportPolicyPath, $ProjectPath, $LockFilePath)
+$ModuleManifestPath = Join-Path $ModulePath 'DLLPickle.psd1'
+$RequiredPaths = @($ModulePath, $SupportPolicyPath, $ProjectPath, $LockFilePath, $ModuleManifestPath)
 if (-not $SkipBuildOutputComparison.IsPresent) {
     $RequiredPaths += $BuildOutputRoot
 }
@@ -146,10 +147,11 @@ $ProfileResults = @(
         }
         if (-not $SkipBuildOutputComparison.IsPresent) {
             $ExpectedDlls = @(Get-ChildItem -LiteralPath $BuildTfmPath -File -Filter '*.dll' | Where-Object Name -Match '^(Azure\.|Microsoft\.|System\.)' | Select-Object -ExpandProperty Name | Sort-Object -Unique)
-            foreach ($Name in @($ExpectedDlls | Where-Object { $_ -notin $ActualDlls })) {
+            $ActualComparedDlls = @($ActualDlls | Where-Object { $_ -match '^(Azure\.|Microsoft\.|System\.)' })
+            foreach ($Name in @($ExpectedDlls | Where-Object { $_ -notin $ActualComparedDlls })) {
                 Add-DLLPickleArtifactFinding -Code 'MissingManagedAsset' -TargetFramework $TargetFramework -Message "Expected managed asset '$Name' is absent."
             }
-            foreach ($Name in @($ActualDlls | Where-Object { $_ -notin $ExpectedDlls })) {
+            foreach ($Name in @($ActualComparedDlls | Where-Object { $_ -notin $ExpectedDlls })) {
                 Add-DLLPickleArtifactFinding -Code 'UnexpectedManagedAsset' -TargetFramework $TargetFramework -Message "Managed asset '$Name' is not present in the packaging build output."
             }
         }
@@ -162,7 +164,10 @@ $ProfileResults = @(
             @()
         }
         $ActualNativeFiles = if (Test-Path -LiteralPath $ArtifactRuntimePath -PathType Container) {
-            Get-DLLPickleRelativeFileSet -Root $ArtifactRuntimePath -Files @(Get-ChildItem -LiteralPath $ArtifactRuntimePath -File -Recurse)
+            Get-DLLPickleRelativeFileSet -Root $ArtifactRuntimePath -Files @(
+                Get-ChildItem -LiteralPath $ArtifactRuntimePath -File -Recurse |
+                    Where-Object FullName -Match '[\\/]native[\\/]'
+            )
         } else {
             @()
         }
@@ -198,7 +203,7 @@ foreach ($File in $ArtifactFiles) {
         }
     }
 }
-foreach ($DeclarationPath in @($ProjectPath, $LockFilePath, (Join-Path $ResolvedModulePath 'DLLPickle.psd1'))) {
+foreach ($DeclarationPath in @($ProjectPath, $LockFilePath, $ModuleManifestPath)) {
     if ((Get-Content -LiteralPath $DeclarationPath -Raw -ErrorAction Stop) -match $ForbiddenPattern) {
         $ForbiddenHits.Add([PSCustomObject]@{ Source = 'DependencyDeclaration'; Path = $DeclarationPath })
     }

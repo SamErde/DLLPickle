@@ -4,13 +4,13 @@
 
 .DESCRIPTION
     Implements Step 0(b) of the tracked-dependency release lifecycle. Policy mode reads NuGet's
-    restored project.assets.json and verifies the actual compile/runtime asset selection for every
-    preload package under net8.0, net9.0, and net10.0. It does not approximate NuGet compatibility
-    with a handwritten TFM model.
+    restored project.assets.json and verifies the actual runtime asset selection for every preload
+    package under each target framework declared by the dependency policy. It does not approximate
+    NuGet compatibility with a handwritten TFM model.
 
     Two modes:
       - PackageDirectory: inspect a single extracted NuGet package directory (one with a lib/
-        folder) and return its alignment result.
+        folder) against a selected portable target framework and return its alignment result.
       - Policy: inspect NuGet's resolved target graph and selected assets for all supported TFMs,
         then return an aggregate report (optionally failing in -Strict mode).
 
@@ -19,6 +19,9 @@
 
 .PARAMETER PackageName
     Optional package name to report for the PackageDirectory mode. Defaults to the directory leaf.
+
+.PARAMETER TargetFramework
+    Portable runtime target framework to evaluate in PackageDirectory mode. Defaults to net8.0.
 
 .PARAMETER PolicyPath
     Path to the dependency policy JSON file (Policy mode).
@@ -39,6 +42,9 @@
     ./tools/Test-DLLPickleTfmAlignment.ps1 -PackageDirectory ~/.nuget/packages/microsoft.identity.client/4.84.1
 
 .EXAMPLE
+    ./tools/Test-DLLPickleTfmAlignment.ps1 -PackageDirectory ~/.nuget/packages/microsoft.identity.client/4.84.1 -TargetFramework net10.0
+
+.EXAMPLE
     ./tools/Test-DLLPickleTfmAlignment.ps1 -OutputPath ./artifacts/upstreamCompatibility/tfm-alignment.json -Strict
 
 .OUTPUTS
@@ -55,17 +61,21 @@ param(
     [Parameter(ParameterSetName = 'PackageDirectory')]
     [string]$PackageName,
 
-    [Parameter(ParameterSetName = 'Policy')]
-    [ValidateNotNullOrEmpty()]
-    [string]$PolicyPath = (Join-Path -Path (Split-Path -Parent $PSScriptRoot) -ChildPath 'build\dependency-policy.json'),
+    [Parameter(ParameterSetName = 'PackageDirectory')]
+    [ValidatePattern('^net\d+\.\d+$')]
+    [string]$TargetFramework = 'net8.0',
 
     [Parameter(ParameterSetName = 'Policy')]
     [ValidateNotNullOrEmpty()]
-    [string]$LockFilePath = (Join-Path -Path (Split-Path -Parent $PSScriptRoot) -ChildPath 'src\DLLPickle.Build\packages.lock.json'),
+    [string]$PolicyPath = (Join-Path -Path (Split-Path -Parent $PSScriptRoot) -ChildPath 'build/dependency-policy.json'),
 
     [Parameter(ParameterSetName = 'Policy')]
     [ValidateNotNullOrEmpty()]
-    [string]$ProjectAssetsPath = (Join-Path -Path (Split-Path -Parent $PSScriptRoot) -ChildPath 'src\DLLPickle.Build\obj\project.assets.json'),
+    [string]$LockFilePath = (Join-Path -Path (Split-Path -Parent $PSScriptRoot) -ChildPath 'src/DLLPickle.Build/packages.lock.json'),
+
+    [Parameter(ParameterSetName = 'Policy')]
+    [ValidateNotNullOrEmpty()]
+    [string]$ProjectAssetsPath = (Join-Path -Path (Split-Path -Parent $PSScriptRoot) -ChildPath 'src/DLLPickle.Build/obj/project.assets.json'),
 
     [Parameter(ParameterSetName = 'Policy')]
     [string]$OutputPath,
@@ -82,39 +92,49 @@ function Test-DLLPickleTargetFrameworkCompatible {
     param(
         [Parameter(Mandatory)]
         [AllowEmptyString()]
-        [string]$TargetFramework
+        [string]$TargetFramework,
+
+        [Parameter(Mandatory)]
+        [string]$RuntimeTargetFramework
     )
 
     $Moniker = ([string]$TargetFramework).Trim().ToLowerInvariant()
+    $RuntimeMoniker = ([string]$RuntimeTargetFramework).Trim().ToLowerInvariant()
     if ([string]::IsNullOrWhiteSpace($Moniker)) {
         return $false
     }
 
+    $RuntimeMatch = [regex]::Match($RuntimeMoniker, '^net(?<major>\d+)\.\d+$')
+    if (-not $RuntimeMatch.Success) {
+        throw "PackageDirectory mode requires a portable .NET target framework such as net8.0: '$RuntimeTargetFramework'."
+    }
+    $RuntimeMajor = [int]$RuntimeMatch.Groups['major'].Value
+
     # Reject OS-specific TFMs (e.g. net8.0-windows, net8.0-browser, net8.0-android). DLLPickle's
-    # bundle is validated as a PORTABLE net8.0 asset across Windows/Linux/macOS, so a package that
-    # ships only an OS-specific asset has no portable asset to preload and is not Step 0b-aligned.
+    # bundles are portable across Windows/Linux/macOS, so an OS-specific-only package has no
+    # portable asset to preload and is not Step 0b-aligned.
     if ($Moniker.Contains('-')) {
         return $false
     }
 
-    # .NET Standard (1.x-2.1): loadable on net8.0.
+    # .NET Standard (1.x-2.1): loadable on every supported modern .NET runtime.
     if ($Moniker -match '^netstandard\d+\.\d+$') {
         return $true
     }
 
-    # .NET Core 1.x-3.1 (netcoreapp): consumable by net8.0.
+    # .NET Core 1.x-3.1 (netcoreapp): consumable by every supported modern .NET runtime.
     if ($Moniker -match '^netcoreapp\d+\.\d+$') {
         return $true
     }
 
-    # .NET 5+ (netX.0, with a dot): consumable only up to the supported runtime major (8);
-    # a net9.0+ asset references a newer runtime contract and is not loadable on net8.0.
+    # .NET 5+ (netX.0, with a dot): consumable only when it does not exceed the selected
+    # portable runtime major.
     $NetCoreMatch = [regex]::Match($Moniker, '^net(\d+)\.\d+$')
     if ($NetCoreMatch.Success) {
-        return ([int]$NetCoreMatch.Groups[1].Value -le 8)
+        return ([int]$NetCoreMatch.Groups[1].Value -le $RuntimeMajor)
     }
 
-    # .NET Framework (net20-net48, no dot) is a different runtime, not loadable on net8.0.
+    # .NET Framework (net20-net48, no dot) is a different runtime, not loadable on modern .NET.
     # Anything else (unknown/garbage monikers) is fail-closed.
     return $false
 }
@@ -164,7 +184,10 @@ function Test-DLLPickleSinglePackageAlignment {
         [string]$Name,
 
         [Parameter()]
-        [string]$ResolvedVersion
+        [string]$ResolvedVersion,
+
+        [Parameter(Mandatory)]
+        [string]$TargetFramework
     )
 
     $ResolvedName = if (-not [string]::IsNullOrWhiteSpace($Name)) { $Name } else { Split-Path -Path $PackagePath -Leaf }
@@ -179,21 +202,23 @@ function Test-DLLPickleSinglePackageAlignment {
         $Lib = Get-DLLPickleLibTargetFramework -PackagePath $PackagePath
         if (-not $Lib.HasLib) {
             $IsAligned = $false
-            $Reason = 'No lib/ folder is present, so the package ships no net8.0/netstandard2.0 runtime asset.'
+            $Reason = "No lib/ folder is present, so the package ships no runtime asset compatible with $TargetFramework."
         } elseif ($Lib.IsFlatLib) {
             $IsAligned = $true
             $Available = @('lib')
             $Compatible = @('lib')
-            $Reason = 'Legacy flat lib/ layout: assemblies apply to any target framework, including net8.0.'
+            $Reason = "Legacy flat lib/ layout: assemblies apply to any target framework, including $TargetFramework."
         } else {
             $Available = @($Lib.TargetFrameworks)
-            $Compatible = @($Available | Where-Object { Test-DLLPickleTargetFrameworkCompatible -TargetFramework $_ })
+            $Compatible = @($Available | Where-Object {
+                    Test-DLLPickleTargetFrameworkCompatible -TargetFramework $_ -RuntimeTargetFramework $TargetFramework
+                })
             if ($Compatible.Count -gt 0) {
                 $IsAligned = $true
-                $Reason = "net8.0-compatible asset(s) present: $($Compatible -join ', ')."
+                $Reason = "$TargetFramework-compatible asset(s) present: $($Compatible -join ', ')."
             } else {
                 $IsAligned = $false
-                $Reason = "No net8.0/netstandard2.0-compatible asset; lib/ ships only: $($Available -join ', ')."
+                $Reason = "No $TargetFramework-compatible runtime asset; lib/ ships only: $($Available -join ', ')."
             }
         }
     }
@@ -201,6 +226,7 @@ function Test-DLLPickleSinglePackageAlignment {
     [PSCustomObject]@{
         PackageName      = $ResolvedName
         ResolvedVersion  = $ResolvedVersion
+        TargetFramework  = $TargetFramework
         PackageDirectory = $PackagePath
         IsAligned        = $IsAligned
         CompatibleAssets = @($Compatible)
@@ -238,7 +264,7 @@ function Get-DLLPickleResolvedPackageVersion {
 
 if ($PSCmdlet.ParameterSetName -eq 'PackageDirectory') {
     $ResolvedDirectory = (Resolve-Path -LiteralPath $PackageDirectory).Path
-    Test-DLLPickleSinglePackageAlignment -PackagePath $ResolvedDirectory -Name $PackageName
+    Test-DLLPickleSinglePackageAlignment -PackagePath $ResolvedDirectory -Name $PackageName -TargetFramework $TargetFramework
     return
 }
 
@@ -248,11 +274,15 @@ $ResolvedProjectAssetsPath = (Resolve-Path -LiteralPath $ProjectAssetsPath).Path
 $Policy = Get-Content -LiteralPath $ResolvedPolicyPath -Raw | ConvertFrom-Json
 $Lock = Get-Content -LiteralPath $ResolvedLockPath -Raw | ConvertFrom-Json
 $ProjectAssets = Get-Content -LiteralPath $ResolvedProjectAssetsPath -Raw | ConvertFrom-Json
-$TargetFrameworks = if ($Policy.PSObject.Properties.Name -contains 'runtimeProfiles') {
-    @($Policy.runtimeProfiles.targetFramework | Sort-Object -Unique)
+$RuntimeProfiles = if ($Policy.PSObject.Properties.Name -contains 'runtimeProfiles') {
+    @($Policy.runtimeProfiles)
 } else {
-    @($Lock.dependencies.PSObject.Properties.Name | Sort-Object -Unique)
+    @()
 }
+if ($RuntimeProfiles.Count -eq 0) {
+    throw "Dependency policy '$PolicyPath' must declare at least one runtimeProfiles entry."
+}
+$TargetFrameworks = @($RuntimeProfiles.targetFramework | Sort-Object -Unique)
 
 $PackageResults = foreach ($TargetFramework in $TargetFrameworks) {
     $TargetGraphProperty = $ProjectAssets.targets.PSObject.Properties |
@@ -287,9 +317,11 @@ $PackageResults = foreach ($TargetFramework in $TargetFrameworks) {
                 } else {
                     @()
                 }
-                $SelectedAssets = if ($RuntimeAssets.Count -gt 0) { $RuntimeAssets } else { $CompileAssets }
-                if ($SelectedAssets.Count -gt 0) {
+                $SelectedAssets = @($RuntimeAssets)
+                if ($RuntimeAssets.Count -gt 0) {
                     $Reason = "NuGet selected asset(s) for ${TargetFramework}: $($SelectedAssets -join ', ')."
+                } elseif ($CompileAssets.Count -gt 0) {
+                    $Reason = "NuGet selected compile-only asset(s) for ${TargetFramework}, but no runtime assembly can be copied or loaded: $($CompileAssets -join ', ')."
                 } else {
                     $Reason = "NuGet selected '$PackageKey' for '$TargetFramework' but no assembly compile/runtime asset."
                 }

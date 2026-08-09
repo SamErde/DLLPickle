@@ -46,8 +46,9 @@ $Cells = @(
     }
 )
 
-if ($Cells.Count -ne 9) {
-    throw "The authoritative DLLPickle runtime matrix must contain exactly 9 cells; found $($Cells.Count)."
+$ExpectedCellCount = @($Policy.profiles).Count * @($Policy.lanes).Count
+if ($ExpectedCellCount -eq 0 -or $Cells.Count -ne $ExpectedCellCount) {
+    throw "The authoritative DLLPickle runtime matrix must contain exactly $ExpectedCellCount cells; found $($Cells.Count)."
 }
 
 $CellKeys = @($Cells | ForEach-Object { '{0}|{1}|{2}' -f $_.powerShellVersion, $_.platform, $_.architecture })

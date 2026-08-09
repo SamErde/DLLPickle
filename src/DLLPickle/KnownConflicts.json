@@ -39,7 +39,7 @@
           "linux",
           "macos"
         ],
-        "evidenceStatus": "legacy-windows-evidence-requires-refresh"
+        "evidenceStatus": "stale-requires-refresh-issue-273"
       },
       {
         "powerShellLine": "7.5",
@@ -49,7 +49,7 @@
           "linux",
           "macos"
         ],
-        "evidenceStatus": "pending-ci-evidence"
+        "evidenceStatus": "requires-ci-evidence"
       },
       {
         "powerShellLine": "7.6",
@@ -59,12 +59,20 @@
           "linux",
           "macos"
         ],
-        "evidenceStatus": "pending-ci-evidence"
+        "evidenceStatus": "requires-ci-evidence"
       }
     ],
     "validationTiers": {
-      "deterministicImportNoAuth": "required",
-      "authenticatedReadOnly": "not-run-no-approved-credentials"
+      "deterministicImportNoAuth": {
+        "required": true,
+        "credentialsRequired": false
+      },
+      "authenticatedReadOnly": {
+        "requiredBeforeRelease": true,
+        "credentialsRequired": true,
+        "writesAllowed": false,
+        "status": "not-run-no-approved-credentials"
+      }
     }
   }
 ]

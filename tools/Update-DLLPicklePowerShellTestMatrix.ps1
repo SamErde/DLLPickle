@@ -17,7 +17,7 @@ or modifies an issue.
 param (
     [Parameter()]
     [ValidateNotNullOrEmpty()]
-    [string]$TestMatrixPath = (Join-Path (Split-Path -Parent $PSScriptRoot) 'build\powershell-test-matrix.json'),
+    [string]$TestMatrixPath = (Join-Path (Split-Path -Parent $PSScriptRoot) 'build/powershell-test-matrix.json'),
 
     [Parameter(Mandatory)]
     [ValidateNotNullOrEmpty()]
@@ -74,14 +74,16 @@ if (-not $IsPreparation) {
     )
     foreach ($IdentityFile in $IdentityFiles) {
         $Identity = Get-Content -LiteralPath $IdentityFile.FullName -Raw | ConvertFrom-Json -ErrorAction Stop
-        if (
-            $Identity.PSObject.Properties.Name -contains 'PowerShellVersion' -and
-            $Identity.PSObject.Properties.Name -contains 'DotNetVersion' -and
-            $Identity.PSObject.Properties.Name -contains 'Platform' -and
-            $Identity.PSObject.Properties.Name -contains 'Architecture'
-        ) {
-            $IdentityRecords += $Identity
+        $RequiredIdentityProperties = @('PowerShellVersion', 'DotNetVersion', 'Platform', 'Architecture')
+        $MissingIdentityProperties = @($RequiredIdentityProperties | Where-Object {
+                $Identity.PSObject.Properties.Name -notcontains $_ -or
+                [string]::IsNullOrWhiteSpace([string]$Identity.$_)
+            })
+        if ($MissingIdentityProperties.Count -gt 0) {
+            Write-Warning "Runtime identity file '$($IdentityFile.FullName)' is missing required value(s): $($MissingIdentityProperties -join ', '); the file will not be used."
+            continue
         }
+        $IdentityRecords += $Identity
     }
 }
 

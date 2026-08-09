@@ -35,8 +35,8 @@ function Get-DPRuntimeProfile {
         [int]$DotNetMajor = [Environment]::Version.Major
     )
 
+    $CandidateRoots = [System.Collections.Generic.List[string]]::new()
     if ([string]::IsNullOrWhiteSpace($PolicyPath)) {
-        $CandidateRoots = [System.Collections.Generic.List[string]]::new()
         $ExplicitModuleRoot = Get-Variable -Name PSModuleRoot -ValueOnly -ErrorAction SilentlyContinue
         if (-not [string]::IsNullOrWhiteSpace($ExplicitModuleRoot)) {
             $CandidateRoots.Add($ExplicitModuleRoot)
@@ -55,7 +55,12 @@ function Get-DPRuntimeProfile {
         }
     }
 
-    if ([string]::IsNullOrWhiteSpace($PolicyPath) -or -not (Test-Path -LiteralPath $PolicyPath -PathType Leaf)) {
+    if ([string]::IsNullOrWhiteSpace($PolicyPath)) {
+        $SearchedRoots = @($CandidateRoots | Select-Object -Unique) -join ', '
+        throw "DLLPickle runtime profile policy 'SupportedRuntimeProfiles.json' was not found. Searched: $SearchedRoots. Reinstall the module from a complete package."
+    }
+
+    if (-not (Test-Path -LiteralPath $PolicyPath -PathType Leaf)) {
         throw "DLLPickle runtime profile policy was not found at '$PolicyPath'. Reinstall the module from a complete package."
     }
 

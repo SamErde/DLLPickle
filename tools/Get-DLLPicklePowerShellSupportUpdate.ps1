@@ -27,7 +27,7 @@
 param(
     [Parameter()]
     [ValidateNotNullOrEmpty()]
-    [string]$TestMatrixPath = (Join-Path (Split-Path -Parent $PSScriptRoot) 'build\powershell-test-matrix.json'),
+    [string]$TestMatrixPath = (Join-Path (Split-Path -Parent $PSScriptRoot) 'build/powershell-test-matrix.json'),
 
     [Parameter()]
     [string]$ReleaseDataPath,
@@ -37,7 +37,7 @@ param(
 
     [Parameter()]
     [ValidateNotNullOrEmpty()]
-    [string]$OutputPath = (Join-Path (Split-Path -Parent $PSScriptRoot) 'artifacts\lifecycle\powershell-support-update.json'),
+    [string]$OutputPath = (Join-Path (Split-Path -Parent $PSScriptRoot) 'artifacts/lifecycle/powershell-support-update.json'),
 
     [Parameter()]
     [datetime]$AsOfUtc = [datetime]::UtcNow,
@@ -140,7 +140,13 @@ if ($DuplicateLifecycleLines.Count -gt 0) {
     throw "Microsoft lifecycle data contains duplicate PowerShell lines: $($DuplicateLifecycleLines.Name -join ', ')."
 }
 $AsOfPacificDate = [System.TimeZoneInfo]::ConvertTimeFromUtc($AsOfUtc.ToUniversalTime(), $PacificTimeZone).Date
-$SupportedLifecycleLines = @($LiveLifecycleRows | Where-Object { [datetime]$_.EndDate -ge $AsOfPacificDate } | ForEach-Object ReleaseLine)
+$SupportedLifecycleLines = @($LiveLifecycleRows | Where-Object {
+        [datetime]::ParseExact(
+            [string]$_.EndDate,
+            'yyyy-MM-dd',
+            [System.Globalization.CultureInfo]::InvariantCulture
+        ) -ge $AsOfPacificDate
+    } | ForEach-Object ReleaseLine)
 
 $DeclaredLines = @($TestMatrix.profiles | ForEach-Object { '{0}.{1}' -f $_.powerShellMajor, $_.powerShellMinor })
 $PatchUpdates = @(
@@ -231,6 +237,12 @@ $IncompletePatchUpdates = @($PatchUpdates | Where-Object { -not $_.ChecksumsComp
 $LifecycleMissingLines = @($DeclaredLines | Where-Object { $_ -notin $LiveLifecycleRows.ReleaseLine })
 $LifecycleDateChanges = @($LifecycleRows | Where-Object { $_.LifecycleEnd -ne $_.MatrixLifecycleEnd })
 $UndeclaredSupportedLines = @($SupportedLifecycleLines | Where-Object { $_ -notin $DeclaredLines })
+$SupportContractReviewRequired =
+    $NewLines.Count -gt 0 -or
+    $UndeclaredSupportedLines.Count -gt 0 -or
+    $LifecycleDateChanges.Count -gt 0 -or
+    $LifecycleMissingLines.Count -gt 0 -or
+    @($LifecycleRows | Where-Object Status -IN @('RetiringSoon', 'Expired')).Count -gt 0
 $PatchCanonicalLines = @(
     foreach ($PatchUpdate in @($PatchUpdates | Sort-Object ReleaseLine)) {
         'patch|{0}|{1}|{2}' -f $PatchUpdate.ReleaseLine, $PatchUpdate.CurrentVersion, $PatchUpdate.CandidateVersion
@@ -273,8 +285,8 @@ $Report = [PSCustomObject]@{
     PatchProposalMarker           = '<!-- dllpickle-finding-fingerprint:{0} -->' -f $PatchProposalFingerprint
     SupportContractFingerprint    = $SupportContractFingerprint
     SupportContractMarker         = '<!-- dllpickle-finding-fingerprint:{0} -->' -f $SupportContractFingerprint
-    MatrixOnlyUpdateAvailable     = $PatchUpdates.Count -gt 0 -and $NewLines.Count -eq 0 -and $IncompletePatchUpdates.Count -eq 0
-    SupportContractReviewRequired = $NewLines.Count -gt 0 -or $UndeclaredSupportedLines.Count -gt 0 -or $LifecycleDateChanges.Count -gt 0 -or $LifecycleMissingLines.Count -gt 0 -or @($LifecycleRows | Where-Object Status -IN @('RetiringSoon', 'Expired')).Count -gt 0
+    MatrixOnlyUpdateAvailable     = $PatchUpdates.Count -gt 0 -and $IncompletePatchUpdates.Count -eq 0 -and -not $SupportContractReviewRequired
+    SupportContractReviewRequired = $SupportContractReviewRequired
     ProposalPublishingStatus      = 'pending-workflow-publication'
 }
 

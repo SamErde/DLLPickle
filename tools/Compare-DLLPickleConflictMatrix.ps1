@@ -23,9 +23,14 @@ $ErrorActionPreference = 'Stop'
 
 $BaselineProfileKey = if ($Baseline.PSObject.Properties.Name -contains 'ProfileKey') { [string]$Baseline.ProfileKey } else { $null }
 $CurrentProfileKey = if ($Current.PSObject.Properties.Name -contains 'ProfileKey') { [string]$Current.ProfileKey } else { $null }
+$BaselineHasProfileKey = -not [string]::IsNullOrWhiteSpace($BaselineProfileKey)
+$CurrentHasProfileKey = -not [string]::IsNullOrWhiteSpace($CurrentProfileKey)
+if ($BaselineHasProfileKey -ne $CurrentHasProfileKey) {
+    throw "Cannot compare conflict matrices when only one declares a runtime profile: '$BaselineProfileKey' and '$CurrentProfileKey'."
+}
 if (
-    -not [string]::IsNullOrWhiteSpace($BaselineProfileKey) -and
-    -not [string]::IsNullOrWhiteSpace($CurrentProfileKey) -and
+    $BaselineHasProfileKey -and
+    $CurrentHasProfileKey -and
     $BaselineProfileKey -ne $CurrentProfileKey
 ) {
     throw "Cannot compare conflict matrices from different runtime profiles: '$BaselineProfileKey' and '$CurrentProfileKey'."

@@ -43,15 +43,15 @@ param(
 
     [Parameter()]
     [ValidateNotNullOrEmpty()]
-    [string]$PolicyPath = (Join-Path -Path (Split-Path -Parent $PSScriptRoot) -ChildPath 'build\dependency-policy.json'),
+    [string]$PolicyPath = (Join-Path -Path (Split-Path -Parent $PSScriptRoot) -ChildPath 'build/dependency-policy.json'),
 
     [Parameter()]
     [ValidateNotNullOrEmpty()]
-    [string]$ProjectPath = (Join-Path -Path (Split-Path -Parent $PSScriptRoot) -ChildPath 'src\DLLPickle.Build\DLLPickle.csproj'),
+    [string]$ProjectPath = (Join-Path -Path (Split-Path -Parent $PSScriptRoot) -ChildPath 'src/DLLPickle.Build/DLLPickle.csproj'),
 
     [Parameter()]
     [ValidateNotNullOrEmpty()]
-    [string]$OutputPath = (Join-Path -Path (Split-Path -Parent $PSScriptRoot) -ChildPath 'artifacts\upstreamCompatibility\candidate-report.json'),
+    [string]$OutputPath = (Join-Path -Path (Split-Path -Parent $PSScriptRoot) -ChildPath 'artifacts/upstreamCompatibility/candidate-report.json'),
 
     [Parameter()]
     [switch]$Restore
@@ -88,31 +88,80 @@ function Get-DLLPickleCurrentPackageReference {
         [string]$TargetFramework
     )
 
+    function Test-DLLPickleTargetFrameworkCondition {
+        param(
+            [Parameter()]
+            [AllowEmptyString()]
+            [string]$Condition,
+
+            [Parameter(Mandatory)]
+            [string]$Framework
+        )
+
+        if ([string]::IsNullOrWhiteSpace($Condition) -or $Condition -notmatch '\$\(TargetFramework\)') {
+            return $true
+        }
+
+        $ConditionMatch = [regex]::Match(
+            $Condition,
+            "^\s*'?\$\(TargetFramework\)'?\s*(?<operator>==|!=)\s*'(?<framework>[^']+)'\s*$"
+        )
+        if (-not $ConditionMatch.Success) {
+            throw "Unsupported TargetFramework condition in PackageReference automation: $Condition"
+        }
+
+        $ConditionFramework = $ConditionMatch.Groups['framework'].Value
+        if ($ConditionMatch.Groups['operator'].Value -eq '==') {
+            return $Framework -eq $ConditionFramework
+        }
+        return $Framework -ne $ConditionFramework
+    }
+
+    $ResolvedReferences = [System.Collections.Generic.List[object]]::new()
+    $ItemGroupCondition = $null
     for ($Index = 0; $Index -lt $ProjectContent.Count; $Index++) {
         $Line = $ProjectContent[$Index]
+        if ($Line -match '<ItemGroup\b') {
+            if ($null -ne $ItemGroupCondition) {
+                throw 'Nested ItemGroup elements are not supported by dependency pin automation.'
+            }
+            $ItemGroupConditionMatch = [regex]::Match($Line, 'Condition\s*=\s*"([^"]*)"')
+            $ItemGroupCondition = if ($ItemGroupConditionMatch.Success) { $ItemGroupConditionMatch.Groups[1].Value } else { '' }
+        }
+
         $MatchesPackage = $Line -match ('Include="{0}"' -f [regex]::Escape($PackageName))
+        $ReferenceConditionMatch = [regex]::Match($Line, 'Condition\s*=\s*"([^"]*)"')
+        $ReferenceCondition = if ($ReferenceConditionMatch.Success) { $ReferenceConditionMatch.Groups[1].Value } else { '' }
         $MatchesTargetFramework = if ([string]::IsNullOrWhiteSpace($TargetFramework) -or $TargetFramework -eq '*') {
             $true
-        } elseif ($Line -match 'TargetFramework') {
-            $Line -match ('TargetFramework.*{0}' -f [regex]::Escape($TargetFramework))
         } else {
-            # In single-target projects, PackageReference entries are often unconditional.
-            $true
+            (Test-DLLPickleTargetFrameworkCondition -Condition $ItemGroupCondition -Framework $TargetFramework) -and
+                (Test-DLLPickleTargetFrameworkCondition -Condition $ReferenceCondition -Framework $TargetFramework)
         }
 
         if ($MatchesPackage -and $MatchesTargetFramework) {
             $VersionMatch = [regex]::Match($Line, 'Version="([^"]+)"')
             if ($VersionMatch.Success) {
-                return [PSCustomObject]@{
+                $ResolvedReferences.Add([PSCustomObject]@{
                     Index   = $Index
                     Line    = $Line
                     Version = $VersionMatch.Groups[1].Value
-                }
+                    ItemGroupCondition = $ItemGroupCondition
+                    ReferenceCondition = $ReferenceCondition
+                })
             }
+        }
+
+        if ($Line -match '</ItemGroup>') {
+            $ItemGroupCondition = $null
         }
     }
 
-    return $null
+    if ($ResolvedReferences.Count -gt 1) {
+        throw "PackageReference '$PackageName' resolves ambiguously for target framework '$TargetFramework' at project lines $(@($ResolvedReferences.Index | ForEach-Object { $_ + 1 }) -join ', ')."
+    }
+
+    return @($ResolvedReferences)[0]
 }
 
 function ConvertTo-DLLPickleUpdatedPackageReferenceContent {

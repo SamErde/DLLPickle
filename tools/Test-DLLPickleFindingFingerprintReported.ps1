@@ -21,4 +21,7 @@ param (
 )
 
 $Marker = '<!-- dllpickle-finding-fingerprint:{0} -->' -f $Fingerprint.ToLowerInvariant()
-return @($Text | Where-Object { -not [string]::IsNullOrWhiteSpace($_) -and $_.Contains($Marker) }).Count -gt 0
+return @($Text | Where-Object {
+        -not [string]::IsNullOrWhiteSpace($_) -and
+        $_.Contains($Marker, [System.StringComparison]::OrdinalIgnoreCase)
+    }).Count -gt 0
