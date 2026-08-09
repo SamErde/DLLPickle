@@ -96,6 +96,14 @@ Describe 'Get-DLLPickleRuntimeAssemblySnapshot' -Tag 'Unit' {
         ($Result | Where-Object Name -EQ 'System.Management.Automation') | Should -Not -BeNullOrEmpty
     }
 
+    It 'returns an empty snapshot when no tracked assemblies are loaded' {
+        $Policy = Get-TempPolicyPath -TrackedAssemblies @('DLLPickle.NotLoaded')
+
+        $Result = @(& $SnapshotScript -ModuleName 'Microsoft.PowerShell.Management' -PolicyPath $Policy -PowerShellExecutable ([Environment]::ProcessPath) -Strict)
+
+        $Result | Should -HaveCount 0
+    }
+
     It 'never launches a generic pwsh command from PATH' {
         $Source = Get-Content -LiteralPath $SnapshotScript -Raw
 

@@ -2,6 +2,47 @@ BeforeAll {
     Set-Location -Path $PSScriptRoot
     $ProjectRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
     $script:ReportScriptPath = Join-Path $ProjectRoot 'tools\New-DLLPickleDependencyChangeReport.ps1'
+
+    function Get-DependencyChangeReportFixture {
+        param(
+            [Parameter(Mandatory)]
+            [string]$Root
+        )
+
+        $BaselineAssetsPath = Join-Path $Root 'baseline.assets.json'
+        $CandidateAssetsPath = Join-Path $Root 'candidate.assets.json'
+        $BaselineOutput = Join-Path $Root 'baseline-output'
+        $CandidateOutput = Join-Path $Root 'candidate-output'
+        $PolicyPath = Join-Path $Root 'support.json'
+        $DependencyPolicyPath = Join-Path $Root 'dependency-policy.json'
+        $null = New-Item -Path (Join-Path $BaselineOutput 'net8.0') -ItemType Directory -Force
+        $null = New-Item -Path (Join-Path $CandidateOutput 'net8.0') -ItemType Directory -Force
+
+        $Assets = @{
+            targets = @{
+                'net8.0' = @{
+                    'Contoso.Library/1.0.0' = @{ compile = @{}; runtime = @{} }
+                }
+            }
+        }
+        $Assets | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $BaselineAssetsPath -Encoding UTF8
+        $Assets | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $CandidateAssetsPath -Encoding UTF8
+        @{ schemaVersion = 1; profiles = @(@{ targetFramework = 'net8.0' }) } | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $PolicyPath -Encoding UTF8
+        @{ preload = @(); blockedPreloadAssemblies = @() } | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $DependencyPolicyPath -Encoding UTF8
+
+        [PSCustomObject]@{
+            BaselineAssetsPath = $BaselineAssetsPath
+            Parameters = @{
+                BaselineProjectAssetsPath = $BaselineAssetsPath
+                CandidateProjectAssetsPath = $CandidateAssetsPath
+                BaselineBuildOutputRoot = $BaselineOutput
+                CandidateBuildOutputRoot = $CandidateOutput
+                SupportPolicyPath = $PolicyPath
+                DependencyPolicyPath = $DependencyPolicyPath
+                OutputPath = Join-Path $Root 'report.json'
+            }
+        }
+    }
 }
 
 Describe 'Per-TFM dependency change report' -Tag 'Unit' {
@@ -72,5 +113,28 @@ Describe 'Per-TFM dependency change report' -Tag 'Unit' {
         $ProfileReport.ConflictSurfaceDelta.UpstreamAlcAdjudication | Should -Be 'required-profile-aware-gate'
         $Report.RequiredChecks | Should -Contain 'Build gate'
         $Report.ReviewRequired | Should -BeTrue
+    }
+
+    It 'fails closed when an assets file has no targets section' {
+        $Fixture = Get-DependencyChangeReportFixture -Root (Join-Path $TestDrive 'missing-targets')
+        @{ version = 3 } | ConvertTo-Json | Set-Content -LiteralPath $Fixture.BaselineAssetsPath -Encoding UTF8
+        $Parameters = $Fixture.Parameters
+
+        { & $script:ReportScriptPath @Parameters } | Should -Throw '*Baseline NuGet assets file has no targets section*'
+    }
+
+    It 'fails closed when a target graph contains duplicate package keys' {
+        $Fixture = Get-DependencyChangeReportFixture -Root (Join-Path $TestDrive 'duplicate-package')
+        @{
+            targets = @{
+                'net8.0' = @{
+                    'Contoso.Library/1.0.0' = @{ compile = @{}; runtime = @{} }
+                    'Contoso.Library/2.0.0' = @{ compile = @{}; runtime = @{} }
+                }
+            }
+        } | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $Fixture.BaselineAssetsPath -Encoding UTF8
+        $Parameters = $Fixture.Parameters
+
+        { & $script:ReportScriptPath @Parameters } | Should -Throw "*duplicate 'PackageName' value 'Contoso.Library'*"
     }
 }

@@ -149,7 +149,7 @@ foreach ($Row in $Rows) {
     $Row | Add-Member -NotePropertyName IsolatedModulePath -NotePropertyValue $env:PSModulePath
     $Row | Add-Member -NotePropertyName DllPicklePreloaded -NotePropertyValue (-not [string]::IsNullOrWhiteSpace($PreloadManifest))
 }
-$Rows | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $ResultPath -Encoding utf8NoBOM
+ConvertTo-Json -InputObject @($Rows) -Depth 8 | Set-Content -LiteralPath $ResultPath -Encoding utf8NoBOM
 '@
 
 $TempId = [System.Guid]::NewGuid().ToString('n')

@@ -282,7 +282,16 @@ $RuntimeProfiles = if ($Policy.PSObject.Properties.Name -contains 'runtimeProfil
 if ($RuntimeProfiles.Count -eq 0) {
     throw "Dependency policy '$PolicyPath' must declare at least one runtimeProfiles entry."
 }
-$TargetFrameworks = @($RuntimeProfiles.targetFramework | Sort-Object -Unique)
+$DeclaredTargetFrameworks = @(
+    foreach ($RuntimeProfile in $RuntimeProfiles) {
+        $DeclaredTargetFramework = [string]$RuntimeProfile.targetFramework
+        if ([string]::IsNullOrWhiteSpace($DeclaredTargetFramework)) {
+            throw "Dependency policy '$PolicyPath' declares a runtimeProfiles entry without a targetFramework."
+        }
+        $DeclaredTargetFramework
+    }
+)
+$TargetFrameworks = @($DeclaredTargetFrameworks | Sort-Object -Unique)
 
 $PackageResults = foreach ($TargetFramework in $TargetFrameworks) {
     $TargetGraphProperty = $ProjectAssets.targets.PSObject.Properties |

@@ -265,4 +265,14 @@ Describe 'Test-DLLPickleTfmAlignment policy-driven inspection' -Tag 'Unit' {
         ($Report.Packages | Where-Object TargetFramework -EQ 'net9.0').IsAligned | Should -BeFalse
         ($Report.Packages | Where-Object TargetFramework -EQ 'net10.0').IsAligned | Should -BeFalse
     }
+
+    It 'rejects a runtime profile without a target framework' {
+        $Fixture = Get-FixturePolicyContext
+        $Policy = Get-Content -LiteralPath $Fixture.PolicyPath -Raw | ConvertFrom-Json
+        $Policy.runtimeProfiles = @($Policy.runtimeProfiles) + @([PSCustomObject]@{})
+        $Policy | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $Fixture.PolicyPath -Encoding utf8
+
+        { & $script:ToolPath -PolicyPath $Fixture.PolicyPath -LockFilePath $Fixture.LockPath -ProjectAssetsPath $Fixture.AssetsPath -Strict } |
+            Should -Throw '*runtimeProfiles*without a targetFramework*'
+    }
 }

@@ -100,8 +100,10 @@
         'windows'
     } elseif ([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::OSX)) {
         'macos'
-    } else {
+    } elseif ([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::Linux)) {
         'linux'
+    } else {
+        throw 'DLLPickle supports only Windows, Linux, and macOS hosts.'
     }
     $HostProvidedAssemblyNames = @($RuntimeProfile.hostProvidedAssemblyNames.$RuntimePlatform)
     $HostProvidedDLLNames = @($HostProvidedAssemblyNames | ForEach-Object { '{0}.dll' -f $_ })

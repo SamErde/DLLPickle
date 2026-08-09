@@ -93,10 +93,11 @@ jobs:
           FILES=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/files" --paginate --jq '.[].filename')
           MATCHING_FILES=$(printf '%s\n' "$FILES" | sed '/^$/d' | grep -E '^src/DLLPickle\.Build/(DLLPickle\.csproj|packages\.lock\.json)$' || true)
           UNEXPECTED_FILES=$(printf '%s\n' "$FILES" | sed '/^$/d' | grep -Ev '^src/DLLPickle\.Build/(DLLPickle\.csproj|packages\.lock\.json)$' || true)
-          CSPROJ_PATCH=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/files" --paginate --jq '.[] | select(.filename == "src/DLLPickle.Build/DLLPickle.csproj") | (.patch // "")')
-          CONDITIONAL_TFM_ADDITION=$(printf '%s\n' "$CSPROJ_PATCH" | grep -E '^\+.*PackageReference.*Condition=.*TargetFramework' || true)
+          CSPROJ_PATCH=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/files" --paginate --jq '.[] | select(.filename == "src/DLLPickle.Build/DLLPickle.csproj") | if has("patch") then .patch else "__DLLPICKLE_PATCH_UNAVAILABLE__" end')
+          PATCH_UNAVAILABLE=$(printf '%s\n' "$CSPROJ_PATCH" | grep -F '__DLLPICKLE_PATCH_UNAVAILABLE__' || true)
+          CONDITIONAL_TFM_ADDITION=$(printf '%s\n' "$CSPROJ_PATCH" | grep -E '^\+.*\$\(TargetFramework\)' || true)
 
-          if [ -n "$MATCHING_FILES" ] && [ -z "$UNEXPECTED_FILES" ] && [ -z "$CONDITIONAL_TFM_ADDITION" ]; then
+          if [ -n "$MATCHING_FILES" ] && [ -z "$UNEXPECTED_FILES" ] && [ -z "$PATCH_UNAVAILABLE" ] && [ -z "$CONDITIONAL_TFM_ADDITION" ]; then
             echo "is_exact_nuget_update=true" >> "$GITHUB_OUTPUT"
           else
             echo "is_exact_nuget_update=false" >> "$GITHUB_OUTPUT"
@@ -104,8 +105,11 @@ jobs:
               echo "Refusing auto-approval because the PR changes files outside the NuGet allow-list:"
               printf '%s\n' "$UNEXPECTED_FILES"
             fi
+            if [ -n "$PATCH_UNAVAILABLE" ]; then
+              echo "Refusing auto-approval because the Files API omitted the DLLPickle.csproj patch."
+            fi
             if [ -n "$CONDITIONAL_TFM_ADDITION" ]; then
-              echo "Refusing auto-approval because the PR introduces a conditional per-TFM PackageReference:"
+              echo "Refusing auto-approval because the PR introduces per-TFM project content:"
               printf '%s\n' "$CONDITIONAL_TFM_ADDITION"
             fi
           fi
