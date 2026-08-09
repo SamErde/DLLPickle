@@ -7,7 +7,7 @@ Describe 'Deterministic upstream import-order evidence' -Tag 'Unit' {
     It 'runs every configured order with and without DLLPickle under exact manifests' {
         $ModuleCache = Join-Path $TestDrive 'modules'
         $ModuleRows = @(
-            foreach ($Name in @('Synthetic.One', 'Synthetic.Two')) {
+            foreach ($Name in @('Synthetic.One', 'Synthetic.Two', 'Synthetic.Failure')) {
                 $ModuleRoot = Join-Path $ModuleCache "$Name\1.0.0"
                 $null = New-Item -Path $ModuleRoot -ItemType Directory -Force
                 Set-Content -LiteralPath (Join-Path $ModuleRoot "$Name.psm1") -Value "function Get-$($Name.Replace('.', '')) { 'ok' }" -Encoding UTF8
@@ -31,6 +31,7 @@ Describe 'Deterministic upstream import-order evidence' -Tag 'Unit' {
             monitoredModules = @(
                 @{ name = 'Synthetic.One'; deterministicProbeCommand = 'Get-Command Get-SyntheticOne | Out-Null' }
                 @{ name = 'Synthetic.Two'; deterministicProbeCommand = 'Get-Command Get-SyntheticTwo | Out-Null' }
+                @{ name = 'Synthetic.Failure'; deterministicProbeCommand = 'throw "expected synthetic failure"' }
             )
             runtimeProfiles = @(
                 @{
@@ -40,9 +41,18 @@ Describe 'Deterministic upstream import-order evidence' -Tag 'Unit' {
                         , @('Synthetic.One', 'Synthetic.Two')
                         , @('Synthetic.Two', 'Synthetic.One')
                     )
+                    knownConflictIds = @('synthetic-expected-failure')
                 }
             )
         } | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $PolicyPath -Encoding UTF8
+        $KnownConflictsPath = Join-Path $TestDrive 'known-conflicts.json'
+        @(
+            @{
+                id = 'synthetic-expected-failure'
+                importOrders = @(, @('Synthetic.Failure'))
+                requiresProcessIsolation = $true
+            }
+        ) | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $KnownConflictsPath -Encoding UTF8
         $InventoryPath = Join-Path $TestDrive 'inventory.json'
         @{
             ProfileKey = $ProfileKey
@@ -63,6 +73,7 @@ Describe 'Deterministic upstream import-order evidence' -Tag 'Unit' {
             InventoryPath = $InventoryPath
             PowerShellExecutable = [Environment]::ProcessPath
             DLLPickleManifestPath = $DllPickleManifest
+            KnownConflictsPath = $KnownConflictsPath
             OutputPath = Join-Path $TestDrive 'scenario-evidence.json'
             Strict = $true
         }
@@ -70,10 +81,11 @@ Describe 'Deterministic upstream import-order evidence' -Tag 'Unit' {
         $Parameters.OutputPath = Join-Path $TestDrive 'scenario-evidence-second.json'
         $Second = & $script:ToolPath @Parameters
 
-        @($First.Scenarios) | Should -HaveCount 4
-        @($First.Scenarios | Where-Object DllPicklePreloaded) | Should -HaveCount 2
-        @($First.Scenarios | Where-Object { -not $_.DllPicklePreloaded }) | Should -HaveCount 2
+        @($First.Scenarios) | Should -HaveCount 6
+        @($First.Scenarios | Where-Object DllPicklePreloaded) | Should -HaveCount 3
+        @($First.Scenarios | Where-Object { -not $_.DllPicklePreloaded }) | Should -HaveCount 3
         $ExpectedOrders = @(
+            'Synthetic.Failure'
             'Synthetic.One,Synthetic.Two'
             'Synthetic.Two,Synthetic.One'
         )
@@ -87,6 +99,7 @@ Describe 'Deterministic upstream import-order evidence' -Tag 'Unit' {
         }
         $First.Passed | Should -BeTrue
         $First.WritesPerformed | Should -BeFalse
+        @($First.Scenarios | Where-Object ScenarioId -EQ 'synthetic-expected-failure' | Select-Object -ExpandProperty OutcomeMatchesExpectation -Unique) | Should -Be @($true)
         $First.ScenarioFingerprint | Should -BeExactly $Second.ScenarioFingerprint
     }
 }

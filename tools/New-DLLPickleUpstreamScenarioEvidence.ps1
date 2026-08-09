@@ -180,7 +180,7 @@ $CanonicalRows = @(
             $Scenario.OutcomeMatchesExpectation,
             (@($Scenario.ImportOrder) -join ','),
             (@($Scenario.Assemblies | Sort-Object Name,Path | ForEach-Object { '{0},{1},{2},{3},{4}' -f $_.Name, $_.Version, $_.Sha256, $_.Path, $_.Alc }) -join ';'),
-            (([string]$Scenario.Error) -replace '\s+', ' ').Trim()
+            (([string]$Scenario.Error) -replace '(?i)dpp-snap-[0-9a-f]{32}\.ps1', 'dpp-snap-<id>.ps1' -replace '\s+', ' ').Trim()
         )
     }
 )

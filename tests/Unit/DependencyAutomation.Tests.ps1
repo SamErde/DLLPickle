@@ -141,6 +141,43 @@ Describe 'Dependency automation tooling' -Tag 'Unit' {
         $Result.Modules[0].ManifestPowerShellVersion | Should -Be '7.0'
     }
 
+    It 'resolves saved RequiredModules before validating a monitored manifest' {
+        $Assembly = [System.String].Assembly
+        $AssemblyName = $Assembly.GetName().Name
+        $ModuleCachePath = Join-Path $TestDrive 'required-module-cache'
+        $RequiredRoot = Join-Path $ModuleCachePath 'Synthetic.Required\1.0.0'
+        $ParentRoot = Join-Path $ModuleCachePath 'Synthetic.Parent\1.0.0'
+        $null = New-Item -Path $RequiredRoot -ItemType Directory -Force
+        $null = New-Item -Path $ParentRoot -ItemType Directory -Force
+
+        Set-Content -LiteralPath (Join-Path $RequiredRoot 'Synthetic.Required.psm1') -Value "function Get-SyntheticRequired { 'required' }" -Encoding UTF8
+        New-ModuleManifest -Path (Join-Path $RequiredRoot 'Synthetic.Required.psd1') -RootModule 'Synthetic.Required.psm1' -ModuleVersion '1.0.0' -FunctionsToExport @('Get-SyntheticRequired')
+        Copy-Item -LiteralPath $Assembly.Location -Destination (Join-Path $ParentRoot "$AssemblyName.dll")
+        Set-Content -LiteralPath (Join-Path $ParentRoot 'Synthetic.Parent.psm1') -Value 'function Get-SyntheticParent { Get-SyntheticRequired }' -Encoding UTF8
+        New-ModuleManifest -Path (Join-Path $ParentRoot 'Synthetic.Parent.psd1') -RootModule 'Synthetic.Parent.psm1' -ModuleVersion '1.0.0' -RequiredModules @('Synthetic.Required') -FunctionsToExport @('Get-SyntheticParent')
+
+        $PolicyPath = Join-Path $TestDrive 'required-module-policy.json'
+        $TestMatrixPath = Write-DependencyAutomationRuntimeMatrixFixture -Path (Join-Path $TestDrive 'required-module-runtime-matrix.json')
+        @{
+            monitoredModules = @(
+                @{
+                    name = 'Synthetic.Parent'
+                    repository = 'PSGallery'
+                    purpose = 'Required-module path regression.'
+                    deterministicProbeCommand = 'Get-SyntheticParent | Out-Null'
+                }
+            )
+            trackedAssemblies = @($AssemblyName)
+            preload = @()
+            blockedPreloadAssemblies = @()
+        } | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $PolicyPath -Encoding UTF8
+
+        $Result = & $script:InventoryScriptPath -PolicyPath $PolicyPath -TestMatrixPath $TestMatrixPath -ModuleCachePath $ModuleCachePath -SkipDownload -OutputPath (Join-Path $TestDrive 'required-module-inventory.json')
+
+        $Result.Modules | Should -HaveCount 1
+        $Result.Modules[0].Name | Should -BeExactly 'Synthetic.Parent'
+    }
+
     It 'updates exact package pins from upstream inventory and reports blocked preload findings' {
         $ProjectPath = Join-Path -Path $TestDrive -ChildPath 'DLLPickle.csproj'
         @'

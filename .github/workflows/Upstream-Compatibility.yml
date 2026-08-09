@@ -56,7 +56,7 @@ jobs:
               $Files = gh api "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" --paginate --jq '.[] | .filename, (.previous_filename // empty)'
               # Native non-zero exits don't reliably throw in pwsh, so check explicitly -> fail-safe.
               if ($LASTEXITCODE -ne 0) { throw "gh api exited $LASTEXITCODE while listing PR files" }
-              $Patterns = @('^build/', '^src/DLLPickle\.Build/', '^tests/', '^tools/', '^\.github/workflows/Upstream-Compatibility\.yml$')
+              $Patterns = @('^build/', '^src/DLLPickle\.Build/', '^src/DLLPickle/', '^tests/', '^tools/', '^\.github/workflows/Upstream-Compatibility\.yml$')
               # Any change that can alter the accepted baseline or the fingerprint computation must
               # prove itself against a fresh upstream inventory. Comparator/tests/workflow-only changes
               # stay on the deterministic smoke path so a pre-existing external drift does not prevent
@@ -67,10 +67,13 @@ jobs:
                 '^src/DLLPickle\.Build/packages\.lock\.json$',
                 '^build/powershell-test-matrix\.json$',
                 '^tools/Get-DLLPickleUpstreamInventory\.ps1$',
+                '^tools/Get-DLLPickleLoadedTrackedAssembly\.ps1$',
                 '^tools/Get-DLLPickleRuntimeAssemblySnapshot\.ps1$',
                 '^tools/New-DLLPickleConflictMatrix\.ps1$',
+                '^tools/New-DLLPickleUpstreamScenarioEvidence\.ps1$',
                 '^tools/Test-DLLPickleProfileConflictBaseline\.ps1$',
-                '^tools/Install-DLLPickleTestPowerShell\.ps1$'
+                '^tools/Install-DLLPickleTestPowerShell\.ps1$',
+                '^src/DLLPickle/'
               )
               $Relevant = $false
               $LiveValidation = $false

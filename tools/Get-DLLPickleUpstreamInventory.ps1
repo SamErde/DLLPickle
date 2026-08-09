@@ -241,16 +241,18 @@ $ModuleResults = foreach ($PolicyModule in $PolicyModules) {
     if (-not $ModuleManifestPath) {
         throw "Module manifest '$Name.psd1' was not found under '$($SavedModule.FullName)'."
     }
-    # Real gallery manifests can contain module-manifest expressions such as a
-    # PSEdition-dependent RootModule. Import-PowerShellDataFile deliberately rejects
-    # those expressions; Test-ModuleManifest evaluates the constrained manifest grammar
-    # and returns the compatibility metadata PowerShell itself uses.
-    $Manifest = Test-ModuleManifest -Path $ModuleManifestPath.FullName -ErrorAction Stop
-
     $OriginalPSModulePath = $env:PSModulePath
+    $Manifest = $null
     try {
         $SystemModulePath = Join-Path -Path $RuntimeIdentity.psHome -ChildPath 'Modules'
         $env:PSModulePath = @($ModuleCachePath, $SystemModulePath) -join [System.IO.Path]::PathSeparator
+        # Real gallery manifests can contain module-manifest expressions such as a
+        # PSEdition-dependent RootModule. Import-PowerShellDataFile deliberately rejects
+        # those expressions; Test-ModuleManifest evaluates the constrained manifest grammar
+        # and returns the compatibility metadata PowerShell itself uses. Validate only after
+        # isolating PSModulePath so RequiredModules saved beside the monitored module resolve.
+        $Manifest = Test-ModuleManifest -Path $ModuleManifestPath.FullName -ErrorAction Stop
+
         $SnapshotParameters = @{
             ModuleName              = @($Name)
             ModuleManifestPath      = @($ModuleManifestPath.FullName)

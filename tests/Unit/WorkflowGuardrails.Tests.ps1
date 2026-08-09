@@ -21,7 +21,10 @@ Describe 'Upstream compatibility workflow guardrails' -Tag 'Unit' {
         $UpstreamWorkflow | Should -Match 'live_validation'
         $UpstreamWorkflow | Should -Match ([regex]::Escape('build/dependency-policy.json'))
         $UpstreamWorkflow | Should -Match ([regex]::Escape('tools/Get-DLLPickleUpstreamInventory.ps1'))
+        $UpstreamWorkflow | Should -Match ([regex]::Escape("'^tools/Get-DLLPickleLoadedTrackedAssembly\.ps1$'"))
         $UpstreamWorkflow | Should -Match ([regex]::Escape('tools/New-DLLPickleConflictMatrix.ps1'))
+        $UpstreamWorkflow | Should -Match ([regex]::Escape('tools/New-DLLPickleUpstreamScenarioEvidence.ps1'))
+        $UpstreamWorkflow | Should -Match ([regex]::Escape("'^src/DLLPickle/'"))
     }
 
     It 'uploads compact JSON evidence and writes a job summary' {
