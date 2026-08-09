@@ -24,7 +24,15 @@ Describe 'Deterministic upstream import-order evidence' -Tag 'Unit' {
 
         $PowerShellLine = '{0}.{1}' -f $PSVersionTable.PSVersion.Major, $PSVersionTable.PSVersion.Minor
         $TargetFramework = 'net{0}.0' -f [Environment]::Version.Major
-        $ProfileKey = "ps$PowerShellLine-$TargetFramework-windows-x64"
+        $Platform = if ([Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([Runtime.InteropServices.OSPlatform]::Windows)) {
+            'windows'
+        } elseif ([Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([Runtime.InteropServices.OSPlatform]::OSX)) {
+            'macos'
+        } else {
+            'linux'
+        }
+        $Architecture = [Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString().ToLowerInvariant()
+        $ProfileKey = "ps$PowerShellLine-$TargetFramework-$Platform-$Architecture"
         $PolicyPath = Join-Path $TestDrive 'policy.json'
         @{
             trackedAssemblies = @('System.Management.Automation')
@@ -65,8 +73,8 @@ Describe 'Deterministic upstream import-order evidence' -Tag 'Unit' {
                 PowerShellLine = $PowerShellLine
                 TargetFramework = $TargetFramework
                 PSHome = $PSHOME
-                Platform = 'windows'
-                Architecture = 'x64'
+                Platform = $Platform
+                Architecture = $Architecture
             }
             Modules = @($ModuleRows)
         } | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $InventoryPath -Encoding UTF8
@@ -113,5 +121,8 @@ Describe 'Deterministic upstream import-order evidence' -Tag 'Unit' {
             $KnownLimitationScenario.OutcomeMatchesExpectation | Should -BeTrue
         }
         $First.ScenarioFingerprint | Should -BeExactly $Second.ScenarioFingerprint
+        $ObservedAssemblies = @($First.Scenarios | ForEach-Object { @($_.Assemblies) })
+        @($ObservedAssemblies.Platform | Sort-Object -Unique) | Should -Be @($Platform)
+        @($ObservedAssemblies.Architecture | Sort-Object -Unique) | Should -Be @($Architecture)
     }
 }

@@ -17,7 +17,7 @@
 .PARAMETER NameLike
     Optional wildcard patterns; when supplied, an assembly must ALSO match one of them to be returned.
 .OUTPUTS
-    PSCustomObject[] with Name, Version, ALC, path, hash, OS, and architecture. Sorted by Name.
+    PSCustomObject[] with Name, Version, ALC, path, hash, OS, platform, and architecture. Sorted by Name.
 #>
 [CmdletBinding()]
 param(
@@ -35,6 +35,15 @@ if (-not $PolicyPath) {
 }
 
 $TrackedNames = @((Get-Content -LiteralPath $PolicyPath -Raw | ConvertFrom-Json).trackedAssemblies)
+$Platform = if ([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::Windows)) {
+    'windows'
+} elseif ([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::OSX)) {
+    'macos'
+} elseif ([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::Linux)) {
+    'linux'
+} else {
+    'unknown'
+}
 
 [System.AppDomain]::CurrentDomain.GetAssemblies() |
     Where-Object { $TrackedNames -contains $_.GetName().Name } |
@@ -62,6 +71,7 @@ $TrackedNames = @((Get-Content -LiteralPath $PolicyPath -Raw | ConvertFrom-Json)
                 $null
             }
             OS           = [System.Runtime.InteropServices.RuntimeInformation]::OSDescription
+            Platform     = $Platform
             Architecture = [System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString().ToLowerInvariant()
         }
     } |

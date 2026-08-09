@@ -22,6 +22,7 @@ Describe 'Get-DLLPickleLoadedTrackedAssembly' -Tag 'Unit' {
         $Row | Should -Not -BeNullOrEmpty
         $Row.Alc | Should -Not -BeNullOrEmpty
         $Row.Version | Should -Not -BeNullOrEmpty
+        $Row.Platform | Should -BeIn @('windows', 'linux', 'macos')
     }
 
     It 'excludes loaded assemblies that are not in trackedAssemblies' {
@@ -52,6 +53,7 @@ Describe 'Get-DLLPickleRuntimeAssemblySnapshot' -Tag 'Unit' {
         $Result[0].PowerShellVersion | Should -Be $PSVersionTable.PSVersion.ToString()
         $Result[0].TargetFramework | Should -Be ('net{0}.0' -f [Environment]::Version.Major)
         $Result[0].ExecutablePath | Should -Not -BeNullOrEmpty
+        $Result[0].Platform | Should -BeIn @('windows', 'linux', 'macos')
         $Result[0].Architecture | Should -Not -BeNullOrEmpty
     }
 

@@ -309,6 +309,7 @@ $ModuleResults = foreach ($PolicyModule in $PolicyModules) {
                 DotNetVersion           = [string]$Assembly.DotNetVersion
                 TargetFramework         = [string]$Assembly.TargetFramework
                 OS                      = [string]$Assembly.OS
+                Platform                = [string]$Assembly.Platform
                 Architecture            = [string]$Assembly.Architecture
             }
         }

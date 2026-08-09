@@ -37,16 +37,34 @@ BeforeAll {
                 PowerShellLine = '7.6'
                 TargetFramework = 'net10.0'
                 Platform = 'windows'
+                Architecture = 'x64'
             }
             Fingerprint = $CurrentFingerprint
         } | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $matrixPath -Encoding utf8
 
         [ordered]@{
             ProfileKey = 'ps7.6-net10.0-windows-x64'
+            Profile = [ordered]@{
+                PowerShellLine = '7.6'
+                TargetFramework = 'net10.0'
+                Platform = 'windows'
+                Architecture = 'x64'
+            }
             ValidationTier = 'deterministic-import-no-auth'
             WritesPerformed = $false
             Passed = $true
             ScenarioFingerprint = $CurrentScenarioFingerprint
+            Scenarios = @(
+                [ordered]@{
+                    Assemblies = @(
+                        [ordered]@{
+                            Name = 'Microsoft.Identity.Client'
+                            Platform = 'windows'
+                            Architecture = 'x64'
+                        }
+                    )
+                }
+            )
         } | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $scenarioPath -Encoding utf8
 
         [pscustomobject]@{ PolicyPath = $policyPath; MatrixPath = $matrixPath; ScenarioPath = $scenarioPath }
@@ -82,6 +100,37 @@ Describe 'Profile-specific conflict baseline enforcement' -Tag 'Unit' {
 
         { & $script:ToolPath -PolicyPath $fixture.PolicyPath -ConflictMatrixPath $fixture.MatrixPath -ScenarioEvidencePath $fixture.ScenarioPath } |
             Should -Throw '*scenario drift*'
+    }
+
+    It 'rejects a conflict matrix whose key does not match its profile fields' {
+        $fixture = Get-ProfileBaselineFixture
+        $Matrix = Get-Content -LiteralPath $fixture.MatrixPath -Raw | ConvertFrom-Json
+        $Matrix.ProfileKey = 'ps7.6-net10.0-linux-x64'
+        $Matrix | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $fixture.MatrixPath -Encoding UTF8
+
+        { & $script:ToolPath -PolicyPath $fixture.PolicyPath -ConflictMatrixPath $fixture.MatrixPath -ScenarioEvidencePath $fixture.ScenarioPath } |
+            Should -Throw '*does not match derived profile key*'
+    }
+
+    It 'rejects scenario metadata whose key does not match its profile fields' {
+        $fixture = Get-ProfileBaselineFixture
+        $Scenario = Get-Content -LiteralPath $fixture.ScenarioPath -Raw | ConvertFrom-Json
+        $Scenario.Profile.Platform = 'linux'
+        $Scenario | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $fixture.ScenarioPath -Encoding UTF8
+
+        { & $script:ToolPath -PolicyPath $fixture.PolicyPath -ConflictMatrixPath $fixture.MatrixPath -ScenarioEvidencePath $fixture.ScenarioPath } |
+            Should -Throw '*does not match derived profile key*'
+    }
+
+    It 'rejects scenario rows observed on a different platform or architecture' {
+        $fixture = Get-ProfileBaselineFixture
+        $Scenario = Get-Content -LiteralPath $fixture.ScenarioPath -Raw | ConvertFrom-Json
+        $Scenario.Scenarios[0].Assemblies[0].Platform = 'linux'
+        $Scenario.Scenarios[0].Assemblies[0].Architecture = 'arm64'
+        $Scenario | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $fixture.ScenarioPath -Encoding UTF8
+
+        { & $script:ToolPath -PolicyPath $fixture.PolicyPath -ConflictMatrixPath $fixture.MatrixPath -ScenarioEvidencePath $fixture.ScenarioPath } |
+            Should -Throw '*observed on*linux/arm64*expected*windows/x64*'
     }
 
     It 'writes a stable finding before an unaccepted baseline fails closed' {

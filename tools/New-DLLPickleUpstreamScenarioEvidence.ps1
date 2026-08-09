@@ -58,6 +58,19 @@ $Inventory = Get-Content -LiteralPath $ResolvedInventoryPath -Raw | ConvertFrom-
 if (-not $Inventory.Profile -or [string]::IsNullOrWhiteSpace([string]$Inventory.ProfileKey)) {
     throw 'The upstream inventory is not keyed to an exact runtime profile.'
 }
+$ProfileKeyValues = @(
+    [string]$Inventory.Profile.PowerShellLine
+    [string]$Inventory.Profile.TargetFramework
+    [string]$Inventory.Profile.Platform
+    [string]$Inventory.Profile.Architecture
+)
+if (@($ProfileKeyValues | Where-Object { [string]::IsNullOrWhiteSpace($_) }).Count -gt 0) {
+    throw "Upstream inventory '$($Inventory.ProfileKey)' lacks a complete PowerShell line, TFM, platform, and architecture profile."
+}
+$DerivedProfileKey = 'ps{0}-{1}-{2}-{3}' -f $ProfileKeyValues
+if ([string]$Inventory.ProfileKey -ne $DerivedProfileKey) {
+    throw "Upstream inventory profile key '$($Inventory.ProfileKey)' does not match derived profile key '$DerivedProfileKey'."
+}
 
 $ProfilePolicy = @($Policy.runtimeProfiles | Where-Object {
         $_.powerShellLine -eq $Inventory.Profile.PowerShellLine -and
@@ -173,6 +186,23 @@ foreach ($ScenarioDefinition in $ScenarioDefinitions) {
             $Scenario.OutcomePolicy -eq 'observe-known-limitation' -or
             $Scenario.Success -eq $Scenario.ExpectedSuccess
         $ScenarioResults.Add([PSCustomObject]$Scenario)
+    }
+}
+
+$ObservedAssemblies = @(
+    foreach ($ScenarioResult in $ScenarioResults) {
+        foreach ($Assembly in @($ScenarioResult.Assemblies)) {
+            $Assembly
+        }
+    }
+)
+if ($ObservedAssemblies.Count -eq 0) {
+    throw "Deterministic upstream scenarios for '$($Inventory.ProfileKey)' contain no observed tracked assemblies."
+}
+foreach ($ObservedAssembly in $ObservedAssemblies) {
+    if ([string]$ObservedAssembly.Platform -ne [string]$Inventory.Profile.Platform -or
+        [string]$ObservedAssembly.Architecture -ne [string]$Inventory.Profile.Architecture) {
+        throw "Scenario assembly '$($ObservedAssembly.Name)' was observed on '$($ObservedAssembly.Platform)/$($ObservedAssembly.Architecture)', expected '$($Inventory.Profile.Platform)/$($Inventory.Profile.Architecture)' for '$($Inventory.ProfileKey)'."
     }
 }
 

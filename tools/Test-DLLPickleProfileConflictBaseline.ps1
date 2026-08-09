@@ -49,8 +49,53 @@ $ScenarioEvidence = Get-Content -LiteralPath $ScenarioEvidencePath -Raw -ErrorAc
 if (-not $Matrix.Profile -or [string]::IsNullOrWhiteSpace([string]$Matrix.ProfileKey)) {
     throw 'The conflict matrix is not keyed to an exact runtime profile.'
 }
-if ([string]$ScenarioEvidence.ProfileKey -ne [string]$Matrix.ProfileKey) {
-    throw "Scenario evidence profile '$($ScenarioEvidence.ProfileKey)' does not match conflict profile '$($Matrix.ProfileKey)'."
+$MatrixProfileKeyValues = @(
+    [string]$Matrix.Profile.PowerShellLine
+    [string]$Matrix.Profile.TargetFramework
+    [string]$Matrix.Profile.Platform
+    [string]$Matrix.Profile.Architecture
+)
+if (@($MatrixProfileKeyValues | Where-Object { [string]::IsNullOrWhiteSpace($_) }).Count -gt 0) {
+    throw "Conflict matrix '$($Matrix.ProfileKey)' lacks a complete PowerShell line, TFM, platform, and architecture profile."
+}
+$DerivedMatrixProfileKey = 'ps{0}-{1}-{2}-{3}' -f $MatrixProfileKeyValues
+if ([string]$Matrix.ProfileKey -ne $DerivedMatrixProfileKey) {
+    throw "Conflict matrix profile key '$($Matrix.ProfileKey)' does not match derived profile key '$DerivedMatrixProfileKey'."
+}
+if (-not $ScenarioEvidence.Profile) {
+    throw "Scenario evidence for '$($Matrix.ProfileKey)' has no observed runtime profile."
+}
+$ScenarioProfileKeyValues = @(
+    [string]$ScenarioEvidence.Profile.PowerShellLine
+    [string]$ScenarioEvidence.Profile.TargetFramework
+    [string]$ScenarioEvidence.Profile.Platform
+    [string]$ScenarioEvidence.Profile.Architecture
+)
+if (@($ScenarioProfileKeyValues | Where-Object { [string]::IsNullOrWhiteSpace($_) }).Count -gt 0) {
+    throw "Scenario evidence '$($ScenarioEvidence.ProfileKey)' lacks a complete PowerShell line, TFM, platform, and architecture profile."
+}
+$DerivedScenarioProfileKey = 'ps{0}-{1}-{2}-{3}' -f $ScenarioProfileKeyValues
+if ([string]$ScenarioEvidence.ProfileKey -ne $DerivedScenarioProfileKey) {
+    throw "Scenario evidence profile key '$($ScenarioEvidence.ProfileKey)' does not match derived profile key '$DerivedScenarioProfileKey'."
+}
+if ($DerivedScenarioProfileKey -ne $DerivedMatrixProfileKey) {
+    throw "Scenario evidence profile '$DerivedScenarioProfileKey' does not match conflict profile '$DerivedMatrixProfileKey'."
+}
+$ObservedScenarioAssemblies = @(
+    foreach ($Scenario in @($ScenarioEvidence.Scenarios)) {
+        foreach ($Assembly in @($Scenario.Assemblies)) {
+            $Assembly
+        }
+    }
+)
+if ($ObservedScenarioAssemblies.Count -eq 0) {
+    throw "Scenario evidence for '$($Matrix.ProfileKey)' contains no observed tracked assemblies."
+}
+foreach ($ObservedAssembly in $ObservedScenarioAssemblies) {
+    if ([string]$ObservedAssembly.Platform -ne [string]$Matrix.Profile.Platform -or
+        [string]$ObservedAssembly.Architecture -ne [string]$Matrix.Profile.Architecture) {
+        throw "Scenario assembly '$($ObservedAssembly.Name)' was observed on '$($ObservedAssembly.Platform)/$($ObservedAssembly.Architecture)', expected '$($Matrix.Profile.Platform)/$($Matrix.Profile.Architecture)' for '$($Matrix.ProfileKey)'."
+    }
 }
 if (-not $ScenarioEvidence.Passed -or $ScenarioEvidence.WritesPerformed -or $ScenarioEvidence.ValidationTier -ne 'deterministic-import-no-auth') {
     throw "Scenario evidence for '$($Matrix.ProfileKey)' is not a passing zero-write deterministic tier."

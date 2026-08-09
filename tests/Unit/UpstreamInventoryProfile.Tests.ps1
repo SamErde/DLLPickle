@@ -102,6 +102,8 @@ Describe 'Profile-aware upstream inventory' -Tag 'Unit' {
         $row.Sha256 | Should -Match '^[a-f0-9]{64}$'
         $row.Alc | Should -Not -BeNullOrEmpty
         $row.TargetFramework | Should -Be $report.Profile.TargetFramework
+        $row.Platform | Should -Be $report.Profile.Platform
+        $row.Architecture | Should -Be $report.Profile.Architecture
         @($module.TrackedAssemblies) | Should -HaveCount 1
         $row.SelectedAssetPath | Should -Not -BeExactly $fixture.DecoyAssemblyPath
         @($module.TrackedAssemblies.SelectedAssetPath) | Should -Not -Contain $fixture.DecoyAssemblyPath
