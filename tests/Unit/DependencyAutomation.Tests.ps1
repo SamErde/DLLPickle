@@ -3,6 +3,28 @@ BeforeAll {
     $ProjectRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
     $script:InventoryScriptPath = Join-Path $ProjectRoot 'tools\Get-DLLPickleUpstreamInventory.ps1'
     $script:UpdateScriptPath = Join-Path $ProjectRoot 'tools\Update-DLLPickleDependencyPins.ps1'
+
+    function Write-DependencyAutomationRuntimeMatrixFixture {
+        param(
+            [Parameter(Mandatory)]
+            [string]$Path
+        )
+
+        [ordered]@{
+            schemaVersion = 1
+            profiles      = @(
+                [ordered]@{
+                    powerShellVersion = $PSVersionTable.PSVersion.ToString()
+                    powerShellMajor   = $PSVersionTable.PSVersion.Major
+                    powerShellMinor   = $PSVersionTable.PSVersion.Minor
+                    dotnetMajor       = [Environment]::Version.Major
+                    targetFramework   = 'net{0}.0' -f [Environment]::Version.Major
+                }
+            )
+        } | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $Path -Encoding UTF8
+
+        return $Path
+    }
 }
 
 Describe 'Dependency automation tooling' -Tag 'Unit' {
@@ -11,6 +33,7 @@ Describe 'Dependency automation tooling' -Tag 'Unit' {
         $AssemblyName = $Assembly.GetName().Name
         $ModuleCachePath = Join-Path -Path $TestDrive -ChildPath 'atomic-modules'
         $PolicyPath = Join-Path -Path $TestDrive -ChildPath 'atomic-policy.json'
+        $TestMatrixPath = Write-DependencyAutomationRuntimeMatrixFixture -Path (Join-Path $TestDrive 'atomic-runtime-matrix.json')
         @{
             monitoredModules = @(
                 @{ name = 'Synthetic.One'; repository = 'PSGallery'; purpose = 'First synthetic module.' }
@@ -44,7 +67,7 @@ Describe 'Dependency automation tooling' -Tag 'Unit' {
             New-ModuleManifest -Path (Join-Path $ModuleRoot "$Name.psd1") -RootModule "$Name.psm1" -ModuleVersion ([string]$RequiredVersion)
         }
 
-        $null = & $script:InventoryScriptPath -PolicyPath $PolicyPath -ModuleCachePath $ModuleCachePath -OutputPath (Join-Path $TestDrive 'atomic-inventory.json')
+        $null = & $script:InventoryScriptPath -PolicyPath $PolicyPath -TestMatrixPath $TestMatrixPath -ModuleCachePath $ModuleCachePath -OutputPath (Join-Path $TestDrive 'atomic-inventory.json')
 
         $InventoryEvents = @($InventoryTestState.Events)
         [System.AppDomain]::CurrentDomain.SetData($InventoryTestStateKey, $null)
@@ -62,6 +85,7 @@ Describe 'Dependency automation tooling' -Tag 'Unit' {
         New-ModuleManifest -Path (Join-Path $ModuleRoot 'Synthetic.Graph.psd1') -RootModule 'Synthetic.Graph.psm1' -ModuleVersion '1.0.0'
 
         $PolicyPath = Join-Path -Path $TestDrive -ChildPath 'policy.json'
+        $TestMatrixPath = Write-DependencyAutomationRuntimeMatrixFixture -Path (Join-Path $TestDrive 'inventory-runtime-matrix.json')
         @{
             monitoredModules = @(
                 @{
@@ -75,7 +99,7 @@ Describe 'Dependency automation tooling' -Tag 'Unit' {
             blockedPreloadAssemblies = @()
         } | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $PolicyPath -Encoding UTF8
 
-        $Result = & $script:InventoryScriptPath -PolicyPath $PolicyPath -ModuleCachePath $ModuleCachePath -SkipDownload -OutputPath (Join-Path $TestDrive 'inventory.json')
+        $Result = & $script:InventoryScriptPath -PolicyPath $PolicyPath -TestMatrixPath $TestMatrixPath -ModuleCachePath $ModuleCachePath -SkipDownload -OutputPath (Join-Path $TestDrive 'inventory.json')
 
         $Result.Modules | Should -HaveCount 1
         $Result.Modules[0].Name | Should -Be 'Synthetic.Graph'
@@ -104,6 +128,7 @@ Describe 'Dependency automation tooling' -Tag 'Unit' {
 '@ | Set-Content -LiteralPath (Join-Path $ModuleRoot 'Synthetic.Dynamic.psd1') -Encoding UTF8
 
         $PolicyPath = Join-Path $TestDrive 'dynamic-policy.json'
+        $TestMatrixPath = Write-DependencyAutomationRuntimeMatrixFixture -Path (Join-Path $TestDrive 'dynamic-runtime-matrix.json')
         @{
             monitoredModules = @(@{ name = 'Synthetic.Dynamic'; repository = 'PSGallery'; purpose = 'Dynamic manifest regression.' })
             trackedAssemblies = @($AssemblyName)
@@ -111,7 +136,7 @@ Describe 'Dependency automation tooling' -Tag 'Unit' {
             blockedPreloadAssemblies = @()
         } | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $PolicyPath -Encoding UTF8
 
-        $Result = & $script:InventoryScriptPath -PolicyPath $PolicyPath -ModuleCachePath $ModuleCachePath -SkipDownload -OutputPath (Join-Path $TestDrive 'dynamic-inventory.json')
+        $Result = & $script:InventoryScriptPath -PolicyPath $PolicyPath -TestMatrixPath $TestMatrixPath -ModuleCachePath $ModuleCachePath -SkipDownload -OutputPath (Join-Path $TestDrive 'dynamic-inventory.json')
 
         $Result.Modules[0].ManifestPowerShellVersion | Should -Be '7.0'
     }

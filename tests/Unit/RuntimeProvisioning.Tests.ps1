@@ -2,14 +2,37 @@ BeforeAll {
     $script:RepositoryRoot = Split-Path -Path (Split-Path -Path $PSScriptRoot -Parent) -Parent
     $script:ProvisionerPath = Join-Path -Path $script:RepositoryRoot -ChildPath 'tools/Install-DLLPickleTestPowerShell.ps1'
     $script:MatrixPath = Join-Path -Path $script:RepositoryRoot -ChildPath 'build/powershell-test-matrix.json'
+
+    function Write-RuntimeProvisioningMatrixFixture {
+        param(
+            [Parameter(Mandatory)]
+            [string]$Path
+        )
+
+        [ordered]@{
+            schemaVersion = 1
+            profiles      = @(
+                [ordered]@{
+                    powerShellVersion = $PSVersionTable.PSVersion.ToString()
+                    powerShellMajor   = $PSVersionTable.PSVersion.Major
+                    powerShellMinor   = $PSVersionTable.PSVersion.Minor
+                    dotnetMajor       = [Environment]::Version.Major
+                    targetFramework   = 'net{0}.0' -f [Environment]::Version.Major
+                }
+            )
+        } | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $Path -Encoding UTF8
+
+        return $Path
+    }
 }
 
 Describe 'Exact PowerShell runtime provisioning' -Tag 'Unit' {
     It 'validates an explicit stock executable without multi-pwsh' {
         $currentExecutable = (Get-Process -Id $PID).Path
         $currentVersion = $PSVersionTable.PSVersion.ToString()
+        $TestMatrixPath = Write-RuntimeProvisioningMatrixFixture -Path (Join-Path $TestDrive 'runtime-matrix.json')
 
-        $result = & $script:ProvisionerPath -PowerShellExecutable $currentExecutable -PowerShellVersion $currentVersion -PassThru
+        $result = & $script:ProvisionerPath -PowerShellExecutable $currentExecutable -PowerShellVersion $currentVersion -MatrixPath $TestMatrixPath -PassThru
 
         $result.Provider | Should -Be 'ExplicitExecutable'
         $result.PowerShellVersion | Should -Be $currentVersion

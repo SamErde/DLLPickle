@@ -1,7 +1,28 @@
 BeforeAll {
     $script:RepositoryRoot = Split-Path -Path (Split-Path -Path $PSScriptRoot -Parent) -Parent
     $script:InventoryToolPath = Join-Path -Path $script:RepositoryRoot -ChildPath 'tools/Get-DLLPickleUpstreamInventory.ps1'
-    $script:TestMatrixPath = Join-Path -Path $script:RepositoryRoot -ChildPath 'build/powershell-test-matrix.json'
+
+    function Write-UpstreamInventoryRuntimeMatrixFixture {
+        param(
+            [Parameter(Mandatory)]
+            [string]$Path
+        )
+
+        [ordered]@{
+            schemaVersion = 1
+            profiles      = @(
+                [ordered]@{
+                    powerShellVersion = $PSVersionTable.PSVersion.ToString()
+                    powerShellMajor   = $PSVersionTable.PSVersion.Major
+                    powerShellMinor   = $PSVersionTable.PSVersion.Minor
+                    dotnetMajor       = [Environment]::Version.Major
+                    targetFramework   = 'net{0}.0' -f [Environment]::Version.Major
+                }
+            )
+        } | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $Path -Encoding UTF8
+
+        return $Path
+    }
 
     function Get-UpstreamInventoryFixture {
         $root = Join-Path -Path $TestDrive -ChildPath ([guid]::NewGuid().ToString('n'))
@@ -44,9 +65,10 @@ BeforeAll {
 Describe 'Profile-aware upstream inventory' -Tag 'Unit' {
     It 'records exact runtime identity and only actually selected tracked assets' {
         $fixture = Get-UpstreamInventoryFixture
+        $TestMatrixPath = Write-UpstreamInventoryRuntimeMatrixFixture -Path (Join-Path $TestDrive 'runtime-matrix.json')
         $parameters = @{
             PolicyPath = $fixture.PolicyPath
-            TestMatrixPath = $script:TestMatrixPath
+            TestMatrixPath = $TestMatrixPath
             ModuleCachePath = $fixture.ModuleCachePath
             OutputPath = $fixture.OutputPath
             PowerShellExecutable = [Environment]::ProcessPath
