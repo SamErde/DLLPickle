@@ -2,6 +2,14 @@ BeforeAll {
     Set-Location -Path $PSScriptRoot
     $ProjectRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
     $BuiltModuleManifestPath = Join-Path $ProjectRoot 'module\DLLPickle\DLLPickle.psd1'
+    $RuntimePolicy = Get-Content -LiteralPath (Join-Path $ProjectRoot 'src\DLLPickle\SupportedRuntimeProfiles.json') -Raw | ConvertFrom-Json
+    $RuntimeProfile = @($RuntimePolicy.profiles | Where-Object {
+            $_.powerShellMajor -eq $PSVersionTable.PSVersion.Major -and $_.powerShellMinor -eq $PSVersionTable.PSVersion.Minor
+        })
+    if ($RuntimeProfile.Count -ne 1 -or $RuntimeProfile[0].dotnetMajor -ne [Environment]::Version.Major) {
+        throw 'The integration-test process does not match exactly one supported runtime profile.'
+    }
+    $TargetFramework = [string]$RuntimeProfile[0].targetFramework
 }
 
 Describe 'Built module integration validation' -Tag 'Integration' {
@@ -17,12 +25,12 @@ Describe 'Built module integration validation' -Tag 'Integration' {
         @($ImportResults | Where-Object Status -EQ 'Failed') | Should -BeNullOrEmpty
     }
 
-    It 'does not preload Azure.Core on the net8.0 profile (regression guard for the Az.Accounts load-context split)' {
+    It 'does not preload Azure.Core on the selected runtime profile (regression guard for the Az.Accounts load-context split)' {
         # Az.Accounts 5.x isolates its Azure SDK stack in a private AssemblyLoadContext.
         # Preloading Azure.Core into the default context splits Azure.Core.TokenRequestContext
         # across load contexts and breaks Connect-AzAccount. The net48-only Azure.Core preload
-        # (#183) must not regress into the net8.0 preload set.
-        $BinPath = Join-Path (Split-Path -Path $BuiltModuleManifestPath -Parent) 'bin\net8.0'
+        # (#183) must not regress into any supported preload set.
+        $BinPath = Join-Path (Split-Path -Path $BuiltModuleManifestPath -Parent) (Join-Path 'bin' $TargetFramework)
 
         # Packaging invariant: Azure.Core (and its isolated BCL subgraph) must not be shipped.
         Join-Path $BinPath 'Azure.Core.dll' | Should -Not -Exist
@@ -43,7 +51,7 @@ Describe 'Built module integration validation' -Tag 'Integration' {
         # copies into the default ALC collides with modules that bundle their own (Az.Resources 9.x ->
         # "Microsoft.Extensions.DependencyInjection.Abstractions ... assembly with same name is already
         # loaded"). They are excluded from the bundle via ExcludeAssets in DLLPickle.csproj.
-        $BinPath = Join-Path (Split-Path -Path $BuiltModuleManifestPath -Parent) 'bin\net8.0'
+        $BinPath = Join-Path (Split-Path -Path $BuiltModuleManifestPath -Parent) (Join-Path 'bin' $TargetFramework)
 
         # Packaging invariant: the Extensions BCL transitives must not be shipped.
         Join-Path $BinPath 'Microsoft.Extensions.DependencyInjection.Abstractions.dll' | Should -Not -Exist

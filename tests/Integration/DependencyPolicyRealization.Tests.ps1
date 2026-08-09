@@ -3,7 +3,15 @@ BeforeAll {
     $PolicyPath = Join-Path -Path (Join-Path -Path $ProjectRoot -ChildPath 'build') -ChildPath 'dependency-policy.json'
     $ProjectPath = Join-Path -Path (Join-Path -Path (Join-Path -Path $ProjectRoot -ChildPath 'src') -ChildPath 'DLLPickle.Build') -ChildPath 'DLLPickle.csproj'
     $BuiltModuleRoot = Join-Path -Path (Join-Path -Path $ProjectRoot -ChildPath 'module') -ChildPath 'DLLPickle'
-    $BuiltBinPath = Join-Path -Path (Join-Path -Path $BuiltModuleRoot -ChildPath 'bin') -ChildPath 'net8.0'
+    $RuntimePolicyPath = Join-Path -Path $BuiltModuleRoot -ChildPath 'SupportedRuntimeProfiles.json'
+    $RuntimePolicy = Get-Content -LiteralPath $RuntimePolicyPath -Raw | ConvertFrom-Json
+    $RuntimeProfile = @($RuntimePolicy.profiles | Where-Object {
+            $_.powerShellMajor -eq $PSVersionTable.PSVersion.Major -and $_.powerShellMinor -eq $PSVersionTable.PSVersion.Minor
+        })
+    if ($RuntimeProfile.Count -ne 1 -or $RuntimeProfile[0].dotnetMajor -ne [Environment]::Version.Major) {
+        throw 'The integration-test process does not match exactly one supported runtime profile.'
+    }
+    $BuiltBinPath = Join-Path -Path (Join-Path -Path $BuiltModuleRoot -ChildPath 'bin') -ChildPath $RuntimeProfile[0].targetFramework
 
     if (-not (Test-Path -LiteralPath $PolicyPath -PathType Leaf)) {
         throw "Dependency policy not found: $PolicyPath"

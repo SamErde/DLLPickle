@@ -77,8 +77,9 @@
     }
 
 
-    # DLLPickle supports PowerShell 7.4+ with a single modern target framework.
-    $TargetFramework = 'net8.0'
+    $RuntimePolicyPath = Join-Path -Path $ModuleDirectory -ChildPath 'SupportedRuntimeProfiles.json'
+    $RuntimeProfile = Get-DPRuntimeProfile -PolicyPath $RuntimePolicyPath
+    $TargetFramework = [string]$RuntimeProfile.targetFramework
 
     $BinDirectory = Join-Path -Path $ModuleDirectory -ChildPath 'bin'
     $TFMDirectory = Join-Path -Path $BinDirectory -ChildPath $TargetFramework

@@ -43,6 +43,14 @@
 ### QUESTION: Is the $BuildFile variable created by Invoke-Build automatically?
 $script:ModuleName = [regex]::Match((Get-Item $BuildFile).Name, '^(.*)\.Build\.ps1$').Groups[1].Value
 . "$(Join-Path -Path $PSScriptRoot -ChildPath "${ModuleName}.Settings.ps1")"
+$script:BuildToolPolicyPath = Join-Path -Path $PSScriptRoot -ChildPath 'build-tool-versions.json'
+. (Join-Path -Path $PSScriptRoot -ChildPath 'DLLPickle.Tooling.ps1')
+$script:BuildToolPolicy = Get-DLLPickleBuildToolPolicy -Path $script:BuildToolPolicyPath
+$script:RequiredInvokeBuildVersion = Get-DLLPickleBuildToolVersion -Policy $script:BuildToolPolicy -Name 'InvokeBuild'
+$script:RequiredPesterVersion = Get-DLLPickleBuildToolVersion -Policy $script:BuildToolPolicy -Name 'Pester'
+$script:RequiredPSScriptAnalyzerVersion = Get-DLLPickleBuildToolVersion -Policy $script:BuildToolPolicy -Name 'PSScriptAnalyzer'
+$script:RequiredPlatyPSVersion = Get-DLLPickleBuildToolVersion -Policy $script:BuildToolPolicy -Name 'Microsoft.PowerShell.PlatyPS'
+$null = Import-DLLPickleBuildTool -Name 'InvokeBuild' -RequiredVersion $script:RequiredInvokeBuildVersion
 
 function Test-ManifestBool ($Path) {
     # Validate the module manifest file
@@ -127,8 +135,6 @@ Enter-Build {
         '*[\\/]Private[\\/]Show-DLLPickleLogo.ps1'
     )
 
-    [version]$script:MinPesterVersion = '5.2.2'
-    [version]$script:MaxPesterVersion = '5.99.99'
     $script:TestOutputFormat = 'NUnitXML'
 } #Enter-Build
 
@@ -231,6 +237,7 @@ Add-BuildTask Clean {
 
 #Synopsis: Invoke PSScriptAnalyzer against the Module source path
 Add-BuildTask Analyze {
+    $null = Import-DLLPickleBuildTool -Name 'PSScriptAnalyzer' -RequiredVersion $script:RequiredPSScriptAnalyzerVersion
     $ScriptAnalyzerParams = @{
         Path    = $script:ModuleSourcePath
         Setting = 'PSScriptAnalyzerSettings.psd1'
@@ -251,6 +258,7 @@ Add-BuildTask Analyze {
 #Synopsis: Invoke Script Analyzer against the Tests path if it exists
 Add-BuildTask AnalyzeTests -After Analyze {
     if (Test-Path -Path $script:TestsPath) {
+        $null = Import-DLLPickleBuildTool -Name 'PSScriptAnalyzer' -RequiredVersion $script:RequiredPSScriptAnalyzerVersion
         $ScriptAnalyzerParams = @{
             Path        = $script:TestsPath
             Setting     = 'PSScriptAnalyzerSettings.psd1'
@@ -273,6 +281,7 @@ Add-BuildTask AnalyzeTests -After Analyze {
 #Synopsis: Invoke Script Analyzer against repository maintenance tools if they exist
 Add-BuildTask AnalyzeTools -After AnalyzeTests {
     if (Test-Path -Path $script:ToolsPath) {
+        $null = Import-DLLPickleBuildTool -Name 'PSScriptAnalyzer' -RequiredVersion $script:RequiredPSScriptAnalyzerVersion
         $ScriptAnalyzerParams = @{
             Path    = $script:ToolsPath
             Setting = 'PSScriptAnalyzerSettings.psd1'
@@ -293,6 +302,7 @@ Add-BuildTask AnalyzeTools -After AnalyzeTests {
 
 #Synopsis: Analyze scripts to verify if they adhere to desired coding format (Stroustrup / OTBS / Allman)
 Add-BuildTask FormattingCheck {
+    $null = Import-DLLPickleBuildTool -Name 'PSScriptAnalyzer' -RequiredVersion $script:RequiredPSScriptAnalyzerVersion
     $ScriptAnalyzerParams = @{
         Setting     = 'CodeFormattingOTBS'
         ExcludeRule = 'PSUseConsistentWhitespace'
@@ -312,10 +322,8 @@ Add-BuildTask FormattingCheck {
 
 #Synopsis: Invoke all Pester Unit Tests in the Tests\Unit folder (if it exists)
 Add-BuildTask Test {
-
-    Write-Build White "      Importing desired Pester version. Min: $script:MinPesterVersion Max: $script:MaxPesterVersion"
-    Remove-Module -Name Pester -Force -ErrorAction 'SilentlyContinue' # there are instances where some containers have Pester already in the session
-    Import-Module -Name Pester -MinimumVersion $script:MinPesterVersion -MaximumVersion $script:MaxPesterVersion -ErrorAction 'Stop'
+    Write-Build White "      Importing exact Pester version: $script:RequiredPesterVersion"
+    $null = Import-DLLPickleBuildTool -Name 'Pester' -RequiredVersion $script:RequiredPesterVersion
 
     $CodeCovPath = Join-Path -Path $script:ArtifactsPath -ChildPath 'ccReport'
     $TestOutputPath = Join-Path -Path $script:ArtifactsPath -ChildPath 'testOutput'
@@ -389,9 +397,8 @@ Add-BuildTask Test {
 #Synopsis: Used primarily during active development to generate XML file to graphically display code coverage in VSCode using Coverage Gutters
 Add-BuildTask DevCC {
     Write-Build White '      Generating code coverage report at root...'
-    Write-Build White "      Importing desired Pester version. Min: $script:MinPesterVersion Max: $script:MaxPesterVersion"
-    Remove-Module -Name Pester -Force -ErrorAction SilentlyContinue # there are instances where some containers have Pester already in the session
-    Import-Module -Name Pester -MinimumVersion $script:MinPesterVersion -MaximumVersion $script:MaxPesterVersion -ErrorAction 'Stop'
+    Write-Build White "      Importing exact Pester version: $script:RequiredPesterVersion"
+    $null = Import-DLLPickleBuildTool -Name 'Pester' -RequiredVersion $script:RequiredPesterVersion
     $PesterConfiguration = New-PesterConfiguration
     $PesterConfiguration.run.Path = $script:UnitTestsPath
     $PesterConfiguration.CodeCoverage.Enabled = $true
@@ -413,8 +420,8 @@ Add-BuildTask DevCC {
 Add-BuildTask CreateHelpStart {
     Write-Build White '      Performing all help related actions.'
 
-    Write-Build Gray '           Importing Microsoft.PowerShell.PlatyPS ...'
-    Import-Module Microsoft.PowerShell.PlatyPS -ErrorAction Stop
+    Write-Build Gray "           Importing Microsoft.PowerShell.PlatyPS $script:RequiredPlatyPSVersion ..."
+    $null = Import-DLLPickleBuildTool -Name 'Microsoft.PowerShell.PlatyPS' -RequiredVersion $script:RequiredPlatyPSVersion
     Write-Build Gray '           ...Microsoft.PowerShell.PlatyPS imported successfully.'
 } #CreateHelpStart
 
@@ -899,9 +906,8 @@ Add-BuildTask Build {
 #Synopsis: Invokes all Pester Integration Tests in the Tests\Integration folder (if it exists)
 Add-BuildTask IntegrationTest {
     if (Test-Path -Path $script:IntegrationTestsPath) {
-        Write-Build White "      Importing desired Pester version. Min: $script:MinPesterVersion Max: $script:MaxPesterVersion"
-        Remove-Module -Name Pester -Force -ErrorAction SilentlyContinue # There are instances where some containers have Pester already in the session
-        Import-Module -Name Pester -MinimumVersion $script:MinPesterVersion -MaximumVersion $script:MaxPesterVersion -ErrorAction 'Stop'
+        Write-Build White "      Importing exact Pester version: $script:RequiredPesterVersion"
+        $null = Import-DLLPickleBuildTool -Name 'Pester' -RequiredVersion $script:RequiredPesterVersion
 
         Write-Build White "      Performing Pester Integration Tests in $script:IntegrationTestsPath"
 

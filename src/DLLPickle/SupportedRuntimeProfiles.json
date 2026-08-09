@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "profiles": [
+    {
+      "powerShellMajor": 7,
+      "powerShellMinor": 4,
+      "dotnetMajor": 8,
+      "targetFramework": "net8.0"
+    },
+    {
+      "powerShellMajor": 7,
+      "powerShellMinor": 5,
+      "dotnetMajor": 9,
+      "targetFramework": "net9.0"
+    },
+    {
+      "powerShellMajor": 7,
+      "powerShellMinor": 6,
+      "dotnetMajor": 10,
+      "targetFramework": "net10.0"
+    }
+  ]
+}

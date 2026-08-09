@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <ImplicitUsings>false</ImplicitUsings>
     <NoWarn>2008</NoWarn>
@@ -10,14 +10,14 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Azure.Core is intentionally NOT preloaded on the PowerShell 7.4+ (net8.0) profile.
+    <!-- Azure.Core is intentionally NOT preloaded on any supported PowerShell runtime profile.
          Modern Az.Accounts (5.x) isolates its Azure SDK stack in a private AssemblyLoadContext
          (AzSharedAssemblyLoadContext). Preloading Azure.Core into the default load context splits
          the identity of Azure.Core.TokenRequestContext across load contexts and breaks
          Connect-AzAccount with a MissingMethodException on
          InteractiveBrowserCredential.AuthenticateAsync. Graph, Exchange, and Teams resolve a
-         compatible Azure.Core themselves on .NET 8, so the preload is unnecessary for them.
-         The original net48-only Azure.Core preload (#183) does not apply to the net8.0 baseline.
+         compatible Azure.Core themselves, so the preload is unnecessary for them.
+         The original net48-only Azure.Core preload (#183) does not apply to the modern profiles.
          Tracked as report-only in build/dependency-policy.json. -->
     <!-- MSAL + broker line: major-locked floating (N.*) so Dependabot manages minor/patch updates
          within the major (gated by the upstream-compatibility checks); major bumps stay a manual,
