@@ -46,12 +46,124 @@ env:
   MODULE_NAME: DLLPickle
   MODULE_DIR: ./module/DLLPickle
   MANIFEST_PATH: ./src/DLLPickle/DLLPickle.psd1
+  AUTHENTICATED_WORKFLOW_FILE: Authenticated-Compatibility.yml
+  AUTHENTICATED_EVIDENCE_ARTIFACT: authenticated-compatibility-evidence
 
 jobs:
+  authenticated-release-gate:
+    name: Require Authenticated Compatibility
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # The credentialed workflow is intentionally not created until the protected environment,
+    # identities, permissions, and redaction controls in the approved plan exist. Until then this
+    # gate fails closed before version analysis or tag creation can begin.
+    if: |
+      github.repository_owner == 'SamErde' &&
+      (
+        github.event_name == 'workflow_dispatch' ||
+        (github.event_name == 'pull_request' && github.event.pull_request.merged == true)
+      )
+
+    permissions:
+      actions: read
+      contents: read
+
+    steps:
+      - name: Checkout release candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          ref: main
+
+      - name: Validate authenticated release policy
+        shell: pwsh
+        run: |
+          $Policy = Get-Content -LiteralPath './build/dependency-policy.json' -Raw | ConvertFrom-Json
+          $RequiredProfiles = @(
+            $Policy.runtimeProfiles | Where-Object {
+              $_.validationTiers.authenticatedReadOnly.requiredBeforeRelease -eq $true
+            }
+          )
+          if ($RequiredProfiles.Count -eq 0) {
+            throw 'No runtime profile declares the authenticated read-only tier as required before release.'
+          }
+
+          $WriteEnabledProfiles = @(
+            $RequiredProfiles | Where-Object {
+              $_.validationTiers.authenticatedReadOnly.writesAllowed -ne $false
+            }
+          )
+          if ($WriteEnabledProfiles.Count -gt 0) {
+            throw 'A required authenticated release profile does not explicitly prohibit writes.'
+          }
+
+      - name: Require successful exact-commit authenticated evidence
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          PULL_REQUEST_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $EvidenceSha = if ($env:EVENT_NAME -eq 'pull_request') {
+            $env:PULL_REQUEST_HEAD_SHA
+          } else {
+            (git rev-parse HEAD).Trim()
+          }
+          if ($EvidenceSha -notmatch '^[a-f0-9]{40}$') {
+            throw "Could not resolve the exact release-candidate SHA for authenticated evidence: '$EvidenceSha'."
+          }
+
+          $RunArguments = @(
+            'run', 'list'
+            '--repo', '${{ github.repository }}'
+            '--workflow', $env:AUTHENTICATED_WORKFLOW_FILE
+            '--commit', $EvidenceSha
+            '--status', 'success'
+            '--limit', '20'
+            '--json', 'databaseId,headSha,conclusion,createdAt,url'
+          )
+          $RunJson = & gh @RunArguments
+          if ($LASTEXITCODE -ne 0) {
+            throw "Release is blocked until $($env:AUTHENTICATED_WORKFLOW_FILE) exists and succeeds in the protected credentialed environment."
+          }
+          $MatchingRuns = @(
+            $RunJson | ConvertFrom-Json | Where-Object {
+              $_.headSha -eq $EvidenceSha -and $_.conclusion -eq 'success'
+            }
+          )
+          if ($MatchingRuns.Count -eq 0) {
+            throw "No successful authenticated compatibility run exists for exact candidate SHA $EvidenceSha."
+          }
+          $EvidenceRun = $MatchingRuns | Sort-Object createdAt -Descending | Select-Object -First 1
+
+          $ArtifactJson = gh api "/repos/${{ github.repository }}/actions/runs/$($EvidenceRun.databaseId)/artifacts"
+          if ($LASTEXITCODE -ne 0) {
+            throw "Failed to inspect authenticated evidence artifacts for run $($EvidenceRun.databaseId)."
+          }
+          $EvidenceArtifacts = @(
+            ($ArtifactJson | ConvertFrom-Json).artifacts | Where-Object {
+              $_.name -eq $env:AUTHENTICATED_EVIDENCE_ARTIFACT -and -not $_.expired
+            }
+          )
+          if ($EvidenceArtifacts.Count -ne 1) {
+            throw "Authenticated run $($EvidenceRun.databaseId) must contain one unexpired '$($env:AUTHENTICATED_EVIDENCE_ARTIFACT)' artifact."
+          }
+
+          @(
+            '### Authenticated release evidence'
+            ''
+            "- Candidate SHA: ``$EvidenceSha``"
+            "- Validated run: $($EvidenceRun.url)"
+            "- Evidence artifact: ``$($env:AUTHENTICATED_EVIDENCE_ARTIFACT)``"
+            '- Required profiles prohibit writes: True'
+          ) | Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY
+
   analyze:
     name: Analyze and Determine Version
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    needs: authenticated-release-gate
     # Only run for merged PRs to main or manual dispatch
     if: |
       github.repository_owner == 'SamErde' &&
@@ -781,7 +893,7 @@ jobs:
     name: Release Summary
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    needs: [analyze, update-version, build-and-test, create-release, publish, rollback-on-failure, sync-module-manifest]
+    needs: [authenticated-release-gate, analyze, update-version, build-and-test, create-release, publish, rollback-on-failure, sync-module-manifest]
     if: always()
 
     permissions:
@@ -803,6 +915,7 @@ jobs:
           ### Workflow Status
           | Step | Status |
           |------|--------|
+          | Authenticated Compatibility | ${{ needs.authenticated-release-gate.result }} |
           | Analyze | ${{ needs.analyze.result }} |
           | Create Tag | ${{ needs.update-version.result }} |
           | Build & Test | ${{ needs.build-and-test.result }} |

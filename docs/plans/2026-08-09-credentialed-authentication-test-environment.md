@@ -189,9 +189,10 @@ Begin with the three Windows profiles. Expanding credentialed execution to Linux
 
 Only after the manual matrix is accepted:
 
-- add the credentialed tier as a reusable, environment-gated workflow;
+- add the credentialed tier as the reusable, environment-gated `.github/workflows/Authenticated-Compatibility.yml` workflow;
+- upload exactly one sanitized `authenticated-compatibility-evidence` artifact after all required probes and redaction checks pass;
 - keep `workflow_dispatch` available for focused reruns;
-- make release readiness depend on a fresh successful credentialed evidence artifact or an explicit maintainer waiver;
+- preserve the existing release gate that requires the successful workflow and unexpired evidence artifact for the exact reviewed candidate commit;
 - do not allow the job to auto-approve, merge, publish, or mutate issues;
 - set a documented evidence freshness window.
 

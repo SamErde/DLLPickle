@@ -106,6 +106,18 @@ Describe 'Dependabot major-version draft-PR flow' -Tag 'Unit' {
 }
 
 Describe 'Release publish gating guardrails' -Tag 'Unit' {
+    It 'requires exact-commit authenticated evidence before version analysis or publication' {
+        $ReleaseWorkflow | Should -Match '(?ms)^  authenticated-release-gate:\s+name: Require Authenticated Compatibility'
+        $ReleaseWorkflow | Should -Match '(?ms)^  authenticated-release-gate:.*?permissions:\s+actions: read\s+contents: read'
+        $ReleaseWorkflow | Should -Match '(?m)^    needs: authenticated-release-gate$'
+        $ReleaseWorkflow | Should -Match ([regex]::Escape('Authenticated-Compatibility.yml'))
+        $ReleaseWorkflow | Should -Match ([regex]::Escape('authenticated-compatibility-evidence'))
+        $ReleaseWorkflow | Should -Match ([regex]::Escape("'--commit', `$EvidenceSha"))
+        $ReleaseWorkflow | Should -Match ([regex]::Escape('github.event.pull_request.head.sha'))
+        $ReleaseWorkflow | Should -Match ([regex]::Escape('requiredBeforeRelease'))
+        $ReleaseWorkflow | Should -Match ([regex]::Escape('writesAllowed -ne $false'))
+    }
+
     It 'fails closed on the runtime lifecycle policy before version analysis' {
         $ReleaseWorkflow | Should -Match ([regex]::Escape('tools/Test-DLLPickleRuntimeProfilePolicy.ps1'))
         $ReleaseWorkflow | Should -Match ([regex]::Escape('-Mode Release'))
