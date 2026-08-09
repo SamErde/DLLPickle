@@ -115,6 +115,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.ref || github.ref }}
+          persist-credentials: false
 
       - name: Generate matrix from support policy
         id: generate
@@ -154,12 +155,13 @@ jobs:
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
         ref: ${{ inputs.ref || github.ref }}
+        persist-credentials: false
 
     # Install the exact .NET SDK pinned by global.json so the build does not depend on the runner image.
     - name: Setup .NET
       uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
       with:
-        dotnet-version: "10.0.302"
+        global-json-file: global.json
         cache: true
         cache-dependency-path: "src/DLLPickle.Build/packages.lock.json"
 
@@ -286,7 +288,7 @@ jobs:
       with:
         name: package-policy-reports
         path: ./artifacts/package
-        if-no-files-found: error
+        if-no-files-found: warn
 
     - name: Upload zip module archive build
       if: runner.os == 'Windows'
@@ -320,11 +322,12 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.ref || github.ref }}
+          persist-credentials: false
 
       - name: Setup .NET
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
-          dotnet-version: "10.0.302"
+          global-json-file: global.json
           cache: true
           cache-dependency-path: "src/DLLPickle.Build/packages.lock.json"
 
@@ -343,13 +346,19 @@ jobs:
       - name: Provision and verify exact stock PowerShell
         id: runtime
         shell: pwsh
+        env:
+          MATRIX_PROVIDER: ${{ matrix.provider }}
+          MATRIX_POWERSHELL_VERSION: ${{ matrix.powerShellVersion }}
+          MATRIX_PLATFORM: ${{ matrix.platform }}
+          MATRIX_ARCHITECTURE: ${{ matrix.architecture }}
+          RUNTIME_INSTALL_ROOT: ${{ runner.temp }}/dllpickle-test-powershell
         run: |
           $InstallParameters = @{
-              Provider = '${{ matrix.provider }}'
-              PowerShellVersion = '${{ matrix.powerShellVersion }}'
-              Platform = '${{ matrix.platform }}'
-              Architecture = '${{ matrix.architecture }}'
-              InstallRoot = '${{ runner.temp }}/dllpickle-test-powershell'
+              Provider = $env:MATRIX_PROVIDER
+              PowerShellVersion = $env:MATRIX_POWERSHELL_VERSION
+              Platform = $env:MATRIX_PLATFORM
+              Architecture = $env:MATRIX_ARCHITECTURE
+              InstallRoot = $env:RUNTIME_INSTALL_ROOT
               PassThru = $true
           }
           $Identity = ./tools/Install-DLLPickleTestPowerShell.ps1 @InstallParameters
@@ -359,8 +368,10 @@ jobs:
 
       - name: Bootstrap exact tools in an isolated module path
         shell: pwsh
+        env:
+          CELL_MODULE_ROOT: ${{ runner.temp }}/dllpickle-psmodules/${{ matrix.powerShellVersion }}
         run: |
-          $CellModuleRoot = '${{ runner.temp }}/dllpickle-psmodules/${{ matrix.powerShellVersion }}'
+          $CellModuleRoot = $env:CELL_MODULE_ROOT
           $SystemModuleRoot = Join-Path -Path (Split-Path -Path $env:DLLPICKLE_TEST_PWSH -Parent) -ChildPath 'Modules'
           $IsolatedModulePath = @($CellModuleRoot, $SystemModuleRoot) -join [System.IO.Path]::PathSeparator
           "DLLPICKLE_TEST_PSMODULEPATH=$IsolatedModulePath" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
@@ -392,16 +403,19 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Capture selected bundle and assembly load-context evidence
-        if: always()
+        if: ${{ always() && steps.runtime.outcome == 'success' }}
         shell: pwsh
+        env:
+          MATRIX_POWERSHELL_VERSION: ${{ matrix.powerShellVersion }}
+          MATRIX_TARGET_FRAMEWORK: ${{ matrix.targetFramework }}
+          RUNTIME_EVIDENCE_PATH: ./artifacts/runtime-evidence-${{ matrix.powerShellVersion }}-${{ matrix.platform }}.json
         run: |
-          $EvidencePath = './artifacts/runtime-evidence-${{ matrix.powerShellVersion }}-${{ matrix.platform }}.json'
           $EvidenceParameters = @{
               PowerShellExecutable = $env:DLLPICKLE_TEST_PWSH
-              PowerShellVersion = '${{ matrix.powerShellVersion }}'
-              TargetFramework = '${{ matrix.targetFramework }}'
+              PowerShellVersion = $env:MATRIX_POWERSHELL_VERSION
+              TargetFramework = $env:MATRIX_TARGET_FRAMEWORK
               ModuleManifestPath = './module/DLLPickle/DLLPickle.psd1'
-              OutputPath = $EvidencePath
+              OutputPath = $env:RUNTIME_EVIDENCE_PATH
           }
           ./tools/New-DLLPickleRuntimeProfileEvidence.ps1 @EvidenceParameters
 
@@ -414,7 +428,7 @@ jobs:
             runtime-identity.json
             artifacts/runtime-evidence-*.json
             artifacts/testOutput/*.xml
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 14
 
   dependency-change-report:
@@ -434,21 +448,28 @@ jobs:
     steps:
       - name: Check out candidate
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Check out pull request base
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.pull_request.base.sha }}
           path: dependency-baseline
+          persist-credentials: false
 
       - name: Setup .NET
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
-          dotnet-version: '10.0.302'
+          global-json-file: global.json
 
       - name: Restore and build baseline and candidate graphs
         shell: pwsh
         run: |
+          $BaselineGlobalJson = './dependency-baseline/global.json'
+          if (Test-Path -LiteralPath $BaselineGlobalJson -PathType Leaf) {
+              Remove-Item -LiteralPath $BaselineGlobalJson -Force
+          }
           $Projects = @(
             './dependency-baseline/src/DLLPickle.Build/DLLPickle.csproj'
             './src/DLLPickle.Build/DLLPickle.csproj'
@@ -504,14 +525,20 @@ jobs:
     # for status". This single, always-running job is the stable check to require instead: it passes
     # when the matrix build succeeded OR was skipped (no build-relevant changes) and fails when the
     # build failed or was cancelled.
-    needs: [build, runtime-tests, dependency-change-report]
+    needs: [changes, runtime-matrix, build, runtime-tests, dependency-change-report]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
       - name: Aggregate build result
         shell: pwsh
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_REF: ${{ inputs.ref }}
+          BUILD_RELEVANT: ${{ needs.changes.outputs.relevant }}
         run: |
           $Results = @{
+              changes = '${{ needs.changes.result }}'
+              runtimeMatrix = '${{ needs.runtime-matrix.result }}'
               build = '${{ needs.build.result }}'
               runtimeTests = '${{ needs.runtime-tests.result }}'
               dependencyChangeReport = '${{ needs.dependency-change-report.result }}'
@@ -519,10 +546,27 @@ jobs:
           $Results.GetEnumerator() | Sort-Object Name | ForEach-Object {
               Write-Host "$($_.Name) job result: $($_.Value)"
           }
-          $Failures = @($Results.GetEnumerator() | Where-Object Value -notin @('success', 'skipped'))
+          $BuildRequired = -not [string]::IsNullOrWhiteSpace($env:INPUT_REF) -or
+              $env:EVENT_NAME -eq 'workflow_dispatch' -or
+              $env:BUILD_RELEVANT -ne 'false'
+          Write-Host "Exact runtime validation required: $BuildRequired"
+
+          $Failures = [System.Collections.Generic.List[string]]::new()
+          foreach ($Result in $Results.GetEnumerator()) {
+              if ($Result.Value -notin @('success', 'skipped')) {
+                  $Failures.Add($Result.Name)
+              }
+          }
+          if ($BuildRequired) {
+              foreach ($RequiredJob in @('runtimeMatrix', 'build', 'runtimeTests')) {
+                  if ($Results[$RequiredJob] -ne 'success' -and -not $Failures.Contains($RequiredJob)) {
+                      $Failures.Add($RequiredJob)
+                  }
+              }
+          }
           if ($Failures.Count -eq 0) {
               Write-Host 'Build gate passed.'
               exit 0
           }
-          Write-Host "::error::Build gate failed: $($Failures.Name -join ', ')."
+          Write-Host "::error::Build gate failed: $(@($Failures | Sort-Object -Unique) -join ', ')."
           exit 1

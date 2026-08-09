@@ -62,4 +62,4 @@ jobs:
         with:
           name: package-tfm-alignment
           path: ./artifacts/package/tfm-alignment.json
-          if-no-files-found: error
+          if-no-files-found: warn

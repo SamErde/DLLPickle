@@ -93,7 +93,8 @@ jobs:
           FILES=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/files" --paginate --jq '.[].filename')
           MATCHING_FILES=$(printf '%s\n' "$FILES" | sed '/^$/d' | grep -E '^src/DLLPickle\.Build/(DLLPickle\.csproj|packages\.lock\.json)$' || true)
           UNEXPECTED_FILES=$(printf '%s\n' "$FILES" | sed '/^$/d' | grep -Ev '^src/DLLPickle\.Build/(DLLPickle\.csproj|packages\.lock\.json)$' || true)
-          CONDITIONAL_TFM_ADDITION=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/files" --paginate --jq '.[] | select(.filename == "src/DLLPickle.Build/DLLPickle.csproj") | (.patch // "")' | grep -E '^\+.*PackageReference.*Condition=.*TargetFramework' || true)
+          CSPROJ_PATCH=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/files" --paginate --jq '.[] | select(.filename == "src/DLLPickle.Build/DLLPickle.csproj") | (.patch // "")')
+          CONDITIONAL_TFM_ADDITION=$(printf '%s\n' "$CSPROJ_PATCH" | grep -E '^\+.*PackageReference.*Condition=.*TargetFramework' || true)
 
           if [ -n "$MATCHING_FILES" ] && [ -z "$UNEXPECTED_FILES" ] && [ -z "$CONDITIONAL_TFM_ADDITION" ]; then
             echo "is_exact_nuget_update=true" >> "$GITHUB_OUTPUT"

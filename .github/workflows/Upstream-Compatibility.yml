@@ -244,13 +244,19 @@ jobs:
 
       - name: Provision exact stock PowerShell
         shell: pwsh
+        env:
+          MATRIX_PROVIDER: ${{ matrix.provider }}
+          MATRIX_POWERSHELL_VERSION: ${{ matrix.powerShellVersion }}
+          MATRIX_PLATFORM: ${{ matrix.platform }}
+          MATRIX_ARCHITECTURE: ${{ matrix.architecture }}
+          RUNTIME_INSTALL_ROOT: ${{ runner.temp }}/dllpickle-test-powershell
         run: |
           $InstallParameters = @{
-              Provider = '${{ matrix.provider }}'
-              PowerShellVersion = '${{ matrix.powerShellVersion }}'
-              Platform = '${{ matrix.platform }}'
-              Architecture = '${{ matrix.architecture }}'
-              InstallRoot = '${{ runner.temp }}/dllpickle-test-powershell'
+              Provider = $env:MATRIX_PROVIDER
+              PowerShellVersion = $env:MATRIX_POWERSHELL_VERSION
+              Platform = $env:MATRIX_PLATFORM
+              Architecture = $env:MATRIX_ARCHITECTURE
+              InstallRoot = $env:RUNTIME_INSTALL_ROOT
               PassThru = $true
           }
           $Identity = ./tools/Install-DLLPickleTestPowerShell.ps1 @InstallParameters
@@ -258,9 +264,16 @@ jobs:
 
       - name: Capture and validate profile-selected upstream evidence
         shell: pwsh
+        env:
+          MATRIX_POWERSHELL_VERSION: ${{ matrix.powerShellVersion }}
+          MATRIX_TARGET_FRAMEWORK: ${{ matrix.targetFramework }}
+          MATRIX_PLATFORM: ${{ matrix.platform }}
+          MATRIX_ARCHITECTURE: ${{ matrix.architecture }}
+          PROFILE_MODULE_CACHE: ${{ runner.temp }}/dllpickle-upstream-modules/${{ matrix.powerShellVersion }}
         run: |
-          $EvidenceRoot = './artifacts/upstreamCompatibility/${{ matrix.powerShellVersion }}/${{ matrix.platform }}'
-          $ModuleCache = '${{ runner.temp }}/dllpickle-upstream-modules/${{ matrix.powerShellVersion }}'
+          $ErrorActionPreference = 'Stop'
+          $EvidenceRoot = Join-Path './artifacts/upstreamCompatibility' "$($env:MATRIX_POWERSHELL_VERSION)/$($env:MATRIX_PLATFORM)"
+          $ModuleCache = $env:PROFILE_MODULE_CACHE
           $InventoryPath = Join-Path -Path $EvidenceRoot -ChildPath 'upstream-inventory.json'
           $ConflictMatrixPath = Join-Path -Path $EvidenceRoot -ChildPath 'conflict-matrix.json'
           $InventoryArguments = @(
@@ -290,7 +303,7 @@ jobs:
           $Policy = Get-Content -LiteralPath ./build/dependency-policy.json -Raw | ConvertFrom-Json
           $GapReport = [ordered]@{
               schemaVersion = 1
-              profile = '${{ matrix.powerShellVersion }}/${{ matrix.targetFramework }}/${{ matrix.platform }}/${{ matrix.architecture }}'
+              profile = '{0}/{1}/{2}/{3}' -f $env:MATRIX_POWERSHELL_VERSION, $env:MATRIX_TARGET_FRAMEWORK, $env:MATRIX_PLATFORM, $env:MATRIX_ARCHITECTURE
               deterministicImportNoAuth = 'executed-two-orders-with-and-without-dllpickle'
               authenticatedReadOnly = 'not-run-no-approved-credentials'
               writesPerformed = $false
@@ -316,17 +329,31 @@ jobs:
 
   profile-evidence-gate:
     name: Aggregate profile-aware upstream evidence
-    needs: profile-evidence
+    needs: [pr-changes, profile-matrix, profile-evidence]
     if: ${{ always() }}
     runs-on: ubuntu-24.04
     steps:
       - name: Report exact-profile evidence result
         shell: pwsh
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          LIVE_VALIDATION: ${{ needs.pr-changes.outputs.live_validation }}
         run: |
+          $MatrixResult = '${{ needs.profile-matrix.result }}'
           $Result = '${{ needs.profile-evidence.result }}'
-          if ($Result -notin @('success', 'skipped')) {
-              throw "Profile-aware upstream evidence or baseline validation failed: $Result"
+          $ValidationRequired = $env:EVENT_NAME -ne 'pull_request' -or $env:LIVE_VALIDATION -eq 'true'
+          if ($ValidationRequired) {
+              if ($MatrixResult -ne 'success') {
+                  throw "Required exact profile matrix generation did not succeed: $MatrixResult"
+              }
+              if ($Result -ne 'success') {
+                  throw "Required profile-aware upstream evidence or baseline validation did not succeed: $Result"
+              }
+          } elseif ($MatrixResult -notin @('success', 'skipped') -or $Result -notin @('success', 'skipped')) {
+              throw "Optional profile validation ended unexpectedly: matrix=$MatrixResult, evidence=$Result"
           }
+          Write-Host "Exact profile validation required: $ValidationRequired"
+          Write-Host "Exact profile matrix result: $MatrixResult"
           Write-Host "Profile-aware upstream evidence result: $Result"
 
   scheduled-profile-evidence-report:
@@ -347,7 +374,7 @@ jobs:
         with:
           pattern: upstream-*
           path: ./downloaded-upstream
-          merge-multiple: true
+          merge-multiple: false
 
       - name: Build one stable profile-aware finding
         shell: pwsh
@@ -483,21 +510,37 @@ jobs:
     if: ${{ always() && github.event_name != 'pull_request' && needs.scheduled-profile-evidence-report.result == 'success' }}
     runs-on: windows-2025
     permissions:
+      actions: read
       contents: write
       issues: write
       pull-requests: write
 
     steps:
+      - name: Create GitHub App token for candidate publication
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
 
       - name: Download accepted exact-profile evidence summary
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: upstream-profile-evidence-summary
           path: ./downloaded-profile-summary
+
+      - name: Download exact-profile inventories
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: upstream-*-*-x64
+          path: ./downloaded-profile-evidence
+          merge-multiple: false
 
       - name: Setup .NET
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
@@ -513,9 +556,16 @@ jobs:
       - name: Provision exact stock PowerShell for candidate validation
         shell: pwsh
         run: |
+          $Matrix = Get-Content -LiteralPath './build/powershell-test-matrix.json' -Raw | ConvertFrom-Json
+          $Profile = @($Matrix.profiles | Where-Object {
+              $_.powerShellMajor -eq 7 -and $_.powerShellMinor -eq 6 -and $_.targetFramework -eq 'net10.0'
+          })
+          if ($Profile.Count -ne 1) {
+              throw 'Expected exactly one PowerShell 7.6/net10.0 profile in the test matrix.'
+          }
           $InstallParameters = @{
               Provider = 'DirectArchive'
-              PowerShellVersion = '7.6.4'
+              PowerShellVersion = [string]$Profile[0].powerShellVersion
               Platform = 'windows'
               Architecture = 'x64'
               InstallRoot = '${{ runner.temp }}/dllpickle-test-powershell'
@@ -542,7 +592,7 @@ jobs:
         id: drift
         shell: pwsh
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           $ErrorActionPreference = 'Stop'
           ./tools/New-DLLPickleConflictMatrix.ps1 `
@@ -648,12 +698,21 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          ./tools/Update-DLLPickleDependencyPins.ps1 `
-            -InventoryPath ./artifacts/upstreamCompatibility/upstream-inventory.json `
-            -PolicyPath ./build/dependency-policy.json `
-            -ProjectPath ./src/DLLPickle.Build/DLLPickle.csproj `
-            -OutputPath ./artifacts/upstreamCompatibility/candidate-report.json `
-            -Restore
+          $InventoryPaths = @(
+              Get-ChildItem -LiteralPath './downloaded-profile-evidence' -Filter 'upstream-inventory.json' -File -Recurse |
+                  Select-Object -ExpandProperty FullName
+          )
+          if ($InventoryPaths.Count -ne 9) {
+              throw "Candidate pin generation requires exactly nine profile inventories; found $($InventoryPaths.Count)."
+          }
+          $UpdateParameters = @{
+              InventoryPath = $InventoryPaths
+              PolicyPath = './build/dependency-policy.json'
+              ProjectPath = './src/DLLPickle.Build/DLLPickle.csproj'
+              OutputPath = './artifacts/upstreamCompatibility/candidate-report.json'
+              Restore = $true
+          }
+          ./tools/Update-DLLPickleDependencyPins.ps1 @UpdateParameters
 
       - name: Validate candidate update
         if: steps.drift.outputs.drift != 'true'
@@ -719,7 +778,7 @@ jobs:
         if: steps.drift.outputs.drift != 'true' && steps.generated_changes.outputs.has_changes == 'true' && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.create_pull_request))
         shell: pwsh
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           $ErrorActionPreference = 'Stop'
           $Fingerprint = '${{ steps.generated_changes.outputs.publication_fingerprint }}'
