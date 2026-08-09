@@ -76,6 +76,14 @@ jobs:
           permission-contents: write
           permission-pull-requests: write
 
+      - name: 🛡️ Check out trusted Dependabot guardrails
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: .dependabot-guard
+          token: ${{ steps.generate_token.outputs.token }}
+          persist-credentials: false
+
       - name: 🤖 Fetch Dependabot metadata
         id: metadata
         uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
@@ -88,16 +96,37 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
           FILES=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/files" --paginate --jq '.[].filename')
           MATCHING_FILES=$(printf '%s\n' "$FILES" | sed '/^$/d' | grep -E '^src/DLLPickle\.Build/(DLLPickle\.csproj|packages\.lock\.json)$' || true)
           UNEXPECTED_FILES=$(printf '%s\n' "$FILES" | sed '/^$/d' | grep -Ev '^src/DLLPickle\.Build/(DLLPickle\.csproj|packages\.lock\.json)$' || true)
+          CSPROJ_CHANGED=$(printf '%s\n' "$FILES" | grep -Fx 'src/DLLPickle.Build/DLLPickle.csproj' || true)
           CSPROJ_PATCH=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/files" --paginate --jq '.[] | select(.filename == "src/DLLPickle.Build/DLLPickle.csproj") | if has("patch") then .patch else "__DLLPICKLE_PATCH_UNAVAILABLE__" end')
           PATCH_UNAVAILABLE=$(printf '%s\n' "$CSPROJ_PATCH" | grep -F '__DLLPICKLE_PATCH_UNAVAILABLE__' || true)
           CONDITIONAL_TFM_ADDITION=$(printf '%s\n' "$CSPROJ_PATCH" | grep -E '^\+.*\$\(TargetFramework\)' || true)
+          PROJECT_PATCH_VALID=true
 
-          if [ -n "$MATCHING_FILES" ] && [ -z "$UNEXPECTED_FILES" ] && [ -z "$PATCH_UNAVAILABLE" ] && [ -z "$CONDITIONAL_TFM_ADDITION" ]; then
+          if [ -n "$CSPROJ_CHANGED" ]; then
+            BASE_PROJECT="$RUNNER_TEMP/DLLPickle.base.csproj"
+            CANDIDATE_PROJECT="$RUNNER_TEMP/DLLPickle.candidate.csproj"
+            gh api --method GET -H 'Accept: application/vnd.github.raw+json' \
+              "repos/$GITHUB_REPOSITORY/contents/src/DLLPickle.Build/DLLPickle.csproj" \
+              -f "ref=$BASE_SHA" > "$BASE_PROJECT"
+            gh api --method GET -H 'Accept: application/vnd.github.raw+json' \
+              "repos/$GITHUB_REPOSITORY/contents/src/DLLPickle.Build/DLLPickle.csproj" \
+              -f "ref=$HEAD_SHA" > "$CANDIDATE_PROJECT"
+            if ! pwsh -NoProfile -NonInteractive -File \
+              ./.dependabot-guard/tools/Test-DLLPicklePackageReferenceUpdate.ps1 \
+              -BaseProjectPath "$BASE_PROJECT" \
+              -CandidateProjectPath "$CANDIDATE_PROJECT"; then
+              PROJECT_PATCH_VALID=false
+            fi
+          fi
+
+          if [ -n "$MATCHING_FILES" ] && [ -z "$UNEXPECTED_FILES" ] && [ -z "$PATCH_UNAVAILABLE" ] && [ -z "$CONDITIONAL_TFM_ADDITION" ] && [ "$PROJECT_PATCH_VALID" = true ]; then
             echo "is_exact_nuget_update=true" >> "$GITHUB_OUTPUT"
           else
             echo "is_exact_nuget_update=false" >> "$GITHUB_OUTPUT"
@@ -111,6 +140,9 @@ jobs:
             if [ -n "$CONDITIONAL_TFM_ADDITION" ]; then
               echo "Refusing auto-approval because the PR introduces per-TFM project content:"
               printf '%s\n' "$CONDITIONAL_TFM_ADDITION"
+            fi
+            if [ "$PROJECT_PATCH_VALID" != true ]; then
+              echo "Refusing auto-approval because DLLPickle.csproj contains changes beyond version-only updates to existing PackageReference entries."
             fi
           fi
 

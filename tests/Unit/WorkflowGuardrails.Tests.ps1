@@ -75,6 +75,13 @@ Describe 'Dependabot auto-merge guardrails' -Tag 'Unit' {
         $DependabotWorkflow | Should -Match ([regex]::Escape('\$\(TargetFramework\)'))
     }
 
+    It 'compares trusted base and candidate projects with a strict version-only validator' {
+        $DependabotWorkflow | Should -Match ([regex]::Escape('github.event.pull_request.base.sha'))
+        $DependabotWorkflow | Should -Match ([regex]::Escape('github.event.pull_request.head.sha'))
+        $DependabotWorkflow | Should -Match ([regex]::Escape('tools/Test-DLLPicklePackageReferenceUpdate.ps1'))
+        $DependabotWorkflow | Should -Match ([regex]::Escape('PROJECT_PATCH_VALID'))
+    }
+
     It 'refuses auto-approval when the Files API omits the project patch' {
         $DependabotWorkflow | Should -Match ([regex]::Escape('__DLLPICKLE_PATCH_UNAVAILABLE__'))
         $DependabotWorkflow | Should -Match ([regex]::Escape('PATCH_UNAVAILABLE'))
