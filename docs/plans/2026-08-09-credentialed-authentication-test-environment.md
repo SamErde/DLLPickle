@@ -1,8 +1,11 @@
 # Draft plan: credentialed read-only authentication test environment
 
-**Status:** Draft for security, tenant, and repository-owner review  
-**Date:** 2026-08-09  
-**Scope:** Microsoft Graph, Exchange Online, Azure PowerShell, and Microsoft Teams authentication gates for DLLPickle  
+**Status:** Draft for security, tenant, and repository-owner review
+
+**Date:** 2026-08-09
+
+**Scope:** Microsoft Graph, Exchange Online, Azure PowerShell, and Microsoft Teams authentication gates for DLLPickle
+
 **External changes performed by this document:** None
 
 ## 1. Objective
