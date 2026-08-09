@@ -12,6 +12,18 @@ Describe 'Generated support documentation' -Tag 'Unit' {
         { & $script:GeneratorPath -Check } | Should -Not -Throw
     }
 
+    It 'renders repository-canonical CRLF endings on every host' {
+        $OutputDirectory = Join-Path $TestDrive 'generated'
+
+        $null = & $script:GeneratorPath -OutputDirectory $OutputDirectory
+
+        foreach ($DocumentName in @('Support-Matrix.md', 'Compatibility-Evidence.md')) {
+            $Document = [System.IO.File]::ReadAllText((Join-Path $OutputDirectory $DocumentName))
+            $Document | Should -Match "`r`n"
+            ($Document -replace "`r`n", '') | Should -Not -Match "`n"
+        }
+    }
+
     It 'keeps the primary documentation linked to the generated support contract' {
         Get-Content -LiteralPath $script:ReadmePath -Raw | Should -Match 'generated/Support-Matrix\.md'
         Get-Content -LiteralPath $script:ArchitecturePath -Raw | Should -Match 'generated/Support-Matrix\.md'

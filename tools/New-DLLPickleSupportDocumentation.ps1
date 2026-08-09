@@ -50,7 +50,7 @@ if (Compare-Object -ReferenceObject $ShippedProfileKeys -DifferenceObject $TestP
     throw 'Shipped runtime profiles and documentation test profiles do not align.'
 }
 $VerifiedDate = ([System.DateTimeOffset]$TestMatrix.lastVerifiedUtc).ToString('yyyy-MM-dd')
-$NewLine = [Environment]::NewLine
+$NewLine = "`r`n"
 
 $SupportLines = [System.Collections.Generic.List[string]]::new()
 $SupportLines.Add('# Supported PowerShell runtime matrix')
