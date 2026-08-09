@@ -8,15 +8,35 @@ BeforeAll {
                 [PSCustomObject]@{
                     Name              = 'Az.Accounts'
                     TrackedAssemblies = @(
-                        [PSCustomObject]@{ Name = 'Azure.Core'; Version = '1.50.0.0' }
-                        [PSCustomObject]@{ Name = 'Microsoft.Identity.Client'; Version = '4.84.1.0' }
+                        [PSCustomObject]@{
+                            Name    = 'Azure.Core'
+                            Version = '1.50.0.0'
+                            Sha256  = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+                            Alc     = 'AzSharedAssemblyLoadContext'
+                        }
+                        [PSCustomObject]@{
+                            Name    = 'Microsoft.Identity.Client'
+                            Version = '4.84.1.0'
+                            Sha256  = 'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc'
+                            Alc     = 'Default'
+                        }
                     )
                 }
                 [PSCustomObject]@{
                     Name              = 'Microsoft.Graph.Authentication'
                     TrackedAssemblies = @(
-                        [PSCustomObject]@{ Name = 'Azure.Core'; Version = '1.46.0.0' }
-                        [PSCustomObject]@{ Name = 'Microsoft.Identity.Client'; Version = '4.84.1.0' }
+                        [PSCustomObject]@{
+                            Name    = 'Azure.Core'
+                            Version = '1.46.0.0'
+                            Sha256  = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'
+                            Alc     = 'msgraph-load-context'
+                        }
+                        [PSCustomObject]@{
+                            Name    = 'Microsoft.Identity.Client'
+                            Version = '4.84.1.0'
+                            Sha256  = 'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc'
+                            Alc     = 'Default'
+                        }
                     )
                 }
             )
@@ -68,6 +88,50 @@ Describe 'New-DLLPickleConflictMatrix' -Tag 'Unit' {
         $Matrix.Fingerprint | Should -Not -BeNullOrEmpty
         # Deterministic: same input -> same fingerprint.
         ($Matrix.Fingerprint) | Should -Be (& $ScriptPath -Inventory (Get-TestInventory)).Fingerprint
+    }
+
+    It 'preserves selected hashes, ALC owners, and their per-module association' {
+        $Matrix = & $ScriptPath -Inventory (Get-TestInventory)
+        $AzureCore = $Matrix.Assemblies | Where-Object Name -EQ 'Azure.Core'
+
+        @($AzureCore.Hashes) | Should -Be @(
+            'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+            'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'
+        )
+        @($AzureCore.AlcOwners) | Should -Be @('AzSharedAssemblyLoadContext', 'msgraph-load-context')
+        @($AzureCore.Selections) | Should -HaveCount 2
+        ($AzureCore.Selections | Where-Object Module -EQ 'Az.Accounts').Sha256 |
+            Should -Be 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+        ($AzureCore.Selections | Where-Object Module -EQ 'Microsoft.Graph.Authentication').AlcOwner |
+            Should -Be 'msgraph-load-context'
+    }
+
+    It 'changes the Fingerprint when a selected hash moves without an assembly-version change' {
+        $BaselineInventory = Get-TestInventory
+        $ChangedInventory = Get-TestInventory
+        ($ChangedInventory.Modules | Where-Object Name -EQ 'Az.Accounts').TrackedAssemblies |
+            Where-Object Name -EQ 'Microsoft.Identity.Client' |
+            ForEach-Object { $_.Sha256 = 'dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd' }
+
+        $Baseline = & $ScriptPath -Inventory $BaselineInventory
+        $Changed = & $ScriptPath -Inventory $ChangedInventory
+
+        @($Baseline.ConflictSurface) | Should -Be @($Changed.ConflictSurface)
+        $Baseline.Fingerprint | Should -Not -Be $Changed.Fingerprint
+    }
+
+    It 'changes the Fingerprint when selected ALC ownership moves without a version change' {
+        $BaselineInventory = Get-TestInventory
+        $ChangedInventory = Get-TestInventory
+        ($ChangedInventory.Modules | Where-Object Name -EQ 'Microsoft.Graph.Authentication').TrackedAssemblies |
+            Where-Object Name -EQ 'Azure.Core' |
+            ForEach-Object { $_.Alc = 'Default' }
+
+        $Baseline = & $ScriptPath -Inventory $BaselineInventory
+        $Changed = & $ScriptPath -Inventory $ChangedInventory
+
+        @($Baseline.ConflictSurface) | Should -Be @($Changed.ConflictSurface)
+        $Baseline.Fingerprint | Should -Not -Be $Changed.Fingerprint
     }
 
     It 'changes the Fingerprint when a surface assembly version moves but the names do not' {

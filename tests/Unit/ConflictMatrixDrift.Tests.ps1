@@ -7,15 +7,19 @@ BeforeAll {
             $Diverges,
             $Alc = 'Default',
             $Versions = @(),
-            $ShippedBy = @()
+            $ShippedBy = @(),
+            $Hashes = @(),
+            $AlcOwners = @($Alc)
         )
 
         [PSCustomObject]@{
-            Name      = $Name
-            Diverges  = $Diverges
-            AlcOwner  = $Alc
-            Versions  = @($Versions)
-            ShippedBy = @($ShippedBy)
+            Name       = $Name
+            Diverges   = $Diverges
+            AlcOwner   = $Alc
+            AlcOwners  = @($AlcOwners)
+            Versions   = @($Versions)
+            ShippedBy  = @($ShippedBy)
+            Hashes     = @($Hashes)
         }
     }
     function Get-DriftMatrix { param($Rows) [PSCustomObject]@{ Assemblies = @($Rows) } }
@@ -42,6 +46,40 @@ Describe 'Compare-DLLPickleConflictMatrix' -Tag 'Unit' {
         $r = & $ScriptPath -Baseline $b -Current $c
         $r.HasMaterialDrift | Should -BeTrue
         $r.Findings.AlcOwnershipChanges | Should -Contain 'Azure.Core'
+    }
+
+    It 'flags a selected-hash change even when the assembly is not version-divergent' {
+        $b = Get-DriftMatrix @(
+            Get-DriftRow 'Microsoft.Identity.Client' $false 'Default' @('4.84.1.0') @('Az.Accounts') @('aaaa')
+        )
+        $c = Get-DriftMatrix @(
+            Get-DriftRow 'Microsoft.Identity.Client' $false 'Default' @('4.84.1.0') @('Az.Accounts') @('bbbb')
+        )
+
+        $r = & $ScriptPath -Baseline $b -Current $c
+
+        $r.HasMaterialDrift | Should -BeTrue
+        $r.Findings.HashChanges | Should -HaveCount 1
+        $r.Findings.HashChanges[0].Name | Should -Be 'Microsoft.Identity.Client'
+        @($r.Findings.HashChanges[0].Baseline) | Should -Be @('aaaa')
+        @($r.Findings.HashChanges[0].Current) | Should -Be @('bbbb')
+    }
+
+    It 'flags added and removed tracked assemblies outside the version-conflict surface' {
+        $b = Get-DriftMatrix @(
+            Get-DriftRow 'Microsoft.Identity.Client' $false
+            Get-DriftRow 'Azure.Core' $false
+        )
+        $c = Get-DriftMatrix @(
+            Get-DriftRow 'Microsoft.Identity.Client' $false
+            Get-DriftRow 'System.ClientModel' $false
+        )
+
+        $r = & $ScriptPath -Baseline $b -Current $c
+
+        $r.HasMaterialDrift | Should -BeTrue
+        $r.Findings.NewTrackedAssemblies | Should -Contain 'System.ClientModel'
+        $r.Findings.RemovedTrackedAssemblies | Should -Contain 'Azure.Core'
     }
 
     It 'flags a version-set change with structured before and after values' {
