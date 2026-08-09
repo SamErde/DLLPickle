@@ -49,7 +49,10 @@ Describe 'Deterministic upstream import-order evidence' -Tag 'Unit' {
         @(
             @{
                 id = 'synthetic-expected-failure'
-                importOrders = @(, @('Synthetic.Failure'))
+                importOrders = @(
+                    , @('Synthetic.Failure')
+                    , @('Synthetic.One')
+                )
                 requiresProcessIsolation = $true
             }
         ) | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $KnownConflictsPath -Encoding UTF8
@@ -81,11 +84,12 @@ Describe 'Deterministic upstream import-order evidence' -Tag 'Unit' {
         $Parameters.OutputPath = Join-Path $TestDrive 'scenario-evidence-second.json'
         $Second = & $script:ToolPath @Parameters
 
-        @($First.Scenarios) | Should -HaveCount 6
-        @($First.Scenarios | Where-Object DllPicklePreloaded) | Should -HaveCount 3
-        @($First.Scenarios | Where-Object { -not $_.DllPicklePreloaded }) | Should -HaveCount 3
+        @($First.Scenarios) | Should -HaveCount 8
+        @($First.Scenarios | Where-Object DllPicklePreloaded) | Should -HaveCount 4
+        @($First.Scenarios | Where-Object { -not $_.DllPicklePreloaded }) | Should -HaveCount 4
         $ExpectedOrders = @(
             'Synthetic.Failure'
+            'Synthetic.One'
             'Synthetic.One,Synthetic.Two'
             'Synthetic.Two,Synthetic.One'
         )
@@ -99,7 +103,15 @@ Describe 'Deterministic upstream import-order evidence' -Tag 'Unit' {
         }
         $First.Passed | Should -BeTrue
         $First.WritesPerformed | Should -BeFalse
-        @($First.Scenarios | Where-Object ScenarioId -EQ 'synthetic-expected-failure' | Select-Object -ExpandProperty OutcomeMatchesExpectation -Unique) | Should -Be @($true)
+        $KnownLimitationScenarios = @($First.Scenarios | Where-Object ScenarioId -EQ 'synthetic-expected-failure')
+        @($KnownLimitationScenarios | Where-Object Success) | Should -HaveCount 2
+        @($KnownLimitationScenarios | Where-Object { -not $_.Success }) | Should -HaveCount 2
+        foreach ($KnownLimitationScenario in $KnownLimitationScenarios) {
+            $KnownLimitationScenario.ExpectedLimitation | Should -BeTrue
+            $KnownLimitationScenario.ExpectedSuccess | Should -BeNullOrEmpty
+            $KnownLimitationScenario.OutcomePolicy | Should -Be 'observe-known-limitation'
+            $KnownLimitationScenario.OutcomeMatchesExpectation | Should -BeTrue
+        }
         $First.ScenarioFingerprint | Should -BeExactly $Second.ScenarioFingerprint
     }
 }

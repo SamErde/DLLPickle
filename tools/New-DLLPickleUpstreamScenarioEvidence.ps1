@@ -7,6 +7,9 @@ Uses an exact stock PowerShell executable, exact saved module manifests, and an
 isolated module path. Every configured import order runs twice in a fresh process:
 without DLLPickle and after DLLPickle preloading. The report captures selected
 assemblies and ALC ownership and emits a stable profile-keyed scenario fingerprint.
+Known process-isolation limitations are observational in this no-auth tier: either
+outcome is recorded, but a successful no-auth probe does not clear a limitation
+whose re-adjudication requires authenticated runtime evidence.
 #>
 
 [CmdletBinding()]
@@ -82,6 +85,7 @@ foreach ($ImportOrder in @($ProfilePolicy[0].importOrders)) {
             ImportOrder = @($ImportOrder)
             ExpectedLimitation = $false
             ExpectedSuccess = $true
+            OutcomePolicy = 'must-succeed'
         })
 }
 if (-not [string]::IsNullOrWhiteSpace($KnownConflictsPath)) {
@@ -90,12 +94,14 @@ if (-not [string]::IsNullOrWhiteSpace($KnownConflictsPath)) {
     }
     $KnownConflicts = @(Get-Content -LiteralPath $KnownConflictsPath -Raw | ConvertFrom-Json -ErrorAction Stop)
     foreach ($KnownConflict in @($KnownConflicts | Where-Object { [string]$_.id -in @($ProfilePolicy[0].knownConflictIds) })) {
+        $ExpectedLimitation = [bool]$KnownConflict.requiresProcessIsolation
         foreach ($ImportOrder in @($KnownConflict.importOrders)) {
             $ScenarioDefinitions.Add([PSCustomObject]@{
                     ScenarioId = [string]$KnownConflict.id
                     ImportOrder = @($ImportOrder)
-                    ExpectedLimitation = [bool]$KnownConflict.requiresProcessIsolation
-                    ExpectedSuccess = -not [bool]$KnownConflict.requiresProcessIsolation
+                    ExpectedLimitation = $ExpectedLimitation
+                    ExpectedSuccess = if ($ExpectedLimitation) { $null } else { $true }
+                    OutcomePolicy = if ($ExpectedLimitation) { 'observe-known-limitation' } else { 'must-succeed' }
                 })
         }
     }
@@ -135,7 +141,8 @@ foreach ($ScenarioDefinition in $ScenarioDefinitions) {
             ImportOrder = @($ImportOrder)
             DllPicklePreloaded = $PreloadDllPickle
             ExpectedLimitation = [bool]$ScenarioDefinition.ExpectedLimitation
-            ExpectedSuccess = [bool]$ScenarioDefinition.ExpectedSuccess
+            ExpectedSuccess = $ScenarioDefinition.ExpectedSuccess
+            OutcomePolicy = [string]$ScenarioDefinition.OutcomePolicy
             ProbeCommands = @($ProbeCommands)
             Success = $false
             OutcomeMatchesExpectation = $false
@@ -162,7 +169,9 @@ foreach ($ScenarioDefinition in $ScenarioDefinitions) {
         } catch {
             $Scenario.Error = $_.Exception.Message
         }
-        $Scenario.OutcomeMatchesExpectation = $Scenario.Success -eq $Scenario.ExpectedSuccess
+        $Scenario.OutcomeMatchesExpectation =
+            $Scenario.OutcomePolicy -eq 'observe-known-limitation' -or
+            $Scenario.Success -eq $Scenario.ExpectedSuccess
         $ScenarioResults.Add([PSCustomObject]$Scenario)
     }
 }
@@ -170,12 +179,13 @@ foreach ($ScenarioDefinition in $ScenarioDefinitions) {
 $CanonicalRows = @(
     "profile=$($Inventory.ProfileKey)"
     foreach ($Scenario in @($ScenarioResults | Sort-Object OrderIndex,DllPicklePreloaded)) {
-        'scenario={0}|order={1}|preload={2}|expectedLimitation={3}|expectedSuccess={4}|success={5}|outcomeMatches={6}|error={9}|modules={7}|assemblies={8}' -f (
+        'scenario={0}|order={1}|preload={2}|expectedLimitation={3}|expectedSuccess={4}|outcomePolicy={5}|success={6}|outcomeMatches={7}|error={10}|modules={8}|assemblies={9}' -f (
             $Scenario.ScenarioId,
             $Scenario.OrderIndex,
             $Scenario.DllPicklePreloaded,
             $Scenario.ExpectedLimitation,
             $Scenario.ExpectedSuccess,
+            $Scenario.OutcomePolicy,
             $Scenario.Success,
             $Scenario.OutcomeMatchesExpectation,
             (@($Scenario.ImportOrder) -join ','),
@@ -205,7 +215,7 @@ if ($OutputDirectory -and -not (Test-Path -LiteralPath $OutputDirectory -PathTyp
 $Report | ConvertTo-Json -Depth 40 | Set-Content -LiteralPath $OutputPath -Encoding UTF8
 
 if ($Strict.IsPresent -and -not $Report.Passed) {
-    $FailedLabels = @($ScenarioResults | Where-Object { -not $_.OutcomeMatchesExpectation } | ForEach-Object { "order $($_.OrderIndex), preload=$($_.DllPicklePreloaded), expectedSuccess=$($_.ExpectedSuccess), actualSuccess=$($_.Success)" })
+    $FailedLabels = @($ScenarioResults | Where-Object { -not $_.OutcomeMatchesExpectation } | ForEach-Object { "order $($_.OrderIndex), preload=$($_.DllPicklePreloaded), policy=$($_.OutcomePolicy), expectedSuccess=$($_.ExpectedSuccess), actualSuccess=$($_.Success)" })
     throw "Deterministic upstream scenarios failed for '$($Inventory.ProfileKey)': $($FailedLabels -join '; ')."
 }
 $Report
