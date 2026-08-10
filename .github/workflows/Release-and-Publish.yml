@@ -177,7 +177,7 @@ jobs:
             $EvidenceMode = 'protected-exact-commit-workflow'
             $AllowedReleaseVersion = ''
             $EvidenceReference = $ProtectedEvidenceRun.url
-          } elseif (Test-Path -LiteralPath $env:MANUAL_AUTHENTICATED_EVIDENCE_PATH -PathType Leaf) {
+          } elseif (-not $ProtectedWorkflowConfigured -and (Test-Path -LiteralPath $env:MANUAL_AUTHENTICATED_EVIDENCE_PATH -PathType Leaf)) {
             $ManualEvidenceParameters = @{
               EvidencePath = $env:MANUAL_AUTHENTICATED_EVIDENCE_PATH
               RepositoryRoot = '.'
@@ -189,8 +189,10 @@ jobs:
             $EvidenceMode = 'manual-interactive-transition'
             $AllowedReleaseVersion = [string]$ManualEvidence.AllowedReleaseVersion
             $EvidenceReference = "``$($env:MANUAL_AUTHENTICATED_EVIDENCE_PATH)`` (expires $($ManualEvidence.ExpiresAtUtc))"
+          } elseif ($ProtectedWorkflowConfigured) {
+            throw "Release is blocked: protected authenticated workflow '$($env:AUTHENTICATED_WORKFLOW_FILE)' is configured but has no successful exact-commit evidence with one unexpired '$($env:AUTHENTICATED_EVIDENCE_ARTIFACT)' artifact."
           } else {
-            throw "Release is blocked: no successful exact-commit protected workflow evidence exists and no accepted bounded manual transition evidence is committed."
+            throw 'Release is blocked: the protected authenticated workflow is not configured and no accepted bounded manual transition evidence is committed.'
           }
 
           "evidence_mode=$EvidenceMode" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
