@@ -233,6 +233,26 @@ Describe 'Normalized exact-profile upstream evidence' -Tag 'Unit' {
         $First.provenance.capturedAtUtc | Should -Not -Be $Second.provenance.capturedAtUtc
     }
 
+    It 'produces the same content fingerprint under different process cultures' {
+        $Fixture = Get-NormalizedEvidenceFixture -Root (Join-Path $TestDrive 'culture-root')
+        $OriginalCulture = [System.Globalization.CultureInfo]::CurrentCulture
+        $OriginalUICulture = [System.Globalization.CultureInfo]::CurrentUICulture
+        try {
+            [System.Globalization.CultureInfo]::CurrentCulture = [System.Globalization.CultureInfo]::GetCultureInfo('en-US')
+            [System.Globalization.CultureInfo]::CurrentUICulture = [System.Globalization.CultureInfo]::GetCultureInfo('en-US')
+            $English = Invoke-NormalizerFixture -Fixture $Fixture -OutputPath (Join-Path $TestDrive 'english.json')
+
+            [System.Globalization.CultureInfo]::CurrentCulture = [System.Globalization.CultureInfo]::GetCultureInfo('tr-TR')
+            [System.Globalization.CultureInfo]::CurrentUICulture = [System.Globalization.CultureInfo]::GetCultureInfo('tr-TR')
+            $Turkish = Invoke-NormalizerFixture -Fixture $Fixture -OutputPath (Join-Path $TestDrive 'turkish.json')
+        } finally {
+            [System.Globalization.CultureInfo]::CurrentCulture = $OriginalCulture
+            [System.Globalization.CultureInfo]::CurrentUICulture = $OriginalUICulture
+        }
+
+        $English.contentFingerprint | Should -BeExactly $Turkish.contentFingerprint
+    }
+
     It 'records a fingerprint that recomputes from normalized content' {
         $Fixture = Get-NormalizedEvidenceFixture -Root (Join-Path $TestDrive 'fingerprint-root')
         $Evidence = Invoke-NormalizerFixture -Fixture $Fixture -OutputPath (Join-Path $TestDrive 'fingerprint.json')
@@ -251,5 +271,27 @@ Describe 'Normalized exact-profile upstream evidence' -Tag 'Unit' {
 
         { Invoke-NormalizerFixture -Fixture $Fixture -OutputPath (Join-Path $TestDrive 'outside.json') } |
             Should -Throw '*outside the upstream module cache, DLLPickle module root, and exact runtime root*'
+    }
+
+    It 'retains the module segment when the cache-marker fallback skips an exact runtime directory' {
+        $Fixture = Get-NormalizedEvidenceFixture -Root (Join-Path $TestDrive 'fallback-root')
+        $FallbackRoot = Join-Path $TestDrive 'different-root\dllpickle-upstream-modules\7.6.4\Synthetic.One\1.10.0'
+        $FallbackAssemblyPath = Join-Path $FallbackRoot 'lib\Microsoft.Identity.Client.dll'
+        $FallbackManifestPath = Join-Path $FallbackRoot 'Synthetic.One.psd1'
+
+        $Inventory = Get-Content -LiteralPath $Fixture.InventoryPath -Raw | ConvertFrom-Json
+        $Inventory.Modules[0].TrackedAssemblies[0].Path = $FallbackAssemblyPath
+        $Inventory.Modules[0].TrackedAssemblies[0].SelectedAssetPath = $FallbackAssemblyPath
+        $Inventory | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $Fixture.InventoryPath -Encoding UTF8
+
+        $Scenario = Get-Content -LiteralPath $Fixture.ScenarioPath -Raw | ConvertFrom-Json
+        $Scenario.Scenarios[0].Assemblies[0].Path = $FallbackAssemblyPath
+        $Scenario.Scenarios[0].Assemblies[0].ImportedModulePaths = @($FallbackManifestPath)
+        $Scenario | ConvertTo-Json -Depth 30 | Set-Content -LiteralPath $Fixture.ScenarioPath -Encoding UTF8
+
+        $Evidence = Invoke-NormalizerFixture -Fixture $Fixture -OutputPath (Join-Path $TestDrive 'fallback.json')
+
+        $Evidence.content.modules[0].selectedAssets[0].selectedAsset | Should -Be 'upstream:Synthetic.One/1.10.0/lib/Microsoft.Identity.Client.dll'
+        @($Evidence.content.scenarios[0].importedModuleAssets) | Should -Contain 'upstream:Synthetic.One/1.10.0/Synthetic.One.psd1'
     }
 }

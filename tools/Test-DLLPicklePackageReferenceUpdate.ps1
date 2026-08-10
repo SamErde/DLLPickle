@@ -113,12 +113,12 @@ $ChangedPackages = @(
         }
     }
 )
-if ($ChangedPackages.Count -eq 0) {
-    throw 'The candidate project does not change any PackageReference Version attribute.'
-}
-
 if (-not [string]::Equals($Base.NormalizedProject, $Candidate.NormalizedProject, [System.StringComparison]::Ordinal)) {
     throw 'The candidate project changes content other than PackageReference Version attribute values.'
+}
+
+if ($ChangedPackages.Count -eq 0) {
+    throw 'The candidate project does not change any PackageReference Version attribute.'
 }
 
 [pscustomobject]@{

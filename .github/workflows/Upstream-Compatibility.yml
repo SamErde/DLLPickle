@@ -70,6 +70,8 @@ jobs:
                 '^tools/Get-DLLPickleUpstreamInventory\.ps1$',
                 '^tools/Get-DLLPickleLoadedTrackedAssembly\.ps1$',
                 '^tools/Get-DLLPickleRuntimeAssemblySnapshot\.ps1$',
+                '^tools/DLLPickle\.ProfileEvidence\.ps1$',
+                '^tools/Invoke-DLLPickleBuild\.ps1$',
                 '^tools/New-DLLPickleConflictMatrix\.ps1$',
                 '^tools/New-DLLPickleNormalizedProfileEvidence\.ps1$',
                 '^tools/New-DLLPickleUpstreamScenarioEvidence\.ps1$',

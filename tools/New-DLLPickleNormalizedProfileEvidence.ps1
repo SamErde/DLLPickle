@@ -77,6 +77,7 @@ param (
 )
 
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'DLLPickle.ProfileEvidence.ps1')
 
 function ConvertTo-CollapsedRelativePath {
     param([Parameter(Mandatory)][string]$Path)
@@ -133,13 +134,6 @@ function ConvertTo-NormalizedEvidencePath {
     '{0}:{1}' -f $Prefix, (ConvertTo-CollapsedRelativePath -Path $RelativePath)
 }
 
-function Get-Sha256Text {
-    param([Parameter(Mandatory)][string]$Text)
-
-    $Bytes = [System.Text.Encoding]::UTF8.GetBytes($Text)
-    [System.BitConverter]::ToString([System.Security.Cryptography.SHA256]::HashData($Bytes)).Replace('-', '').ToLowerInvariant()
-}
-
 foreach ($RequiredPath in @($InventoryPath, $ConflictMatrixPath, $ScenarioEvidencePath, $ValidationGapsPath)) {
     if (-not (Test-Path -LiteralPath $RequiredPath -PathType Leaf)) {
         throw "Required profile evidence input was not found: $RequiredPath"
@@ -191,9 +185,9 @@ if ([string]::IsNullOrWhiteSpace($RuntimeRoot)) {
 }
 
 $NormalizedModules = @(
-    foreach ($Module in @($Inventory.Modules | Sort-Object Name)) {
-        $SelectedAssets = @(
-            foreach ($Assembly in @($Module.TrackedAssemblies | Sort-Object Name, Version, Sha256, SelectedAssetPath)) {
+    foreach ($Module in @(Get-DLLPickleOrdinalSequence -InputObject @($Inventory.Modules) -KeySelector { param($Item) [string]$Item.Name })) {
+        $UnsortedSelectedAssets = @(
+            foreach ($Assembly in @($Module.TrackedAssemblies)) {
                 [ordered]@{
                     assemblyName = [string]$Assembly.Name
                     assemblyVersion = [string]$Assembly.Version
@@ -207,6 +201,12 @@ $NormalizedModules = @(
                 }
             }
         )
+        $SelectedAssets = @(
+            Get-DLLPickleOrdinalSequence -InputObject $UnsortedSelectedAssets -KeySelector {
+                param($Item)
+                '{0}{5}{1}{5}{2}{5}{3}{5}{4}' -f $Item.assemblyName, $Item.assemblyVersion, $Item.sha256, $Item.assemblyLoadContext, $Item.selectedAsset, [char]0
+            }
+        )
         [ordered]@{
             name = [string]$Module.Name
             umbrellaModule = [string]$Module.UmbrellaModule
@@ -215,7 +215,7 @@ $NormalizedModules = @(
             latestCompatibleVersion = [string]$Module.LatestCompatibleVersion
             repository = [string]$Module.Repository
             manifestPowerShellVersion = [string]$Module.ManifestPowerShellVersion
-            compatiblePSEditions = @($Module.CompatiblePSEditions | Sort-Object)
+            compatiblePSEditions = @(Get-DLLPickleOrdinalSequence -InputObject @($Module.CompatiblePSEditions))
             deterministicProbeCommand = [string]$Module.DeterministicProbeCommand
             selectedAssets = $SelectedAssets
         }
@@ -223,16 +223,19 @@ $NormalizedModules = @(
 )
 
 $NormalizedMatrixRows = @(
-    foreach ($Assembly in @($Matrix.Assemblies | Sort-Object Name)) {
+    foreach ($Assembly in @(Get-DLLPickleOrdinalSequence -InputObject @($Matrix.Assemblies) -KeySelector { param($Item) [string]$Item.Name })) {
         [ordered]@{
             name = [string]$Assembly.Name
-            shippedBy = @($Assembly.ShippedBy | Sort-Object)
-            versions = @($Assembly.Versions | Sort-Object)
-            hashes = @($Assembly.Hashes | ForEach-Object { ([string]$_).ToLowerInvariant() } | Sort-Object)
-            assemblyLoadContexts = @($Assembly.AlcOwners | Sort-Object)
+            shippedBy = @(Get-DLLPickleOrdinalSequence -InputObject @($Assembly.ShippedBy))
+            versions = @(Get-DLLPickleOrdinalSequence -InputObject @($Assembly.Versions))
+            hashes = @(Get-DLLPickleOrdinalSequence -InputObject @($Assembly.Hashes | ForEach-Object { ([string]$_).ToLowerInvariant() }))
+            assemblyLoadContexts = @(Get-DLLPickleOrdinalSequence -InputObject @($Assembly.AlcOwners))
             diverges = [bool]$Assembly.Diverges
             selections = @(
-                foreach ($Selection in @($Assembly.Selections | Sort-Object Module, Version, Sha256, AlcOwner)) {
+                foreach ($Selection in @(Get-DLLPickleOrdinalSequence -InputObject @($Assembly.Selections) -KeySelector {
+                            param($Item)
+                            '{0}{4}{1}{4}{2}{4}{3}' -f $Item.Module, $Item.Version, $Item.Sha256, $Item.AlcOwner, [char]0
+                        })) {
                     [ordered]@{
                         contributor = [string]$Selection.Module
                         version = [string]$Selection.Version
@@ -246,7 +249,10 @@ $NormalizedMatrixRows = @(
 )
 
 $NormalizedScenarios = @(
-    foreach ($Scenario in @($ScenarioEvidence.Scenarios | Sort-Object ScenarioId, OrderIndex, DllPicklePreloaded)) {
+    foreach ($Scenario in @(Get-DLLPickleOrdinalSequence -InputObject @($ScenarioEvidence.Scenarios) -KeySelector {
+                param($Item)
+                '{0}{3}{1:D10}{3}{2}' -f $Item.ScenarioId, [int]$Item.OrderIndex, [bool]$Item.DllPicklePreloaded, [char]0
+            })) {
         $FirstAssembly = @($Scenario.Assemblies | Select-Object -First 1)
         $ImportedModuleAssets = if ($FirstAssembly.Count -eq 1) {
             @(
@@ -271,16 +277,22 @@ $NormalizedScenarios = @(
             outcomeMatchesExpectation = [bool]$Scenario.OutcomeMatchesExpectation
             errorObserved = -not [string]::IsNullOrWhiteSpace([string]$Scenario.Error)
             assemblies = @(
-                foreach ($Assembly in @($Scenario.Assemblies | Sort-Object Name, Version, Sha256, Alc, Path)) {
-                    [ordered]@{
-                        name = [string]$Assembly.Name
-                        version = [string]$Assembly.Version
-                        fullName = [string]$Assembly.FullName
-                        sha256 = ([string]$Assembly.Sha256).ToLowerInvariant()
-                        assemblyLoadContext = [string]$Assembly.Alc
-                        isCollectible = [bool]$Assembly.IsCollectible
-                        selectedAsset = ConvertTo-NormalizedEvidencePath -Path ([string]$Assembly.Path) -ModuleCachePath $ModuleCachePath -RuntimeRoot $RuntimeRoot
+                $UnsortedScenarioAssemblies = @(
+                    foreach ($Assembly in @($Scenario.Assemblies)) {
+                        [ordered]@{
+                            name = [string]$Assembly.Name
+                            version = [string]$Assembly.Version
+                            fullName = [string]$Assembly.FullName
+                            sha256 = ([string]$Assembly.Sha256).ToLowerInvariant()
+                            assemblyLoadContext = [string]$Assembly.Alc
+                            isCollectible = [bool]$Assembly.IsCollectible
+                            selectedAsset = ConvertTo-NormalizedEvidencePath -Path ([string]$Assembly.Path) -ModuleCachePath $ModuleCachePath -RuntimeRoot $RuntimeRoot
+                        }
                     }
+                )
+                Get-DLLPickleOrdinalSequence -InputObject $UnsortedScenarioAssemblies -KeySelector {
+                    param($Item)
+                    '{0}{5}{1}{5}{2}{5}{3}{5}{4}' -f $Item.name, $Item.version, $Item.sha256, $Item.assemblyLoadContext, $Item.selectedAsset, [char]0
                 }
             )
         }
@@ -313,19 +325,20 @@ $Content = [ordered]@{
     }
     modules = $NormalizedModules
     conflictMatrix = [ordered]@{
-        conflictSurface = @($Matrix.ConflictSurface | Sort-Object)
+        conflictSurface = @(Get-DLLPickleOrdinalSequence -InputObject @($Matrix.ConflictSurface))
         assemblies = $NormalizedMatrixRows
     }
     scenarios = $NormalizedScenarios
 }
 
-$CanonicalContent = $Content | ConvertTo-Json -Depth 100 -Compress
-$ContentFingerprint = Get-Sha256Text -Text $CanonicalContent
+$FingerprintEnvelope = [pscustomobject]@{ schemaVersion = 1; content = $Content }
+$ContentFingerprint = Get-DLLPickleNormalizedEvidenceFingerprint -Evidence $FingerprintEnvelope
+$ObservedOperatingSystemCandidates = @(
+    @($Inventory.Modules.TrackedAssemblies.OS) + @($ScenarioEvidence.Scenarios.Assemblies.OS) |
+        Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) }
+)
 $ObservedOperatingSystems = @(
-    @($Inventory.Modules.TrackedAssemblies.OS) +
-    @($ScenarioEvidence.Scenarios.Assemblies.OS) |
-        Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) } |
-        Sort-Object -Unique
+    Get-DLLPickleOrdinalSequence -InputObject $ObservedOperatingSystemCandidates -Unique
 )
 if ([string]::IsNullOrWhiteSpace($CapturedAtUtc)) {
     $CapturedAtUtc = if (-not [string]::IsNullOrWhiteSpace([string]$Inventory.GeneratedAtUtc)) {

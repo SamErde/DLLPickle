@@ -166,12 +166,29 @@ Describe 'Profile-specific conflict baseline enforcement' -Tag 'Unit' {
 
     It 'rejects a tampered committed snapshot even when the candidate is unchanged' {
         $fixture = Get-ProfileBaselineFixture
+        $OutputPath = Join-Path $TestDrive 'invalid-committed-comparison.json'
         $Committed = Get-Content -LiteralPath $fixture.CommittedEvidencePath -Raw | ConvertFrom-Json
         $Committed.content.marker = 'tampered-committed-evidence'
         $Committed | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $fixture.CommittedEvidencePath -Encoding UTF8
 
-        { & $script:ToolPath -PolicyPath $fixture.PolicyPath -ConflictMatrixPath $fixture.MatrixPath -ScenarioEvidencePath $fixture.ScenarioPath -NormalizedEvidencePath $fixture.NormalizedPath } |
+        { & $script:ToolPath -PolicyPath $fixture.PolicyPath -ConflictMatrixPath $fixture.MatrixPath -ScenarioEvidencePath $fixture.ScenarioPath -NormalizedEvidencePath $fixture.NormalizedPath -OutputPath $OutputPath } |
             Should -Throw '*accepted evidence*does not recompute*policy fingerprint*'
+        $Result = Get-Content -LiteralPath $OutputPath -Raw | ConvertFrom-Json
+        $Result.Status | Should -Be 'InvalidCommittedEvidence'
+        $Result.FailureDetail | Should -Match 'does not recompute to the policy fingerprint'
+        $Result.FindingFingerprint | Should -Match '^[a-f0-9]{64}$'
+    }
+
+    It 'writes a structured result before a missing accepted snapshot fails closed' {
+        $fixture = Get-ProfileBaselineFixture
+        $OutputPath = Join-Path $TestDrive 'missing-committed-comparison.json'
+        Remove-Item -LiteralPath $fixture.CommittedEvidencePath
+
+        { & $script:ToolPath -PolicyPath $fixture.PolicyPath -ConflictMatrixPath $fixture.MatrixPath -ScenarioEvidencePath $fixture.ScenarioPath -NormalizedEvidencePath $fixture.NormalizedPath -OutputPath $OutputPath } |
+            Should -Throw '*accepted evidence*was not found*'
+        $Result = Get-Content -LiteralPath $OutputPath -Raw | ConvertFrom-Json
+        $Result.Status | Should -Be 'InvalidCommittedEvidence'
+        $Result.FailureDetail | Should -Match 'was not found'
     }
 
     It 'rejects a conflict matrix whose key does not match its profile fields' {

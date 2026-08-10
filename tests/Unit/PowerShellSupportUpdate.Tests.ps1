@@ -7,7 +7,8 @@ BeforeAll {
     function Get-SupportUpdateFixture {
         param(
             [string]$Root,
-            [string[]]$ReleaseVersions
+            [string[]]$ReleaseVersions,
+            [string]$NewLineStartDate = '1/20/2027 8:00:00 AM'
         )
 
         $MatrixPath = Join-Path $Root 'matrix.json'
@@ -54,7 +55,7 @@ BeforeAll {
             '<tr><td>PowerShell 7.5</td><td><local-time datetime="1/23/2025 8:00:00 AM"></local-time></td><td><local-time datetime="11/11/2026 6:59:59 AM"></local-time></td></tr>'
             '<tr><td>PowerShell 7.6 (LTS)</td><td><local-time datetime="3/18/2026 8:00:00 AM"></local-time></td><td><local-time datetime="11/15/2028 6:59:59 AM"></local-time></td></tr>'
             if (@($ReleaseVersions | Where-Object { [version]$_ -ge [version]'7.7.0' }).Count -gt 0) {
-                '<tr><td>PowerShell 7.7</td><td><local-time datetime="1/20/2027 8:00:00 AM"></local-time></td><td><local-time datetime="5/12/2028 6:59:59 AM"></local-time></td></tr>'
+                "<tr><td>PowerShell 7.7</td><td><local-time datetime=`"$NewLineStartDate`"></local-time></td><td><local-time datetime=`"5/12/2028 6:59:59 AM`"></local-time></td></tr>"
             }
         )
         "<table>$($LifecycleRows -join '')</table>" | Set-Content -LiteralPath $LifecyclePath -Encoding UTF8
@@ -127,7 +128,7 @@ Describe 'PowerShell support update discovery' -Tag 'Unit' {
     }
 
     It 'routes a new GA minor line to support-contract review and fails release-current validation' {
-        $Fixture = Get-SupportUpdateFixture -Root $TestDrive -ReleaseVersions @('7.4.18', '7.5.9', '7.6.4', '7.7.0')
+        $Fixture = Get-SupportUpdateFixture -Root $TestDrive -ReleaseVersions @('7.4.18', '7.5.9', '7.6.4', '7.7.0') -NewLineStartDate '7/20/2026 8:00:00 AM'
         $Parameters = @{
             TestMatrixPath = $Fixture.MatrixPath
             ReleaseDataPath = $Fixture.ReleasePath
@@ -142,6 +143,15 @@ Describe 'PowerShell support update discovery' -Tag 'Unit' {
         $Report.SupportContractReviewRequired | Should -BeTrue
         $Report.NewLines[0].RequiredDecision | Should -Match 'CLR/TFM'
         $Report.SupportContractMarker | Should -Be "<!-- dllpickle-finding-fingerprint:$($Report.SupportContractFingerprint) -->"
+    }
+
+    It 'does not treat a published preview with a future lifecycle start as a supported GA line' {
+        $Fixture = Get-SupportUpdateFixture -Root $TestDrive -ReleaseVersions @('7.4.18', '7.5.9', '7.6.4', '7.7.0')
+        $Report = & $script:DiscoveryPath -TestMatrixPath $Fixture.MatrixPath -ReleaseDataPath $Fixture.ReleasePath -LifecycleDataPath $Fixture.LifecyclePath -OutputPath (Join-Path $TestDrive 'future-line.json') -AsOfUtc '2026-08-08T00:00:00Z'
+
+        @($Report.NewLines) | Should -HaveCount 0
+        @($Report.UndeclaredSupportedLines) | Should -HaveCount 0
+        $Report.SupportContractReviewRequired | Should -BeFalse
     }
 
     It 'keeps a retirement-warning fingerprint stable while the remaining day count changes' {

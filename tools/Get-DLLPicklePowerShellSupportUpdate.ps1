@@ -141,11 +141,17 @@ if ($DuplicateLifecycleLines.Count -gt 0) {
 }
 $AsOfPacificDate = [System.TimeZoneInfo]::ConvertTimeFromUtc($AsOfUtc.ToUniversalTime(), $PacificTimeZone).Date
 $SupportedLifecycleLines = @($LiveLifecycleRows | Where-Object {
-        [datetime]::ParseExact(
+        $StartDate = [datetime]::ParseExact(
+            [string]$_.StartDate,
+            'yyyy-MM-dd',
+            [System.Globalization.CultureInfo]::InvariantCulture
+        )
+        $EndDate = [datetime]::ParseExact(
             [string]$_.EndDate,
             'yyyy-MM-dd',
             [System.Globalization.CultureInfo]::InvariantCulture
-        ) -ge $AsOfPacificDate
+        )
+        $StartDate -le $AsOfPacificDate -and $EndDate -ge $AsOfPacificDate
     } | ForEach-Object ReleaseLine)
 
 $DeclaredLines = @($TestMatrix.profiles | ForEach-Object { '{0}.{1}' -f $_.powerShellMajor, $_.powerShellMinor })

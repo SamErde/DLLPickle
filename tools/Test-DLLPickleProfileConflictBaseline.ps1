@@ -49,23 +49,13 @@ param (
 )
 
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'DLLPickle.ProfileEvidence.ps1')
 $Policy = Get-Content -LiteralPath $PolicyPath -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
 $Matrix = Get-Content -LiteralPath $ConflictMatrixPath -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
 $ScenarioEvidence = Get-Content -LiteralPath $ScenarioEvidencePath -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
 $NormalizedEvidence = Get-Content -LiteralPath $NormalizedEvidencePath -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
 
-function Get-NormalizedContentFingerprint {
-    param([Parameter(Mandatory)][object]$Evidence)
-
-    if ([int]$Evidence.schemaVersion -ne 1 -or -not $Evidence.content) {
-        throw 'Normalized profile evidence has an unsupported schema or no fingerprinted content.'
-    }
-    $CanonicalContent = $Evidence.content | ConvertTo-Json -Depth 100 -Compress
-    $Bytes = [System.Text.Encoding]::UTF8.GetBytes($CanonicalContent)
-    [System.BitConverter]::ToString([System.Security.Cryptography.SHA256]::HashData($Bytes)).Replace('-', '').ToLowerInvariant()
-}
-
-$CandidateEvidenceFingerprint = Get-NormalizedContentFingerprint -Evidence $NormalizedEvidence
+$CandidateEvidenceFingerprint = Get-DLLPickleNormalizedEvidenceFingerprint -Evidence $NormalizedEvidence
 if ([string]$NormalizedEvidence.contentFingerprint -ne $CandidateEvidenceFingerprint) {
     throw "Normalized profile evidence content does not recompute to '$($NormalizedEvidence.contentFingerprint)'."
 }
@@ -177,22 +167,28 @@ $Status = if (
     'AcceptedUnchanged'
 }
 
+$FailureDetail = $null
 if ($Status -eq 'AcceptedUnchanged') {
-    $ResolvedPolicyPath = (Resolve-Path -LiteralPath $PolicyPath).Path
-    $CommittedEvidencePath = Join-Path -Path (Split-Path -Path $ResolvedPolicyPath -Parent) -ChildPath $BaselineEvidencePath
-    if (-not (Test-Path -LiteralPath $CommittedEvidencePath -PathType Leaf)) {
-        throw "Accepted evidence for '$($Matrix.ProfileKey)' was not found at '$CommittedEvidencePath'."
-    }
-    $CommittedEvidence = Get-Content -LiteralPath $CommittedEvidencePath -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
-    $CommittedEvidenceFingerprint = Get-NormalizedContentFingerprint -Evidence $CommittedEvidence
-    if ([string]$CommittedEvidence.contentFingerprint -ne $CommittedEvidenceFingerprint -or
-        $CommittedEvidenceFingerprint -ne $BaselineEvidenceFingerprint) {
-        throw "Accepted evidence for '$($Matrix.ProfileKey)' does not recompute to the policy fingerprint '$BaselineEvidenceFingerprint'."
-    }
-    if ([string]$CommittedEvidence.content.profile.profileKey -ne [string]$Matrix.ProfileKey -or
-        [string]$CommittedEvidence.content.validation.deterministicImportNoAuth.conflictSurfaceFingerprint -ne $BaselineFingerprint -or
-        [string]$CommittedEvidence.content.validation.deterministicImportNoAuth.scenarioFingerprint -ne $BaselineScenarioFingerprint) {
-        throw "Accepted evidence for '$($Matrix.ProfileKey)' does not bind the policy profile, conflict, and scenario fingerprints."
+    try {
+        $ResolvedPolicyPath = (Resolve-Path -LiteralPath $PolicyPath).Path
+        $CommittedEvidencePath = Join-Path -Path (Split-Path -Path $ResolvedPolicyPath -Parent) -ChildPath $BaselineEvidencePath
+        if (-not (Test-Path -LiteralPath $CommittedEvidencePath -PathType Leaf)) {
+            throw "Accepted evidence for '$($Matrix.ProfileKey)' was not found at '$CommittedEvidencePath'."
+        }
+        $CommittedEvidence = Get-Content -LiteralPath $CommittedEvidencePath -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
+        $CommittedEvidenceFingerprint = Get-DLLPickleNormalizedEvidenceFingerprint -Evidence $CommittedEvidence
+        if ([string]$CommittedEvidence.contentFingerprint -ne $CommittedEvidenceFingerprint -or
+            $CommittedEvidenceFingerprint -ne $BaselineEvidenceFingerprint) {
+            throw "Accepted evidence for '$($Matrix.ProfileKey)' does not recompute to the policy fingerprint '$BaselineEvidenceFingerprint'."
+        }
+        if ([string]$CommittedEvidence.content.profile.profileKey -ne [string]$Matrix.ProfileKey -or
+            [string]$CommittedEvidence.content.validation.deterministicImportNoAuth.conflictSurfaceFingerprint -ne $BaselineFingerprint -or
+            [string]$CommittedEvidence.content.validation.deterministicImportNoAuth.scenarioFingerprint -ne $BaselineScenarioFingerprint) {
+            throw "Accepted evidence for '$($Matrix.ProfileKey)' does not bind the policy profile, conflict, and scenario fingerprints."
+        }
+    } catch {
+        $Status = 'InvalidCommittedEvidence'
+        $FailureDetail = $_.Exception.Message
     }
 }
 
@@ -211,6 +207,7 @@ $Result = [pscustomobject]@{
     BaselineEvidencePath = $BaselineEvidencePath
     FindingFingerprint  = $FindingFingerprint
     Status              = $Status
+    FailureDetail       = $FailureDetail
 }
 
 if (-not [string]::IsNullOrWhiteSpace($OutputPath)) {
@@ -226,5 +223,8 @@ if ($Status -eq 'RequiresAcceptance') {
 }
 if ($Status -eq 'Drifted') {
     throw "Upstream profile evidence drift detected for '$($Matrix.ProfileKey)': baseline conflict '$BaselineFingerprint', current conflict '$CurrentFingerprint'; baseline scenario '$BaselineScenarioFingerprint', current scenario '$CurrentScenarioFingerprint'; baseline evidence '$BaselineEvidenceFingerprint', current evidence '$CandidateEvidenceFingerprint'."
+}
+if ($Status -eq 'InvalidCommittedEvidence') {
+    throw $FailureDetail
 }
 if ($PassThru) { $Result }

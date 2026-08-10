@@ -53,6 +53,53 @@ Describe 'Dependabot project patch validation' -Tag 'Unit' {
             Should -Throw '*adds, removes, or renames*'
     }
 
+    It 'rejects removed PackageReference elements' {
+        $script:BaseProject.Replace('<PackageReference Include="Example.Two" Version="2.*" />', '') |
+            Set-Content -LiteralPath $script:CandidatePath -Encoding UTF8
+
+        { & $script:ValidatorPath -BaseProjectPath $script:BasePath -CandidateProjectPath $script:CandidatePath } |
+            Should -Throw '*adds, removes, or renames*'
+    }
+
+    It 'rejects renamed PackageReference identities' {
+        $script:BaseProject.Replace('Include="Example.One"', 'Include="Example.Renamed"') |
+            Set-Content -LiteralPath $script:CandidatePath -Encoding UTF8
+
+        { & $script:ValidatorPath -BaseProjectPath $script:BasePath -CandidateProjectPath $script:CandidatePath } |
+            Should -Throw '*adds, removes, or renames*'
+    }
+
+    It 'rejects duplicate PackageReference identities' {
+        $script:BaseProject.Replace('Include="Example.Two"', 'Include="Example.One"') |
+            Set-Content -LiteralPath $script:CandidatePath -Encoding UTF8
+
+        { & $script:ValidatorPath -BaseProjectPath $script:BasePath -CandidateProjectPath $script:CandidatePath } |
+            Should -Throw '*duplicate PackageReference identity*'
+    }
+
+    It 'rejects PackageReference elements without a Version attribute' {
+        $script:BaseProject.Replace(' Version="2.*"', '') |
+            Set-Content -LiteralPath $script:CandidatePath -Encoding UTF8
+
+        { & $script:ValidatorPath -BaseProjectPath $script:BasePath -CandidateProjectPath $script:CandidatePath } |
+            Should -Throw '*exactly one Include or Update attribute and one Version attribute*'
+    }
+
+    It 'rejects unchanged project files' {
+        $script:BaseProject | Set-Content -LiteralPath $script:CandidatePath -Encoding UTF8
+
+        { & $script:ValidatorPath -BaseProjectPath $script:BasePath -CandidateProjectPath $script:CandidatePath } |
+            Should -Throw '*does not change any PackageReference Version*'
+    }
+
+    It 'reports a structural-only change as disallowed project content' {
+        $script:BaseProject.Replace('net8.0;net9.0', 'net8.0;net9.0;net10.0') |
+            Set-Content -LiteralPath $script:CandidatePath -Encoding UTF8
+
+        { & $script:ValidatorPath -BaseProjectPath $script:BasePath -CandidateProjectPath $script:CandidatePath } |
+            Should -Throw '*content other than PackageReference Version*'
+    }
+
     It 'rejects changes to other project properties' {
         $Candidate = $script:BaseProject.Replace('net8.0;net9.0', 'net8.0;net9.0;net10.0').Replace('Version="1.0.0"', 'Version="1.1.0"')
         $Candidate | Set-Content -LiteralPath $script:CandidatePath -Encoding UTF8
