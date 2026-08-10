@@ -184,6 +184,21 @@ function ConvertTo-DLLPickleUpdatedPackageReferenceContent {
     $UpdatedContent
 }
 
+function Get-DLLPicklePackageReferenceMajor {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [string]$Version
+    )
+
+    $Match = [regex]::Match($Version.Trim(), '^\[?(?<major>\d+)(?:\.(?:\d+|\*)){1,3}\]?$')
+    if (-not $Match.Success) {
+        throw "PackageReference version '$Version' is not a supported exact or major-floating version."
+    }
+
+    return [int]$Match.Groups['major'].Value
+}
+
 function Get-DLLPicklePinTargetFramework {
     [CmdletBinding()]
     param(
@@ -352,6 +367,24 @@ foreach ($Pin in @($Policy.preload)) {
         continue
     }
 
+    $MajorTransitions = @(
+        if ($VersionPolicy -eq 'minorPatchFloat' -and -not $IsCapped) {
+            foreach ($CurrentReference in $CurrentReferences) {
+                $TfmCandidate = @($TfmCandidates | Where-Object TargetFramework -EQ $CurrentReference.TargetFramework)[0]
+                $CurrentMajor = Get-DLLPicklePackageReferenceMajor -Version ([string]$CurrentReference.Reference.Version)
+                $CandidateMajor = ([version][string]$TfmCandidate.PackageVersion).Major
+                if ($CurrentMajor -ne $CandidateMajor) {
+                    [PSCustomObject]@{
+                        TargetFramework  = [string]$CurrentReference.TargetFramework
+                        CurrentVersion   = [string]$CurrentReference.Reference.Version
+                        CandidateVersion = '{0}.*' -f $CandidateMajor
+                    }
+                }
+            }
+        }
+    )
+    $MajorTransitionRequired = $MajorTransitions.Count -gt 0
+
     $UniqueReferenceIndices = @($CurrentReferences.Reference.Index | Select-Object -Unique)
     $UsesConditionalReferences = $UniqueReferenceIndices.Count -gt 1
     $DistinctCandidateVersions = @($TfmCandidates.FormattedVersion | Sort-Object -Unique)
@@ -385,8 +418,9 @@ foreach ($Pin in @($Policy.preload)) {
         SourceAssemblyVersion = [string]$TargetAssembly.AssemblyVersion
         UsesConditionalReferences = $UsesConditionalReferences
         ConditionalPinRequired    = $ConditionalPinRequired
+        MajorTransitionRequired   = $MajorTransitionRequired
         CrossPlatformConsistent   = $CrossPlatformConsistent
-        ReviewRequired            = $UsesConditionalReferences -or $ConditionalPinRequired -or -not $CrossPlatformConsistent
+        ReviewRequired            = $UsesConditionalReferences -or $ConditionalPinRequired -or $MajorTransitionRequired -or -not $CrossPlatformConsistent
         TfmResults                = @($TfmResults)
         RestoreRequired           = $false
         Applied               = $false
@@ -399,6 +433,16 @@ foreach ($Pin in @($Policy.preload)) {
         continue
     }
     if (-not $CrossPlatformConsistent) {
+        $Changes.Add($Change)
+        continue
+    }
+    if ($MajorTransitionRequired) {
+        $TransitionSummary = @(
+            $MajorTransitions | ForEach-Object {
+                '{0}: {1} -> {2}' -f $_.TargetFramework, $_.CurrentVersion, $_.CandidateVersion
+            }
+        ) -join '; '
+        $Warnings.Add(("PackageReference '{0}' floating candidate crosses a package major ({1}); maintainer review is required and no automatic update was applied." -f $Pin.packageName, $TransitionSummary))
         $Changes.Add($Change)
         continue
     }

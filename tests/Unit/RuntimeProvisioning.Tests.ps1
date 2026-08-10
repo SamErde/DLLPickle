@@ -128,6 +128,8 @@ Describe 'Exact PowerShell runtime provisioning' -Tag 'Unit' {
 
         $source | Should -Match ([regex]::Escape("Join-Path 'multi' $ExactVersion"))
         $source | Should -Match ([regex]::Escape('Test-PathWithinRoot'))
+        $source | Should -Not -Match '(?ms)if \(-not \(Test-Path -LiteralPath \$ExpectedExecutable -PathType Leaf\)\) \{\s+Get-VerifiedDownload -Uri \$Archive\[0\]\.downloadUrl'
+        $source | Should -Match '(?ms)Revalidate the immutable archive.*Get-VerifiedDownload -Uri \$Archive\[0\]\.downloadUrl.*Expand-TestRuntimeArchive -ArchivePath \$CachePath'
         @($matrix.archiveAssets) | Should -HaveCount 9
         @($matrix.provisioning.optionalProvider.assets) | Should -HaveCount 3
         @($matrix.archiveAssets.sha256 + $matrix.provisioning.optionalProvider.assets.sha256 | Where-Object { $_ -notmatch '^[a-f0-9]{64}$' }) | Should -BeNullOrEmpty

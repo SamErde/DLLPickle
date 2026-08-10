@@ -299,14 +299,14 @@ if ($PSCmdlet.ParameterSetName -eq 'Executable') {
         $ExpectedPayloadRoot = Join-Path -Path $ProviderRoot -ChildPath 'payload'
         $ExpectedExecutable = Join-Path -Path $ExpectedPayloadRoot -ChildPath $ExecutableName
 
-        if (-not (Test-Path -LiteralPath $ExpectedExecutable -PathType Leaf)) {
-            Get-VerifiedDownload -Uri $Archive[0].downloadUrl -DestinationPath $CachePath -Sha256 $Archive[0].sha256
-            Expand-TestRuntimeArchive -ArchivePath $CachePath -DestinationPath $ExpectedPayloadRoot
-            if ($Platform -ne 'windows') {
-                $ChmodOutput = @(& chmod u+x $ExpectedExecutable 2>&1)
-                if ($LASTEXITCODE -ne 0) {
-                    throw "Failed to mark the stock PowerShell executable as executable: $($ChmodOutput -join [Environment]::NewLine)"
-                }
+        # Revalidate the immutable archive and recreate the payload on every use.
+        # Runtime identity alone cannot detect a corrupted or modified cached file.
+        Get-VerifiedDownload -Uri $Archive[0].downloadUrl -DestinationPath $CachePath -Sha256 $Archive[0].sha256
+        Expand-TestRuntimeArchive -ArchivePath $CachePath -DestinationPath $ExpectedPayloadRoot
+        if ($Platform -ne 'windows') {
+            $ChmodOutput = @(& chmod u+x $ExpectedExecutable 2>&1)
+            if ($LASTEXITCODE -ne 0) {
+                throw "Failed to mark the stock PowerShell executable as executable: $($ChmodOutput -join [Environment]::NewLine)"
             }
         }
     } else {

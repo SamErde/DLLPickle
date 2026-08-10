@@ -371,6 +371,59 @@ Describe 'Dependency automation tooling' -Tag 'Unit' {
         $CapturedDotnetCalls[0] | Should -Match 'restore.*floating\.csproj.*--force-evaluate'
     }
 
+    It 'routes a floating package major transition to maintainer review without changing the project' {
+        $ProjectPath = Join-Path $TestDrive 'floating-major.csproj'
+        @'
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Contoso.Library" Version="4.*" />
+  </ItemGroup>
+</Project>
+'@ | Set-Content -LiteralPath $ProjectPath -Encoding UTF8
+
+        $PolicyPath = Join-Path $TestDrive 'floating-major-policy.json'
+        @{
+            preload = @(
+                @{
+                    packageName = 'Contoso.Library'
+                    assemblyName = 'Contoso.Library'
+                    targetFrameworks = @('net8.0')
+                    versionPolicy = 'minorPatchFloat'
+                    sourceModules = @('Contoso.Module')
+                    reason = 'Synthetic floating-major review test.'
+                }
+            )
+            blockedPreloadAssemblies = @()
+        } | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $PolicyPath -Encoding UTF8
+
+        $InventoryPath = Join-Path $TestDrive 'floating-major-inventory.json'
+        @{
+            Modules = @(
+                @{
+                    Name = 'Contoso.Module'
+                    Version = '3.0.0'
+                    TrackedAssemblies = @(
+                        @{ Name = 'Contoso.Library'; Version = '5.1.0.0'; RelativePath = 'Contoso.Library.dll' }
+                    )
+                }
+            )
+        } | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $InventoryPath -Encoding UTF8
+
+        $Report = & $script:UpdateScriptPath -InventoryPath $InventoryPath -PolicyPath $PolicyPath -ProjectPath $ProjectPath -OutputPath (Join-Path $TestDrive 'floating-major-report.json') -Confirm:$false
+
+        $Report.ProjectChanged | Should -BeFalse
+        $Report.RestoreRequired | Should -BeFalse
+        $Report.ReviewRequired | Should -BeTrue
+        $Report.Changes[0].MajorTransitionRequired | Should -BeTrue
+        $Report.Changes[0].CandidateVersion | Should -Be '5.*'
+        $Report.Changes[0].Applied | Should -BeFalse
+        $Report.Warnings | Should -Contain "PackageReference 'Contoso.Library' floating candidate crosses a package major (net8.0: 4.* -> 5.*); maintainer review is required and no automatic update was applied."
+        Get-Content -LiteralPath $ProjectPath -Raw | Should -Match 'Version="4\.\*"'
+    }
+
     It 'resolves and flags package pins in framework-conditioned ItemGroups' {
         $ProjectPath = Join-Path -Path $TestDrive -ChildPath 'conditional.csproj'
         @'
