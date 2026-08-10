@@ -1,0 +1,1415 @@
+{
+  "schemaVersion": 1,
+  "contentFingerprint": "dd70b37eec9f32c08c75198544dbc9f40635ea3046287d835c9d0c5074a6831d",
+  "provenance": {
+    "sourceRunId": "31349870045",
+    "sourceRunUrl": "https://github.com/SamErde/DLLPickle/actions/runs/31349870045",
+    "sourceCommitSha": "586b1fed1189d9a34e6b054dbffa07b62a706d97",
+    "capturedAtUtc": "2026-08-10T02:31:03.0000000+00:00",
+    "observedOperatingSystems": [
+      "Darwin 24.6.0 Darwin Kernel Version 24.6.0: Tue Apr 21 20:17:54 PDT 2026; root:xnu-11417.140.69.710.16~1/RELEASE_X86_64"
+    ]
+  },
+  "content": {
+    "profile": {
+      "profileKey": "ps7.5-net9.0-macos-x64",
+      "powerShellVersion": "7.5.9",
+      "powerShellLine": "7.5",
+      "dotNetVersion": "9.0.18",
+      "dotNetMajor": 9,
+      "targetFramework": "net9.0",
+      "platform": "macos",
+      "architecture": "x64"
+    },
+    "validation": {
+      "deterministicImportNoAuth": {
+        "status": "passed",
+        "writesPerformed": false,
+        "conflictSurfaceFingerprint": "1cc79f2f3af66f0d4b1793e5311df21066980435e89c75ba710a2f643b9884d7",
+        "scenarioFingerprint": "4e39d071eda5c4fa9be584bb1805a0932c0fc8113e1f27194aa6760d3a3f541a"
+      },
+      "authenticatedReadOnly": {
+        "status": "not-run-no-approved-credentials",
+        "writesPerformed": false,
+        "unexecutedCommands": [
+          "Get-MgContext | Out-Null",
+          "Get-EXOMailbox -ResultSize 1 | Out-Null",
+          "Get-AzStorageAccount | Select-Object -First 1 | Out-Null",
+          "Get-AzContext | Out-Null",
+          "Connect-MicrosoftTeams -AccessTokens @($env:DLLPICKLE_GRAPH_ACCESS_TOKEN, $env:DLLPICKLE_TEAMS_ACCESS_TOKEN) | Out-Null; try { Get-CsTenant | Out-Null } finally { Disconnect-MicrosoftTeams | Out-Null }",
+          "Get-AzResource | Select-Object -First 1 | Out-Null"
+        ]
+      }
+    },
+    "modules": [
+      {
+        "name": "Az.Accounts",
+        "umbrellaModule": "Az",
+        "constituentModule": "Az.Accounts",
+        "version": "5.5.2",
+        "latestCompatibleVersion": "5.5.2",
+        "repository": "PSGallery",
+        "manifestPowerShellVersion": "5.1",
+        "compatiblePSEditions": [
+          "Core",
+          "Desktop"
+        ],
+        "deterministicProbeCommand": "Get-AzContext -ErrorAction SilentlyContinue | Out-Null",
+        "selectedAssets": [
+          {
+            "assemblyName": "Azure.Core",
+            "assemblyVersion": "1.57.0.0",
+            "packageVersionCandidate": "1.57.0",
+            "fullName": "Azure.Core, Version=1.57.0.0, Culture=neutral, PublicKeyToken=92742159e12e44c8",
+            "sha256": "7ec9feb7738364d2d3a7a598f7c0cff090fdff971086d45cfb35a67858c6f5c7",
+            "assemblyLoadContext": "AzSharedAssemblyLoadContext",
+            "isCollectible": false,
+            "contributor": "Az.Accounts",
+            "selectedAsset": "upstream:Az.Accounts/5.5.2/lib/netstandard2.0/Azure.Core.dll"
+          },
+          {
+            "assemblyName": "Microsoft.Identity.Client.Extensions.Msal",
+            "assemblyVersion": "4.84.0.0",
+            "packageVersionCandidate": "4.84.0",
+            "fullName": "Microsoft.Identity.Client.Extensions.Msal, Version=4.84.0.0, Culture=neutral, PublicKeyToken=0a613f4dd989e8ae",
+            "sha256": "10f799a3ff80ccffc2b0a9dc9534465ef68deb5de79340b63bf20c5a58e6bbda",
+            "assemblyLoadContext": "AzSharedAssemblyLoadContext",
+            "isCollectible": false,
+            "contributor": "Az.Accounts",
+            "selectedAsset": "upstream:Az.Accounts/5.5.2/lib/netstandard2.0/Microsoft.Identity.Client.Extensions.Msal.dll"
+          }
+        ]
+      },
+      {
+        "name": "Az.Resources",
+        "umbrellaModule": "Az",
+        "constituentModule": "Az.Resources",
+        "version": "10.1.0",
+        "latestCompatibleVersion": "10.1.0",
+        "repository": "PSGallery",
+        "manifestPowerShellVersion": "5.1",
+        "compatiblePSEditions": [
+          "Core",
+          "Desktop"
+        ],
+        "deterministicProbeCommand": "Get-Command Get-AzResource | Out-Null",
+        "selectedAssets": [
+          {
+            "assemblyName": "Azure.Core",
+            "assemblyVersion": "1.57.0.0",
+            "packageVersionCandidate": "1.57.0",
+            "fullName": "Azure.Core, Version=1.57.0.0, Culture=neutral, PublicKeyToken=92742159e12e44c8",
+            "sha256": "7ec9feb7738364d2d3a7a598f7c0cff090fdff971086d45cfb35a67858c6f5c7",
+            "assemblyLoadContext": "AzSharedAssemblyLoadContext",
+            "isCollectible": false,
+            "contributor": "Az.Accounts",
+            "selectedAsset": "upstream:Az.Accounts/5.5.2/lib/netstandard2.0/Azure.Core.dll"
+          },
+          {
+            "assemblyName": "Microsoft.Extensions.DependencyInjection.Abstractions",
+            "assemblyVersion": "10.0.0.0",
+            "packageVersionCandidate": "10.0.0",
+            "fullName": "Microsoft.Extensions.DependencyInjection.Abstractions, Version=10.0.0.0, Culture=neutral, PublicKeyToken=adb9793829ddae60",
+            "sha256": "63a83951b4d871f9487da5192bd1acb15f156c9cbd8d399e38a3b3574991f3ad",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "contributor": "Az.Resources",
+            "selectedAsset": "upstream:Az.Resources/10.1.0/Microsoft.Extensions.DependencyInjection.Abstractions.dll"
+          },
+          {
+            "assemblyName": "Microsoft.Identity.Client.Extensions.Msal",
+            "assemblyVersion": "4.84.0.0",
+            "packageVersionCandidate": "4.84.0",
+            "fullName": "Microsoft.Identity.Client.Extensions.Msal, Version=4.84.0.0, Culture=neutral, PublicKeyToken=0a613f4dd989e8ae",
+            "sha256": "10f799a3ff80ccffc2b0a9dc9534465ef68deb5de79340b63bf20c5a58e6bbda",
+            "assemblyLoadContext": "AzSharedAssemblyLoadContext",
+            "isCollectible": false,
+            "contributor": "Az.Accounts",
+            "selectedAsset": "upstream:Az.Accounts/5.5.2/lib/netstandard2.0/Microsoft.Identity.Client.Extensions.Msal.dll"
+          }
+        ]
+      },
+      {
+        "name": "Az.Storage",
+        "umbrellaModule": "Az",
+        "constituentModule": "Az.Storage",
+        "version": "9.7.2",
+        "latestCompatibleVersion": "9.7.2",
+        "repository": "PSGallery",
+        "manifestPowerShellVersion": "5.1",
+        "compatiblePSEditions": [
+          "Core",
+          "Desktop"
+        ],
+        "deterministicProbeCommand": "Get-Command Get-AzStorageAccount | Out-Null",
+        "selectedAssets": [
+          {
+            "assemblyName": "Azure.Core",
+            "assemblyVersion": "1.57.0.0",
+            "packageVersionCandidate": "1.57.0",
+            "fullName": "Azure.Core, Version=1.57.0.0, Culture=neutral, PublicKeyToken=92742159e12e44c8",
+            "sha256": "7ec9feb7738364d2d3a7a598f7c0cff090fdff971086d45cfb35a67858c6f5c7",
+            "assemblyLoadContext": "AzSharedAssemblyLoadContext",
+            "isCollectible": false,
+            "contributor": "Az.Accounts",
+            "selectedAsset": "upstream:Az.Accounts/5.5.2/lib/netstandard2.0/Azure.Core.dll"
+          },
+          {
+            "assemblyName": "Microsoft.Identity.Client.Extensions.Msal",
+            "assemblyVersion": "4.84.0.0",
+            "packageVersionCandidate": "4.84.0",
+            "fullName": "Microsoft.Identity.Client.Extensions.Msal, Version=4.84.0.0, Culture=neutral, PublicKeyToken=0a613f4dd989e8ae",
+            "sha256": "10f799a3ff80ccffc2b0a9dc9534465ef68deb5de79340b63bf20c5a58e6bbda",
+            "assemblyLoadContext": "AzSharedAssemblyLoadContext",
+            "isCollectible": false,
+            "contributor": "Az.Accounts",
+            "selectedAsset": "upstream:Az.Accounts/5.5.2/lib/netstandard2.0/Microsoft.Identity.Client.Extensions.Msal.dll"
+          },
+          {
+            "assemblyName": "Microsoft.OData.Core",
+            "assemblyVersion": "7.6.4.0",
+            "packageVersionCandidate": "7.6.4",
+            "fullName": "Microsoft.OData.Core, Version=7.6.4.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35",
+            "sha256": "1eeaf431ad2fbb81cb052e1d59ee9d853668df14b435bd53b3bc0ab2dbbe430c",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "contributor": "Az.Storage",
+            "selectedAsset": "upstream:Az.Storage/9.7.2/Microsoft.OData.Core.dll"
+          },
+          {
+            "assemblyName": "Microsoft.OData.Edm",
+            "assemblyVersion": "7.6.4.0",
+            "packageVersionCandidate": "7.6.4",
+            "fullName": "Microsoft.OData.Edm, Version=7.6.4.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35",
+            "sha256": "92496b441126eaf6581d824641ad230f323e3f8f883100b2e8d3ea36aeef0b99",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "contributor": "Az.Storage",
+            "selectedAsset": "upstream:Az.Storage/9.7.2/Microsoft.OData.Edm.dll"
+          },
+          {
+            "assemblyName": "Microsoft.Spatial",
+            "assemblyVersion": "7.6.4.0",
+            "packageVersionCandidate": "7.6.4",
+            "fullName": "Microsoft.Spatial, Version=7.6.4.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35",
+            "sha256": "df1bf09898ecb028dfa5dfcaefe8ca4d75f3c57c8a98c1eeffe4b9b71a49436e",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "contributor": "Az.Storage",
+            "selectedAsset": "upstream:Az.Storage/9.7.2/Microsoft.Spatial.dll"
+          },
+          {
+            "assemblyName": "System.ClientModel",
+            "assemblyVersion": "1.13.0.0",
+            "packageVersionCandidate": "1.13.0",
+            "fullName": "System.ClientModel, Version=1.13.0.0, Culture=neutral, PublicKeyToken=92742159e12e44c8",
+            "sha256": "113a90cac8ff3cee04e52960f52897d5c0d2c40a1f05f3ae04289498c7bb7065",
+            "assemblyLoadContext": "AzSharedAssemblyLoadContext",
+            "isCollectible": false,
+            "contributor": "Az.Accounts",
+            "selectedAsset": "upstream:Az.Accounts/5.5.2/lib/netstandard2.0/System.ClientModel.dll"
+          }
+        ]
+      },
+      {
+        "name": "ExchangeOnlineManagement",
+        "umbrellaModule": "ExchangeOnlineManagement",
+        "constituentModule": "ExchangeOnlineManagement",
+        "version": "3.10.1",
+        "latestCompatibleVersion": "3.10.1",
+        "repository": "PSGallery",
+        "manifestPowerShellVersion": "3.0",
+        "compatiblePSEditions": [],
+        "deterministicProbeCommand": "Get-ConnectionInformation -ErrorAction SilentlyContinue | Out-Null",
+        "selectedAssets": []
+      },
+      {
+        "name": "Microsoft.Graph.Authentication",
+        "umbrellaModule": "Microsoft.Graph",
+        "constituentModule": "Microsoft.Graph.Authentication",
+        "version": "2.39.0",
+        "latestCompatibleVersion": "2.39.0",
+        "repository": "PSGallery",
+        "manifestPowerShellVersion": "5.1",
+        "compatiblePSEditions": [
+          "Core",
+          "Desktop"
+        ],
+        "deterministicProbeCommand": "Get-Command Connect-MgGraph | Out-Null",
+        "selectedAssets": [
+          {
+            "assemblyName": "Azure.Core",
+            "assemblyVersion": "1.51.1.0",
+            "packageVersionCandidate": "1.51.1",
+            "fullName": "Azure.Core, Version=1.51.1.0, Culture=neutral, PublicKeyToken=92742159e12e44c8",
+            "sha256": "f734878c493959695f189f6d52d72d9a4601152e1486950895b0628160784cb5",
+            "assemblyLoadContext": "msgraph-load-context",
+            "isCollectible": false,
+            "contributor": "Microsoft.Graph.Authentication",
+            "selectedAsset": "upstream:Microsoft.Graph.Authentication/2.39.0/Dependencies/Core/Azure.Core.dll"
+          },
+          {
+            "assemblyName": "System.ClientModel",
+            "assemblyVersion": "1.9.0.0",
+            "packageVersionCandidate": "1.9.0",
+            "fullName": "System.ClientModel, Version=1.9.0.0, Culture=neutral, PublicKeyToken=92742159e12e44c8",
+            "sha256": "0b49fd44c751de7a9fd7eb0a3a1104fbfb3bd5d8d616f4af5b3ca6c98a8dd614",
+            "assemblyLoadContext": "msgraph-load-context",
+            "isCollectible": false,
+            "contributor": "Microsoft.Graph.Authentication",
+            "selectedAsset": "upstream:Microsoft.Graph.Authentication/2.39.0/Dependencies/System.ClientModel.dll"
+          }
+        ]
+      },
+      {
+        "name": "MicrosoftTeams",
+        "umbrellaModule": "MicrosoftTeams",
+        "constituentModule": "MicrosoftTeams",
+        "version": "7.9.0",
+        "latestCompatibleVersion": "7.9.0",
+        "repository": "PSGallery",
+        "manifestPowerShellVersion": "5.1",
+        "compatiblePSEditions": [
+          "Core",
+          "Desktop"
+        ],
+        "deterministicProbeCommand": "Get-Team -ErrorAction SilentlyContinue | Select-Object -First 1 | Out-Null",
+        "selectedAssets": [
+          {
+            "assemblyName": "Microsoft.Identity.Client",
+            "assemblyVersion": "4.82.0.0",
+            "packageVersionCandidate": "4.82.0",
+            "fullName": "Microsoft.Identity.Client, Version=4.82.0.0, Culture=neutral, PublicKeyToken=0a613f4dd989e8ae",
+            "sha256": "35b5b56e0c0a1fef35e7865943cd8d8bec25a7facc225d01078ca6fd7b41b9a9",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "contributor": "MicrosoftTeams",
+            "selectedAsset": "upstream:MicrosoftTeams/7.9.0/netcoreapp3.1/Microsoft.Identity.Client.dll"
+          }
+        ]
+      }
+    ],
+    "conflictMatrix": {
+      "conflictSurface": [
+        "Azure.Core",
+        "System.ClientModel"
+      ],
+      "assemblies": [
+        {
+          "name": "Azure.Core",
+          "shippedBy": [
+            "Az.Accounts",
+            "Az.Resources",
+            "Az.Storage",
+            "Microsoft.Graph.Authentication"
+          ],
+          "versions": [
+            "1.51.1.0",
+            "1.57.0.0"
+          ],
+          "hashes": [
+            "7ec9feb7738364d2d3a7a598f7c0cff090fdff971086d45cfb35a67858c6f5c7",
+            "f734878c493959695f189f6d52d72d9a4601152e1486950895b0628160784cb5"
+          ],
+          "assemblyLoadContexts": [
+            "AzSharedAssemblyLoadContext",
+            "msgraph-load-context"
+          ],
+          "diverges": true,
+          "selections": [
+            {
+              "contributor": "Az.Accounts",
+              "version": "1.57.0.0",
+              "sha256": "7ec9feb7738364d2d3a7a598f7c0cff090fdff971086d45cfb35a67858c6f5c7",
+              "assemblyLoadContext": "AzSharedAssemblyLoadContext"
+            },
+            {
+              "contributor": "Az.Resources",
+              "version": "1.57.0.0",
+              "sha256": "7ec9feb7738364d2d3a7a598f7c0cff090fdff971086d45cfb35a67858c6f5c7",
+              "assemblyLoadContext": "AzSharedAssemblyLoadContext"
+            },
+            {
+              "contributor": "Az.Storage",
+              "version": "1.57.0.0",
+              "sha256": "7ec9feb7738364d2d3a7a598f7c0cff090fdff971086d45cfb35a67858c6f5c7",
+              "assemblyLoadContext": "AzSharedAssemblyLoadContext"
+            },
+            {
+              "contributor": "Microsoft.Graph.Authentication",
+              "version": "1.51.1.0",
+              "sha256": "f734878c493959695f189f6d52d72d9a4601152e1486950895b0628160784cb5",
+              "assemblyLoadContext": "msgraph-load-context"
+            }
+          ]
+        },
+        {
+          "name": "Microsoft.Extensions.DependencyInjection.Abstractions",
+          "shippedBy": [
+            "Az.Resources"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ],
+          "hashes": [
+            "63a83951b4d871f9487da5192bd1acb15f156c9cbd8d399e38a3b3574991f3ad"
+          ],
+          "assemblyLoadContexts": [
+            "Default"
+          ],
+          "diverges": false,
+          "selections": [
+            {
+              "contributor": "Az.Resources",
+              "version": "10.0.0.0",
+              "sha256": "63a83951b4d871f9487da5192bd1acb15f156c9cbd8d399e38a3b3574991f3ad",
+              "assemblyLoadContext": "Default"
+            }
+          ]
+        },
+        {
+          "name": "Microsoft.Identity.Client",
+          "shippedBy": [
+            "MicrosoftTeams"
+          ],
+          "versions": [
+            "4.82.0.0"
+          ],
+          "hashes": [
+            "35b5b56e0c0a1fef35e7865943cd8d8bec25a7facc225d01078ca6fd7b41b9a9"
+          ],
+          "assemblyLoadContexts": [
+            "Default"
+          ],
+          "diverges": false,
+          "selections": [
+            {
+              "contributor": "MicrosoftTeams",
+              "version": "4.82.0.0",
+              "sha256": "35b5b56e0c0a1fef35e7865943cd8d8bec25a7facc225d01078ca6fd7b41b9a9",
+              "assemblyLoadContext": "Default"
+            }
+          ]
+        },
+        {
+          "name": "Microsoft.Identity.Client.Extensions.Msal",
+          "shippedBy": [
+            "Az.Accounts",
+            "Az.Resources",
+            "Az.Storage"
+          ],
+          "versions": [
+            "4.84.0.0"
+          ],
+          "hashes": [
+            "10f799a3ff80ccffc2b0a9dc9534465ef68deb5de79340b63bf20c5a58e6bbda"
+          ],
+          "assemblyLoadContexts": [
+            "AzSharedAssemblyLoadContext"
+          ],
+          "diverges": false,
+          "selections": [
+            {
+              "contributor": "Az.Accounts",
+              "version": "4.84.0.0",
+              "sha256": "10f799a3ff80ccffc2b0a9dc9534465ef68deb5de79340b63bf20c5a58e6bbda",
+              "assemblyLoadContext": "AzSharedAssemblyLoadContext"
+            },
+            {
+              "contributor": "Az.Resources",
+              "version": "4.84.0.0",
+              "sha256": "10f799a3ff80ccffc2b0a9dc9534465ef68deb5de79340b63bf20c5a58e6bbda",
+              "assemblyLoadContext": "AzSharedAssemblyLoadContext"
+            },
+            {
+              "contributor": "Az.Storage",
+              "version": "4.84.0.0",
+              "sha256": "10f799a3ff80ccffc2b0a9dc9534465ef68deb5de79340b63bf20c5a58e6bbda",
+              "assemblyLoadContext": "AzSharedAssemblyLoadContext"
+            }
+          ]
+        },
+        {
+          "name": "Microsoft.OData.Core",
+          "shippedBy": [
+            "Az.Storage"
+          ],
+          "versions": [
+            "7.6.4.0"
+          ],
+          "hashes": [
+            "1eeaf431ad2fbb81cb052e1d59ee9d853668df14b435bd53b3bc0ab2dbbe430c"
+          ],
+          "assemblyLoadContexts": [
+            "Default"
+          ],
+          "diverges": false,
+          "selections": [
+            {
+              "contributor": "Az.Storage",
+              "version": "7.6.4.0",
+              "sha256": "1eeaf431ad2fbb81cb052e1d59ee9d853668df14b435bd53b3bc0ab2dbbe430c",
+              "assemblyLoadContext": "Default"
+            }
+          ]
+        },
+        {
+          "name": "Microsoft.OData.Edm",
+          "shippedBy": [
+            "Az.Storage"
+          ],
+          "versions": [
+            "7.6.4.0"
+          ],
+          "hashes": [
+            "92496b441126eaf6581d824641ad230f323e3f8f883100b2e8d3ea36aeef0b99"
+          ],
+          "assemblyLoadContexts": [
+            "Default"
+          ],
+          "diverges": false,
+          "selections": [
+            {
+              "contributor": "Az.Storage",
+              "version": "7.6.4.0",
+              "sha256": "92496b441126eaf6581d824641ad230f323e3f8f883100b2e8d3ea36aeef0b99",
+              "assemblyLoadContext": "Default"
+            }
+          ]
+        },
+        {
+          "name": "Microsoft.Spatial",
+          "shippedBy": [
+            "Az.Storage"
+          ],
+          "versions": [
+            "7.6.4.0"
+          ],
+          "hashes": [
+            "df1bf09898ecb028dfa5dfcaefe8ca4d75f3c57c8a98c1eeffe4b9b71a49436e"
+          ],
+          "assemblyLoadContexts": [
+            "Default"
+          ],
+          "diverges": false,
+          "selections": [
+            {
+              "contributor": "Az.Storage",
+              "version": "7.6.4.0",
+              "sha256": "df1bf09898ecb028dfa5dfcaefe8ca4d75f3c57c8a98c1eeffe4b9b71a49436e",
+              "assemblyLoadContext": "Default"
+            }
+          ]
+        },
+        {
+          "name": "System.ClientModel",
+          "shippedBy": [
+            "Az.Storage",
+            "Microsoft.Graph.Authentication"
+          ],
+          "versions": [
+            "1.13.0.0",
+            "1.9.0.0"
+          ],
+          "hashes": [
+            "0b49fd44c751de7a9fd7eb0a3a1104fbfb3bd5d8d616f4af5b3ca6c98a8dd614",
+            "113a90cac8ff3cee04e52960f52897d5c0d2c40a1f05f3ae04289498c7bb7065"
+          ],
+          "assemblyLoadContexts": [
+            "AzSharedAssemblyLoadContext",
+            "msgraph-load-context"
+          ],
+          "diverges": true,
+          "selections": [
+            {
+              "contributor": "Az.Storage",
+              "version": "1.13.0.0",
+              "sha256": "113a90cac8ff3cee04e52960f52897d5c0d2c40a1f05f3ae04289498c7bb7065",
+              "assemblyLoadContext": "AzSharedAssemblyLoadContext"
+            },
+            {
+              "contributor": "Microsoft.Graph.Authentication",
+              "version": "1.9.0.0",
+              "sha256": "0b49fd44c751de7a9fd7eb0a3a1104fbfb3bd5d8d616f4af5b3ca6c98a8dd614",
+              "assemblyLoadContext": "msgraph-load-context"
+            }
+          ]
+        }
+      ]
+    },
+    "scenarios": [
+      {
+        "scenarioId": "174-odata-azstorage-exo",
+        "orderIndex": 3,
+        "importOrder": [
+          "Az.Storage",
+          "ExchangeOnlineManagement"
+        ],
+        "importedModuleAssets": [
+          "upstream:Az.Storage/9.7.2/Az.Storage.psd1",
+          "upstream:ExchangeOnlineManagement/3.10.1/ExchangeOnlineManagement.psd1"
+        ],
+        "dllPicklePreloaded": false,
+        "expectedLimitation": true,
+        "expectedSuccess": null,
+        "outcomePolicy": "observe-known-limitation",
+        "probeCommands": [
+          "Get-Command Get-AzStorageAccount | Out-Null",
+          "Get-ConnectionInformation -ErrorAction SilentlyContinue | Out-Null"
+        ],
+        "success": true,
+        "outcomeMatchesExpectation": true,
+        "errorObserved": false,
+        "assemblies": [
+          {
+            "name": "Azure.Core",
+            "version": "1.57.0.0",
+            "fullName": "Azure.Core, Version=1.57.0.0, Culture=neutral, PublicKeyToken=92742159e12e44c8",
+            "sha256": "7ec9feb7738364d2d3a7a598f7c0cff090fdff971086d45cfb35a67858c6f5c7",
+            "assemblyLoadContext": "AzSharedAssemblyLoadContext",
+            "isCollectible": false,
+            "selectedAsset": "upstream:Az.Accounts/5.5.2/lib/netstandard2.0/Azure.Core.dll"
+          },
+          {
+            "name": "Microsoft.Identity.Client.Extensions.Msal",
+            "version": "4.84.0.0",
+            "fullName": "Microsoft.Identity.Client.Extensions.Msal, Version=4.84.0.0, Culture=neutral, PublicKeyToken=0a613f4dd989e8ae",
+            "sha256": "10f799a3ff80ccffc2b0a9dc9534465ef68deb5de79340b63bf20c5a58e6bbda",
+            "assemblyLoadContext": "AzSharedAssemblyLoadContext",
+            "isCollectible": false,
+            "selectedAsset": "upstream:Az.Accounts/5.5.2/lib/netstandard2.0/Microsoft.Identity.Client.Extensions.Msal.dll"
+          },
+          {
+            "name": "Microsoft.OData.Core",
+            "version": "7.6.4.0",
+            "fullName": "Microsoft.OData.Core, Version=7.6.4.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35",
+            "sha256": "1eeaf431ad2fbb81cb052e1d59ee9d853668df14b435bd53b3bc0ab2dbbe430c",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "selectedAsset": "upstream:Az.Storage/9.7.2/Microsoft.OData.Core.dll"
+          },
+          {
+            "name": "Microsoft.OData.Edm",
+            "version": "7.6.4.0",
+            "fullName": "Microsoft.OData.Edm, Version=7.6.4.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35",
+            "sha256": "92496b441126eaf6581d824641ad230f323e3f8f883100b2e8d3ea36aeef0b99",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "selectedAsset": "upstream:Az.Storage/9.7.2/Microsoft.OData.Edm.dll"
+          },
+          {
+            "name": "Microsoft.Spatial",
+            "version": "7.6.4.0",
+            "fullName": "Microsoft.Spatial, Version=7.6.4.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35",
+            "sha256": "df1bf09898ecb028dfa5dfcaefe8ca4d75f3c57c8a98c1eeffe4b9b71a49436e",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "selectedAsset": "upstream:Az.Storage/9.7.2/Microsoft.Spatial.dll"
+          },
+          {
+            "name": "System.ClientModel",
+            "version": "1.13.0.0",
+            "fullName": "System.ClientModel, Version=1.13.0.0, Culture=neutral, PublicKeyToken=92742159e12e44c8",
+            "sha256": "113a90cac8ff3cee04e52960f52897d5c0d2c40a1f05f3ae04289498c7bb7065",
+            "assemblyLoadContext": "AzSharedAssemblyLoadContext",
+            "isCollectible": false,
+            "selectedAsset": "upstream:Az.Accounts/5.5.2/lib/netstandard2.0/System.ClientModel.dll"
+          }
+        ]
+      },
+      {
+        "scenarioId": "174-odata-azstorage-exo",
+        "orderIndex": 3,
+        "importOrder": [
+          "Az.Storage",
+          "ExchangeOnlineManagement"
+        ],
+        "importedModuleAssets": [
+          "upstream:Az.Storage/9.7.2/Az.Storage.psd1",
+          "upstream:ExchangeOnlineManagement/3.10.1/ExchangeOnlineManagement.psd1"
+        ],
+        "dllPicklePreloaded": true,
+        "expectedLimitation": true,
+        "expectedSuccess": null,
+        "outcomePolicy": "observe-known-limitation",
+        "probeCommands": [
+          "Get-Command Get-AzStorageAccount | Out-Null",
+          "Get-ConnectionInformation -ErrorAction SilentlyContinue | Out-Null"
+        ],
+        "success": true,
+        "outcomeMatchesExpectation": true,
+        "errorObserved": false,
+        "assemblies": [
+          {
+            "name": "Azure.Core",
+            "version": "1.57.0.0",
+            "fullName": "Azure.Core, Version=1.57.0.0, Culture=neutral, PublicKeyToken=92742159e12e44c8",
+            "sha256": "7ec9feb7738364d2d3a7a598f7c0cff090fdff971086d45cfb35a67858c6f5c7",
+            "assemblyLoadContext": "AzSharedAssemblyLoadContext",
+            "isCollectible": false,
+            "selectedAsset": "upstream:Az.Accounts/5.5.2/lib/netstandard2.0/Azure.Core.dll"
+          },
+          {
+            "name": "Microsoft.Identity.Client",
+            "version": "4.84.1.0",
+            "fullName": "Microsoft.Identity.Client, Version=4.84.1.0, Culture=neutral, PublicKeyToken=0a613f4dd989e8ae",
+            "sha256": "32832e3ebbde8bf119987998f04741b878d3a399d17c285d4091a0c400c04ede",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "selectedAsset": "dllpickle:bin/net9.0/Microsoft.Identity.Client.dll"
+          },
+          {
+            "name": "Microsoft.Identity.Client.Broker",
+            "version": "4.84.1.0",
+            "fullName": "Microsoft.Identity.Client.Broker, Version=4.84.1.0, Culture=neutral, PublicKeyToken=0a613f4dd989e8ae",
+            "sha256": "3d7707aa40fc4f3fc033f7ab1f97ab5b9625f0a116d847ec4e8b3cab0c6fb614",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "selectedAsset": "dllpickle:bin/net9.0/Microsoft.Identity.Client.Broker.dll"
+          },
+          {
+            "name": "Microsoft.Identity.Client.Extensions.Msal",
+            "version": "4.84.1.0",
+            "fullName": "Microsoft.Identity.Client.Extensions.Msal, Version=4.84.1.0, Culture=neutral, PublicKeyToken=0a613f4dd989e8ae",
+            "sha256": "47d07553ea5759bcfdc14fc65f02ca873f781e08713df235b01ea95a8543adb3",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "selectedAsset": "dllpickle:bin/net9.0/Microsoft.Identity.Client.Extensions.Msal.dll"
+          },
+          {
+            "name": "Microsoft.Identity.Client.NativeInterop",
+            "version": "0.20.6.0",
+            "fullName": "Microsoft.Identity.Client.NativeInterop, Version=0.20.6.0, Culture=neutral, PublicKeyToken=0a613f4dd989e8ae",
+            "sha256": "ab9315edf6dcc91f26f20bce51e11b75d5bd4e673b44a3784cf3752555bbdbd3",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "selectedAsset": "dllpickle:bin/net9.0/Microsoft.Identity.Client.NativeInterop.dll"
+          },
+          {
+            "name": "Microsoft.IdentityModel.Abstractions",
+            "version": "8.18.0.0",
+            "fullName": "Microsoft.IdentityModel.Abstractions, Version=8.18.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35",
+            "sha256": "93a9d9734d735eeab95fdbf96814ae0805b859737f64f031eec9d073dbe8dade",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "selectedAsset": "dllpickle:bin/net9.0/Microsoft.IdentityModel.Abstractions.dll"
+          },
+          {
+            "name": "Microsoft.IdentityModel.JsonWebTokens",
+            "version": "8.18.0.0",
+            "fullName": "Microsoft.IdentityModel.JsonWebTokens, Version=8.18.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35",
+            "sha256": "43d776a30d70705669c36ae476d06b28428a9f7708bbc7c9533392c9a027b132",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "selectedAsset": "dllpickle:bin/net9.0/Microsoft.IdentityModel.JsonWebTokens.dll"
+          },
+          {
+            "name": "Microsoft.IdentityModel.Logging",
+            "version": "8.18.0.0",
+            "fullName": "Microsoft.IdentityModel.Logging, Version=8.18.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35",
+            "sha256": "e120f7147f5b55c4d8f549b7263cbd30ca141da013cd904892fa3cab4e8c15f2",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "selectedAsset": "dllpickle:bin/net9.0/Microsoft.IdentityModel.Logging.dll"
+          },
+          {
+            "name": "Microsoft.IdentityModel.Tokens",
+            "version": "8.18.0.0",
+            "fullName": "Microsoft.IdentityModel.Tokens, Version=8.18.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35",
+            "sha256": "761ca72eefb9acb33a1d96328d0484f31b3dc68f696743e130877d05d8d97bf2",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "selectedAsset": "dllpickle:bin/net9.0/Microsoft.IdentityModel.Tokens.dll"
+          },
+          {
+            "name": "Microsoft.OData.Core",
+            "version": "7.6.4.0",
+            "fullName": "Microsoft.OData.Core, Version=7.6.4.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35",
+            "sha256": "1eeaf431ad2fbb81cb052e1d59ee9d853668df14b435bd53b3bc0ab2dbbe430c",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "selectedAsset": "upstream:Az.Storage/9.7.2/Microsoft.OData.Core.dll"
+          },
+          {
+            "name": "Microsoft.OData.Edm",
+            "version": "7.6.4.0",
+            "fullName": "Microsoft.OData.Edm, Version=7.6.4.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35",
+            "sha256": "92496b441126eaf6581d824641ad230f323e3f8f883100b2e8d3ea36aeef0b99",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "selectedAsset": "upstream:Az.Storage/9.7.2/Microsoft.OData.Edm.dll"
+          },
+          {
+            "name": "Microsoft.Spatial",
+            "version": "7.6.4.0",
+            "fullName": "Microsoft.Spatial, Version=7.6.4.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35",
+            "sha256": "df1bf09898ecb028dfa5dfcaefe8ca4d75f3c57c8a98c1eeffe4b9b71a49436e",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "selectedAsset": "upstream:Az.Storage/9.7.2/Microsoft.Spatial.dll"
+          },
+          {
+            "name": "System.ClientModel",
+            "version": "1.13.0.0",
+            "fullName": "System.ClientModel, Version=1.13.0.0, Culture=neutral, PublicKeyToken=92742159e12e44c8",
+            "sha256": "113a90cac8ff3cee04e52960f52897d5c0d2c40a1f05f3ae04289498c7bb7065",
+            "assemblyLoadContext": "AzSharedAssemblyLoadContext",
+            "isCollectible": false,
+            "selectedAsset": "upstream:Az.Accounts/5.5.2/lib/netstandard2.0/System.ClientModel.dll"
+          },
+          {
+            "name": "System.IdentityModel.Tokens.Jwt",
+            "version": "8.18.0.0",
+            "fullName": "System.IdentityModel.Tokens.Jwt, Version=8.18.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35",
+            "sha256": "bdab1d4e9806c4b2ad6162647ec29b9e909247936d785ccbbdd0196ffbf169bf",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "selectedAsset": "dllpickle:bin/net9.0/System.IdentityModel.Tokens.Jwt.dll"
+          }
+        ]
+      },
+      {
+        "scenarioId": "174-odata-azstorage-exo",
+        "orderIndex": 4,
+        "importOrder": [
+          "ExchangeOnlineManagement",
+          "Az.Storage"
+        ],
+        "importedModuleAssets": [
+          "upstream:ExchangeOnlineManagement/3.10.1/ExchangeOnlineManagement.psd1",
+          "upstream:Az.Storage/9.7.2/Az.Storage.psd1"
+        ],
+        "dllPicklePreloaded": false,
+        "expectedLimitation": true,
+        "expectedSuccess": null,
+        "outcomePolicy": "observe-known-limitation",
+        "probeCommands": [
+          "Get-ConnectionInformation -ErrorAction SilentlyContinue | Out-Null",
+          "Get-Command Get-AzStorageAccount | Out-Null"
+        ],
+        "success": true,
+        "outcomeMatchesExpectation": true,
+        "errorObserved": false,
+        "assemblies": [
+          {
+            "name": "Azure.Core",
+            "version": "1.57.0.0",
+            "fullName": "Azure.Core, Version=1.57.0.0, Culture=neutral, PublicKeyToken=92742159e12e44c8",
+            "sha256": "7ec9feb7738364d2d3a7a598f7c0cff090fdff971086d45cfb35a67858c6f5c7",
+            "assemblyLoadContext": "AzSharedAssemblyLoadContext",
+            "isCollectible": false,
+            "selectedAsset": "upstream:Az.Accounts/5.5.2/lib/netstandard2.0/Azure.Core.dll"
+          },
+          {
+            "name": "Microsoft.Identity.Client.Extensions.Msal",
+            "version": "4.84.0.0",
+            "fullName": "Microsoft.Identity.Client.Extensions.Msal, Version=4.84.0.0, Culture=neutral, PublicKeyToken=0a613f4dd989e8ae",
+            "sha256": "10f799a3ff80ccffc2b0a9dc9534465ef68deb5de79340b63bf20c5a58e6bbda",
+            "assemblyLoadContext": "AzSharedAssemblyLoadContext",
+            "isCollectible": false,
+            "selectedAsset": "upstream:Az.Accounts/5.5.2/lib/netstandard2.0/Microsoft.Identity.Client.Extensions.Msal.dll"
+          },
+          {
+            "name": "Microsoft.OData.Core",
+            "version": "7.6.4.0",
+            "fullName": "Microsoft.OData.Core, Version=7.6.4.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35",
+            "sha256": "1eeaf431ad2fbb81cb052e1d59ee9d853668df14b435bd53b3bc0ab2dbbe430c",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "selectedAsset": "upstream:Az.Storage/9.7.2/Microsoft.OData.Core.dll"
+          },
+          {
+            "name": "Microsoft.OData.Edm",
+            "version": "7.6.4.0",
+            "fullName": "Microsoft.OData.Edm, Version=7.6.4.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35",
+            "sha256": "92496b441126eaf6581d824641ad230f323e3f8f883100b2e8d3ea36aeef0b99",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "selectedAsset": "upstream:Az.Storage/9.7.2/Microsoft.OData.Edm.dll"
+          },
+          {
+            "name": "Microsoft.Spatial",
+            "version": "7.6.4.0",
+            "fullName": "Microsoft.Spatial, Version=7.6.4.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35",
+            "sha256": "df1bf09898ecb028dfa5dfcaefe8ca4d75f3c57c8a98c1eeffe4b9b71a49436e",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "selectedAsset": "upstream:Az.Storage/9.7.2/Microsoft.Spatial.dll"
+          },
+          {
+            "name": "System.ClientModel",
+            "version": "1.13.0.0",
+            "fullName": "System.ClientModel, Version=1.13.0.0, Culture=neutral, PublicKeyToken=92742159e12e44c8",
+            "sha256": "113a90cac8ff3cee04e52960f52897d5c0d2c40a1f05f3ae04289498c7bb7065",
+            "assemblyLoadContext": "AzSharedAssemblyLoadContext",
+            "isCollectible": false,
+            "selectedAsset": "upstream:Az.Accounts/5.5.2/lib/netstandard2.0/System.ClientModel.dll"
+          }
+        ]
+      },
+      {
+        "scenarioId": "174-odata-azstorage-exo",
+        "orderIndex": 4,
+        "importOrder": [
+          "ExchangeOnlineManagement",
+          "Az.Storage"
+        ],
+        "importedModuleAssets": [
+          "upstream:ExchangeOnlineManagement/3.10.1/ExchangeOnlineManagement.psd1",
+          "upstream:Az.Storage/9.7.2/Az.Storage.psd1"
+        ],
+        "dllPicklePreloaded": true,
+        "expectedLimitation": true,
+        "expectedSuccess": null,
+        "outcomePolicy": "observe-known-limitation",
+        "probeCommands": [
+          "Get-ConnectionInformation -ErrorAction SilentlyContinue | Out-Null",
+          "Get-Command Get-AzStorageAccount | Out-Null"
+        ],
+        "success": true,
+        "outcomeMatchesExpectation": true,
+        "errorObserved": false,
+        "assemblies": [
+          {
+            "name": "Azure.Core",
+            "version": "1.57.0.0",
+            "fullName": "Azure.Core, Version=1.57.0.0, Culture=neutral, PublicKeyToken=92742159e12e44c8",
+            "sha256": "7ec9feb7738364d2d3a7a598f7c0cff090fdff971086d45cfb35a67858c6f5c7",
+            "assemblyLoadContext": "AzSharedAssemblyLoadContext",
+            "isCollectible": false,
+            "selectedAsset": "upstream:Az.Accounts/5.5.2/lib/netstandard2.0/Azure.Core.dll"
+          },
+          {
+            "name": "Microsoft.Identity.Client",
+            "version": "4.84.1.0",
+            "fullName": "Microsoft.Identity.Client, Version=4.84.1.0, Culture=neutral, PublicKeyToken=0a613f4dd989e8ae",
+            "sha256": "32832e3ebbde8bf119987998f04741b878d3a399d17c285d4091a0c400c04ede",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "selectedAsset": "dllpickle:bin/net9.0/Microsoft.Identity.Client.dll"
+          },
+          {
+            "name": "Microsoft.Identity.Client.Broker",
+            "version": "4.84.1.0",
+            "fullName": "Microsoft.Identity.Client.Broker, Version=4.84.1.0, Culture=neutral, PublicKeyToken=0a613f4dd989e8ae",
+            "sha256": "3d7707aa40fc4f3fc033f7ab1f97ab5b9625f0a116d847ec4e8b3cab0c6fb614",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "selectedAsset": "dllpickle:bin/net9.0/Microsoft.Identity.Client.Broker.dll"
+          },
+          {
+            "name": "Microsoft.Identity.Client.Extensions.Msal",
+            "version": "4.84.1.0",
+            "fullName": "Microsoft.Identity.Client.Extensions.Msal, Version=4.84.1.0, Culture=neutral, PublicKeyToken=0a613f4dd989e8ae",
+            "sha256": "47d07553ea5759bcfdc14fc65f02ca873f781e08713df235b01ea95a8543adb3",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "selectedAsset": "dllpickle:bin/net9.0/Microsoft.Identity.Client.Extensions.Msal.dll"
+          },
+          {
+            "name": "Microsoft.Identity.Client.NativeInterop",
+            "version": "0.20.6.0",
+            "fullName": "Microsoft.Identity.Client.NativeInterop, Version=0.20.6.0, Culture=neutral, PublicKeyToken=0a613f4dd989e8ae",
+            "sha256": "ab9315edf6dcc91f26f20bce51e11b75d5bd4e673b44a3784cf3752555bbdbd3",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "selectedAsset": "dllpickle:bin/net9.0/Microsoft.Identity.Client.NativeInterop.dll"
+          },
+          {
+            "name": "Microsoft.IdentityModel.Abstractions",
+            "version": "8.18.0.0",
+            "fullName": "Microsoft.IdentityModel.Abstractions, Version=8.18.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35",
+            "sha256": "93a9d9734d735eeab95fdbf96814ae0805b859737f64f031eec9d073dbe8dade",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "selectedAsset": "dllpickle:bin/net9.0/Microsoft.IdentityModel.Abstractions.dll"
+          },
+          {
+            "name": "Microsoft.IdentityModel.JsonWebTokens",
+            "version": "8.18.0.0",
+            "fullName": "Microsoft.IdentityModel.JsonWebTokens, Version=8.18.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35",
+            "sha256": "43d776a30d70705669c36ae476d06b28428a9f7708bbc7c9533392c9a027b132",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "selectedAsset": "dllpickle:bin/net9.0/Microsoft.IdentityModel.JsonWebTokens.dll"
+          },
+          {
+            "name": "Microsoft.IdentityModel.Logging",
+            "version": "8.18.0.0",
+            "fullName": "Microsoft.IdentityModel.Logging, Version=8.18.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35",
+            "sha256": "e120f7147f5b55c4d8f549b7263cbd30ca141da013cd904892fa3cab4e8c15f2",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "selectedAsset": "dllpickle:bin/net9.0/Microsoft.IdentityModel.Logging.dll"
+          },
+          {
+            "name": "Microsoft.IdentityModel.Tokens",
+            "version": "8.18.0.0",
+            "fullName": "Microsoft.IdentityModel.Tokens, Version=8.18.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35",
+            "sha256": "761ca72eefb9acb33a1d96328d0484f31b3dc68f696743e130877d05d8d97bf2",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "selectedAsset": "dllpickle:bin/net9.0/Microsoft.IdentityModel.Tokens.dll"
+          },
+          {
+            "name": "Microsoft.OData.Core",
+            "version": "7.6.4.0",
+            "fullName": "Microsoft.OData.Core, Version=7.6.4.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35",
+            "sha256": "1eeaf431ad2fbb81cb052e1d59ee9d853668df14b435bd53b3bc0ab2dbbe430c",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "selectedAsset": "upstream:Az.Storage/9.7.2/Microsoft.OData.Core.dll"
+          },
+          {
+            "name": "Microsoft.OData.Edm",
+            "version": "7.6.4.0",
+            "fullName": "Microsoft.OData.Edm, Version=7.6.4.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35",
+            "sha256": "92496b441126eaf6581d824641ad230f323e3f8f883100b2e8d3ea36aeef0b99",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "selectedAsset": "upstream:Az.Storage/9.7.2/Microsoft.OData.Edm.dll"
+          },
+          {
+            "name": "Microsoft.Spatial",
+            "version": "7.6.4.0",
+            "fullName": "Microsoft.Spatial, Version=7.6.4.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35",
+            "sha256": "df1bf09898ecb028dfa5dfcaefe8ca4d75f3c57c8a98c1eeffe4b9b71a49436e",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "selectedAsset": "upstream:Az.Storage/9.7.2/Microsoft.Spatial.dll"
+          },
+          {
+            "name": "System.ClientModel",
+            "version": "1.13.0.0",
+            "fullName": "System.ClientModel, Version=1.13.0.0, Culture=neutral, PublicKeyToken=92742159e12e44c8",
+            "sha256": "113a90cac8ff3cee04e52960f52897d5c0d2c40a1f05f3ae04289498c7bb7065",
+            "assemblyLoadContext": "AzSharedAssemblyLoadContext",
+            "isCollectible": false,
+            "selectedAsset": "upstream:Az.Accounts/5.5.2/lib/netstandard2.0/System.ClientModel.dll"
+          },
+          {
+            "name": "System.IdentityModel.Tokens.Jwt",
+            "version": "8.18.0.0",
+            "fullName": "System.IdentityModel.Tokens.Jwt, Version=8.18.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35",
+            "sha256": "bdab1d4e9806c4b2ad6162647ec29b9e909247936d785ccbbdd0196ffbf169bf",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "selectedAsset": "dllpickle:bin/net9.0/System.IdentityModel.Tokens.Jwt.dll"
+          }
+        ]
+      },
+      {
+        "scenarioId": "profile-target-scenario-01",
+        "orderIndex": 1,
+        "importOrder": [
+          "ExchangeOnlineManagement",
+          "MicrosoftTeams",
+          "Microsoft.Graph.Authentication",
+          "Az.Accounts"
+        ],
+        "importedModuleAssets": [
+          "upstream:ExchangeOnlineManagement/3.10.1/ExchangeOnlineManagement.psd1",
+          "upstream:MicrosoftTeams/7.9.0/MicrosoftTeams.psd1",
+          "upstream:Microsoft.Graph.Authentication/2.39.0/Microsoft.Graph.Authentication.psd1",
+          "upstream:Az.Accounts/5.5.2/Az.Accounts.psd1"
+        ],
+        "dllPicklePreloaded": false,
+        "expectedLimitation": false,
+        "expectedSuccess": true,
+        "outcomePolicy": "must-succeed",
+        "probeCommands": [
+          "Get-ConnectionInformation -ErrorAction SilentlyContinue | Out-Null",
+          "Get-Team -ErrorAction SilentlyContinue | Select-Object -First 1 | Out-Null",
+          "Get-Command Connect-MgGraph | Out-Null",
+          "Get-AzContext -ErrorAction SilentlyContinue | Out-Null"
+        ],
+        "success": true,
+        "outcomeMatchesExpectation": true,
+        "errorObserved": false,
+        "assemblies": [
+          {
+            "name": "Azure.Core",
+            "version": "1.51.1.0",
+            "fullName": "Azure.Core, Version=1.51.1.0, Culture=neutral, PublicKeyToken=92742159e12e44c8",
+            "sha256": "f734878c493959695f189f6d52d72d9a4601152e1486950895b0628160784cb5",
+            "assemblyLoadContext": "msgraph-load-context",
+            "isCollectible": false,
+            "selectedAsset": "upstream:Microsoft.Graph.Authentication/2.39.0/Dependencies/Core/Azure.Core.dll"
+          },
+          {
+            "name": "Azure.Core",
+            "version": "1.57.0.0",
+            "fullName": "Azure.Core, Version=1.57.0.0, Culture=neutral, PublicKeyToken=92742159e12e44c8",
+            "sha256": "7ec9feb7738364d2d3a7a598f7c0cff090fdff971086d45cfb35a67858c6f5c7",
+            "assemblyLoadContext": "AzSharedAssemblyLoadContext",
+            "isCollectible": false,
+            "selectedAsset": "upstream:Az.Accounts/5.5.2/lib/netstandard2.0/Azure.Core.dll"
+          },
+          {
+            "name": "Microsoft.Identity.Client",
+            "version": "4.82.0.0",
+            "fullName": "Microsoft.Identity.Client, Version=4.82.0.0, Culture=neutral, PublicKeyToken=0a613f4dd989e8ae",
+            "sha256": "35b5b56e0c0a1fef35e7865943cd8d8bec25a7facc225d01078ca6fd7b41b9a9",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "selectedAsset": "upstream:MicrosoftTeams/7.9.0/netcoreapp3.1/Microsoft.Identity.Client.dll"
+          },
+          {
+            "name": "Microsoft.Identity.Client.Extensions.Msal",
+            "version": "4.84.0.0",
+            "fullName": "Microsoft.Identity.Client.Extensions.Msal, Version=4.84.0.0, Culture=neutral, PublicKeyToken=0a613f4dd989e8ae",
+            "sha256": "10f799a3ff80ccffc2b0a9dc9534465ef68deb5de79340b63bf20c5a58e6bbda",
+            "assemblyLoadContext": "AzSharedAssemblyLoadContext",
+            "isCollectible": false,
+            "selectedAsset": "upstream:Az.Accounts/5.5.2/lib/netstandard2.0/Microsoft.Identity.Client.Extensions.Msal.dll"
+          },
+          {
+            "name": "System.ClientModel",
+            "version": "1.9.0.0",
+            "fullName": "System.ClientModel, Version=1.9.0.0, Culture=neutral, PublicKeyToken=92742159e12e44c8",
+            "sha256": "0b49fd44c751de7a9fd7eb0a3a1104fbfb3bd5d8d616f4af5b3ca6c98a8dd614",
+            "assemblyLoadContext": "msgraph-load-context",
+            "isCollectible": false,
+            "selectedAsset": "upstream:Microsoft.Graph.Authentication/2.39.0/Dependencies/System.ClientModel.dll"
+          }
+        ]
+      },
+      {
+        "scenarioId": "profile-target-scenario-01",
+        "orderIndex": 1,
+        "importOrder": [
+          "ExchangeOnlineManagement",
+          "MicrosoftTeams",
+          "Microsoft.Graph.Authentication",
+          "Az.Accounts"
+        ],
+        "importedModuleAssets": [
+          "upstream:ExchangeOnlineManagement/3.10.1/ExchangeOnlineManagement.psd1",
+          "upstream:MicrosoftTeams/7.9.0/MicrosoftTeams.psd1",
+          "upstream:Microsoft.Graph.Authentication/2.39.0/Microsoft.Graph.Authentication.psd1",
+          "upstream:Az.Accounts/5.5.2/Az.Accounts.psd1"
+        ],
+        "dllPicklePreloaded": true,
+        "expectedLimitation": false,
+        "expectedSuccess": true,
+        "outcomePolicy": "must-succeed",
+        "probeCommands": [
+          "Get-ConnectionInformation -ErrorAction SilentlyContinue | Out-Null",
+          "Get-Team -ErrorAction SilentlyContinue | Select-Object -First 1 | Out-Null",
+          "Get-Command Connect-MgGraph | Out-Null",
+          "Get-AzContext -ErrorAction SilentlyContinue | Out-Null"
+        ],
+        "success": true,
+        "outcomeMatchesExpectation": true,
+        "errorObserved": false,
+        "assemblies": [
+          {
+            "name": "Azure.Core",
+            "version": "1.51.1.0",
+            "fullName": "Azure.Core, Version=1.51.1.0, Culture=neutral, PublicKeyToken=92742159e12e44c8",
+            "sha256": "f734878c493959695f189f6d52d72d9a4601152e1486950895b0628160784cb5",
+            "assemblyLoadContext": "msgraph-load-context",
+            "isCollectible": false,
+            "selectedAsset": "upstream:Microsoft.Graph.Authentication/2.39.0/Dependencies/Core/Azure.Core.dll"
+          },
+          {
+            "name": "Azure.Core",
+            "version": "1.57.0.0",
+            "fullName": "Azure.Core, Version=1.57.0.0, Culture=neutral, PublicKeyToken=92742159e12e44c8",
+            "sha256": "7ec9feb7738364d2d3a7a598f7c0cff090fdff971086d45cfb35a67858c6f5c7",
+            "assemblyLoadContext": "AzSharedAssemblyLoadContext",
+            "isCollectible": false,
+            "selectedAsset": "upstream:Az.Accounts/5.5.2/lib/netstandard2.0/Azure.Core.dll"
+          },
+          {
+            "name": "Microsoft.Identity.Client",
+            "version": "4.84.1.0",
+            "fullName": "Microsoft.Identity.Client, Version=4.84.1.0, Culture=neutral, PublicKeyToken=0a613f4dd989e8ae",
+            "sha256": "32832e3ebbde8bf119987998f04741b878d3a399d17c285d4091a0c400c04ede",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "selectedAsset": "dllpickle:bin/net9.0/Microsoft.Identity.Client.dll"
+          },
+          {
+            "name": "Microsoft.Identity.Client.Broker",
+            "version": "4.84.1.0",
+            "fullName": "Microsoft.Identity.Client.Broker, Version=4.84.1.0, Culture=neutral, PublicKeyToken=0a613f4dd989e8ae",
+            "sha256": "3d7707aa40fc4f3fc033f7ab1f97ab5b9625f0a116d847ec4e8b3cab0c6fb614",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "selectedAsset": "dllpickle:bin/net9.0/Microsoft.Identity.Client.Broker.dll"
+          },
+          {
+            "name": "Microsoft.Identity.Client.Extensions.Msal",
+            "version": "4.84.1.0",
+            "fullName": "Microsoft.Identity.Client.Extensions.Msal, Version=4.84.1.0, Culture=neutral, PublicKeyToken=0a613f4dd989e8ae",
+            "sha256": "47d07553ea5759bcfdc14fc65f02ca873f781e08713df235b01ea95a8543adb3",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "selectedAsset": "dllpickle:bin/net9.0/Microsoft.Identity.Client.Extensions.Msal.dll"
+          },
+          {
+            "name": "Microsoft.Identity.Client.NativeInterop",
+            "version": "0.20.6.0",
+            "fullName": "Microsoft.Identity.Client.NativeInterop, Version=0.20.6.0, Culture=neutral, PublicKeyToken=0a613f4dd989e8ae",
+            "sha256": "ab9315edf6dcc91f26f20bce51e11b75d5bd4e673b44a3784cf3752555bbdbd3",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "selectedAsset": "dllpickle:bin/net9.0/Microsoft.Identity.Client.NativeInterop.dll"
+          },
+          {
+            "name": "Microsoft.IdentityModel.Abstractions",
+            "version": "8.18.0.0",
+            "fullName": "Microsoft.IdentityModel.Abstractions, Version=8.18.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35",
+            "sha256": "93a9d9734d735eeab95fdbf96814ae0805b859737f64f031eec9d073dbe8dade",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "selectedAsset": "dllpickle:bin/net9.0/Microsoft.IdentityModel.Abstractions.dll"
+          },
+          {
+            "name": "Microsoft.IdentityModel.JsonWebTokens",
+            "version": "8.18.0.0",
+            "fullName": "Microsoft.IdentityModel.JsonWebTokens, Version=8.18.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35",
+            "sha256": "43d776a30d70705669c36ae476d06b28428a9f7708bbc7c9533392c9a027b132",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "selectedAsset": "dllpickle:bin/net9.0/Microsoft.IdentityModel.JsonWebTokens.dll"
+          },
+          {
+            "name": "Microsoft.IdentityModel.Logging",
+            "version": "8.18.0.0",
+            "fullName": "Microsoft.IdentityModel.Logging, Version=8.18.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35",
+            "sha256": "e120f7147f5b55c4d8f549b7263cbd30ca141da013cd904892fa3cab4e8c15f2",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "selectedAsset": "dllpickle:bin/net9.0/Microsoft.IdentityModel.Logging.dll"
+          },
+          {
+            "name": "Microsoft.IdentityModel.Tokens",
+            "version": "8.18.0.0",
+            "fullName": "Microsoft.IdentityModel.Tokens, Version=8.18.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35",
+            "sha256": "761ca72eefb9acb33a1d96328d0484f31b3dc68f696743e130877d05d8d97bf2",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "selectedAsset": "dllpickle:bin/net9.0/Microsoft.IdentityModel.Tokens.dll"
+          },
+          {
+            "name": "System.ClientModel",
+            "version": "1.9.0.0",
+            "fullName": "System.ClientModel, Version=1.9.0.0, Culture=neutral, PublicKeyToken=92742159e12e44c8",
+            "sha256": "0b49fd44c751de7a9fd7eb0a3a1104fbfb3bd5d8d616f4af5b3ca6c98a8dd614",
+            "assemblyLoadContext": "msgraph-load-context",
+            "isCollectible": false,
+            "selectedAsset": "upstream:Microsoft.Graph.Authentication/2.39.0/Dependencies/System.ClientModel.dll"
+          },
+          {
+            "name": "System.IdentityModel.Tokens.Jwt",
+            "version": "8.18.0.0",
+            "fullName": "System.IdentityModel.Tokens.Jwt, Version=8.18.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35",
+            "sha256": "bdab1d4e9806c4b2ad6162647ec29b9e909247936d785ccbbdd0196ffbf169bf",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "selectedAsset": "dllpickle:bin/net9.0/System.IdentityModel.Tokens.Jwt.dll"
+          }
+        ]
+      },
+      {
+        "scenarioId": "profile-target-scenario-02",
+        "orderIndex": 2,
+        "importOrder": [
+          "Az.Accounts",
+          "Microsoft.Graph.Authentication",
+          "ExchangeOnlineManagement",
+          "MicrosoftTeams"
+        ],
+        "importedModuleAssets": [
+          "upstream:Az.Accounts/5.5.2/Az.Accounts.psd1",
+          "upstream:Microsoft.Graph.Authentication/2.39.0/Microsoft.Graph.Authentication.psd1",
+          "upstream:ExchangeOnlineManagement/3.10.1/ExchangeOnlineManagement.psd1",
+          "upstream:MicrosoftTeams/7.9.0/MicrosoftTeams.psd1"
+        ],
+        "dllPicklePreloaded": false,
+        "expectedLimitation": false,
+        "expectedSuccess": true,
+        "outcomePolicy": "must-succeed",
+        "probeCommands": [
+          "Get-AzContext -ErrorAction SilentlyContinue | Out-Null",
+          "Get-Command Connect-MgGraph | Out-Null",
+          "Get-ConnectionInformation -ErrorAction SilentlyContinue | Out-Null",
+          "Get-Team -ErrorAction SilentlyContinue | Select-Object -First 1 | Out-Null"
+        ],
+        "success": true,
+        "outcomeMatchesExpectation": true,
+        "errorObserved": false,
+        "assemblies": [
+          {
+            "name": "Azure.Core",
+            "version": "1.57.0.0",
+            "fullName": "Azure.Core, Version=1.57.0.0, Culture=neutral, PublicKeyToken=92742159e12e44c8",
+            "sha256": "7ec9feb7738364d2d3a7a598f7c0cff090fdff971086d45cfb35a67858c6f5c7",
+            "assemblyLoadContext": "AzSharedAssemblyLoadContext",
+            "isCollectible": false,
+            "selectedAsset": "upstream:Az.Accounts/5.5.2/lib/netstandard2.0/Azure.Core.dll"
+          },
+          {
+            "name": "Microsoft.Identity.Client",
+            "version": "4.84.0.0",
+            "fullName": "Microsoft.Identity.Client, Version=4.84.0.0, Culture=neutral, PublicKeyToken=0a613f4dd989e8ae",
+            "sha256": "d18da88bce62a54fa71b3cdf9dfa4b4dfc9759521e872721535d5d5ff63a7651",
+            "assemblyLoadContext": "AzSharedAssemblyLoadContext",
+            "isCollectible": false,
+            "selectedAsset": "upstream:Az.Accounts/5.5.2/lib/netstandard2.0/Microsoft.Identity.Client.dll"
+          },
+          {
+            "name": "Microsoft.Identity.Client.Extensions.Msal",
+            "version": "4.84.0.0",
+            "fullName": "Microsoft.Identity.Client.Extensions.Msal, Version=4.84.0.0, Culture=neutral, PublicKeyToken=0a613f4dd989e8ae",
+            "sha256": "10f799a3ff80ccffc2b0a9dc9534465ef68deb5de79340b63bf20c5a58e6bbda",
+            "assemblyLoadContext": "AzSharedAssemblyLoadContext",
+            "isCollectible": false,
+            "selectedAsset": "upstream:Az.Accounts/5.5.2/lib/netstandard2.0/Microsoft.Identity.Client.Extensions.Msal.dll"
+          },
+          {
+            "name": "System.ClientModel",
+            "version": "1.13.0.0",
+            "fullName": "System.ClientModel, Version=1.13.0.0, Culture=neutral, PublicKeyToken=92742159e12e44c8",
+            "sha256": "113a90cac8ff3cee04e52960f52897d5c0d2c40a1f05f3ae04289498c7bb7065",
+            "assemblyLoadContext": "AzSharedAssemblyLoadContext",
+            "isCollectible": false,
+            "selectedAsset": "upstream:Az.Accounts/5.5.2/lib/netstandard2.0/System.ClientModel.dll"
+          }
+        ]
+      },
+      {
+        "scenarioId": "profile-target-scenario-02",
+        "orderIndex": 2,
+        "importOrder": [
+          "Az.Accounts",
+          "Microsoft.Graph.Authentication",
+          "ExchangeOnlineManagement",
+          "MicrosoftTeams"
+        ],
+        "importedModuleAssets": [
+          "upstream:Az.Accounts/5.5.2/Az.Accounts.psd1",
+          "upstream:Microsoft.Graph.Authentication/2.39.0/Microsoft.Graph.Authentication.psd1",
+          "upstream:ExchangeOnlineManagement/3.10.1/ExchangeOnlineManagement.psd1",
+          "upstream:MicrosoftTeams/7.9.0/MicrosoftTeams.psd1"
+        ],
+        "dllPicklePreloaded": true,
+        "expectedLimitation": false,
+        "expectedSuccess": true,
+        "outcomePolicy": "must-succeed",
+        "probeCommands": [
+          "Get-AzContext -ErrorAction SilentlyContinue | Out-Null",
+          "Get-Command Connect-MgGraph | Out-Null",
+          "Get-ConnectionInformation -ErrorAction SilentlyContinue | Out-Null",
+          "Get-Team -ErrorAction SilentlyContinue | Select-Object -First 1 | Out-Null"
+        ],
+        "success": true,
+        "outcomeMatchesExpectation": true,
+        "errorObserved": false,
+        "assemblies": [
+          {
+            "name": "Azure.Core",
+            "version": "1.57.0.0",
+            "fullName": "Azure.Core, Version=1.57.0.0, Culture=neutral, PublicKeyToken=92742159e12e44c8",
+            "sha256": "7ec9feb7738364d2d3a7a598f7c0cff090fdff971086d45cfb35a67858c6f5c7",
+            "assemblyLoadContext": "AzSharedAssemblyLoadContext",
+            "isCollectible": false,
+            "selectedAsset": "upstream:Az.Accounts/5.5.2/lib/netstandard2.0/Azure.Core.dll"
+          },
+          {
+            "name": "Microsoft.Identity.Client",
+            "version": "4.84.1.0",
+            "fullName": "Microsoft.Identity.Client, Version=4.84.1.0, Culture=neutral, PublicKeyToken=0a613f4dd989e8ae",
+            "sha256": "32832e3ebbde8bf119987998f04741b878d3a399d17c285d4091a0c400c04ede",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "selectedAsset": "dllpickle:bin/net9.0/Microsoft.Identity.Client.dll"
+          },
+          {
+            "name": "Microsoft.Identity.Client.Broker",
+            "version": "4.84.1.0",
+            "fullName": "Microsoft.Identity.Client.Broker, Version=4.84.1.0, Culture=neutral, PublicKeyToken=0a613f4dd989e8ae",
+            "sha256": "3d7707aa40fc4f3fc033f7ab1f97ab5b9625f0a116d847ec4e8b3cab0c6fb614",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "selectedAsset": "dllpickle:bin/net9.0/Microsoft.Identity.Client.Broker.dll"
+          },
+          {
+            "name": "Microsoft.Identity.Client.Extensions.Msal",
+            "version": "4.84.1.0",
+            "fullName": "Microsoft.Identity.Client.Extensions.Msal, Version=4.84.1.0, Culture=neutral, PublicKeyToken=0a613f4dd989e8ae",
+            "sha256": "47d07553ea5759bcfdc14fc65f02ca873f781e08713df235b01ea95a8543adb3",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "selectedAsset": "dllpickle:bin/net9.0/Microsoft.Identity.Client.Extensions.Msal.dll"
+          },
+          {
+            "name": "Microsoft.Identity.Client.NativeInterop",
+            "version": "0.20.6.0",
+            "fullName": "Microsoft.Identity.Client.NativeInterop, Version=0.20.6.0, Culture=neutral, PublicKeyToken=0a613f4dd989e8ae",
+            "sha256": "ab9315edf6dcc91f26f20bce51e11b75d5bd4e673b44a3784cf3752555bbdbd3",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "selectedAsset": "dllpickle:bin/net9.0/Microsoft.Identity.Client.NativeInterop.dll"
+          },
+          {
+            "name": "Microsoft.IdentityModel.Abstractions",
+            "version": "8.18.0.0",
+            "fullName": "Microsoft.IdentityModel.Abstractions, Version=8.18.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35",
+            "sha256": "93a9d9734d735eeab95fdbf96814ae0805b859737f64f031eec9d073dbe8dade",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "selectedAsset": "dllpickle:bin/net9.0/Microsoft.IdentityModel.Abstractions.dll"
+          },
+          {
+            "name": "Microsoft.IdentityModel.JsonWebTokens",
+            "version": "8.18.0.0",
+            "fullName": "Microsoft.IdentityModel.JsonWebTokens, Version=8.18.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35",
+            "sha256": "43d776a30d70705669c36ae476d06b28428a9f7708bbc7c9533392c9a027b132",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "selectedAsset": "dllpickle:bin/net9.0/Microsoft.IdentityModel.JsonWebTokens.dll"
+          },
+          {
+            "name": "Microsoft.IdentityModel.Logging",
+            "version": "8.18.0.0",
+            "fullName": "Microsoft.IdentityModel.Logging, Version=8.18.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35",
+            "sha256": "e120f7147f5b55c4d8f549b7263cbd30ca141da013cd904892fa3cab4e8c15f2",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "selectedAsset": "dllpickle:bin/net9.0/Microsoft.IdentityModel.Logging.dll"
+          },
+          {
+            "name": "Microsoft.IdentityModel.Tokens",
+            "version": "8.18.0.0",
+            "fullName": "Microsoft.IdentityModel.Tokens, Version=8.18.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35",
+            "sha256": "761ca72eefb9acb33a1d96328d0484f31b3dc68f696743e130877d05d8d97bf2",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "selectedAsset": "dllpickle:bin/net9.0/Microsoft.IdentityModel.Tokens.dll"
+          },
+          {
+            "name": "System.ClientModel",
+            "version": "1.13.0.0",
+            "fullName": "System.ClientModel, Version=1.13.0.0, Culture=neutral, PublicKeyToken=92742159e12e44c8",
+            "sha256": "113a90cac8ff3cee04e52960f52897d5c0d2c40a1f05f3ae04289498c7bb7065",
+            "assemblyLoadContext": "AzSharedAssemblyLoadContext",
+            "isCollectible": false,
+            "selectedAsset": "upstream:Az.Accounts/5.5.2/lib/netstandard2.0/System.ClientModel.dll"
+          },
+          {
+            "name": "System.IdentityModel.Tokens.Jwt",
+            "version": "8.18.0.0",
+            "fullName": "System.IdentityModel.Tokens.Jwt, Version=8.18.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35",
+            "sha256": "bdab1d4e9806c4b2ad6162647ec29b9e909247936d785ccbbdd0196ffbf169bf",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "selectedAsset": "dllpickle:bin/net9.0/System.IdentityModel.Tokens.Jwt.dll"
+          }
+        ]
+      }
+    ]
+  }
+}

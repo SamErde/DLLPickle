@@ -835,25 +835,25 @@
       },
       "baselines": {
         "windows": {
-          "status": "requires-profile-refresh",
-          "conflictSurfaceFingerprint": null,
-          "scenarioFingerprint": null,
+          "status": "accepted",
+          "conflictSurfaceFingerprint": "b2ef2e3b81097f9759e215a994053e084fe074faf799b8293b1c24f8ab0a192d",
+          "scenarioFingerprint": "dc2b138e15169b85da6579fe7e2ac17f81b3853889b6cee45d5c26f8add70d78",
           "evidencePath": "profile-evidence/ps7.4-net8.0-windows-x64.json",
-          "evidenceFingerprint": null
+          "evidenceFingerprint": "db3ea852a32ee2f9dcd21d44efc272ff18fd80157a4a036417bd2b2c73d6ae9e"
         },
         "linux": {
-          "status": "requires-profile-refresh",
-          "conflictSurfaceFingerprint": null,
-          "scenarioFingerprint": null,
+          "status": "accepted",
+          "conflictSurfaceFingerprint": "f2ed8b0b9b1c45a252ca86d06f3f7c4a1a1200f95a7e94e9446cca421f53b000",
+          "scenarioFingerprint": "4cbde0f6edd69e935b7a2948bbf3c36293ba5abe2333007b11092b088c55ef19",
           "evidencePath": "profile-evidence/ps7.4-net8.0-linux-x64.json",
-          "evidenceFingerprint": null
+          "evidenceFingerprint": "3e5a3e1d771b9cc6ee31f1605a037a2af26493ed6858bb528a54b597de575283"
         },
         "macos": {
-          "status": "requires-profile-refresh",
-          "conflictSurfaceFingerprint": null,
-          "scenarioFingerprint": null,
+          "status": "accepted",
+          "conflictSurfaceFingerprint": "0aadbc0d363b8a16bb6b591c6a1f7d61266a6bb60aa02f23dac8eb9c9b1547a8",
+          "scenarioFingerprint": "95992a216513d3223431587940d36bd89758af9562e201c7ad40989fbeb220bc",
           "evidencePath": "profile-evidence/ps7.4-net8.0-macos-x64.json",
-          "evidenceFingerprint": null
+          "evidenceFingerprint": "a1ffa4ad38d1aa25421931e86c9617e0477ace74dc7cbcb7fac882ff62eb19da"
         }
       },
       "legacyUnscopedBaseline": {
@@ -934,25 +934,25 @@
       },
       "baselines": {
         "windows": {
-          "status": "requires-profile-refresh",
-          "conflictSurfaceFingerprint": null,
-          "scenarioFingerprint": null,
+          "status": "accepted",
+          "conflictSurfaceFingerprint": "335a11b2b849902e213614891c43dcf864f40d193ee587e10dc58a6ccd40d729",
+          "scenarioFingerprint": "36684a8b67017021ed7540ccc1c4eaaf2d4a53a1a4c807f4433f78c7d324d001",
           "evidencePath": "profile-evidence/ps7.5-net9.0-windows-x64.json",
-          "evidenceFingerprint": null
+          "evidenceFingerprint": "ac62ce357b779bddc117d6234d1fbf3edcbc09bfa755053f1ce32d97dbe8dc4f"
         },
         "linux": {
-          "status": "requires-profile-refresh",
-          "conflictSurfaceFingerprint": null,
-          "scenarioFingerprint": null,
+          "status": "accepted",
+          "conflictSurfaceFingerprint": "16eaccc3fd30948d4ff09ef9228345229de68e53e4fe0f100d9683c513a1fc84",
+          "scenarioFingerprint": "af15d53b9bc05c4423165de6d8c13b3e3445d3fb0cdab010e7cf54982ab78980",
           "evidencePath": "profile-evidence/ps7.5-net9.0-linux-x64.json",
-          "evidenceFingerprint": null
+          "evidenceFingerprint": "00f9cdd3507b3480950cb9cf2230e86405e98ef88eca08e05bc62bf4f6fa34d3"
         },
         "macos": {
-          "status": "requires-profile-refresh",
-          "conflictSurfaceFingerprint": null,
-          "scenarioFingerprint": null,
+          "status": "accepted",
+          "conflictSurfaceFingerprint": "1cc79f2f3af66f0d4b1793e5311df21066980435e89c75ba710a2f643b9884d7",
+          "scenarioFingerprint": "4e39d071eda5c4fa9be584bb1805a0932c0fc8113e1f27194aa6760d3a3f541a",
           "evidencePath": "profile-evidence/ps7.5-net9.0-macos-x64.json",
-          "evidenceFingerprint": null
+          "evidenceFingerprint": "dd70b37eec9f32c08c75198544dbc9f40635ea3046287d835c9d0c5074a6831d"
         }
       }
     },
@@ -1029,25 +1029,25 @@
       },
       "baselines": {
         "windows": {
-          "status": "requires-profile-refresh",
-          "conflictSurfaceFingerprint": null,
-          "scenarioFingerprint": null,
+          "status": "accepted",
+          "conflictSurfaceFingerprint": "1c5b37d886f13577fa1380c11ede9dc225fe517a281103b8076a8924d90389f3",
+          "scenarioFingerprint": "ff71ef233c126de350e6d01de17838c3963ebc16dcbad5b1598a03ffd12b57b7",
           "evidencePath": "profile-evidence/ps7.6-net10.0-windows-x64.json",
-          "evidenceFingerprint": null
+          "evidenceFingerprint": "a9f7107ef9360feef67f1eca1fb7afcabdb217f1c14b6415bdcbba76df07a48e"
         },
         "linux": {
-          "status": "requires-profile-refresh",
-          "conflictSurfaceFingerprint": null,
-          "scenarioFingerprint": null,
+          "status": "accepted",
+          "conflictSurfaceFingerprint": "96c2933d465d2c94b3f7caf53095788bed1ea51dd4a46290a88ec5a4a60ca643",
+          "scenarioFingerprint": "9ce72aabd07190fbe7f42070b45756b2d9297256357e0ae0798978ae14265f73",
           "evidencePath": "profile-evidence/ps7.6-net10.0-linux-x64.json",
-          "evidenceFingerprint": null
+          "evidenceFingerprint": "8f7e16648edefdfdf0f4f7edb09984c5fb43788363a770f8f36ce594a40938c8"
         },
         "macos": {
-          "status": "requires-profile-refresh",
-          "conflictSurfaceFingerprint": null,
-          "scenarioFingerprint": null,
+          "status": "accepted",
+          "conflictSurfaceFingerprint": "e7f221fbab3f96e5cf10fb6c21d811e56d1b58b0aa079c8c4b1869573442ba56",
+          "scenarioFingerprint": "9c23ccd74eed68a1ef25d4d9da3b39ed797d445b1ba1ffb4db5b6d65469e55e6",
           "evidencePath": "profile-evidence/ps7.6-net10.0-macos-x64.json",
-          "evidenceFingerprint": null
+          "evidenceFingerprint": "631d8a315d5b16a3b417e2089cb6daf0629125986b3eec82335e8f4b283b8ea7"
         }
       }
     }
