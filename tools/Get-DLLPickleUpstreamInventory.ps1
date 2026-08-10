@@ -197,7 +197,7 @@ if (-not $SkipDownload.IsPresent) {
             Where-Object {
                 -not $_.PowerShellVersion -or [version]$_.PowerShellVersion -le [version]$RuntimeIdentity.powerShellVersion
             } |
-            Sort-Object -Property Version -Descending |
+            Sort-Object -Property { [version]([string]$_.Version) } -Descending |
             Select-Object -First 1
         if (-not $GalleryModule) {
             throw "No release of module '$Name' declares compatibility with PowerShell $($RuntimeIdentity.powerShellVersion)."

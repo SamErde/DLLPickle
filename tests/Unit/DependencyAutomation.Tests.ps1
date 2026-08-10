@@ -52,14 +52,16 @@ Describe 'Dependency automation tooling' -Tag 'Unit' {
         Mock Find-Module {
             $State = [System.AppDomain]::CurrentDomain.GetData('DLLPickle.DependencyAutomation.InventoryTestState')
             $State.Events.Add("find:$Name")
-            [PSCustomObject]@{
-                Name = $Name
-                Version = if ($Name -eq 'Synthetic.One') { [version]'1.2.3' } else { [version]'4.5.6' }
+            if ($Name -eq 'Synthetic.One') {
+                [PSCustomObject]@{ Name = $Name; Version = '1.9.0' }
+                [PSCustomObject]@{ Name = $Name; Version = '1.10.0' }
+            } else {
+                [PSCustomObject]@{ Name = $Name; Version = '4.5.6' }
             }
         }
         Mock Save-Module {
             $State = [System.AppDomain]::CurrentDomain.GetData('DLLPickle.DependencyAutomation.InventoryTestState')
-            $State.Events.Add("save:$Name")
+            $State.Events.Add("save:${Name}:$RequiredVersion")
             $ModuleRoot = Join-Path -Path $Path -ChildPath ([System.IO.Path]::Combine($Name, [string]$RequiredVersion))
             $null = New-Item -Path $ModuleRoot -ItemType Directory -Force
             Copy-Item -LiteralPath $State.AssemblyLocation -Destination (Join-Path $ModuleRoot "$($State.AssemblyName).dll") -Force
@@ -71,7 +73,12 @@ Describe 'Dependency automation tooling' -Tag 'Unit' {
 
         $InventoryEvents = @($InventoryTestState.Events)
         [System.AppDomain]::CurrentDomain.SetData($InventoryTestStateKey, $null)
-        $InventoryEvents | Should -Be @('find:Synthetic.One', 'find:Synthetic.Two', 'save:Synthetic.One', 'save:Synthetic.Two')
+        $InventoryEvents | Should -Be @(
+            'find:Synthetic.One'
+            'find:Synthetic.Two'
+            'save:Synthetic.One:1.10.0'
+            'save:Synthetic.Two:4.5.6'
+        )
     }
 
     It 'inventories tracked assemblies from an existing module cache' {
