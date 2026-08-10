@@ -196,6 +196,86 @@ Only after the manual matrix is accepted:
 - do not allow the job to auto-approve, merge, publish, or mutate issues;
 - set a documented evidence freshness window.
 
+### Temporary 3.0.0 transition bridge
+
+Before the protected environment is available, the initial multi-target major
+release may use sanitized evidence collected by the interactive harness. This is
+not an authenticated-gate waiver. The release validator requires:
+
+- the exact published-bundle source fingerprint recorded at capture time;
+- release version `3.0.0` and no other version;
+- all fixed module-only, DLLPickle-first, module-first, and cross-import-order
+  read scenarios under PowerShell 7.4, 7.5, and 7.6 on Windows x64;
+- a real delegated Graph `/me` read in addition to the policy's context probe;
+- passing EXO mailbox, Azure context/resource/storage-account, and Teams tenant
+  reads;
+- normalized before-authentication, after-connection, and after-probe ALC
+  snapshots;
+- zero writes and no credential material or raw provider output;
+- explicit maintainer acceptance with a confidence level; and
+- expiry no later than 30 days after capture.
+
+The record explicitly states that delegated interactive authentication is not
+least-privilege workload-identity proof. Any bundle change, skipped or failed
+probe, missing profile, different release version, expiry, or missing acceptance
+closes the bridge. The future protected workflow remains the preferred route and
+supersedes this transition mechanism.
+
+### Interactive transition runbook
+
+Run these commands in a normal interactive PowerShell terminal from a clean,
+synced checkout of the reviewed PR branch. Do not paste tokens or passwords into
+the command line.
+
+```powershell
+Set-Location 'C:\Users\SamErde\Code\Public\DLLPickle'
+
+pwsh -NoLogo -NoProfile -File .\tools\Initialize-DLLPickleManualAuthenticatedCompatibility.ps1
+```
+
+The initialization step performs no provider authentication. It builds
+DLLPickle, installs the checksum-pinned Windows x64 PowerShell executables, and
+downloads the latest compatible monitored modules into the gitignored
+`artifacts/manual-authenticated` directory.
+
+If the interactive Azure account exposes more than one subscription, set the
+intended test subscription for the current terminal without committing it:
+
+```powershell
+$env:DLLPICKLE_MANUAL_AZURE_SUBSCRIPTION_ID = '<test-subscription-guid>'
+```
+
+Then start or resume the authenticated capture:
+
+```powershell
+pwsh -NoLogo -NoProfile -File .\tools\Invoke-DLLPickleManualAuthenticatedCompatibility.ps1
+```
+
+The harness opens only the provider sign-in experiences. Each of the 14 fixed
+scenarios runs in a fresh process for each of the three exact profiles. Passing
+scenario checkpoints are reused on rerun, so an authorization failure or an
+interrupted session does not require repeating completed scenarios. To diagnose
+one cell first, use the optional `-ProfileKey` and `-ScenarioId` filters; the
+candidate remains incomplete until all 42 checkpoints exist.
+
+After the candidate is complete, review
+`artifacts/manual-authenticated/manual-authenticated-evidence.candidate.json`.
+It must contain no account, tenant, subscription, mailbox, resource, token, or
+raw error/service output. Acceptance is a separate, confirmation-gated action:
+
+```powershell
+$AcceptanceParameters = @{
+    CandidateEvidencePath = '.\artifacts\manual-authenticated\manual-authenticated-evidence.candidate.json'
+    AcceptedBy = 'SamErde'
+    Confidence = 'high'
+}
+& .\tools\Set-DLLPickleManualAuthenticatedEvidenceAcceptance.ps1 @AcceptanceParameters
+```
+
+This writes `build/authenticated-evidence/initial-multitarget-major.json` only
+after the pending candidate validates. Commit that one sanitized file only after
+review. Never commit the gitignored work directory or provider caches.
+
 ## 8. Evidence schema and redaction
 
 Each probe record should include:

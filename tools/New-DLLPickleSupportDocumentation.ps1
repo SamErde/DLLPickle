@@ -34,6 +34,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'DLLPickle.ProfileEvidence.ps1')
 
 foreach ($RequiredPath in @($SupportPolicyPath, $TestMatrixPath, $DependencyPolicyPath)) {
     if (-not (Test-Path -LiteralPath $RequiredPath -PathType Leaf)) {
@@ -46,12 +47,20 @@ $TestMatrix = Get-Content -LiteralPath $TestMatrixPath -Raw | ConvertFrom-Json -
 $DependencyPolicy = Get-Content -LiteralPath $DependencyPolicyPath -Raw | ConvertFrom-Json -ErrorAction Stop
 $DependencyPolicyDirectory = Split-Path -Path (Resolve-Path -LiteralPath $DependencyPolicyPath).Path -Parent
 
-function Get-DLLPickleEvidenceFingerprint {
-    param([Parameter(Mandatory)][object]$Evidence)
+function ConvertTo-DLLPickleUtcDateTimeOffset {
+    param([Parameter(Mandatory)][object]$Value)
 
-    $CanonicalContent = $Evidence.content | ConvertTo-Json -Depth 100 -Compress
-    $Bytes = [System.Text.Encoding]::UTF8.GetBytes($CanonicalContent)
-    [System.BitConverter]::ToString([System.Security.Cryptography.SHA256]::HashData($Bytes)).Replace('-', '').ToLowerInvariant()
+    if ($Value -is [System.DateTimeOffset]) {
+        return $Value.ToUniversalTime()
+    }
+    if ($Value -is [System.DateTime]) {
+        return ([System.DateTimeOffset]$Value).ToUniversalTime()
+    }
+    [System.DateTimeOffset]::Parse(
+        [string]$Value,
+        [System.Globalization.CultureInfo]::InvariantCulture,
+        [System.Globalization.DateTimeStyles]::AssumeUniversal
+    ).ToUniversalTime()
 }
 
 $ShippedProfileKeys = @($SupportPolicy.profiles | ForEach-Object { '{0}.{1}|{2}|{3}' -f $_.powerShellMajor, $_.powerShellMinor, $_.dotnetMajor, $_.targetFramework })
@@ -59,7 +68,7 @@ $TestProfileKeys = @($TestMatrix.profiles | ForEach-Object { '{0}.{1}|{2}|{3}' -
 if (Compare-Object -ReferenceObject $ShippedProfileKeys -DifferenceObject $TestProfileKeys) {
     throw 'Shipped runtime profiles and documentation test profiles do not align.'
 }
-$VerifiedDate = ([System.DateTimeOffset]$TestMatrix.lastVerifiedUtc).ToString('yyyy-MM-dd')
+$VerifiedDate = (ConvertTo-DLLPickleUtcDateTimeOffset -Value $TestMatrix.lastVerifiedUtc).ToString('yyyy-MM-dd')
 $NewLine = "`r`n"
 
 $SupportLines = [System.Collections.Generic.List[string]]::new()
@@ -109,16 +118,20 @@ foreach ($RuntimeProfile in @($DependencyPolicy.runtimeProfiles)) {
                 throw "Accepted profile evidence was not found: $EvidencePath"
             }
             $Evidence = Get-Content -LiteralPath $EvidencePath -Raw | ConvertFrom-Json -ErrorAction Stop
-            $RecomputedEvidenceFingerprint = Get-DLLPickleEvidenceFingerprint -Evidence $Evidence
+            $RecomputedEvidenceFingerprint = Get-DLLPickleNormalizedEvidenceFingerprint -Evidence $Evidence
             if ([string]$Evidence.contentFingerprint -ne $RecomputedEvidenceFingerprint -or
                 [string]$PlatformBaseline.evidenceFingerprint -ne $RecomputedEvidenceFingerprint) {
                 throw "Accepted profile evidence does not recompute to the policy fingerprint: $EvidencePath"
             }
-            $ExpectedProfileKey = 'ps{0}-{1}-{2}-x64' -f $RuntimeProfile.powerShellLine, $RuntimeProfile.targetFramework, $Platform
+            $PlatformLanes = @($TestMatrix.lanes | Where-Object platform -EQ $Platform)
+            if ($PlatformLanes.Count -ne 1 -or [string]::IsNullOrWhiteSpace([string]$PlatformLanes[0].architecture)) {
+                throw "The test matrix must declare exactly one architecture-bearing lane for '$Platform'."
+            }
+            $ExpectedProfileKey = 'ps{0}-{1}-{2}-{3}' -f $RuntimeProfile.powerShellLine, $RuntimeProfile.targetFramework, $Platform, $PlatformLanes[0].architecture
             if ([string]$Evidence.content.profile.profileKey -ne $ExpectedProfileKey) {
                 throw "Accepted profile evidence '$($Evidence.content.profile.profileKey)' does not match '$ExpectedProfileKey'."
             }
-            $EvidenceDate = ([System.DateTimeOffset]$Evidence.provenance.capturedAtUtc).ToString('yyyy-MM-dd')
+            $EvidenceDate = (ConvertTo-DLLPickleUtcDateTimeOffset -Value $Evidence.provenance.capturedAtUtc).ToString('yyyy-MM-dd')
             $SourceRunId = [string]$Evidence.provenance.sourceRunId
             $SourceRunUrl = [string]$Evidence.provenance.sourceRunUrl
             $RunReference = if (-not [string]::IsNullOrWhiteSpace($SourceRunId) -and -not [string]::IsNullOrWhiteSpace($SourceRunUrl)) {
@@ -179,6 +192,8 @@ foreach ($Module in @($DependencyPolicy.monitoredModules)) {
 }
 $EvidenceLines.Add('')
 $EvidenceLines.Add('These probes permit reads only; writes are not part of the validation tier. PowerShellEditorServices / VS Code coverage for issue #169 also remains an explicit manual gap unless a run artifact records it.')
+$EvidenceLines.Add('')
+$EvidenceLines.Add('Before the protected credentialed workflow exists, the release gate may accept one explicitly reviewed manual transition record for version `3.0.0`. That record must match the exact bundle-source fingerprint, cover the three exact Windows profiles and fixed read-only scenarios, contain no credential material or raw service output, record zero writes, and expire within 30 days. It is transitional compatibility evidence, not least-privilege workload-identity proof.')
 
 $Documents = [ordered]@{
     'Support-Matrix.md' = ($SupportLines -join $NewLine) + $NewLine

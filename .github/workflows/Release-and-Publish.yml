@@ -48,15 +48,16 @@ env:
   MANIFEST_PATH: ./src/DLLPickle/DLLPickle.psd1
   AUTHENTICATED_WORKFLOW_FILE: Authenticated-Compatibility.yml
   AUTHENTICATED_EVIDENCE_ARTIFACT: authenticated-compatibility-evidence
+  MANUAL_AUTHENTICATED_EVIDENCE_PATH: ./build/authenticated-evidence/initial-multitarget-major.json
 
 jobs:
   authenticated-release-gate:
     name: Require Authenticated Compatibility
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    # The credentialed workflow is intentionally not created until the protected environment,
-    # identities, permissions, and redaction controls in the approved plan exist. Until then this
-    # gate fails closed before version analysis or tag creation can begin.
+    # Prefer exact-commit evidence from the future protected credentialed workflow. Until that
+    # environment exists, one reviewed manual transition record may authorize only the initial
+    # 3.0.0 bundle fingerprint and expires within 30 days. Neither route permits writes.
     if: |
       github.repository_owner == 'SamErde' &&
       (
@@ -70,6 +71,8 @@ jobs:
 
     outputs:
       release_sha: ${{ steps.release-candidate.outputs.release_sha }}
+      evidence_mode: ${{ steps.authenticated-evidence.outputs.evidence_mode }}
+      allowed_release_version: ${{ steps.authenticated-evidence.outputs.allowed_release_version }}
 
     steps:
       - name: Checkout release candidate
@@ -113,7 +116,8 @@ jobs:
             throw 'A required authenticated release profile does not explicitly prohibit writes.'
           }
 
-      - name: Require successful exact-commit authenticated evidence
+      - name: Require protected or bounded authenticated evidence
+        id: authenticated-evidence
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
@@ -134,39 +138,59 @@ jobs:
             '--limit', '20'
             '--json', 'databaseId,headSha,conclusion,createdAt,url'
           )
-          $RunJson = & gh @RunArguments
-          if ($LASTEXITCODE -ne 0) {
-            throw "Release is blocked until $($env:AUTHENTICATED_WORKFLOW_FILE) exists and succeeds in the protected credentialed environment."
-          }
-          $MatchingRuns = @(
-            $RunJson | ConvertFrom-Json | Where-Object {
-              $_.headSha -eq $EvidenceSha -and $_.conclusion -eq 'success'
+          $RunJson = & gh @RunArguments 2>$null
+          $ProtectedEvidenceRun = $null
+          if ($LASTEXITCODE -eq 0) {
+            $MatchingRuns = @(
+              $RunJson | ConvertFrom-Json | Where-Object {
+                $_.headSha -eq $EvidenceSha -and $_.conclusion -eq 'success'
+              }
+            )
+            foreach ($CandidateRun in @($MatchingRuns | Sort-Object createdAt -Descending)) {
+              $ArtifactJson = gh api "/repos/${{ github.repository }}/actions/runs/$($CandidateRun.databaseId)/artifacts" 2>$null
+              if ($LASTEXITCODE -ne 0) { continue }
+              $EvidenceArtifacts = @(
+                ($ArtifactJson | ConvertFrom-Json).artifacts | Where-Object {
+                  $_.name -eq $env:AUTHENTICATED_EVIDENCE_ARTIFACT -and -not $_.expired
+                }
+              )
+              if ($EvidenceArtifacts.Count -eq 1) {
+                $ProtectedEvidenceRun = $CandidateRun
+                break
+              }
             }
-          )
-          if ($MatchingRuns.Count -eq 0) {
-            throw "No successful authenticated compatibility run exists for exact candidate SHA $EvidenceSha."
           }
-          $EvidenceRun = $MatchingRuns | Sort-Object createdAt -Descending | Select-Object -First 1
 
-          $ArtifactJson = gh api "/repos/${{ github.repository }}/actions/runs/$($EvidenceRun.databaseId)/artifacts"
-          if ($LASTEXITCODE -ne 0) {
-            throw "Failed to inspect authenticated evidence artifacts for run $($EvidenceRun.databaseId)."
-          }
-          $EvidenceArtifacts = @(
-            ($ArtifactJson | ConvertFrom-Json).artifacts | Where-Object {
-              $_.name -eq $env:AUTHENTICATED_EVIDENCE_ARTIFACT -and -not $_.expired
+          if ($ProtectedEvidenceRun) {
+            $EvidenceMode = 'protected-exact-commit-workflow'
+            $AllowedReleaseVersion = ''
+            $EvidenceReference = $ProtectedEvidenceRun.url
+          } elseif (Test-Path -LiteralPath $env:MANUAL_AUTHENTICATED_EVIDENCE_PATH -PathType Leaf) {
+            $ManualEvidenceParameters = @{
+              EvidencePath = $env:MANUAL_AUTHENTICATED_EVIDENCE_PATH
+              RepositoryRoot = '.'
+              TestMatrixPath = './build/powershell-test-matrix.json'
+              DependencyPolicyPath = './build/dependency-policy.json'
+              Mode = 'Release'
             }
-          )
-          if ($EvidenceArtifacts.Count -ne 1) {
-            throw "Authenticated run $($EvidenceRun.databaseId) must contain one unexpired '$($env:AUTHENTICATED_EVIDENCE_ARTIFACT)' artifact."
+            $ManualEvidence = ./tools/Test-DLLPickleManualAuthenticatedEvidence.ps1 @ManualEvidenceParameters
+            $EvidenceMode = 'manual-interactive-transition'
+            $AllowedReleaseVersion = [string]$ManualEvidence.AllowedReleaseVersion
+            $EvidenceReference = "``$($env:MANUAL_AUTHENTICATED_EVIDENCE_PATH)`` (expires $($ManualEvidence.ExpiresAtUtc))"
+          } else {
+            throw "Release is blocked: no successful exact-commit protected workflow evidence exists and no accepted bounded manual transition evidence is committed."
           }
+
+          "evidence_mode=$EvidenceMode" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "allowed_release_version=$AllowedReleaseVersion" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
 
           @(
             '### Authenticated release evidence'
             ''
             "- Candidate SHA: ``$EvidenceSha``"
-            "- Validated run: $($EvidenceRun.url)"
-            "- Evidence artifact: ``$($env:AUTHENTICATED_EVIDENCE_ARTIFACT)``"
+            "- Evidence mode: ``$EvidenceMode``"
+            "- Evidence reference: $EvidenceReference"
+            $(if ($AllowedReleaseVersion) { "- Allowed release version: ``$AllowedReleaseVersion``" })
             '- Required profiles prohibit writes: True'
           ) | Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY
 
@@ -266,6 +290,8 @@ jobs:
           MANUAL_BUMP_INPUT: ${{ inputs.version_bump }}
           MANUAL_BUMP_EVENT: ${{ github.event.inputs.version_bump }}
           RELEASE_SHA: ${{ needs.authenticated-release-gate.outputs.release_sha }}
+          AUTHENTICATED_EVIDENCE_MODE: ${{ needs.authenticated-release-gate.outputs.evidence_mode }}
+          AUTHENTICATED_ALLOWED_RELEASE_VERSION: ${{ needs.authenticated-release-gate.outputs.allowed_release_version }}
         run: |
           # Pass manual bump parameter to Get-VersionBump for centralized version logic
           Write-Host "Analyzing version requirements..."
@@ -313,6 +339,13 @@ jobs:
           $NewVersionType = $VersionResult.NewVersionType
           $NewVersion     = $VersionResult.NewVersion
           $CurrentVersion = [version]$VersionResult.CurrentVersion
+
+          if ($ShouldRelease -and $env:AUTHENTICATED_EVIDENCE_MODE -eq 'manual-interactive-transition') {
+              if ([string]::IsNullOrWhiteSpace($env:AUTHENTICATED_ALLOWED_RELEASE_VERSION) -or
+                  [string]$NewVersion -ne $env:AUTHENTICATED_ALLOWED_RELEASE_VERSION) {
+                  throw "Bounded manual authenticated evidence permits only version '$($env:AUTHENTICATED_ALLOWED_RELEASE_VERSION)', not '$NewVersion'."
+              }
+          }
 
           Write-Host "`nVersion Analysis Results:"
           Write-Host "Current version: $($CurrentVersion.ToString())"

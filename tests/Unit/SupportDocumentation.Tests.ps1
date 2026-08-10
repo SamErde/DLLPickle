@@ -31,10 +31,10 @@ Describe 'Generated support documentation' -Tag 'Unit' {
         $TestMatrixPath = Join-Path $FixtureRoot 'matrix.json'
         $DependencyPolicyPath = Join-Path $FixtureRoot 'dependency.json'
         $OutputDirectory = Join-Path $FixtureRoot 'generated'
-        $EvidencePath = Join-Path $EvidenceDirectory 'ps7.6-net10.0-windows-x64.json'
+        $EvidencePath = Join-Path $EvidenceDirectory 'ps7.6-net10.0-windows-arm64.json'
 
         $EvidenceContent = [ordered]@{
-            profile = [ordered]@{ profileKey = 'ps7.6-net10.0-windows-x64' }
+            profile = [ordered]@{ profileKey = 'ps7.6-net10.0-windows-arm64' }
             modules = @(
                 [ordered]@{
                     name = 'Synthetic.One'
@@ -59,7 +59,7 @@ Describe 'Generated support documentation' -Tag 'Unit' {
             provenance = [ordered]@{
                 sourceRunId = '12345'
                 sourceRunUrl = 'https://example.invalid/runs/12345'
-                capturedAtUtc = '2026-08-09T12:00:00Z'
+                capturedAtUtc = '2026-08-10T02:30:00Z'
             }
             content = $EvidenceContent
         } | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $EvidencePath -Encoding UTF8
@@ -88,6 +88,12 @@ Describe 'Generated support documentation' -Tag 'Unit' {
                     lifecycleEndDate = '2026-11-10'
                 }
             )
+            lanes = @(
+                [ordered]@{
+                    platform = 'windows'
+                    architecture = 'arm64'
+                }
+            )
         } | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $TestMatrixPath -Encoding UTF8
         [ordered]@{
             monitoredModules = @(
@@ -104,7 +110,7 @@ Describe 'Generated support documentation' -Tag 'Unit' {
                     baselines = [ordered]@{
                         windows = [ordered]@{
                             status = 'accepted'
-                            evidencePath = 'profile-evidence/ps7.6-net10.0-windows-x64.json'
+                            evidencePath = 'profile-evidence/ps7.6-net10.0-windows-arm64.json'
                             evidenceFingerprint = $EvidenceFingerprint
                         }
                     }
@@ -118,6 +124,7 @@ Describe 'Generated support documentation' -Tag 'Unit' {
         $Compatibility | Should -Match 'upstream:Synthetic\.One/1\.10\.0/lib/Microsoft\.Identity\.Client\.dll'
         $Compatibility | Should -Match 'Microsoft\.Identity\.Client.*4\.82\.1\.0.*Default'
         $Compatibility | Should -Match '\[12345\]\(https://example\.invalid/runs/12345\)'
+        $Compatibility | Should -Match '\| 2026-08-10 \| \[12345\]'
     }
 
     It 'keeps the primary documentation linked to the generated support contract' {
@@ -137,5 +144,7 @@ Describe 'Generated support documentation' -Tag 'Unit' {
         $Compatibility | Should -Match 'PR #215'
         $Compatibility | Should -Match 'Issue #242'
         $Compatibility | Should -Match 'not executed without approved credentials'
+        $Compatibility | Should -Match 'manual transition record for version `3\.0\.0`'
+        $Compatibility | Should -Match 'not least-privilege workload-identity proof'
     }
 }

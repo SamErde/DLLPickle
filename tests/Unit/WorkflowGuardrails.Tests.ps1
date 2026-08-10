@@ -4,6 +4,7 @@ BeforeAll {
     $DependabotWorkflow = Get-Content -LiteralPath (Join-Path $ProjectRoot '.github\workflows\Dependabot-Auto-Approve.yml') -Raw
     $DependabotConfig = Get-Content -LiteralPath (Join-Path $ProjectRoot '.github\dependabot.yml') -Raw
     $ReleaseWorkflow = Get-Content -LiteralPath (Join-Path $ProjectRoot '.github\workflows\Release-and-Publish.yml') -Raw
+    $ManualAuthValidator = Get-Content -LiteralPath (Join-Path $ProjectRoot 'tools\Test-DLLPickleManualAuthenticatedEvidence.ps1') -Raw
     $LifecycleWorkflowPath = Join-Path $ProjectRoot '.github\workflows\PowerShell-Support-Lifecycle.yml'
     $BuildWorkflow = Get-Content -LiteralPath (Join-Path $ProjectRoot '.github\workflows\Build Module.yml') -Raw
 }
@@ -23,6 +24,8 @@ Describe 'Upstream compatibility workflow guardrails' -Tag 'Unit' {
         $UpstreamWorkflow | Should -Match ([regex]::Escape("'^build/DLLPickle\.Build\.ps1$'"))
         $UpstreamWorkflow | Should -Match ([regex]::Escape('tools/Get-DLLPickleUpstreamInventory.ps1'))
         $UpstreamWorkflow | Should -Match ([regex]::Escape("'^tools/Get-DLLPickleLoadedTrackedAssembly\.ps1$'"))
+        $UpstreamWorkflow | Should -Match ([regex]::Escape("'^tools/DLLPickle\.ProfileEvidence\.ps1$'"))
+        $UpstreamWorkflow | Should -Match ([regex]::Escape("'^tools/Invoke-DLLPickleBuild\.ps1$'"))
         $UpstreamWorkflow | Should -Match ([regex]::Escape('tools/New-DLLPickleConflictMatrix.ps1'))
         $UpstreamWorkflow | Should -Match ([regex]::Escape('tools/New-DLLPickleUpstreamScenarioEvidence.ps1'))
         $UpstreamWorkflow | Should -Match ([regex]::Escape("'^src/DLLPickle/'"))
@@ -122,7 +125,7 @@ Describe 'Dependabot major-version draft-PR flow' -Tag 'Unit' {
 }
 
 Describe 'Release publish gating guardrails' -Tag 'Unit' {
-    It 'requires exact-commit authenticated evidence before version analysis or publication' {
+    It 'requires protected exact-commit or narrowly bounded manual evidence before publication' {
         $ReleaseWorkflow | Should -Match '(?ms)^  authenticated-release-gate:\s+name: Require Authenticated Compatibility'
         $ReleaseWorkflow | Should -Match '(?ms)^  authenticated-release-gate:.*?permissions:\s+actions: read\s+contents: read'
         $ReleaseWorkflow | Should -Match '(?m)^    needs: authenticated-release-gate\r?$'
@@ -134,6 +137,12 @@ Describe 'Release publish gating guardrails' -Tag 'Unit' {
         $ReleaseWorkflow | Should -Not -Match ([regex]::Escape('github.event.pull_request.head.sha'))
         $ReleaseWorkflow | Should -Match ([regex]::Escape('requiredBeforeRelease'))
         $ReleaseWorkflow | Should -Match ([regex]::Escape('writesAllowed -ne $false'))
+        $ReleaseWorkflow | Should -Match ([regex]::Escape('tools/Test-DLLPickleManualAuthenticatedEvidence.ps1'))
+        $ReleaseWorkflow | Should -Match ([regex]::Escape('initial-multitarget-major.json'))
+        $ReleaseWorkflow | Should -Match ([regex]::Escape('$EvidenceMode = ''manual-interactive-transition'''))
+        $ReleaseWorkflow | Should -Match ([regex]::Escape('[string]$NewVersion -ne $env:AUTHENTICATED_ALLOWED_RELEASE_VERSION'))
+        $ManualAuthValidator | Should -Match ([regex]::Escape("allowedReleaseVersion -ne '3.0.0'"))
+        $ReleaseWorkflow | Should -Not -Match 'skipAuthentication|bypassAuthentication|allowUnauthenticated'
     }
 
     It 'fails closed on the runtime lifecycle policy before version analysis' {
