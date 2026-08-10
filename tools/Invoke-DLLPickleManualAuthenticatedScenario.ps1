@@ -78,7 +78,9 @@ function Connect-Provider {
         }
         'az' {
             $Command = Get-DLLPickleAuthenticatedCommand -Name 'Connect-AzAccount' -Module 'Az.Accounts'
-            & $Command -Scope Process -ErrorAction Stop | Out-Null
+            # WAM depends on the interactive host and can fail after account selection.
+            # Device code remains delegated-interactive and avoids changing persisted Az config.
+            & $Command -Scope Process -UseDeviceAuthentication -ErrorAction Stop | Out-Null
             if (-not [string]::IsNullOrWhiteSpace($SubscriptionId)) {
                 $Command = Get-DLLPickleAuthenticatedCommand -Name 'Set-AzContext' -Module 'Az.Accounts'
                 & $Command -SubscriptionId $SubscriptionId -Scope Process -ErrorAction Stop | Out-Null

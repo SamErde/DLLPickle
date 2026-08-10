@@ -257,6 +257,9 @@ scenarios runs in a fresh process for each of the three exact profiles. Passing
 scenario checkpoints are reused on rerun only while their complete prepared
 module-inventory fingerprint still matches, so an authorization failure or an
 interrupted session does not require repeating unchanged completed scenarios.
+The fixed Az scenarios use delegated device-code authentication so the capture
+does not depend on the terminal host's WAM integration or change persisted Az
+configuration. Follow the displayed device-login instructions in a browser.
 To diagnose one cell first, use the optional `-ProfileKey` and `-ScenarioId`
 filters; the candidate remains incomplete until all 42 checkpoints exist.
 

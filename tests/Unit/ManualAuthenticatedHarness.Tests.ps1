@@ -17,6 +17,8 @@ Describe 'Manual authenticated compatibility harness guardrails' -Tag 'Unit' {
         $script:SharedHelpers | Should -Match ([regex]::Escape("-Name 'Get-AzResource' -Module 'Az.Resources'"))
         $script:SharedHelpers | Should -Match ([regex]::Escape("-Name 'Get-AzStorageAccount' -Module 'Az.Storage'"))
         $script:SharedHelpers | Should -Match ([regex]::Escape("-Name 'Get-CsTenant' -Module 'MicrosoftTeams'"))
+        $script:ScenarioHarness | Should -Match ([regex]::Escape('& $Command -Scope Process -UseDeviceAuthentication -ErrorAction Stop'))
+        $script:ScenarioHarness | Should -Not -Match 'Update-AzConfig'
         ($script:ScenarioHarness + $script:SharedHelpers) | Should -Not -Match 'Invoke-Expression|ScriptBlock|AccessToken|ClientSecret|Certificate'
     }
 
