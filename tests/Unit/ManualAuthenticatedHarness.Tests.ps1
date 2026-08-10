@@ -53,6 +53,13 @@ Describe 'Manual authenticated compatibility harness guardrails' -Tag 'Unit' {
         $ModuleFirstImport | Should -BeLessThan $ConnectLoop
     }
 
+    It 'fails authenticated scenarios when DLLPickle reports a failed preload row' {
+        $script:ScenarioHarness | Should -Match ([regex]::Escape('$ImportResults = @(Import-DPLibrary -SuppressLogo -ErrorAction Stop)'))
+        $script:ScenarioHarness | Should -Match ([regex]::Escape("Where-Object { [string]`$_.Status -eq 'Failed' }"))
+        $script:ScenarioHarness | Should -Match ([regex]::Escape('DLLPickle preload reported'))
+        $script:ScenarioHarness | Should -Not -Match ([regex]::Escape('Import-DPLibrary -SuppressLogo -ErrorAction Stop | Out-Null'))
+    }
+
     It 'prepares exact pinned runtimes and refreshes latest compatible modules without authenticating' {
         $script:Initializer | Should -Match ([regex]::Escape("Provider = 'DirectArchive'"))
         $script:Initializer | Should -Match ([regex]::Escape("Platform = 'windows'"))

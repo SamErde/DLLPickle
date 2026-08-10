@@ -165,6 +165,7 @@ $ExpectedProfiles = @(
             ProfileKey = 'ps{0}.{1}-{2}-windows-x64' -f $RuntimeProfile.powerShellMajor, $RuntimeProfile.powerShellMinor, $RuntimeProfile.targetFramework
             PowerShellVersion = [string]$RuntimeProfile.powerShellVersion
             PowerShellLine = '{0}.{1}' -f $RuntimeProfile.powerShellMajor, $RuntimeProfile.powerShellMinor
+            DotNetVersion = [string]$RuntimeProfile.dotnetRuntimeVersion
             DotNetMajor = [int]$RuntimeProfile.dotnetMajor
             TargetFramework = [string]$RuntimeProfile.targetFramework
         }
@@ -210,6 +211,7 @@ foreach ($ExpectedProfile in $ExpectedProfiles) {
     Assert-ExactPropertySet -InputObject $EvidenceProfile -Expected @('profileKey', 'powerShellVersion', 'powerShellLine', 'dotNetVersion', 'dotNetMajor', 'targetFramework', 'platform', 'architecture', 'runtimeExecutable', 'psHome', 'writesPerformed', 'inventoryFingerprint', 'moduleVersions', 'scenarios') -Label "Authenticated profile '$($ExpectedProfile.ProfileKey)'"
     if ([string]$EvidenceProfile.powerShellVersion -ne $ExpectedProfile.PowerShellVersion -or
         [string]$EvidenceProfile.powerShellLine -ne $ExpectedProfile.PowerShellLine -or
+        [string]$EvidenceProfile.dotNetVersion -ne $ExpectedProfile.DotNetVersion -or
         [int]$EvidenceProfile.dotNetMajor -ne $ExpectedProfile.DotNetMajor -or
         [string]$EvidenceProfile.targetFramework -ne $ExpectedProfile.TargetFramework -or
         [string]$EvidenceProfile.platform -ne 'windows' -or

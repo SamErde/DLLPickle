@@ -54,7 +54,11 @@ function Import-ExactModuleSet {
 
 function Import-DLLPickleBundle {
     Import-Module -Name $ResolvedDLLPickleManifestPath -Force -ErrorAction Stop
-    Import-DPLibrary -SuppressLogo -ErrorAction Stop | Out-Null
+    $ImportResults = @(Import-DPLibrary -SuppressLogo -ErrorAction Stop)
+    $FailedImports = @($ImportResults | Where-Object { [string]$_.Status -eq 'Failed' })
+    if ($FailedImports.Count -gt 0) {
+        throw "DLLPickle preload reported $($FailedImports.Count) failed assembly load(s)."
+    }
 }
 
 function Connect-Provider {

@@ -213,6 +213,18 @@ Describe 'Time-bounded manual authenticated evidence' -Tag 'Unit' {
             Should -Throw '*bound to bundle*current bundle*'
     }
 
+    It 'rejects a different .NET servicing patch even when the major matches' {
+        $EvidencePath = Join-Path $TestDrive 'dotnet-patch-mismatch.json'
+        $Evidence = Get-ManualAuthenticatedEvidenceFixture -Path $EvidencePath
+        $CurrentRuntimeVersion = [version]$Evidence.content.profiles[0].dotNetVersion
+        $Evidence.content.profiles[0].dotNetVersion = '{0}.{1}.{2}' -f $CurrentRuntimeVersion.Major, $CurrentRuntimeVersion.Minor, ($CurrentRuntimeVersion.Build + 1)
+        $Evidence.contentFingerprint = Get-ManualEvidenceContentFingerprint -Evidence $Evidence
+        $Evidence | ConvertTo-Json -Depth 100 | Set-Content -LiteralPath $EvidencePath -Encoding UTF8
+
+        { & $script:ToolPath -EvidencePath $EvidencePath -RepositoryRoot $script:RepositoryRoot -TestMatrixPath $script:TestMatrixPath -DependencyPolicyPath $script:DependencyPolicyPath -NowUtc '2026-08-10T00:00:00Z' } |
+            Should -Throw '*does not match the exact zero-write Windows runtime contract*'
+    }
+
     It 'rejects missing authenticated read coverage' {
         $EvidencePath = Join-Path $TestDrive 'missing-probe.json'
         $Evidence = Get-ManualAuthenticatedEvidenceFixture -Path $EvidencePath
