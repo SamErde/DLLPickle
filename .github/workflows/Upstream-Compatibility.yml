@@ -56,7 +56,7 @@ jobs:
               $Files = gh api "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" --paginate --jq '.[] | .filename, (.previous_filename // empty)'
               # Native non-zero exits don't reliably throw in pwsh, so check explicitly -> fail-safe.
               if ($LASTEXITCODE -ne 0) { throw "gh api exited $LASTEXITCODE while listing PR files" }
-              $Patterns = @('^build/', '^src/DLLPickle\.Build/', '^src/DLLPickle/', '^tests/', '^tools/', '^\.github/workflows/Upstream-Compatibility\.yml$')
+              $Patterns = @('^build/', '^src/DLLPickle\.Build/', '^src/DLLPickle/', '^tests/', '^tools/', '^global\.json$', '^\.github/workflows/Upstream-Compatibility\.yml$')
               # Any change that can alter the accepted baseline or the fingerprint computation must
               # prove itself against a fresh upstream inventory. Comparator/tests/workflow-only changes
               # stay on the deterministic smoke path so a pre-existing external drift does not prevent
@@ -64,6 +64,10 @@ jobs:
               $LivePatterns = @(
                 '^build/dependency-policy\.json$',
                 '^build/DLLPickle\.Build\.ps1$',
+                '^build/DLLPickle\.Settings\.ps1$',
+                '^build/DLLPickle\.Tooling\.ps1$',
+                '^build/build-tool-versions\.json$',
+                '^global\.json$',
                 '^src/DLLPickle\.Build/DLLPickle\.csproj$',
                 '^src/DLLPickle\.Build/packages\.lock\.json$',
                 '^build/powershell-test-matrix\.json$',
