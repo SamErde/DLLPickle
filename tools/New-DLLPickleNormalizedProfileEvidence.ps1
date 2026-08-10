@@ -101,7 +101,8 @@ function ConvertTo-CollapsedRelativePath {
 function ConvertTo-NormalizedEvidencePath {
     param(
         [Parameter(Mandatory)][string]$Path,
-        [Parameter(Mandatory)][string]$ModuleCachePath
+        [Parameter(Mandatory)][string]$ModuleCachePath,
+        [Parameter(Mandatory)][string]$RuntimeRoot
     )
 
     if ([string]::IsNullOrWhiteSpace($Path)) {
@@ -110,6 +111,7 @@ function ConvertTo-NormalizedEvidencePath {
 
     $NormalizedPath = $Path.Replace('\', '/').TrimEnd('/')
     $NormalizedCache = $ModuleCachePath.Replace('\', '/').TrimEnd('/')
+    $NormalizedRuntimeRoot = $RuntimeRoot.Replace('\', '/').TrimEnd('/')
     $RelativePath = $null
     $Prefix = $null
     if ($NormalizedPath.StartsWith("$NormalizedCache/", [System.StringComparison]::OrdinalIgnoreCase)) {
@@ -121,8 +123,11 @@ function ConvertTo-NormalizedEvidencePath {
     } elseif ($NormalizedPath -match '(?i)/module/DLLPickle/(?<relative>.+)$') {
         $RelativePath = $Matches.relative
         $Prefix = 'dllpickle'
+    } elseif ($NormalizedPath.StartsWith("$NormalizedRuntimeRoot/", [System.StringComparison]::OrdinalIgnoreCase)) {
+        $RelativePath = $NormalizedPath.Substring($NormalizedRuntimeRoot.Length + 1)
+        $Prefix = 'runtime'
     } else {
-        throw "Evidence path '$Path' is outside the upstream module cache and DLLPickle module roots."
+        throw "Evidence path '$Path' is outside the upstream module cache, DLLPickle module root, and exact runtime root."
     }
 
     '{0}:{1}' -f $Prefix, (ConvertTo-CollapsedRelativePath -Path $RelativePath)
@@ -180,6 +185,10 @@ $ModuleCachePath = [string]$Inventory.ModuleCachePath
 if ([string]::IsNullOrWhiteSpace($ModuleCachePath)) {
     throw "Inventory for '$ProfileKey' has no module cache root for path normalization."
 }
+$RuntimeRoot = [string]$Inventory.Profile.PSHome
+if ([string]::IsNullOrWhiteSpace($RuntimeRoot)) {
+    throw "Inventory for '$ProfileKey' has no exact runtime root for path normalization."
+}
 
 $NormalizedModules = @(
     foreach ($Module in @($Inventory.Modules | Sort-Object Name)) {
@@ -194,7 +203,7 @@ $NormalizedModules = @(
                     assemblyLoadContext = [string]$Assembly.Alc
                     isCollectible = [bool]$Assembly.IsCollectible
                     contributor = [string]$Assembly.ConstituentModule
-                    selectedAsset = ConvertTo-NormalizedEvidencePath -Path ([string]$Assembly.SelectedAssetPath) -ModuleCachePath $ModuleCachePath
+                    selectedAsset = ConvertTo-NormalizedEvidencePath -Path ([string]$Assembly.SelectedAssetPath) -ModuleCachePath $ModuleCachePath -RuntimeRoot $RuntimeRoot
                 }
             }
         )
@@ -242,7 +251,7 @@ $NormalizedScenarios = @(
         $ImportedModuleAssets = if ($FirstAssembly.Count -eq 1) {
             @(
                 foreach ($ImportedPath in @($FirstAssembly[0].ImportedModulePaths)) {
-                    ConvertTo-NormalizedEvidencePath -Path ([string]$ImportedPath) -ModuleCachePath $ModuleCachePath
+                    ConvertTo-NormalizedEvidencePath -Path ([string]$ImportedPath) -ModuleCachePath $ModuleCachePath -RuntimeRoot $RuntimeRoot
                 }
             )
         } else {
@@ -270,7 +279,7 @@ $NormalizedScenarios = @(
                         sha256 = ([string]$Assembly.Sha256).ToLowerInvariant()
                         assemblyLoadContext = [string]$Assembly.Alc
                         isCollectible = [bool]$Assembly.IsCollectible
-                        selectedAsset = ConvertTo-NormalizedEvidencePath -Path ([string]$Assembly.Path) -ModuleCachePath $ModuleCachePath
+                        selectedAsset = ConvertTo-NormalizedEvidencePath -Path ([string]$Assembly.Path) -ModuleCachePath $ModuleCachePath -RuntimeRoot $RuntimeRoot
                     }
                 }
             )

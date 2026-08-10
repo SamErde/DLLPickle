@@ -11,6 +11,7 @@ BeforeAll {
         $ModuleManifestPath = Join-Path $ModuleRoot 'Synthetic.One.psd1'
         $UpstreamAssemblyPath = Join-Path $ModuleRoot 'lib\..\lib\Microsoft.Identity.Client.dll'
         $DLLPickleAssemblyPath = Join-Path $script:RepositoryRoot 'module\DLLPickle\bin\net10.0\Microsoft.IdentityModel.Tokens.dll'
+        $RuntimeAssemblyPath = Join-Path $Root 'pwsh\System.Security.Cryptography.ProtectedData.dll'
         $RuntimeProfile = [ordered]@{
             PowerShellVersion = '7.6.4'
             PowerShellLine = '7.6'
@@ -129,6 +130,19 @@ BeforeAll {
                             ImportedModulePaths = @($ModuleManifestPath)
                         }
                         [ordered]@{
+                            Name = 'System.Security.Cryptography.ProtectedData'
+                            Version = '10.0.0.0'
+                            FullName = 'System.Security.Cryptography.ProtectedData, Version=10.0.0.0'
+                            Alc = 'Default'
+                            IsCollectible = $false
+                            Path = $RuntimeAssemblyPath
+                            Sha256 = 'e' * 64
+                            OS = 'Microsoft Windows 11'
+                            Platform = 'windows'
+                            Architecture = 'x64'
+                            ImportedModulePaths = @($ModuleManifestPath)
+                        }
+                        [ordered]@{
                             Name = 'Microsoft.IdentityModel.Tokens'
                             Version = '8.14.0.0'
                             FullName = 'Microsoft.IdentityModel.Tokens, Version=8.14.0.0'
@@ -202,6 +216,7 @@ Describe 'Normalized exact-profile upstream evidence' -Tag 'Unit' {
         $Evidence.content.modules[0].version | Should -Be '1.10.0'
         $Evidence.content.modules[0].selectedAssets[0].selectedAsset | Should -Be 'upstream:Synthetic.One/1.10.0/lib/Microsoft.Identity.Client.dll'
         @($Evidence.content.scenarios[0].assemblies.selectedAsset) | Should -Contain 'dllpickle:bin/net10.0/Microsoft.IdentityModel.Tokens.dll'
+        @($Evidence.content.scenarios[0].assemblies.selectedAsset) | Should -Contain 'runtime:System.Security.Cryptography.ProtectedData.dll'
         $RawEvidence | Should -Not -Match ([regex]::Escape($TestDrive))
         $RawEvidence | Should -Not -Match '/home/runner|[A-Za-z]:\\Users\\'
     }
@@ -235,6 +250,6 @@ Describe 'Normalized exact-profile upstream evidence' -Tag 'Unit' {
         $Inventory | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $Fixture.InventoryPath -Encoding UTF8
 
         { Invoke-NormalizerFixture -Fixture $Fixture -OutputPath (Join-Path $TestDrive 'outside.json') } |
-            Should -Throw '*outside the upstream module cache and DLLPickle module roots*'
+            Should -Throw '*outside the upstream module cache, DLLPickle module root, and exact runtime root*'
     }
 }
