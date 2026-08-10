@@ -19,6 +19,9 @@ Describe 'Dependency policy baseline' -Tag 'Unit' {
             $RuntimeProfile.validationTiers.authenticatedReadOnly.writesAllowed | Should -BeFalse
             foreach ($Platform in @('windows', 'linux', 'macos')) {
                 $RuntimeProfile.baselines.$Platform.PSObject.Properties.Name | Should -Contain 'scenarioFingerprint'
+                $RuntimeProfile.baselines.$Platform.PSObject.Properties.Name | Should -Contain 'evidencePath'
+                $RuntimeProfile.baselines.$Platform.PSObject.Properties.Name | Should -Contain 'evidenceFingerprint'
+                $RuntimeProfile.baselines.$Platform.evidencePath | Should -Be "profile-evidence/ps$($RuntimeProfile.powerShellLine)-$($RuntimeProfile.targetFramework)-$Platform-x64.json"
             }
         }
     }

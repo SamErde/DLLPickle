@@ -12,6 +12,9 @@ Path to a current profile-keyed conflict matrix.
 Path to the deterministic two-order, with/without-DLLPickle scenario report for
 the same exact profile.
 
+.PARAMETER NormalizedEvidencePath
+Path to the durable normalized candidate snapshot generated from the same run.
+
 .PARAMETER PassThru
 Return a structured comparison result after validation.
 
@@ -35,6 +38,9 @@ param (
     [Parameter(Mandatory)]
     [string]$ScenarioEvidencePath,
 
+    [Parameter(Mandatory)]
+    [string]$NormalizedEvidencePath,
+
     [Parameter()]
     [switch]$PassThru,
 
@@ -46,6 +52,23 @@ $ErrorActionPreference = 'Stop'
 $Policy = Get-Content -LiteralPath $PolicyPath -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
 $Matrix = Get-Content -LiteralPath $ConflictMatrixPath -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
 $ScenarioEvidence = Get-Content -LiteralPath $ScenarioEvidencePath -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
+$NormalizedEvidence = Get-Content -LiteralPath $NormalizedEvidencePath -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
+
+function Get-NormalizedContentFingerprint {
+    param([Parameter(Mandatory)][object]$Evidence)
+
+    if ([int]$Evidence.schemaVersion -ne 1 -or -not $Evidence.content) {
+        throw 'Normalized profile evidence has an unsupported schema or no fingerprinted content.'
+    }
+    $CanonicalContent = $Evidence.content | ConvertTo-Json -Depth 100 -Compress
+    $Bytes = [System.Text.Encoding]::UTF8.GetBytes($CanonicalContent)
+    [System.BitConverter]::ToString([System.Security.Cryptography.SHA256]::HashData($Bytes)).Replace('-', '').ToLowerInvariant()
+}
+
+$CandidateEvidenceFingerprint = Get-NormalizedContentFingerprint -Evidence $NormalizedEvidence
+if ([string]$NormalizedEvidence.contentFingerprint -ne $CandidateEvidenceFingerprint) {
+    throw "Normalized profile evidence content does not recompute to '$($NormalizedEvidence.contentFingerprint)'."
+}
 if (-not $Matrix.Profile -or [string]::IsNullOrWhiteSpace([string]$Matrix.ProfileKey)) {
     throw 'The conflict matrix is not keyed to an exact runtime profile.'
 }
@@ -100,6 +123,18 @@ foreach ($ObservedAssembly in $ObservedScenarioAssemblies) {
 if (-not $ScenarioEvidence.Passed -or $ScenarioEvidence.WritesPerformed -or $ScenarioEvidence.ValidationTier -ne 'deterministic-import-no-auth') {
     throw "Scenario evidence for '$($Matrix.ProfileKey)' is not a passing zero-write deterministic tier."
 }
+if ([string]$NormalizedEvidence.content.profile.profileKey -ne [string]$Matrix.ProfileKey) {
+    throw "Normalized evidence profile '$($NormalizedEvidence.content.profile.profileKey)' does not match '$($Matrix.ProfileKey)'."
+}
+if ([string]$NormalizedEvidence.content.validation.deterministicImportNoAuth.conflictSurfaceFingerprint -ne [string]$Matrix.Fingerprint -or
+    [string]$NormalizedEvidence.content.validation.deterministicImportNoAuth.scenarioFingerprint -ne [string]$ScenarioEvidence.ScenarioFingerprint) {
+    throw "Normalized evidence for '$($Matrix.ProfileKey)' does not bind the current conflict and scenario fingerprints."
+}
+if ([string]$NormalizedEvidence.content.validation.deterministicImportNoAuth.status -ne 'passed' -or
+    $NormalizedEvidence.content.validation.deterministicImportNoAuth.writesPerformed -or
+    $NormalizedEvidence.content.validation.authenticatedReadOnly.writesPerformed) {
+    throw "Normalized evidence for '$($Matrix.ProfileKey)' is not a passing zero-write deterministic snapshot."
+}
 
 $ProfilePolicy = @($Policy.runtimeProfiles | Where-Object {
         $_.powerShellLine -eq $Matrix.Profile.PowerShellLine -and
@@ -122,18 +157,46 @@ $BaselineFingerprint = [string]$Baseline.conflictSurfaceFingerprint
 $CurrentFingerprint = [string]$Matrix.Fingerprint
 $BaselineScenarioFingerprint = [string]$Baseline.scenarioFingerprint
 $CurrentScenarioFingerprint = [string]$ScenarioEvidence.ScenarioFingerprint
+$BaselineEvidencePath = [string]$Baseline.evidencePath
+$BaselineEvidenceFingerprint = [string]$Baseline.evidenceFingerprint
 $Status = if (
     $Baseline.status -ne 'accepted' -or
     [string]::IsNullOrWhiteSpace($BaselineFingerprint) -or
-    [string]::IsNullOrWhiteSpace($BaselineScenarioFingerprint)
+    [string]::IsNullOrWhiteSpace($BaselineScenarioFingerprint) -or
+    [string]::IsNullOrWhiteSpace($BaselineEvidencePath) -or
+    [string]::IsNullOrWhiteSpace($BaselineEvidenceFingerprint)
 ) {
     'RequiresAcceptance'
-} elseif ($CurrentFingerprint -ne $BaselineFingerprint -or $CurrentScenarioFingerprint -ne $BaselineScenarioFingerprint) {
+} elseif (
+    $CurrentFingerprint -ne $BaselineFingerprint -or
+    $CurrentScenarioFingerprint -ne $BaselineScenarioFingerprint -or
+    $CandidateEvidenceFingerprint -ne $BaselineEvidenceFingerprint
+) {
     'Drifted'
 } else {
     'AcceptedUnchanged'
 }
-$FindingCanonicalText = '{0}|{1}|conflict:{2}>{3}|scenario:{4}>{5}' -f $Matrix.ProfileKey, $Status, $BaselineFingerprint, $CurrentFingerprint, $BaselineScenarioFingerprint, $CurrentScenarioFingerprint
+
+if ($Status -eq 'AcceptedUnchanged') {
+    $ResolvedPolicyPath = (Resolve-Path -LiteralPath $PolicyPath).Path
+    $CommittedEvidencePath = Join-Path -Path (Split-Path -Path $ResolvedPolicyPath -Parent) -ChildPath $BaselineEvidencePath
+    if (-not (Test-Path -LiteralPath $CommittedEvidencePath -PathType Leaf)) {
+        throw "Accepted evidence for '$($Matrix.ProfileKey)' was not found at '$CommittedEvidencePath'."
+    }
+    $CommittedEvidence = Get-Content -LiteralPath $CommittedEvidencePath -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
+    $CommittedEvidenceFingerprint = Get-NormalizedContentFingerprint -Evidence $CommittedEvidence
+    if ([string]$CommittedEvidence.contentFingerprint -ne $CommittedEvidenceFingerprint -or
+        $CommittedEvidenceFingerprint -ne $BaselineEvidenceFingerprint) {
+        throw "Accepted evidence for '$($Matrix.ProfileKey)' does not recompute to the policy fingerprint '$BaselineEvidenceFingerprint'."
+    }
+    if ([string]$CommittedEvidence.content.profile.profileKey -ne [string]$Matrix.ProfileKey -or
+        [string]$CommittedEvidence.content.validation.deterministicImportNoAuth.conflictSurfaceFingerprint -ne $BaselineFingerprint -or
+        [string]$CommittedEvidence.content.validation.deterministicImportNoAuth.scenarioFingerprint -ne $BaselineScenarioFingerprint) {
+        throw "Accepted evidence for '$($Matrix.ProfileKey)' does not bind the policy profile, conflict, and scenario fingerprints."
+    }
+}
+
+$FindingCanonicalText = '{0}|{1}|conflict:{2}>{3}|scenario:{4}>{5}|evidence:{6}>{7}' -f $Matrix.ProfileKey, $Status, $BaselineFingerprint, $CurrentFingerprint, $BaselineScenarioFingerprint, $CurrentScenarioFingerprint, $BaselineEvidenceFingerprint, $CandidateEvidenceFingerprint
 $FindingBytes = [System.Text.Encoding]::UTF8.GetBytes($FindingCanonicalText)
 $FindingFingerprint = [System.BitConverter]::ToString([System.Security.Cryptography.SHA256]::HashData($FindingBytes)).Replace('-', '').ToLowerInvariant()
 $Result = [pscustomobject]@{
@@ -143,6 +206,9 @@ $Result = [pscustomobject]@{
     CurrentFingerprint  = $CurrentFingerprint
     BaselineScenarioFingerprint = $BaselineScenarioFingerprint
     CurrentScenarioFingerprint = $CurrentScenarioFingerprint
+    BaselineEvidenceFingerprint = $BaselineEvidenceFingerprint
+    CurrentEvidenceFingerprint = $CandidateEvidenceFingerprint
+    BaselineEvidencePath = $BaselineEvidencePath
     FindingFingerprint  = $FindingFingerprint
     Status              = $Status
 }
@@ -159,6 +225,6 @@ if ($Status -eq 'RequiresAcceptance') {
     throw "The conflict baseline for '$($Matrix.ProfileKey)' is not accepted. Current status: '$($Baseline.status)'. Review the profile evidence before release or merge."
 }
 if ($Status -eq 'Drifted') {
-    throw "Upstream conflict or import-order scenario drift detected for '$($Matrix.ProfileKey)': baseline conflict '$BaselineFingerprint', current conflict '$CurrentFingerprint'; baseline scenario '$BaselineScenarioFingerprint', current scenario '$CurrentScenarioFingerprint'."
+    throw "Upstream profile evidence drift detected for '$($Matrix.ProfileKey)': baseline conflict '$BaselineFingerprint', current conflict '$CurrentFingerprint'; baseline scenario '$BaselineScenarioFingerprint', current scenario '$CurrentScenarioFingerprint'; baseline evidence '$BaselineEvidenceFingerprint', current evidence '$CandidateEvidenceFingerprint'."
 }
 if ($PassThru) { $Result }

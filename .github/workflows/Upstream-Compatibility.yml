@@ -71,6 +71,7 @@ jobs:
                 '^tools/Get-DLLPickleLoadedTrackedAssembly\.ps1$',
                 '^tools/Get-DLLPickleRuntimeAssemblySnapshot\.ps1$',
                 '^tools/New-DLLPickleConflictMatrix\.ps1$',
+                '^tools/New-DLLPickleNormalizedProfileEvidence\.ps1$',
                 '^tools/New-DLLPickleUpstreamScenarioEvidence\.ps1$',
                 '^tools/Test-DLLPickleProfileConflictBaseline\.ps1$',
                 '^tools/Install-DLLPickleTestPowerShell\.ps1$',
@@ -274,6 +275,9 @@ jobs:
           MATRIX_PLATFORM: ${{ matrix.platform }}
           MATRIX_ARCHITECTURE: ${{ matrix.architecture }}
           PROFILE_MODULE_CACHE: ${{ runner.temp }}/dllpickle-upstream-modules/${{ matrix.powerShellVersion }}
+          SOURCE_RUN_ID: ${{ github.run_id }}
+          SOURCE_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SOURCE_COMMIT_SHA: ${{ github.sha }}
         run: |
           $ErrorActionPreference = 'Stop'
           $EvidenceRoot = Join-Path './artifacts/upstreamCompatibility' "$($env:MATRIX_POWERSHELL_VERSION)/$($env:MATRIX_PLATFORM)"
@@ -313,11 +317,25 @@ jobs:
               writesPerformed = $false
               unexecutedCommands = @($Policy.monitoredModules.authenticatedReadOnlyProbeCommand)
           }
-          $GapReport | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath (Join-Path $EvidenceRoot 'validation-gaps.json') -Encoding utf8
+          $ValidationGapsPath = Join-Path $EvidenceRoot 'validation-gaps.json'
+          $GapReport | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $ValidationGapsPath -Encoding utf8
+          $NormalizedEvidencePath = Join-Path $EvidenceRoot 'normalized-profile-evidence.json'
+          $NormalizedEvidenceParameters = @{
+              InventoryPath = $InventoryPath
+              ConflictMatrixPath = $ConflictMatrixPath
+              ScenarioEvidencePath = $ScenarioEvidencePath
+              ValidationGapsPath = $ValidationGapsPath
+              OutputPath = $NormalizedEvidencePath
+              SourceRunId = $env:SOURCE_RUN_ID
+              SourceRunUrl = $env:SOURCE_RUN_URL
+              SourceCommitSha = $env:SOURCE_COMMIT_SHA
+          }
+          ./tools/New-DLLPickleNormalizedProfileEvidence.ps1 @NormalizedEvidenceParameters | Out-Null
           $BaselineParameters = @{
               PolicyPath = './build/dependency-policy.json'
               ConflictMatrixPath = $ConflictMatrixPath
               ScenarioEvidencePath = $ScenarioEvidencePath
+              NormalizedEvidencePath = $NormalizedEvidencePath
               OutputPath = (Join-Path $EvidenceRoot 'baseline-comparison.json')
           }
           ./tools/Test-DLLPickleProfileConflictBaseline.ps1 @BaselineParameters
@@ -425,7 +443,7 @@ jobs:
               "Duplicate profiles: $(@($Summary.DuplicateProfileKeys) -join ', ')"
               ''
               'Profile findings:'
-              $(if (@($Summary.Findings).Count -eq 0) { '- None' } else { @($Summary.Findings | Sort-Object ProfileKey | ForEach-Object { "- $($_.ProfileKey): $($_.Status); baseline $($_.BaselineFingerprint); current $($_.CurrentFingerprint); scenario baseline $($_.BaselineScenarioFingerprint); scenario current $($_.CurrentScenarioFingerprint)" }) })
+              $(if (@($Summary.Findings).Count -eq 0) { '- None' } else { @($Summary.Findings | Sort-Object ProfileKey | ForEach-Object { "- $($_.ProfileKey): $($_.Status); conflict $($_.BaselineFingerprint) -> $($_.CurrentFingerprint); scenario $($_.BaselineScenarioFingerprint) -> $($_.CurrentScenarioFingerprint); normalized evidence $($_.BaselineEvidenceFingerprint) -> $($_.CurrentEvidenceFingerprint)" }) })
               ''
               "Workflow evidence: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
               ''

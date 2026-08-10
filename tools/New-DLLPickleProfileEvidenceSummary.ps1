@@ -52,6 +52,9 @@ $Comparisons = @(
                 CurrentFingerprint = [string]$Comparison.CurrentFingerprint
                 BaselineScenarioFingerprint = [string]$Comparison.BaselineScenarioFingerprint
                 CurrentScenarioFingerprint = [string]$Comparison.CurrentScenarioFingerprint
+                BaselineEvidenceFingerprint = [string]$Comparison.BaselineEvidenceFingerprint
+                CurrentEvidenceFingerprint = [string]$Comparison.CurrentEvidenceFingerprint
+                BaselineEvidencePath = [string]$Comparison.BaselineEvidencePath
                 FindingFingerprint = [string]$Comparison.FindingFingerprint
                 SourcePath = [System.IO.Path]::GetRelativePath((Resolve-Path -LiteralPath $EvidenceRoot).Path, $ComparisonFile.FullName).Replace('\', '/')
             }
@@ -66,7 +69,7 @@ $CanonicalText = @(
     "missing=$($MissingProfileKeys -join ',')"
     "unexpected=$($UnexpectedProfileKeys -join ',')"
     "duplicates=$($DuplicateProfileKeys -join ',')"
-    @($Comparisons | Sort-Object ProfileKey | ForEach-Object { '{0}|{1}|{2}|{3}|{4}|{5}|{6}' -f $_.ProfileKey, $_.Status, $_.BaselineFingerprint, $_.CurrentFingerprint, $_.BaselineScenarioFingerprint, $_.CurrentScenarioFingerprint, $_.FindingFingerprint })
+    @($Comparisons | Sort-Object ProfileKey | ForEach-Object { '{0}|{1}|{2}|{3}|{4}|{5}|{6}|{7}|{8}' -f $_.ProfileKey, $_.Status, $_.BaselineFingerprint, $_.CurrentFingerprint, $_.BaselineScenarioFingerprint, $_.CurrentScenarioFingerprint, $_.BaselineEvidenceFingerprint, $_.CurrentEvidenceFingerprint, $_.FindingFingerprint })
 ) -join [char]10
 $FingerprintBytes = [System.Text.Encoding]::UTF8.GetBytes($CanonicalText)
 $AggregateFingerprint = [System.BitConverter]::ToString([System.Security.Cryptography.SHA256]::HashData($FingerprintBytes)).Replace('-', '').ToLowerInvariant()

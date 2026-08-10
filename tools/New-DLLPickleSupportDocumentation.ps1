@@ -44,6 +44,16 @@ foreach ($RequiredPath in @($SupportPolicyPath, $TestMatrixPath, $DependencyPoli
 $SupportPolicy = Get-Content -LiteralPath $SupportPolicyPath -Raw | ConvertFrom-Json -ErrorAction Stop
 $TestMatrix = Get-Content -LiteralPath $TestMatrixPath -Raw | ConvertFrom-Json -ErrorAction Stop
 $DependencyPolicy = Get-Content -LiteralPath $DependencyPolicyPath -Raw | ConvertFrom-Json -ErrorAction Stop
+$DependencyPolicyDirectory = Split-Path -Path (Resolve-Path -LiteralPath $DependencyPolicyPath).Path -Parent
+
+function Get-DLLPickleEvidenceFingerprint {
+    param([Parameter(Mandatory)][object]$Evidence)
+
+    $CanonicalContent = $Evidence.content | ConvertTo-Json -Depth 100 -Compress
+    $Bytes = [System.Text.Encoding]::UTF8.GetBytes($CanonicalContent)
+    [System.BitConverter]::ToString([System.Security.Cryptography.SHA256]::HashData($Bytes)).Replace('-', '').ToLowerInvariant()
+}
+
 $ShippedProfileKeys = @($SupportPolicy.profiles | ForEach-Object { '{0}.{1}|{2}|{3}' -f $_.powerShellMajor, $_.powerShellMinor, $_.dotnetMajor, $_.targetFramework })
 $TestProfileKeys = @($TestMatrix.profiles | ForEach-Object { '{0}.{1}|{2}|{3}' -f $_.powerShellMajor, $_.powerShellMinor, $_.dotnetMajor, $_.targetFramework })
 if (Compare-Object -ReferenceObject $ShippedProfileKeys -DifferenceObject $TestProfileKeys) {
@@ -86,8 +96,63 @@ foreach ($RuntimeProfile in @($DependencyPolicy.runtimeProfiles)) {
     foreach ($Platform in @($RuntimeProfile.platforms)) {
         $PlatformBaseline = $RuntimeProfile.baselines.$Platform
         $Verdict = if ($PlatformBaseline) { [string]$PlatformBaseline.status } else { 'missing-baseline' }
+        $Evidence = $null
+        $EvidenceDate = $VerifiedDate
+        $RunReference = 'not-run'
+        if ($Verdict -eq 'accepted') {
+            if ([string]::IsNullOrWhiteSpace([string]$PlatformBaseline.evidencePath) -or
+                [string]::IsNullOrWhiteSpace([string]$PlatformBaseline.evidenceFingerprint)) {
+                throw "Accepted $Platform evidence for PowerShell $($RuntimeProfile.powerShellLine) has no committed path or fingerprint."
+            }
+            $EvidencePath = Join-Path -Path $DependencyPolicyDirectory -ChildPath ([string]$PlatformBaseline.evidencePath)
+            if (-not (Test-Path -LiteralPath $EvidencePath -PathType Leaf)) {
+                throw "Accepted profile evidence was not found: $EvidencePath"
+            }
+            $Evidence = Get-Content -LiteralPath $EvidencePath -Raw | ConvertFrom-Json -ErrorAction Stop
+            $RecomputedEvidenceFingerprint = Get-DLLPickleEvidenceFingerprint -Evidence $Evidence
+            if ([string]$Evidence.contentFingerprint -ne $RecomputedEvidenceFingerprint -or
+                [string]$PlatformBaseline.evidenceFingerprint -ne $RecomputedEvidenceFingerprint) {
+                throw "Accepted profile evidence does not recompute to the policy fingerprint: $EvidencePath"
+            }
+            $ExpectedProfileKey = 'ps{0}-{1}-{2}-x64' -f $RuntimeProfile.powerShellLine, $RuntimeProfile.targetFramework, $Platform
+            if ([string]$Evidence.content.profile.profileKey -ne $ExpectedProfileKey) {
+                throw "Accepted profile evidence '$($Evidence.content.profile.profileKey)' does not match '$ExpectedProfileKey'."
+            }
+            $EvidenceDate = ([System.DateTimeOffset]$Evidence.provenance.capturedAtUtc).ToString('yyyy-MM-dd')
+            $SourceRunId = [string]$Evidence.provenance.sourceRunId
+            $SourceRunUrl = [string]$Evidence.provenance.sourceRunUrl
+            $RunReference = if (-not [string]::IsNullOrWhiteSpace($SourceRunId) -and -not [string]::IsNullOrWhiteSpace($SourceRunUrl)) {
+                '[{0}]({1})' -f $SourceRunId, $SourceRunUrl
+            } elseif (-not [string]::IsNullOrWhiteSpace($SourceRunId)) {
+                $SourceRunId
+            } else {
+                'committed evidence'
+            }
+        }
         foreach ($Module in @($DependencyPolicy.monitoredModules)) {
-            $EvidenceRow = '| {0} | pending exact-profile inventory | {1} | `{2}` | {3} | pending CI artifact | pending hash and ALC | **{4}** | {5} | not-run |' -f $Module.name, $RuntimeProfile.powerShellLine, $RuntimeProfile.targetFramework, $Platform, $Verdict, $VerifiedDate
+            if ($Evidence) {
+                $EvidenceModules = @($Evidence.content.modules | Where-Object name -eq $Module.name)
+                if ($EvidenceModules.Count -ne 1) {
+                    throw "Accepted profile evidence for '$($Evidence.content.profile.profileKey)' does not contain exactly one '$($Module.name)' module row."
+                }
+                $EvidenceModule = $EvidenceModules[0]
+                $SelectedAssetText = if (@($EvidenceModule.selectedAssets).Count -eq 0) {
+                    'no tracked assembly selected'
+                } else {
+                    @($EvidenceModule.selectedAssets | ForEach-Object { '`{0}`' -f $_.selectedAsset }) -join '<br>'
+                }
+                $AssemblyResultText = if (@($EvidenceModule.selectedAssets).Count -eq 0) {
+                    'no tracked assembly observed'
+                } else {
+                    @(
+                        $EvidenceModule.selectedAssets |
+                            ForEach-Object { '`{0}` {1} / `{2}`' -f $_.assemblyName, $_.assemblyVersion, $_.assemblyLoadContext }
+                    ) -join '<br>'
+                }
+                $EvidenceRow = '| {0} | {1} | {2} | `{3}` | {4} | {5} | {6} | **{7}** | {8} | {9} |' -f $Module.name, $EvidenceModule.version, $RuntimeProfile.powerShellLine, $RuntimeProfile.targetFramework, $Platform, $SelectedAssetText, $AssemblyResultText, $Verdict, $EvidenceDate, $RunReference
+            } else {
+                $EvidenceRow = '| {0} | pending exact-profile inventory | {1} | `{2}` | {3} | pending CI artifact | pending hash and ALC | **{4}** | {5} | not-run |' -f $Module.name, $RuntimeProfile.powerShellLine, $RuntimeProfile.targetFramework, $Platform, $Verdict, $VerifiedDate
+            }
             $EvidenceLines.Add($EvidenceRow)
         }
     }

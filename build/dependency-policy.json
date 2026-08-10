@@ -837,17 +837,23 @@
         "windows": {
           "status": "requires-profile-refresh",
           "conflictSurfaceFingerprint": null,
-          "scenarioFingerprint": null
+          "scenarioFingerprint": null,
+          "evidencePath": "profile-evidence/ps7.4-net8.0-windows-x64.json",
+          "evidenceFingerprint": null
         },
         "linux": {
           "status": "requires-profile-refresh",
           "conflictSurfaceFingerprint": null,
-          "scenarioFingerprint": null
+          "scenarioFingerprint": null,
+          "evidencePath": "profile-evidence/ps7.4-net8.0-linux-x64.json",
+          "evidenceFingerprint": null
         },
         "macos": {
           "status": "requires-profile-refresh",
           "conflictSurfaceFingerprint": null,
-          "scenarioFingerprint": null
+          "scenarioFingerprint": null,
+          "evidencePath": "profile-evidence/ps7.4-net8.0-macos-x64.json",
+          "evidenceFingerprint": null
         }
       },
       "legacyUnscopedBaseline": {
@@ -930,17 +936,23 @@
         "windows": {
           "status": "requires-profile-refresh",
           "conflictSurfaceFingerprint": null,
-          "scenarioFingerprint": null
+          "scenarioFingerprint": null,
+          "evidencePath": "profile-evidence/ps7.5-net9.0-windows-x64.json",
+          "evidenceFingerprint": null
         },
         "linux": {
           "status": "requires-profile-refresh",
           "conflictSurfaceFingerprint": null,
-          "scenarioFingerprint": null
+          "scenarioFingerprint": null,
+          "evidencePath": "profile-evidence/ps7.5-net9.0-linux-x64.json",
+          "evidenceFingerprint": null
         },
         "macos": {
           "status": "requires-profile-refresh",
           "conflictSurfaceFingerprint": null,
-          "scenarioFingerprint": null
+          "scenarioFingerprint": null,
+          "evidencePath": "profile-evidence/ps7.5-net9.0-macos-x64.json",
+          "evidenceFingerprint": null
         }
       }
     },
@@ -1019,17 +1031,23 @@
         "windows": {
           "status": "requires-profile-refresh",
           "conflictSurfaceFingerprint": null,
-          "scenarioFingerprint": null
+          "scenarioFingerprint": null,
+          "evidencePath": "profile-evidence/ps7.6-net10.0-windows-x64.json",
+          "evidenceFingerprint": null
         },
         "linux": {
           "status": "requires-profile-refresh",
           "conflictSurfaceFingerprint": null,
-          "scenarioFingerprint": null
+          "scenarioFingerprint": null,
+          "evidencePath": "profile-evidence/ps7.6-net10.0-linux-x64.json",
+          "evidenceFingerprint": null
         },
         "macos": {
           "status": "requires-profile-refresh",
           "conflictSurfaceFingerprint": null,
-          "scenarioFingerprint": null
+          "scenarioFingerprint": null,
+          "evidencePath": "profile-evidence/ps7.6-net10.0-macos-x64.json",
+          "evidenceFingerprint": null
         }
       }
     }

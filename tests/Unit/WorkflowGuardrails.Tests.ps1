@@ -149,8 +149,10 @@ Describe 'Release publish gating guardrails' -Tag 'Unit' {
         $UpstreamWorkflow | Should -Match ([regex]::Escape('tools/New-DLLPicklePowerShellTestMatrix.ps1'))
         $UpstreamWorkflow | Should -Match ([regex]::Escape('tools/Install-DLLPickleTestPowerShell.ps1'))
         $UpstreamWorkflow | Should -Match ([regex]::Escape('tools/Test-DLLPickleProfileConflictBaseline.ps1'))
+        $UpstreamWorkflow | Should -Match ([regex]::Escape('tools/New-DLLPickleNormalizedProfileEvidence.ps1'))
         $UpstreamWorkflow | Should -Match ([regex]::Escape('tools/New-DLLPickleUpstreamScenarioEvidence.ps1'))
         $UpstreamWorkflow | Should -Match ([regex]::Escape('ScenarioEvidencePath'))
+        $UpstreamWorkflow | Should -Match ([regex]::Escape('NormalizedEvidencePath'))
         $UpstreamWorkflow | Should -Match 'executed-two-orders-with-and-without-dllpickle'
         $UpstreamWorkflow | Should -Match ([regex]::Escape('-PowerShellExecutable'))
         $UpstreamWorkflow | Should -Match ([regex]::Escape('fromJson(needs.profile-matrix.outputs.matrix)'))
