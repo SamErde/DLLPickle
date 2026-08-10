@@ -23,6 +23,21 @@ Describe 'Get-DLLPickleLoadedTrackedAssembly' -Tag 'Unit' {
         $Row.Alc | Should -Not -BeNullOrEmpty
         $Row.Version | Should -Not -BeNullOrEmpty
         $Row.Platform | Should -BeIn @('windows', 'linux', 'macos')
+        $Row.OS | Should -Not -BeNullOrEmpty
+        if ($Row.Platform -eq 'macos') {
+            $Row.OS | Should -Match '^macOS \d+\.\d+'
+        }
+    }
+
+    It 'uses the stable macOS product version instead of the Darwin kernel description' {
+        $Source = Get-Content -LiteralPath $LoadedScript -Raw
+
+        $Source | Should -Match ([regex]::Escape('/usr/bin/sw_vers -productVersion'))
+        $Source | Should -Match ([regex]::Escape('$OperatingSystemDescription = "macOS $MacOSProductVersion"'))
+        Get-Content -LiteralPath (Join-Path $RepoRoot 'build\profile-evidence\ps7.4-net8.0-macos-x64.json') -Raw |
+            Should -Not -Match 'Darwin Kernel Version'
+        Get-Content -LiteralPath (Join-Path $RepoRoot 'build\profile-evidence\ps7.5-net9.0-macos-x64.json') -Raw |
+            Should -Not -Match 'Darwin Kernel Version'
     }
 
     It 'excludes loaded assemblies that are not in trackedAssemblies' {

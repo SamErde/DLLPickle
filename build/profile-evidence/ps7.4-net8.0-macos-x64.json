@@ -7,7 +7,7 @@
     "sourceCommitSha": "586b1fed1189d9a34e6b054dbffa07b62a706d97",
     "capturedAtUtc": "2026-08-10T02:31:39.0000000+00:00",
     "observedOperatingSystems": [
-      "Darwin 24.6.0 Darwin Kernel Version 24.6.0: Tue Apr 21 20:17:54 PDT 2026; root:xnu-11417.140.69.710.16~1/RELEASE_X86_64"
+      "macOS 15.7.7"
     ]
   },
   "content": {

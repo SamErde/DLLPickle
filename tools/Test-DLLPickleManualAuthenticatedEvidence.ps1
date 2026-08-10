@@ -60,6 +60,7 @@ param (
 )
 
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'DLLPickle.ProfileEvidence.ps1')
 
 function Assert-ExactStringSet {
     param(
@@ -68,7 +69,9 @@ function Assert-ExactStringSet {
         [Parameter(Mandatory)][string]$Label
     )
 
-    $Difference = @(Compare-Object -ReferenceObject @($Expected | Sort-Object) -DifferenceObject @($Actual | Sort-Object))
+    $ExpectedSorted = @(Get-DLLPickleOrdinalSequence -InputObject @($Expected))
+    $ActualSorted = @(Get-DLLPickleOrdinalSequence -InputObject @($Actual))
+    $Difference = @(Compare-Object -ReferenceObject $ExpectedSorted -DifferenceObject $ActualSorted)
     if ($Difference.Count -gt 0 -or $Actual.Count -ne $Expected.Count) {
         throw "$Label does not match the required set. Expected '$($Expected -join ', ')'; actual '$($Actual -join ', ')'."
     }
@@ -82,30 +85,6 @@ function Assert-ExactPropertySet {
     )
 
     Assert-ExactStringSet -Actual @($InputObject.PSObject.Properties.Name) -Expected $Expected -Label "$Label properties"
-}
-
-function Get-ContentFingerprint {
-    param([Parameter(Mandatory)][object]$Content)
-
-    $CanonicalContent = $Content | ConvertTo-Json -Depth 100 -Compress
-    $Bytes = [System.Text.Encoding]::UTF8.GetBytes($CanonicalContent)
-    [System.BitConverter]::ToString([System.Security.Cryptography.SHA256]::HashData($Bytes)).Replace('-', '').ToLowerInvariant()
-}
-
-function ConvertTo-UtcDateTimeOffset {
-    param([Parameter(Mandatory)][object]$Value)
-
-    if ($Value -is [System.DateTimeOffset]) {
-        return $Value.ToUniversalTime()
-    }
-    if ($Value -is [System.DateTime]) {
-        return ([System.DateTimeOffset]$Value).ToUniversalTime()
-    }
-    [System.DateTimeOffset]::Parse(
-        [string]$Value,
-        [System.Globalization.CultureInfo]::InvariantCulture,
-        [System.Globalization.DateTimeStyles]::AssumeUniversal
-    ).ToUniversalTime()
 }
 
 foreach ($RequiredPath in @($EvidencePath, $TestMatrixPath, $DependencyPolicyPath)) {
@@ -128,7 +107,7 @@ if ([int]$Evidence.schemaVersion -ne 1 -or
     -not $Evidence.content) {
     throw 'Manual authenticated evidence has an unsupported schema, type, or missing content.'
 }
-$RecomputedContentFingerprint = Get-ContentFingerprint -Content $Evidence.content
+$RecomputedContentFingerprint = Get-DLLPickleNormalizedEvidenceFingerprint -Evidence $Evidence
 if ([string]$Evidence.contentFingerprint -ne $RecomputedContentFingerprint) {
     throw "Manual authenticated evidence does not recompute to '$($Evidence.contentFingerprint)'."
 }
@@ -138,16 +117,19 @@ if ([string]$Bridge.id -ne 'initial-powershell-7.4-7.6-multitargeting-major' -or
     [string]$Bridge.allowedReleaseVersion -ne '3.0.0') {
     throw 'Manual authenticated evidence is not scoped exclusively to the initial 3.0.0 multi-target release.'
 }
-$CaptureStartedAtUtc = ConvertTo-UtcDateTimeOffset -Value $Evidence.provenance.captureStartedAtUtc
-$CapturedAtUtc = ConvertTo-UtcDateTimeOffset -Value $Evidence.provenance.captureCompletedAtUtc
-$ExpiresAtUtc = ConvertTo-UtcDateTimeOffset -Value $Bridge.expiresAtUtc
+$CaptureStartedAtUtc = ConvertTo-DLLPickleUtcDateTimeOffset -Value $Evidence.provenance.captureStartedAtUtc
+$CapturedAtUtc = ConvertTo-DLLPickleUtcDateTimeOffset -Value $Evidence.provenance.captureCompletedAtUtc
+$ExpiresAtUtc = ConvertTo-DLLPickleUtcDateTimeOffset -Value $Bridge.expiresAtUtc
 if ([string]$Evidence.provenance.sourceCommitSha -notmatch '^[a-f0-9]{40}$' -or
     $CaptureStartedAtUtc -gt $CapturedAtUtc -or
     $CapturedAtUtc -gt $NowUtc.ToUniversalTime()) {
     throw 'Manual authenticated-evidence provenance has an invalid commit or capture window.'
 }
-if ($ExpiresAtUtc -le $CapturedAtUtc -or $ExpiresAtUtc -gt $CapturedAtUtc.AddDays(30)) {
-    throw 'The manual authenticated-evidence bridge must expire after capture and within 30 days.'
+if ($ExpiresAtUtc -ne $CaptureStartedAtUtc.AddDays(14) -or $CapturedAtUtc -ge $ExpiresAtUtc) {
+    throw 'The manual authenticated-evidence bridge must expire exactly 14 days after capture starts, after capture completes.'
+}
+if ($NowUtc.ToUniversalTime() -ge $ExpiresAtUtc) {
+    throw "Manual authenticated evidence expired at $($ExpiresAtUtc.ToString('o'))."
 }
 if ($Mode -eq 'Release') {
     if ([string]$Evidence.acceptance.status -ne 'accepted' -or
@@ -155,14 +137,11 @@ if ($Mode -eq 'Release') {
         [string]$Evidence.acceptance.confidence -notin @('low', 'medium', 'high')) {
         throw 'Manual authenticated evidence has not been explicitly accepted by a maintainer with a confidence level.'
     }
-    $AcceptedAtUtc = ConvertTo-UtcDateTimeOffset -Value $Evidence.acceptance.acceptedAtUtc
+    $AcceptedAtUtc = ConvertTo-DLLPickleUtcDateTimeOffset -Value $Evidence.acceptance.acceptedAtUtc
     if ($AcceptedAtUtc -lt $CapturedAtUtc -or
         $AcceptedAtUtc -ge $ExpiresAtUtc -or
         $AcceptedAtUtc -gt $NowUtc.ToUniversalTime()) {
         throw "Manual authenticated evidence acceptance '$($AcceptedAtUtc.ToString('o'))' is outside its capture '$($CapturedAtUtc.ToString('o'))' to expiry '$($ExpiresAtUtc.ToString('o'))' window."
-    }
-    if ($NowUtc.ToUniversalTime() -ge $ExpiresAtUtc) {
-        throw "Manual authenticated evidence expired at $($ExpiresAtUtc.ToString('o'))."
     }
 }
 
@@ -193,7 +172,7 @@ $ExpectedProfiles = @(
 )
 Assert-ExactStringSet -Actual @($Evidence.content.profiles.profileKey) -Expected @($ExpectedProfiles.ProfileKey) -Label 'Authenticated profile coverage'
 
-$ExpectedModuleNames = @($Policy.monitoredModules.name | Sort-Object)
+$ExpectedModuleNames = @(Get-DLLPickleOrdinalSequence -InputObject @($Policy.monitoredModules.name))
 $ExpectedScenarioIds = @(
     'graph-module-only', 'graph-dllpickle-first', 'graph-module-first',
     'exo-module-only', 'exo-dllpickle-first', 'exo-module-first',
@@ -228,7 +207,7 @@ foreach ($ExpectedProfile in $ExpectedProfiles) {
         throw "Expected exactly one authenticated profile '$($ExpectedProfile.ProfileKey)'."
     }
     $EvidenceProfile = $ProfileRows[0]
-    Assert-ExactPropertySet -InputObject $EvidenceProfile -Expected @('profileKey', 'powerShellVersion', 'powerShellLine', 'dotNetVersion', 'dotNetMajor', 'targetFramework', 'platform', 'architecture', 'runtimeExecutable', 'psHome', 'writesPerformed', 'moduleVersions', 'scenarios') -Label "Authenticated profile '$($ExpectedProfile.ProfileKey)'"
+    Assert-ExactPropertySet -InputObject $EvidenceProfile -Expected @('profileKey', 'powerShellVersion', 'powerShellLine', 'dotNetVersion', 'dotNetMajor', 'targetFramework', 'platform', 'architecture', 'runtimeExecutable', 'psHome', 'writesPerformed', 'inventoryFingerprint', 'moduleVersions', 'scenarios') -Label "Authenticated profile '$($ExpectedProfile.ProfileKey)'"
     if ([string]$EvidenceProfile.powerShellVersion -ne $ExpectedProfile.PowerShellVersion -or
         [string]$EvidenceProfile.powerShellLine -ne $ExpectedProfile.PowerShellLine -or
         [int]$EvidenceProfile.dotNetMajor -ne $ExpectedProfile.DotNetMajor -or
@@ -240,6 +219,9 @@ foreach ($ExpectedProfile in $ExpectedProfiles) {
     }
     if ([string]$EvidenceProfile.runtimeExecutable -notmatch '^runtime:' -or [string]$EvidenceProfile.psHome -notmatch '^runtime:') {
         throw "Authenticated profile '$($ExpectedProfile.ProfileKey)' contains an unnormalized runtime path."
+    }
+    if ([string]$EvidenceProfile.inventoryFingerprint -notmatch '^[a-f0-9]{64}$') {
+        throw "Authenticated profile '$($ExpectedProfile.ProfileKey)' has no valid prepared module-inventory fingerprint."
     }
     Assert-ExactStringSet -Actual @($EvidenceProfile.moduleVersions.name) -Expected $ExpectedModuleNames -Label "Module versions for '$($ExpectedProfile.ProfileKey)'"
     foreach ($ModuleVersion in @($EvidenceProfile.moduleVersions)) {
@@ -258,12 +240,13 @@ foreach ($ExpectedProfile in $ExpectedProfiles) {
         throw "No unique dependency policy exists for '$($ExpectedProfile.ProfileKey)'."
     }
     foreach ($Scenario in @($EvidenceProfile.scenarios)) {
-        Assert-ExactPropertySet -InputObject $Scenario -Expected @('scenarioId', 'profileKey', 'powerShellVersion', 'targetFramework', 'platform', 'architecture', 'importOrder', 'dllPickleTiming', 'expectedTokenAudiences', 'status', 'writesPerformed', 'probes', 'snapshots', 'errorType') -Label "Authenticated scenario '$($Scenario.scenarioId)'"
+        Assert-ExactPropertySet -InputObject $Scenario -Expected @('scenarioId', 'profileKey', 'powerShellVersion', 'targetFramework', 'platform', 'architecture', 'inventoryFingerprint', 'importOrder', 'dllPickleTiming', 'expectedTokenAudiences', 'status', 'writesPerformed', 'probes', 'snapshots', 'errorType') -Label "Authenticated scenario '$($Scenario.scenarioId)'"
         if ([string]$Scenario.profileKey -ne $ExpectedProfile.ProfileKey -or
             [string]$Scenario.powerShellVersion -ne $ExpectedProfile.PowerShellVersion -or
             [string]$Scenario.targetFramework -ne $ExpectedProfile.TargetFramework -or
             [string]$Scenario.platform -ne 'windows' -or
-            [string]$Scenario.architecture -ne 'x64') {
+            [string]$Scenario.architecture -ne 'x64' -or
+            [string]$Scenario.inventoryFingerprint -ne [string]$EvidenceProfile.inventoryFingerprint) {
             throw "Authenticated scenario '$($Scenario.scenarioId)' is not bound to exact profile '$($ExpectedProfile.ProfileKey)'."
         }
         if ([string]$Scenario.status -ne 'passed' -or $Scenario.writesPerformed -ne $false -or
@@ -311,7 +294,7 @@ foreach ($ExpectedProfile in $ExpectedProfiles) {
         }
     }
 
-    $CrossScenarios = @($EvidenceProfile.scenarios | Where-Object scenarioId -like 'cross-*' | Sort-Object scenarioId)
+    $CrossScenarios = @(Get-DLLPickleOrdinalSequence -InputObject @($EvidenceProfile.scenarios | Where-Object scenarioId -like 'cross-*') -KeySelector { param($Scenario) [string]$Scenario.scenarioId })
     for ($OrderIndex = 0; $OrderIndex -lt 2; $OrderIndex++) {
         $ExpectedOrder = @($ProfilePolicy[0].importOrders[$OrderIndex])
         if ((@($CrossScenarios[$OrderIndex].importOrder) -join '|') -ne ($ExpectedOrder -join '|')) {

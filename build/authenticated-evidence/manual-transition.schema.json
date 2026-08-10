@@ -34,6 +34,21 @@
         "acceptedBy": { "type": ["string", "null"] },
         "confidence": { "enum": [null, "low", "medium", "high"] }
       },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "status": { "const": "accepted" } },
+            "required": ["status"]
+          },
+          "then": {
+            "properties": {
+              "acceptedAtUtc": { "type": "string", "format": "date-time" },
+              "acceptedBy": { "type": "string", "minLength": 1 },
+              "confidence": { "enum": ["low", "medium", "high"] }
+            }
+          }
+        }
+      ],
       "additionalProperties": false
     },
     "content": {
@@ -130,6 +145,7 @@
         "targetFramework",
         "platform",
         "architecture",
+        "inventoryFingerprint",
         "importOrder",
         "dllPickleTiming",
         "expectedTokenAudiences",
@@ -146,6 +162,7 @@
         "targetFramework": { "enum": ["net8.0", "net9.0", "net10.0"] },
         "platform": { "const": "windows" },
         "architecture": { "const": "x64" },
+        "inventoryFingerprint": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
         "importOrder": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
         "dllPickleTiming": { "enum": ["module-only", "dllpickle-first", "module-first"] },
         "expectedTokenAudiences": { "type": "array", "minItems": 1, "items": { "type": "string", "format": "uri" } },
@@ -171,6 +188,7 @@
         "runtimeExecutable",
         "psHome",
         "writesPerformed",
+        "inventoryFingerprint",
         "moduleVersions",
         "scenarios"
       ],
@@ -186,6 +204,7 @@
         "runtimeExecutable": { "type": "string", "pattern": "^runtime:" },
         "psHome": { "type": "string", "pattern": "^runtime:" },
         "writesPerformed": { "const": false },
+        "inventoryFingerprint": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
         "moduleVersions": { "type": "array", "minItems": 6, "maxItems": 6, "items": { "$ref": "#/$defs/moduleVersion" } },
         "scenarios": { "type": "array", "minItems": 14, "maxItems": 14, "items": { "$ref": "#/$defs/scenario" } }
       },

@@ -131,24 +131,31 @@ jobs:
 
           $RunArguments = @(
             'run', 'list'
-            '--repo', '${{ github.repository }}'
+            '--repo', $env:GITHUB_REPOSITORY
             '--workflow', $env:AUTHENTICATED_WORKFLOW_FILE
             '--commit', $EvidenceSha
             '--status', 'success'
             '--limit', '20'
             '--json', 'databaseId,headSha,conclusion,createdAt,url'
           )
-          $RunJson = & gh @RunArguments 2>$null
           $ProtectedEvidenceRun = $null
-          if ($LASTEXITCODE -eq 0) {
+          $ProtectedWorkflowPath = Join-Path '.github/workflows' $env:AUTHENTICATED_WORKFLOW_FILE
+          $ProtectedWorkflowConfigured = Test-Path -LiteralPath $ProtectedWorkflowPath -PathType Leaf
+          if ($ProtectedWorkflowConfigured) {
+            $RunJson = & gh @RunArguments 2>$null
+            if ($LASTEXITCODE -ne 0) {
+              throw "Could not query protected authenticated workflow '$($env:AUTHENTICATED_WORKFLOW_FILE)' for exact commit '$EvidenceSha'."
+            }
             $MatchingRuns = @(
               $RunJson | ConvertFrom-Json | Where-Object {
                 $_.headSha -eq $EvidenceSha -and $_.conclusion -eq 'success'
               }
             )
             foreach ($CandidateRun in @($MatchingRuns | Sort-Object createdAt -Descending)) {
-              $ArtifactJson = gh api "/repos/${{ github.repository }}/actions/runs/$($CandidateRun.databaseId)/artifacts" 2>$null
-              if ($LASTEXITCODE -ne 0) { continue }
+              $ArtifactJson = & gh api "/repos/$($env:GITHUB_REPOSITORY)/actions/runs/$($CandidateRun.databaseId)/artifacts" 2>$null
+              if ($LASTEXITCODE -ne 0) {
+                throw "Could not query artifacts for protected authenticated workflow run '$($CandidateRun.databaseId)'."
+              }
               $EvidenceArtifacts = @(
                 ($ArtifactJson | ConvertFrom-Json).artifacts | Where-Object {
                   $_.name -eq $env:AUTHENTICATED_EVIDENCE_ARTIFACT -and -not $_.expired
@@ -159,6 +166,11 @@ jobs:
                 break
               }
             }
+            if ($MatchingRuns.Count -gt 0 -and -not $ProtectedEvidenceRun) {
+              throw "Successful protected authenticated workflow runs exist for '$EvidenceSha', but none has exactly one unexpired '$($env:AUTHENTICATED_EVIDENCE_ARTIFACT)' artifact."
+            }
+          } else {
+            Write-Information -MessageData "Protected authenticated workflow '$($env:AUTHENTICATED_WORKFLOW_FILE)' is not configured; evaluating the bounded manual transition only." -InformationAction Continue
           }
 
           if ($ProtectedEvidenceRun) {

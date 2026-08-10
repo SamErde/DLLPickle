@@ -39,6 +39,7 @@ BeforeAll {
         $Profiles = @(
             foreach ($RuntimeProfile in @($Matrix.profiles)) {
                 $PowerShellLine = '{0}.{1}' -f $RuntimeProfile.powerShellMajor, $RuntimeProfile.powerShellMinor
+                $InventoryFingerprint = 'c' * 64
                 $ProfilePolicy = @($Policy.runtimeProfiles | Where-Object powerShellLine -eq $PowerShellLine)[0]
                 $ScenarioDefinitions = @(
                     [pscustomobject]@{ Id = 'graph-module-only'; Provider = 'graph'; Order = @('Microsoft.Graph.Authentication') }
@@ -65,6 +66,7 @@ BeforeAll {
                             targetFramework = [string]$RuntimeProfile.targetFramework
                             platform = 'windows'
                             architecture = 'x64'
+                            inventoryFingerprint = $InventoryFingerprint
                             importOrder = @($Definition.Order)
                             dllPickleTiming = if ($Definition.Id -like 'cross-*' -or $Definition.Id -like '*-dllpickle-first') {
                                 'dllpickle-first'
@@ -121,6 +123,7 @@ BeforeAll {
                     runtimeExecutable = 'runtime:pwsh.exe'
                     psHome = 'runtime:.'
                     writesPerformed = $false
+                    inventoryFingerprint = $InventoryFingerprint
                     moduleVersions = @(
                         foreach ($ModuleName in @($Policy.monitoredModules.name | Sort-Object)) {
                             [ordered]@{
@@ -153,7 +156,7 @@ BeforeAll {
                 bridge = [ordered]@{
                     id = 'initial-powershell-7.4-7.6-multitargeting-major'
                     allowedReleaseVersion = '3.0.0'
-                    expiresAtUtc = '2026-09-08T13:00:00Z'
+                    expiresAtUtc = '2026-08-23T12:00:00Z'
                 }
                 bundleSourceFingerprint = [string]$Bundle.fingerprint
                 credentialMode = 'delegated-interactive'
@@ -194,7 +197,7 @@ Describe 'Time-bounded manual authenticated evidence' -Tag 'Unit' {
         $EvidencePath = Join-Path $TestDrive 'expired.json'
         $null = Get-ManualAuthenticatedEvidenceFixture -Path $EvidencePath
 
-        $ExpiredAt = [System.DateTimeOffset]::Parse('2026-09-09T13:00:00Z')
+        $ExpiredAt = [System.DateTimeOffset]::Parse('2026-08-24T12:00:00Z')
         { & $script:ToolPath -EvidencePath $EvidencePath -RepositoryRoot $script:RepositoryRoot -TestMatrixPath $script:TestMatrixPath -DependencyPolicyPath $script:DependencyPolicyPath -NowUtc $ExpiredAt } |
             Should -Throw '*expired*'
     }
@@ -242,6 +245,28 @@ Describe 'Time-bounded manual authenticated evidence' -Tag 'Unit' {
 
         { & $script:ToolPath -EvidencePath $EvidencePath -RepositoryRoot $script:RepositoryRoot -TestMatrixPath $script:TestMatrixPath -DependencyPolicyPath $script:DependencyPolicyPath -NowUtc '2026-08-10T00:00:00Z' } |
             Should -Throw '*not bound to exact profile*'
+    }
+
+    It 'rejects a scenario checkpoint from a different prepared inventory' {
+        $EvidencePath = Join-Path $TestDrive 'wrong-scenario-inventory.json'
+        $Evidence = Get-ManualAuthenticatedEvidenceFixture -Path $EvidencePath
+        $Evidence.content.profiles[0].scenarios[0].inventoryFingerprint = 'd' * 64
+        $Evidence.contentFingerprint = Get-ManualEvidenceContentFingerprint -Evidence $Evidence
+        $Evidence | ConvertTo-Json -Depth 100 | Set-Content -LiteralPath $EvidencePath -Encoding UTF8
+
+        { & $script:ToolPath -EvidencePath $EvidencePath -RepositoryRoot $script:RepositoryRoot -TestMatrixPath $script:TestMatrixPath -DependencyPolicyPath $script:DependencyPolicyPath -NowUtc '2026-08-10T00:00:00Z' } |
+            Should -Throw '*not bound to exact profile*'
+    }
+
+    It 'rejects an expiry window renewed from capture completion' {
+        $EvidencePath = Join-Path $TestDrive 'renewed-expiry.json'
+        $Evidence = Get-ManualAuthenticatedEvidenceFixture -Path $EvidencePath
+        $Evidence.content.bridge.expiresAtUtc = '2026-08-23T13:00:00Z'
+        $Evidence.contentFingerprint = Get-ManualEvidenceContentFingerprint -Evidence $Evidence
+        $Evidence | ConvertTo-Json -Depth 100 | Set-Content -LiteralPath $EvidencePath -Encoding UTF8
+
+        { & $script:ToolPath -EvidencePath $EvidencePath -RepositoryRoot $script:RepositoryRoot -TestMatrixPath $script:TestMatrixPath -DependencyPolicyPath $script:DependencyPolicyPath -NowUtc '2026-08-10T00:00:00Z' } |
+            Should -Throw '*exactly 14 days after capture starts*'
     }
 
     It 'rejects unknown fields that could carry unsanitized provider data' {

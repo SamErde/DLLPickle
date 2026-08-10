@@ -28,6 +28,11 @@ Describe 'Profile evidence helpers' -Tag 'Unit' {
             Should -Throw '*no fingerprinted content*'
     }
 
+    It 'normalizes date/time inputs to UTC with invariant parsing' {
+        (ConvertTo-DLLPickleUtcDateTimeOffset -Value '2026-08-09T08:00:00-04:00').ToString('o') |
+            Should -BeExactly '2026-08-09T12:00:00.0000000+00:00'
+    }
+
     It 'uses ordinal ordering and uniqueness regardless of process culture' {
         $OriginalCulture = [System.Globalization.CultureInfo]::CurrentCulture
         try {

@@ -47,22 +47,6 @@ $TestMatrix = Get-Content -LiteralPath $TestMatrixPath -Raw | ConvertFrom-Json -
 $DependencyPolicy = Get-Content -LiteralPath $DependencyPolicyPath -Raw | ConvertFrom-Json -ErrorAction Stop
 $DependencyPolicyDirectory = Split-Path -Path (Resolve-Path -LiteralPath $DependencyPolicyPath).Path -Parent
 
-function ConvertTo-DLLPickleUtcDateTimeOffset {
-    param([Parameter(Mandatory)][object]$Value)
-
-    if ($Value -is [System.DateTimeOffset]) {
-        return $Value.ToUniversalTime()
-    }
-    if ($Value -is [System.DateTime]) {
-        return ([System.DateTimeOffset]$Value).ToUniversalTime()
-    }
-    [System.DateTimeOffset]::Parse(
-        [string]$Value,
-        [System.Globalization.CultureInfo]::InvariantCulture,
-        [System.Globalization.DateTimeStyles]::AssumeUniversal
-    ).ToUniversalTime()
-}
-
 $ShippedProfileKeys = @($SupportPolicy.profiles | ForEach-Object { '{0}.{1}|{2}|{3}' -f $_.powerShellMajor, $_.powerShellMinor, $_.dotnetMajor, $_.targetFramework })
 $TestProfileKeys = @($TestMatrix.profiles | ForEach-Object { '{0}.{1}|{2}|{3}' -f $_.powerShellMajor, $_.powerShellMinor, $_.dotnetMajor, $_.targetFramework })
 if (Compare-Object -ReferenceObject $ShippedProfileKeys -DifferenceObject $TestProfileKeys) {

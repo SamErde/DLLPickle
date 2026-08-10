@@ -27,6 +27,7 @@ param (
 
 $ErrorActionPreference = 'Stop'
 $RepositoryRoot = Split-Path -Path $PSScriptRoot -Parent
+. (Join-Path $PSScriptRoot 'DLLPickle.ManualAuthenticatedEvidence.ps1')
 $ResolvedWorkRoot = [System.IO.Path]::GetFullPath($WorkRoot)
 $RuntimeInstallRoot = Join-Path $ResolvedWorkRoot 'runtimes'
 $ModuleCacheParent = Join-Path $ResolvedWorkRoot 'module-cache'
@@ -64,19 +65,25 @@ $PreparedProfiles = @(
             Force = $true
         }
         $Inventory = & (Join-Path $RepositoryRoot 'tools/Get-DLLPickleUpstreamInventory.ps1') @InventoryParameters
-        $StaleSelections = @($Inventory.Modules | Where-Object Version -ne LatestCompatibleVersion)
+        $StaleSelections = @($Inventory.Modules | Where-Object {
+                [string]$_.Version -ne [string]$_.LatestCompatibleVersion
+            })
         if ($StaleSelections.Count -gt 0) {
             throw "The prepared inventory for '$ProfileKey' did not select every latest compatible module."
         }
+        $InventoryFingerprint = Get-DLLPicklePreparedInventoryFingerprint -Inventory $Inventory
+        $Inventory | Add-Member -MemberType NoteProperty -Name InventoryFingerprint -Value $InventoryFingerprint -Force
+        $Inventory | ConvertTo-Json -Depth 100 | Set-Content -LiteralPath $InventoryPath -Encoding utf8NoBOM
         $PreparedProfile = [pscustomobject]@{
             ProfileKey = $ProfileKey
             PowerShellVersion = [string]$RuntimeProfile.powerShellVersion
             TargetFramework = [string]$RuntimeProfile.targetFramework
             ExecutablePath = [string]$Identity.ExecutablePath
             InventoryPath = $InventoryPath
+            InventoryFingerprint = $InventoryFingerprint
             ModuleVersions = [ordered]@{}
         }
-        foreach ($Module in @($Inventory.Modules | Sort-Object Name)) {
+        foreach ($Module in @(Get-DLLPickleOrdinalSequence -InputObject @($Inventory.Modules) -KeySelector { param($Item) [string]$Item.Name } -Unique)) {
             $PreparedProfile.ModuleVersions[[string]$Module.Name] = [string]$Module.Version
         }
         $PreparedProfile

@@ -17,9 +17,13 @@ function Get-DLLPickleNormalizedEvidenceFingerprint {
         [object]$Evidence
     )
 
+    if ([int]$Evidence.schemaVersion -ne 1) {
+        throw 'Normalized profile evidence has an unsupported schema.'
+    }
+
     $ContentProperty = $Evidence.PSObject.Properties['content']
-    if ([int]$Evidence.schemaVersion -ne 1 -or $null -eq $ContentProperty -or $null -eq $ContentProperty.Value) {
-        throw 'Normalized profile evidence has an unsupported schema or no fingerprinted content.'
+    if ($null -eq $ContentProperty -or $null -eq $ContentProperty.Value) {
+        throw 'Normalized profile evidence has no fingerprinted content.'
     }
 
     $CanonicalContent = $ContentProperty.Value | ConvertTo-Json -Depth 100 -Compress
@@ -27,6 +31,38 @@ function Get-DLLPickleNormalizedEvidenceFingerprint {
     [System.BitConverter]::ToString(
         [System.Security.Cryptography.SHA256]::HashData($Bytes)
     ).Replace('-', '').ToLowerInvariant()
+}
+
+function ConvertTo-DLLPickleUtcDateTimeOffset {
+    <#
+    .SYNOPSIS
+    Converts a date/time value to a UTC DateTimeOffset.
+
+    .PARAMETER Value
+    DateTimeOffset, DateTime, or invariant date/time text to normalize.
+
+    .OUTPUTS
+    System.DateTimeOffset
+    #>
+
+    [CmdletBinding()]
+    [OutputType([System.DateTimeOffset])]
+    param (
+        [Parameter(Mandatory)]
+        [object]$Value
+    )
+
+    if ($Value -is [System.DateTimeOffset]) {
+        return $Value.ToUniversalTime()
+    }
+    if ($Value -is [System.DateTime]) {
+        return ([System.DateTimeOffset]$Value).ToUniversalTime()
+    }
+    [System.DateTimeOffset]::Parse(
+        [string]$Value,
+        [System.Globalization.CultureInfo]::InvariantCulture,
+        [System.Globalization.DateTimeStyles]::AssumeUniversal
+    ).ToUniversalTime()
 }
 
 function Get-DLLPickleOrdinalSequence {

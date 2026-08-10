@@ -44,6 +44,14 @@ $Platform = if ([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatfor
 } else {
     'unknown'
 }
+$OperatingSystemDescription = [System.Runtime.InteropServices.RuntimeInformation]::OSDescription
+if ($Platform -eq 'macos') {
+    $MacOSProductVersion = (& /usr/bin/sw_vers -productVersion).Trim()
+    if ($LASTEXITCODE -ne 0 -or $MacOSProductVersion -notmatch '^\d+\.\d+(?:\.\d+)?$') {
+        throw "Could not normalize the macOS product version returned by sw_vers: '$MacOSProductVersion'."
+    }
+    $OperatingSystemDescription = "macOS $MacOSProductVersion"
+}
 
 [System.AppDomain]::CurrentDomain.GetAssemblies() |
     Where-Object { $TrackedNames -contains $_.GetName().Name } |
@@ -70,7 +78,7 @@ $Platform = if ([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatfor
             } else {
                 $null
             }
-            OS           = [System.Runtime.InteropServices.RuntimeInformation]::OSDescription
+            OS           = $OperatingSystemDescription
             Platform     = $Platform
             Architecture = [System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString().ToLowerInvariant()
         }

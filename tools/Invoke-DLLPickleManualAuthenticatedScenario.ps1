@@ -19,50 +19,12 @@ param (
     [Parameter(Mandatory)][ValidateNotNullOrEmpty()][string]$ExpectedProfileKey,
     [Parameter(Mandatory)][ValidateNotNullOrEmpty()][string]$ExpectedPowerShellVersion,
     [Parameter(Mandatory)][ValidatePattern('^net\d+\.0$')][string]$ExpectedTargetFramework,
+    [Parameter(Mandatory)][ValidatePattern('^[a-f0-9]{64}$')][string]$ExpectedInventoryFingerprint,
     [Parameter()][string]$AzureSubscriptionId = $env:DLLPICKLE_MANUAL_AZURE_SUBSCRIPTION_ID
 )
 
 $ErrorActionPreference = 'Stop'
-
-function ConvertTo-CollapsedAssetPath {
-    param([Parameter(Mandatory)][string]$Path)
-
-    $Segments = [System.Collections.Generic.List[string]]::new()
-    foreach ($Segment in @($Path -split '/')) {
-        if ([string]::IsNullOrWhiteSpace($Segment) -or $Segment -eq '.') { continue }
-        if ($Segment -eq '..') {
-            if ($Segments.Count -eq 0) { throw "Asset path '$Path' escapes its root." }
-            $Segments.RemoveAt($Segments.Count - 1)
-            continue
-        }
-        $Segments.Add($Segment)
-    }
-    $Segments -join '/'
-}
-
-function ConvertTo-ManualEvidencePath {
-    param(
-        [Parameter(Mandatory)][string]$Path,
-        [Parameter(Mandatory)][string]$ModuleCacheRoot,
-        [Parameter(Mandatory)][string]$DLLPickleRoot,
-        [Parameter(Mandatory)][string]$RuntimeRoot
-    )
-
-    $NormalizedPath = $Path.Replace('\', '/').TrimEnd('/')
-    $Roots = [ordered]@{
-        upstream = $ModuleCacheRoot.Replace('\', '/').TrimEnd('/')
-        dllpickle = $DLLPickleRoot.Replace('\', '/').TrimEnd('/')
-        runtime = $RuntimeRoot.Replace('\', '/').TrimEnd('/')
-    }
-    foreach ($RootEntry in $Roots.GetEnumerator()) {
-        if ($NormalizedPath -eq $RootEntry.Value) { return "$($RootEntry.Key):." }
-        if ($NormalizedPath.StartsWith("$($RootEntry.Value)/", [System.StringComparison]::OrdinalIgnoreCase)) {
-            $Relative = $NormalizedPath.Substring($RootEntry.Value.Length + 1)
-            return '{0}:{1}' -f $RootEntry.Key, (ConvertTo-CollapsedAssetPath -Path $Relative)
-        }
-    }
-    throw "Authenticated evidence path '$Path' is outside the upstream, DLLPickle, and exact runtime roots."
-}
+. (Join-Path $PSScriptRoot 'DLLPickle.ManualAuthenticatedEvidence.ps1')
 
 function Get-SanitizedAssemblySnapshot {
     $Rows = @(& $SnapshotHelper -PolicyPath $ResolvedPolicyPath)
@@ -72,7 +34,7 @@ function Get-SanitizedAssemblySnapshot {
                 name = [string]$Row.Name
                 version = [string]$Row.Version
                 sha256 = ([string]$Row.Sha256).ToLowerInvariant()
-                selectedAsset = ConvertTo-ManualEvidencePath -Path ([string]$Row.Path) -ModuleCacheRoot $ModuleCacheRoot -DLLPickleRoot $DLLPickleRoot -RuntimeRoot $PSHOME
+                selectedAsset = ConvertTo-DLLPickleManualEvidencePath -Path ([string]$Row.Path) -ModuleCacheRoot $ModuleCacheRoot -DLLPickleRoot $DLLPickleRoot -RuntimeRoot $PSHOME
                 assemblyLoadContext = [string]$Row.Alc
                 isCollectible = [bool]$Row.IsCollectible
             }
@@ -103,19 +65,24 @@ function Connect-Provider {
 
     switch ($Provider) {
         'graph' {
-            Connect-MgGraph -Scopes 'User.Read' -ContextScope Process -NoWelcome -ErrorAction Stop | Out-Null
+            $Command = Get-DLLPickleAuthenticatedCommand -Name 'Connect-MgGraph' -Module 'Microsoft.Graph.Authentication'
+            & $Command -Scopes 'User.Read' -ContextScope Process -NoWelcome -ErrorAction Stop | Out-Null
         }
         'exo' {
-            Connect-ExchangeOnline -ShowBanner:$false -ErrorAction Stop | Out-Null
+            $Command = Get-DLLPickleAuthenticatedCommand -Name 'Connect-ExchangeOnline' -Module 'ExchangeOnlineManagement'
+            & $Command -ShowBanner:$false -ErrorAction Stop | Out-Null
         }
         'az' {
-            Connect-AzAccount -Scope Process -ErrorAction Stop | Out-Null
+            $Command = Get-DLLPickleAuthenticatedCommand -Name 'Connect-AzAccount' -Module 'Az.Accounts'
+            & $Command -Scope Process -ErrorAction Stop | Out-Null
             if (-not [string]::IsNullOrWhiteSpace($SubscriptionId)) {
-                Set-AzContext -SubscriptionId $SubscriptionId -Scope Process -ErrorAction Stop | Out-Null
+                $Command = Get-DLLPickleAuthenticatedCommand -Name 'Set-AzContext' -Module 'Az.Accounts'
+                & $Command -SubscriptionId $SubscriptionId -Scope Process -ErrorAction Stop | Out-Null
             }
         }
         'teams' {
-            Connect-MicrosoftTeams -ErrorAction Stop | Out-Null
+            $Command = Get-DLLPickleAuthenticatedCommand -Name 'Connect-MicrosoftTeams' -Module 'MicrosoftTeams'
+            & $Command -ErrorAction Stop | Out-Null
         }
     }
 }
@@ -125,65 +92,26 @@ function Disconnect-Provider {
 
     try {
         switch ($Provider) {
-            'graph' { Disconnect-MgGraph -ErrorAction SilentlyContinue | Out-Null }
-            'exo' { Disconnect-ExchangeOnline -Confirm:$false -ErrorAction SilentlyContinue | Out-Null }
-            'az' { Clear-AzContext -Scope Process -Force -ErrorAction SilentlyContinue | Out-Null }
-            'teams' { Disconnect-MicrosoftTeams -ErrorAction SilentlyContinue | Out-Null }
+            'graph' {
+                $Command = Get-DLLPickleAuthenticatedCommand -Name 'Disconnect-MgGraph' -Module 'Microsoft.Graph.Authentication'
+                & $Command -ErrorAction SilentlyContinue | Out-Null
+            }
+            'exo' {
+                $Command = Get-DLLPickleAuthenticatedCommand -Name 'Disconnect-ExchangeOnline' -Module 'ExchangeOnlineManagement'
+                & $Command -Confirm:$false -ErrorAction SilentlyContinue | Out-Null
+            }
+            'az' {
+                $Command = Get-DLLPickleAuthenticatedCommand -Name 'Clear-AzContext' -Module 'Az.Accounts'
+                & $Command -Scope Process -Force -ErrorAction SilentlyContinue | Out-Null
+            }
+            'teams' {
+                $Command = Get-DLLPickleAuthenticatedCommand -Name 'Disconnect-MicrosoftTeams' -Module 'MicrosoftTeams'
+                & $Command -ErrorAction SilentlyContinue | Out-Null
+            }
         }
     } catch {
         # Cleanup failures must not replace the sanitized scenario result.
         Write-Verbose "Provider cleanup for '$Provider' did not complete."
-    }
-}
-
-function Invoke-ReadProbe {
-    param([Parameter(Mandatory)][string]$ProbeId)
-
-    $Stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
-    try {
-        switch ($ProbeId) {
-            'graph-context' {
-                if (-not (Get-MgContext -ErrorAction Stop)) { throw 'Graph context was not established.' }
-            }
-            'graph-me-read' {
-                Invoke-MgGraphRequest -Method GET -Uri '/v1.0/me?$select=id' -ErrorAction Stop | Out-Null
-            }
-            'exo-mailbox-read' {
-                if (@(Get-EXOMailbox -ResultSize 1 -ErrorAction Stop).Count -eq 0) { throw 'Exchange mailbox read returned no object.' }
-            }
-            'az-context' {
-                if (-not (Get-AzContext -ErrorAction Stop)) { throw 'Azure context was not established.' }
-            }
-            'az-resource-read' {
-                if (@(Get-AzResource -ErrorAction Stop | Select-Object -First 1).Count -eq 0) { throw 'Azure resource read returned no object.' }
-            }
-            'az-storage-account-read' {
-                if (@(Get-AzStorageAccount -ErrorAction Stop | Select-Object -First 1).Count -eq 0) { throw 'Azure storage-account read returned no object.' }
-            }
-            'teams-tenant-read' {
-                if (-not (Get-CsTenant -ErrorAction Stop)) { throw 'Teams tenant read returned no object.' }
-            }
-            default { throw "Unsupported authenticated probe identifier '$ProbeId'." }
-        }
-        $Stopwatch.Stop()
-        [ordered]@{
-            probeId = $ProbeId
-            executed = $true
-            status = 'passed'
-            durationMilliseconds = [long]$Stopwatch.ElapsedMilliseconds
-            writesPerformed = $false
-            errorType = $null
-        }
-    } catch {
-        $Stopwatch.Stop()
-        [ordered]@{
-            probeId = $ProbeId
-            executed = $true
-            status = 'failed'
-            durationMilliseconds = [long]$Stopwatch.ElapsedMilliseconds
-            writesPerformed = $false
-            errorType = $_.Exception.GetType().FullName
-        }
     }
 }
 
@@ -196,6 +124,10 @@ $ResolvedDLLPickleManifestPath = (Resolve-Path -LiteralPath $DLLPickleManifestPa
 $DLLPickleRoot = Split-Path -Path $ResolvedDLLPickleManifestPath -Parent
 $SnapshotHelper = Join-Path $PSScriptRoot 'Get-DLLPickleLoadedTrackedAssembly.ps1'
 $Inventory = Get-Content -LiteralPath $ResolvedInventoryPath -Raw | ConvertFrom-Json -ErrorAction Stop
+$InventoryFingerprint = [string]$Inventory.InventoryFingerprint
+if ($InventoryFingerprint -ne $ExpectedInventoryFingerprint) {
+    throw "Prepared module inventory fingerprint '$InventoryFingerprint' does not match expected '$ExpectedInventoryFingerprint'."
+}
 $ModuleCacheRoot = [string]$Inventory.ModuleCachePath
 $ActualTargetFramework = 'net{0}.0' -f [Environment]::Version.Major
 $ActualProfileKey = 'ps{0}.{1}-{2}-windows-x64' -f $PSVersionTable.PSVersion.Major, $PSVersionTable.PSVersion.Minor, $ActualTargetFramework
@@ -240,18 +172,21 @@ $Result = [ordered]@{
     targetFramework = $ActualTargetFramework
     platform = 'windows'
     architecture = 'x64'
+    inventoryFingerprint = $InventoryFingerprint
     importOrder = @($Definition.modules)
     dllPickleTiming = [string]$Definition.timing
     expectedTokenAudiences = @(
-        foreach ($Provider in @($Definition.providers)) {
-            switch ($Provider) {
-                'graph' { 'https://graph.microsoft.com' }
-                'exo' { 'https://outlook.office365.com' }
-                'az' { 'https://management.azure.com' }
-                'teams' { 'https://api.spaces.skype.com' }
+        Get-DLLPickleOrdinalSequence -InputObject @(
+            foreach ($Provider in @($Definition.providers)) {
+                switch ($Provider) {
+                    'graph' { 'https://graph.microsoft.com' }
+                    'exo' { 'https://outlook.office365.com' }
+                    'az' { 'https://management.azure.com' }
+                    'teams' { 'https://api.spaces.skype.com' }
+                }
             }
-        }
-    ) | Sort-Object -Unique
+        ) -Unique
+    )
     status = 'failed'
     writesPerformed = $false
     probes = @()
@@ -262,15 +197,15 @@ $ConnectedProviders = [System.Collections.Generic.List[string]]::new()
 try {
     if ($Definition.timing -eq 'dllpickle-first') { Import-DLLPickleBundle }
     Import-ExactModuleSet -Names @($Definition.modules)
+    if ($Definition.timing -eq 'module-first') { Import-DLLPickleBundle }
     $Result.snapshots += [ordered]@{ stage = 'before-authentication'; assemblies = @(Get-SanitizedAssemblySnapshot) }
     foreach ($Provider in @($Definition.providers)) {
         Connect-Provider -Provider $Provider -SubscriptionId $AzureSubscriptionId
         $ConnectedProviders.Add($Provider)
     }
     $Result.snapshots += [ordered]@{ stage = 'after-connection'; assemblies = @(Get-SanitizedAssemblySnapshot) }
-    if ($Definition.timing -eq 'module-first') { Import-DLLPickleBundle }
     $Result.probes = @(
-        foreach ($ProbeId in @($Definition.probes)) { Invoke-ReadProbe -ProbeId $ProbeId }
+        foreach ($ProbeId in @($Definition.probes)) { Invoke-DLLPickleAuthenticatedReadProbe -ProbeId $ProbeId }
     )
     $Result.snapshots += [ordered]@{ stage = 'after-read-probe'; assemblies = @(Get-SanitizedAssemblySnapshot) }
     if (@($Result.probes | Where-Object status -ne 'passed').Count -eq 0) {

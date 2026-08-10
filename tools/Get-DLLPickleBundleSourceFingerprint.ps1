@@ -3,11 +3,12 @@
 Computes a deterministic fingerprint of every published-bundle source input.
 
 .DESCRIPTION
-Hashes the exact paths used by the release workflow's automatic bundle-change
-gate: src/DLLPickle/**, DLLPickle.csproj, and packages.lock.json. Repository-root
-paths and timestamps are excluded. The result can bind transitional manual
-authenticated evidence to bundle content even though committing that evidence
-necessarily changes the Git commit SHA.
+Hashes module sources, the locked build project, and every repository input that
+controls PrepareModuleOutput: the build file, settings, tooling bootstrap, pinned
+tool policy, build entry point, and SDK selection. Repository-root paths and
+timestamps are excluded. The result can bind transitional manual authenticated
+evidence to bundle content even though committing that evidence necessarily
+changes the Git commit SHA.
 
 .PARAMETER RepositoryRoot
 Repository root containing src/DLLPickle and src/DLLPickle.Build.
@@ -31,14 +32,28 @@ param (
 )
 
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'DLLPickle.ProfileEvidence.ps1')
 $ResolvedRepositoryRoot = (Resolve-Path -LiteralPath $RepositoryRoot).Path
 $ModuleSourceRoot = Join-Path $ResolvedRepositoryRoot 'src/DLLPickle'
-$BuildProjectPath = Join-Path $ResolvedRepositoryRoot 'src/DLLPickle.Build/DLLPickle.csproj'
-$LockFilePath = Join-Path $ResolvedRepositoryRoot 'src/DLLPickle.Build/packages.lock.json'
 if (-not (Test-Path -LiteralPath $ModuleSourceRoot -PathType Container)) {
     throw "Published module source directory was not found: $ModuleSourceRoot"
 }
-foreach ($RequiredFile in @($BuildProjectPath, $LockFilePath)) {
+$RequiredRelativePaths = @(
+    'build/DLLPickle.Build.ps1'
+    'build/DLLPickle.Settings.ps1'
+    'build/DLLPickle.Tooling.ps1'
+    'build/build-tool-versions.json'
+    'global.json'
+    'src/DLLPickle.Build/DLLPickle.csproj'
+    'src/DLLPickle.Build/packages.lock.json'
+    'tools/Invoke-DLLPickleBuild.ps1'
+)
+$RequiredFiles = @(
+    foreach ($RequiredRelativePath in $RequiredRelativePaths) {
+        Join-Path $ResolvedRepositoryRoot $RequiredRelativePath
+    }
+)
+foreach ($RequiredFile in $RequiredFiles) {
     if (-not (Test-Path -LiteralPath $RequiredFile -PathType Leaf)) {
         throw "Published bundle input was not found: $RequiredFile"
     }
@@ -46,9 +61,10 @@ foreach ($RequiredFile in @($BuildProjectPath, $LockFilePath)) {
 
 $SourceFiles = @(
     Get-ChildItem -LiteralPath $ModuleSourceRoot -File -Recurse
-    Get-Item -LiteralPath $BuildProjectPath
-    Get-Item -LiteralPath $LockFilePath
-) | Sort-Object FullName -Unique
+    foreach ($RequiredFile in $RequiredFiles) {
+        Get-Item -LiteralPath $RequiredFile
+    }
+)
 if ($SourceFiles.Count -eq 0) {
     throw 'No published bundle source inputs were found.'
 }
@@ -64,12 +80,15 @@ $Rows = @(
         }
         $ContentBytes = [System.IO.File]::ReadAllBytes($SourceFile.FullName)
         $Sha256 = [System.BitConverter]::ToString([System.Security.Cryptography.SHA256]::HashData($ContentBytes)).Replace('-', '').ToLowerInvariant()
-        [ordered]@{
+        [pscustomobject][ordered]@{
             path = $RelativePath
             sha256 = $Sha256
             length = [long]$SourceFile.Length
         }
     }
+)
+$Rows = @(
+    Get-DLLPickleOrdinalSequence -InputObject $Rows -KeySelector { param($Row) [string]$Row.path } -Unique
 )
 $CanonicalRows = @(
     'schemaVersion=1'

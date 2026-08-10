@@ -189,6 +189,7 @@ Describe 'Profile-specific conflict baseline enforcement' -Tag 'Unit' {
         $Result = Get-Content -LiteralPath $OutputPath -Raw | ConvertFrom-Json
         $Result.Status | Should -Be 'InvalidCommittedEvidence'
         $Result.FailureDetail | Should -Match 'was not found'
+        $Result.FindingFingerprint | Should -Match '^[a-f0-9]{64}$'
     }
 
     It 'rejects a conflict matrix whose key does not match its profile fields' {

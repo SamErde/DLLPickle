@@ -5,8 +5,9 @@ Collects resumable, sanitized interactive authentication evidence for the initia
 .DESCRIPTION
 Runs fixed scenarios under each prepared exact Windows PowerShell executable.
 Every scenario is a fresh process. Existing passing scenario checkpoints are
-reused only when the source commit and bundle fingerprint match. The final
-candidate remains pending until a maintainer reviews and explicitly accepts it.
+reused only when the source commit, bundle fingerprint, and complete prepared
+module-inventory fingerprint match. The final candidate remains pending until a
+maintainer reviews and explicitly accepts it.
 
 No token, tenant, account, mailbox, subscription, resource, or raw service
 result is written to evidence.
@@ -38,6 +39,7 @@ param (
 
 $ErrorActionPreference = 'Stop'
 $RepositoryRoot = Split-Path -Path $PSScriptRoot -Parent
+. (Join-Path $PSScriptRoot 'DLLPickle.ManualAuthenticatedEvidence.ps1')
 $ResolvedWorkRoot = [System.IO.Path]::GetFullPath($WorkRoot)
 if ([string]::IsNullOrWhiteSpace($OutputPath)) {
     $OutputPath = Join-Path $ResolvedWorkRoot 'manual-authenticated-evidence.candidate.json'
@@ -58,6 +60,16 @@ foreach ($RequiredPath in @($PreparationSummaryPath, $MatrixPath, $PolicyPath, $
 }
 $Preparation = Get-Content -LiteralPath $PreparationSummaryPath -Raw | ConvertFrom-Json -ErrorAction Stop
 $Matrix = Get-Content -LiteralPath $MatrixPath -Raw | ConvertFrom-Json -ErrorAction Stop
+$AllProfileKeys = @(
+    $Matrix.profiles | ForEach-Object {
+        'ps{0}.{1}-{2}-windows-x64' -f $_.powerShellMajor, $_.powerShellMinor, $_.targetFramework
+    }
+)
+$PreparedProfileKeys = @($Preparation.Profiles.ProfileKey)
+if ($PreparedProfileKeys.Count -ne $AllProfileKeys.Count -or
+    @(Compare-Object -ReferenceObject @(Get-DLLPickleOrdinalSequence -InputObject $AllProfileKeys) -DifferenceObject @(Get-DLLPickleOrdinalSequence -InputObject $PreparedProfileKeys)).Count -gt 0) {
+    throw 'Preparation summary does not contain the exact required Windows runtime profile set.'
+}
 $Bundle = & (Join-Path $PSScriptRoot 'Get-DLLPickleBundleSourceFingerprint.ps1') -RepositoryRoot $RepositoryRoot
 $SourceCommitSha = (git -C $RepositoryRoot rev-parse HEAD).Trim()
 if ($LASTEXITCODE -ne 0 -or $SourceCommitSha -notmatch '^[a-f0-9]{40}$') {
@@ -66,17 +78,41 @@ if ($LASTEXITCODE -ne 0 -or $SourceCommitSha -notmatch '^[a-f0-9]{40}$') {
 if ([string]$Preparation.BundleSourceFingerprint -ne [string]$Bundle.fingerprint) {
     throw 'Prepared modules/runtimes belong to a different bundle fingerprint. Rerun Initialize-DLLPickleManualAuthenticatedCompatibility.ps1.'
 }
+$CurrentInventoryFingerprints = [ordered]@{}
+foreach ($PreparedProfile in @($Preparation.Profiles)) {
+    if (-not (Test-Path -LiteralPath ([string]$PreparedProfile.InventoryPath) -PathType Leaf)) {
+        throw "Prepared inventory was not found for '$($PreparedProfile.ProfileKey)': $($PreparedProfile.InventoryPath)"
+    }
+    $PreparedInventory = Get-Content -LiteralPath ([string]$PreparedProfile.InventoryPath) -Raw | ConvertFrom-Json -ErrorAction Stop
+    $CurrentInventoryFingerprint = Get-DLLPicklePreparedInventoryFingerprint -Inventory $PreparedInventory
+    if ([string]$PreparedProfile.InventoryFingerprint -ne $CurrentInventoryFingerprint) {
+        throw "Prepared module inventory changed for '$($PreparedProfile.ProfileKey)'. Rerun Initialize-DLLPickleManualAuthenticatedCompatibility.ps1."
+    }
+    $CurrentInventoryFingerprints[[string]$PreparedProfile.ProfileKey] = $CurrentInventoryFingerprint
+}
 
 if (Test-Path -LiteralPath $SessionPath -PathType Leaf) {
     $Session = Get-Content -LiteralPath $SessionPath -Raw | ConvertFrom-Json -ErrorAction Stop
     if ([string]$Session.sourceCommitSha -ne $SourceCommitSha -or [string]$Session.bundleSourceFingerprint -ne [string]$Bundle.fingerprint) {
         throw "The existing capture session belongs to another commit or bundle. Preserve it and choose a new -WorkRoot."
     }
+    foreach ($PreparedProfile in @($Preparation.Profiles)) {
+        $SessionFingerprintProperty = if ($null -ne $Session.inventoryFingerprints) {
+            $Session.inventoryFingerprints.PSObject.Properties[[string]$PreparedProfile.ProfileKey]
+        } else {
+            $null
+        }
+        $SessionFingerprint = if ($null -ne $SessionFingerprintProperty) { $SessionFingerprintProperty.Value } else { $null }
+        if ([string]$SessionFingerprint -ne [string]$CurrentInventoryFingerprints[[string]$PreparedProfile.ProfileKey]) {
+            throw "The existing capture session belongs to another prepared module inventory for '$($PreparedProfile.ProfileKey)'. Preserve it and choose a new -WorkRoot."
+        }
+    }
 } else {
     $Session = [pscustomobject][ordered]@{
         schemaVersion = 1
         sourceCommitSha = $SourceCommitSha
         bundleSourceFingerprint = [string]$Bundle.fingerprint
+        inventoryFingerprints = $CurrentInventoryFingerprints
         captureStartedAtUtc = [System.DateTimeOffset]::UtcNow.ToString('o')
         credentialMode = 'delegated-interactive'
         credentialMaterialCaptured = $false
@@ -85,6 +121,11 @@ if (Test-Path -LiteralPath $SessionPath -PathType Leaf) {
     $null = New-Item -Path $ResolvedWorkRoot -ItemType Directory -Force
     $Session | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $SessionPath -Encoding utf8NoBOM
 }
+$CaptureStartedAtUtc = ConvertTo-DLLPickleUtcDateTimeOffset -Value $Session.captureStartedAtUtc
+$ExpiresAtUtc = $CaptureStartedAtUtc.AddDays(14)
+if ([System.DateTimeOffset]::UtcNow -ge $ExpiresAtUtc) {
+    throw "Manual authenticated evidence capture expired at $($ExpiresAtUtc.ToString('o')). Preserve it and start a new work root."
+}
 
 $AllScenarioIds = @(
     'graph-module-only', 'graph-dllpickle-first', 'graph-module-first',
@@ -92,11 +133,6 @@ $AllScenarioIds = @(
     'az-module-only', 'az-dllpickle-first', 'az-module-first',
     'teams-module-only', 'teams-dllpickle-first', 'teams-module-first',
     'cross-import-order-1', 'cross-import-order-2'
-)
-$AllProfileKeys = @(
-    $Matrix.profiles | ForEach-Object {
-        'ps{0}.{1}-{2}-windows-x64' -f $_.powerShellMajor, $_.powerShellMinor, $_.targetFramework
-    }
 )
 $SelectedProfileKeys = if ($ProfileKey.Count -gt 0) { @($ProfileKey) } else { $AllProfileKeys }
 $SelectedScenarioIds = if ($ScenarioId.Count -gt 0) { @($ScenarioId) } else { $AllScenarioIds }
@@ -120,7 +156,8 @@ foreach ($CurrentProfileKey in $SelectedProfileKeys) {
                 [string]$ExistingScenario.powerShellVersion -eq [string]$PreparedProfile.PowerShellVersion -and
                 [string]$ExistingScenario.targetFramework -eq [string]$PreparedProfile.TargetFramework -and
                 [string]$ExistingScenario.platform -eq 'windows' -and
-                [string]$ExistingScenario.architecture -eq 'x64') {
+                [string]$ExistingScenario.architecture -eq 'x64' -and
+                [string]$ExistingScenario.inventoryFingerprint -eq [string]$PreparedProfile.InventoryFingerprint) {
                 Write-Information -MessageData "Reusing passing checkpoint: $CurrentProfileKey / $CurrentScenarioId" -InformationAction Continue
                 continue
             }
@@ -138,7 +175,8 @@ foreach ($CurrentProfileKey in $SelectedProfileKeys) {
             '-OutputPath', $ScenarioOutputPath,
             '-ExpectedProfileKey', $CurrentProfileKey,
             '-ExpectedPowerShellVersion', [string]$PreparedProfile.PowerShellVersion,
-            '-ExpectedTargetFramework', [string]$PreparedProfile.TargetFramework
+            '-ExpectedTargetFramework', [string]$PreparedProfile.TargetFramework,
+            '-ExpectedInventoryFingerprint', [string]$PreparedProfile.InventoryFingerprint
         )
         if (-not [string]::IsNullOrWhiteSpace($AzureSubscriptionId)) {
             $ChildArguments += @('-AzureSubscriptionId', $AzureSubscriptionId)
@@ -167,20 +205,6 @@ if ($MissingScenarioPaths.Count -gt 0) {
     }
 }
 
-function ConvertTo-UpstreamManifestIdentifier {
-    param(
-        [Parameter(Mandatory)][string]$ManifestPath,
-        [Parameter(Mandatory)][string]$ModuleCachePath
-    )
-
-    $NormalizedManifest = $ManifestPath.Replace('\', '/')
-    $NormalizedRoot = $ModuleCachePath.Replace('\', '/').TrimEnd('/')
-    if (-not $NormalizedManifest.StartsWith("$NormalizedRoot/", [System.StringComparison]::OrdinalIgnoreCase)) {
-        throw "Module manifest '$ManifestPath' is outside its prepared module cache."
-    }
-    'upstream:{0}' -f $NormalizedManifest.Substring($NormalizedRoot.Length + 1)
-}
-
 $Profiles = @(
     foreach ($RuntimeProfile in @($Matrix.profiles)) {
         $PowerShellLine = '{0}.{1}' -f $RuntimeProfile.powerShellMajor, $RuntimeProfile.powerShellMinor
@@ -205,12 +229,13 @@ $Profiles = @(
             runtimeExecutable = 'runtime:{0}' -f [System.IO.Path]::GetFileName([string]$PreparedProfile.ExecutablePath)
             psHome = 'runtime:.'
             writesPerformed = $false
+            inventoryFingerprint = [string]$PreparedProfile.InventoryFingerprint
             moduleVersions = @(
-                foreach ($Module in @($Inventory.Modules | Sort-Object Name)) {
+                foreach ($Module in @(Get-DLLPickleOrdinalSequence -InputObject @($Inventory.Modules) -KeySelector { param($Item) [string]$Item.Name } -Unique)) {
                     [ordered]@{
                         name = [string]$Module.Name
                         version = [string]$Module.Version
-                        manifest = ConvertTo-UpstreamManifestIdentifier -ManifestPath ([string]$Module.ModuleManifestPath) -ModuleCachePath ([string]$Inventory.ModuleCachePath)
+                        manifest = ConvertTo-DLLPickleUpstreamManifestIdentifier -ManifestPath ([string]$Module.ModuleManifestPath) -ModuleCachePath ([string]$Inventory.ModuleCachePath)
                     }
                 }
             )
@@ -219,11 +244,14 @@ $Profiles = @(
     }
 )
 $CaptureCompletedAtUtc = [System.DateTimeOffset]::UtcNow
+if ($CaptureCompletedAtUtc -ge $ExpiresAtUtc) {
+    throw "Manual authenticated evidence capture expired at $($ExpiresAtUtc.ToString('o')). Preserve it and start a new work root."
+}
 $Content = [ordered]@{
     bridge = [ordered]@{
         id = 'initial-powershell-7.4-7.6-multitargeting-major'
         allowedReleaseVersion = '3.0.0'
-        expiresAtUtc = $CaptureCompletedAtUtc.AddDays(14).ToString('o')
+        expiresAtUtc = $ExpiresAtUtc.ToString('o')
     }
     bundleSourceFingerprint = [string]$Bundle.fingerprint
     credentialMode = 'delegated-interactive'
@@ -233,13 +261,10 @@ $Content = [ordered]@{
     writesPerformed = $false
     profiles = $Profiles
 }
-$CanonicalContent = $Content | ConvertTo-Json -Depth 100 -Compress
-$ContentBytes = [System.Text.Encoding]::UTF8.GetBytes($CanonicalContent)
-$ContentFingerprint = [System.BitConverter]::ToString([System.Security.Cryptography.SHA256]::HashData($ContentBytes)).Replace('-', '').ToLowerInvariant()
 $Evidence = [ordered]@{
     schemaVersion = 1
     evidenceType = 'manual-interactive-transition'
-    contentFingerprint = $ContentFingerprint
+    contentFingerprint = $null
     provenance = [ordered]@{
         sourceCommitSha = $SourceCommitSha
         captureStartedAtUtc = [string]$Session.captureStartedAtUtc
@@ -253,6 +278,7 @@ $Evidence = [ordered]@{
     }
     content = $Content
 }
+$Evidence.contentFingerprint = Get-DLLPickleNormalizedEvidenceFingerprint -Evidence ([pscustomobject]$Evidence)
 $OutputDirectory = Split-Path -Path $OutputPath -Parent
 if ($OutputDirectory -and -not (Test-Path -LiteralPath $OutputDirectory -PathType Container)) {
     $null = New-Item -Path $OutputDirectory -ItemType Directory -Force

@@ -202,7 +202,9 @@ Before the protected environment is available, the initial multi-target major
 release may use sanitized evidence collected by the interactive harness. This is
 not an authenticated-gate waiver. The release validator requires:
 
-- the exact published-bundle source fingerprint recorded at capture time;
+- the exact published-bundle source fingerprint, including packaging logic and
+  pinned build tooling, recorded at capture time;
+- one byte-level prepared module-inventory fingerprint per exact runtime profile;
 - release version `3.0.0` and no other version;
 - all fixed module-only, DLLPickle-first, module-first, and cross-import-order
   read scenarios under PowerShell 7.4, 7.5, and 7.6 on Windows x64;
@@ -213,7 +215,8 @@ not an authenticated-gate waiver. The release validator requires:
   snapshots;
 - zero writes and no credential material or raw provider output;
 - explicit maintainer acceptance with a confidence level; and
-- expiry no later than 30 days after capture.
+- expiry exactly 14 days after the capture session starts, without renewal when
+  a partial session resumes.
 
 The record explicitly states that delegated interactive authentication is not
 least-privilege workload-identity proof. Any bundle change, skipped or failed
@@ -228,8 +231,6 @@ synced checkout of the reviewed PR branch. Do not paste tokens or passwords into
 the command line.
 
 ```powershell
-Set-Location 'C:\Users\SamErde\Code\Public\DLLPickle'
-
 pwsh -NoLogo -NoProfile -File .\tools\Initialize-DLLPickleManualAuthenticatedCompatibility.ps1
 ```
 
@@ -253,10 +254,11 @@ pwsh -NoLogo -NoProfile -File .\tools\Invoke-DLLPickleManualAuthenticatedCompati
 
 The harness opens only the provider sign-in experiences. Each of the 14 fixed
 scenarios runs in a fresh process for each of the three exact profiles. Passing
-scenario checkpoints are reused on rerun, so an authorization failure or an
-interrupted session does not require repeating completed scenarios. To diagnose
-one cell first, use the optional `-ProfileKey` and `-ScenarioId` filters; the
-candidate remains incomplete until all 42 checkpoints exist.
+scenario checkpoints are reused on rerun only while their complete prepared
+module-inventory fingerprint still matches, so an authorization failure or an
+interrupted session does not require repeating unchanged completed scenarios.
+To diagnose one cell first, use the optional `-ProfileKey` and `-ScenarioId`
+filters; the candidate remains incomplete until all 42 checkpoints exist.
 
 After the candidate is complete, review
 `artifacts/manual-authenticated/manual-authenticated-evidence.candidate.json`.
