@@ -177,7 +177,7 @@ foreach ($Module in @($DependencyPolicy.monitoredModules)) {
 $EvidenceLines.Add('')
 $EvidenceLines.Add('These probes permit reads only; writes are not part of the validation tier. PowerShellEditorServices / VS Code coverage for issue #169 also remains an explicit manual gap unless a run artifact records it.')
 $EvidenceLines.Add('')
-$EvidenceLines.Add('Before the protected credentialed workflow exists, the release gate may accept one explicitly reviewed manual transition record for version `3.0.0`. That record must match the exact bundle-source fingerprint, cover the three exact Windows profiles and fixed read-only scenarios, contain no credential material or raw service output, record zero writes, and expire within 30 days. It is transitional compatibility evidence, not least-privilege workload-identity proof.')
+$EvidenceLines.Add('Before the protected credentialed workflow exists, the release gate may accept one explicitly reviewed manual transition record for version `3.0.0`. That record must match the exact bundle-source fingerprint, cover the three exact Windows profiles and fixed read-only scenarios, contain no credential material or raw service output, record zero writes, and expire exactly 14 days after capture starts. It is transitional compatibility evidence, not least-privilege workload-identity proof.')
 
 $Documents = [ordered]@{
     'Support-Matrix.md' = ($SupportLines -join $NewLine) + $NewLine
