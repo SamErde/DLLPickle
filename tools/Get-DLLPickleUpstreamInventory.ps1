@@ -204,18 +204,23 @@ if (-not $SkipDownload.IsPresent) {
         }
         $ResolvedModuleVersions[$Name] = $GalleryModule.Version
     }
-}
 
-$ModuleResults = foreach ($PolicyModule in $PolicyModules) {
-    $Name = [string]$PolicyModule.name
-    $Repository = if ($PolicyModule.repository) { [string]$PolicyModule.repository } else { 'PSGallery' }
-
-    if (-not $SkipDownload.IsPresent) {
-        $ModuleRoot = Join-Path -Path $ModuleCachePath -ChildPath $Name
-        if ($Force.IsPresent -and (Test-Path -LiteralPath $ModuleRoot)) {
-            Remove-Item -LiteralPath $ModuleRoot -Recurse -Force
+    # Prepare the complete cache before taking any runtime snapshot. A monitored module can save
+    # another monitored module as a dependency, so removing/replacing roots during the snapshot
+    # loop could otherwise make earlier rows describe a transient cache state.
+    if ($Force.IsPresent) {
+        foreach ($PolicyModule in $PolicyModules) {
+            $Name = [string]$PolicyModule.name
+            $ModuleRoot = Join-Path -Path $ModuleCachePath -ChildPath $Name
+            if (Test-Path -LiteralPath $ModuleRoot) {
+                Remove-Item -LiteralPath $ModuleRoot -Recurse -Force
+            }
         }
+    }
 
+    foreach ($PolicyModule in $PolicyModules) {
+        $Name = [string]$PolicyModule.name
+        $Repository = if ($PolicyModule.repository) { [string]$PolicyModule.repository } else { 'PSGallery' }
         $SaveModuleParameters = @{
             Name            = $Name
             RequiredVersion = $ResolvedModuleVersions[$Name]
@@ -229,8 +234,20 @@ $ModuleResults = foreach ($PolicyModule in $PolicyModules) {
         }
         Save-Module @SaveModuleParameters
     }
+}
 
-    $SavedModule = Get-DLLPickleLatestModulePath -RootPath $ModuleCachePath -Name $Name
+$ModuleResults = foreach ($PolicyModule in $PolicyModules) {
+    $Name = [string]$PolicyModule.name
+    $Repository = if ($PolicyModule.repository) { [string]$PolicyModule.repository } else { 'PSGallery' }
+
+    $SavedModule = if ($SkipDownload.IsPresent) {
+        Get-DLLPickleLatestModulePath -RootPath $ModuleCachePath -Name $Name
+    } else {
+        $ResolvedModulePath = Join-Path -Path $ModuleCachePath -ChildPath (
+            [System.IO.Path]::Combine($Name, [string]$ResolvedModuleVersions[$Name])
+        )
+        Get-Item -LiteralPath $ResolvedModulePath -ErrorAction SilentlyContinue
+    }
     if (-not $SavedModule) {
         throw "Module '$Name' was not found under '$ModuleCachePath'."
     }

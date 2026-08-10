@@ -28,7 +28,7 @@ BeforeAll {
 }
 
 Describe 'Dependency automation tooling' -Tag 'Unit' {
-    It 'resolves every monitored module version before downloading any module' {
+    It 'resolves and saves every monitored module before taking runtime snapshots' {
         $Assembly = [System.String].Assembly
         $AssemblyName = $Assembly.GetName().Name
         $ModuleCachePath = Join-Path -Path $TestDrive -ChildPath 'atomic-modules'
@@ -44,14 +44,14 @@ Describe 'Dependency automation tooling' -Tag 'Unit' {
 
         $InventoryTestStateKey = 'DLLPickle.DependencyAutomation.InventoryTestState'
         $InventoryTestState = [PSCustomObject]@{
-            Events           = [System.Collections.Generic.List[string]]::new()
             AssemblyLocation = $Assembly.Location
             AssemblyName     = $AssemblyName
+            EventLogPath     = Join-Path $TestDrive 'atomic-events.txt'
         }
         [System.AppDomain]::CurrentDomain.SetData($InventoryTestStateKey, $InventoryTestState)
         Mock Find-Module {
             $State = [System.AppDomain]::CurrentDomain.GetData('DLLPickle.DependencyAutomation.InventoryTestState')
-            $State.Events.Add("find:$Name")
+            Add-Content -LiteralPath $State.EventLogPath -Value "find:$Name"
             if ($Name -eq 'Synthetic.One') {
                 [PSCustomObject]@{ Name = $Name; Version = '1.9.0' }
                 [PSCustomObject]@{ Name = $Name; Version = '1.10.0' }
@@ -61,23 +61,26 @@ Describe 'Dependency automation tooling' -Tag 'Unit' {
         }
         Mock Save-Module {
             $State = [System.AppDomain]::CurrentDomain.GetData('DLLPickle.DependencyAutomation.InventoryTestState')
-            $State.Events.Add("save:${Name}:$RequiredVersion")
+            Add-Content -LiteralPath $State.EventLogPath -Value "save:${Name}:$RequiredVersion"
             $ModuleRoot = Join-Path -Path $Path -ChildPath ([System.IO.Path]::Combine($Name, [string]$RequiredVersion))
             $null = New-Item -Path $ModuleRoot -ItemType Directory -Force
             Copy-Item -LiteralPath $State.AssemblyLocation -Destination (Join-Path $ModuleRoot "$($State.AssemblyName).dll") -Force
-            Set-Content -LiteralPath (Join-Path $ModuleRoot "$Name.psm1") -Value '# Synthetic importable module.' -Encoding UTF8
+            $EscapedEventLogPath = $State.EventLogPath.Replace("'", "''")
+            Set-Content -LiteralPath (Join-Path $ModuleRoot "$Name.psm1") -Value "Add-Content -LiteralPath '$EscapedEventLogPath' -Value 'probe:$Name'" -Encoding UTF8
             New-ModuleManifest -Path (Join-Path $ModuleRoot "$Name.psd1") -RootModule "$Name.psm1" -ModuleVersion ([string]$RequiredVersion)
         }
 
         $null = & $script:InventoryScriptPath -PolicyPath $PolicyPath -TestMatrixPath $TestMatrixPath -ModuleCachePath $ModuleCachePath -OutputPath (Join-Path $TestDrive 'atomic-inventory.json')
 
-        $InventoryEvents = @($InventoryTestState.Events)
+        $InventoryEvents = @(Get-Content -LiteralPath $InventoryTestState.EventLogPath)
         [System.AppDomain]::CurrentDomain.SetData($InventoryTestStateKey, $null)
         $InventoryEvents | Should -Be @(
             'find:Synthetic.One'
             'find:Synthetic.Two'
             'save:Synthetic.One:1.10.0'
             'save:Synthetic.Two:4.5.6'
+            'probe:Synthetic.One'
+            'probe:Synthetic.Two'
         )
     }
 

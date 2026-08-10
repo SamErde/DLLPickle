@@ -86,6 +86,25 @@ Describe 'Get-DLLPickleRuntimeAssemblySnapshot' -Tag 'Unit' {
             Should -Throw '*runtime assembly snapshot failed*'
     }
 
+    It 'throws in strict mode when DLLPickle reports a failed preload row' {
+        $Policy = Get-TempPolicyPath -TrackedAssemblies @('System.Management.Automation')
+        $DllPickleRoot = Join-Path $TestDrive 'failing-dllpickle'
+        $null = New-Item -Path $DllPickleRoot -ItemType Directory
+        @'
+function Import-DPLibrary {
+    [CmdletBinding()]
+    param([switch]$SuppressLogo)
+
+    [pscustomobject]@{ Status = 'Failed' }
+}
+'@ | Set-Content -LiteralPath (Join-Path $DllPickleRoot 'DLLPickle.psm1') -Encoding UTF8
+        $DllPickleManifest = Join-Path $DllPickleRoot 'DLLPickle.psd1'
+        New-ModuleManifest -Path $DllPickleManifest -RootModule 'DLLPickle.psm1' -ModuleVersion '1.0.0' -FunctionsToExport @('Import-DPLibrary')
+
+        { & $SnapshotScript -ModuleName 'Microsoft.PowerShell.Management' -PreloadDllPickleManifest $DllPickleManifest -PolicyPath $Policy -PowerShellExecutable ([Environment]::ProcessPath) -Strict } |
+            Should -Throw '*DLLPickle preload reported 1 failed assembly load*'
+    }
+
     It 'imports an exact manifest under an explicitly isolated module path' {
         $Policy = Get-TempPolicyPath -TrackedAssemblies @('System.Management.Automation')
         $ModuleRoot = Join-Path $TestDrive 'isolated-module'
