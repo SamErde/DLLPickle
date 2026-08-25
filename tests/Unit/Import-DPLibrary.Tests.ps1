@@ -3,6 +3,7 @@
     $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
     . (Resolve-Path ([System.IO.Path]::Combine('..', '..', 'src', 'DLLPickle', 'Public', 'Get-DPConfig.ps1')))
     . (Resolve-Path ([System.IO.Path]::Combine('..', '..', 'src', 'DLLPickle', 'Private', 'Resolve-DPDLLLoadOrder.ps1')))
+    . (Resolve-Path ([System.IO.Path]::Combine('..', '..', 'src', 'DLLPickle', 'Private', 'Get-DPRuntimeProfile.ps1')))
     . (Resolve-Path ([System.IO.Path]::Combine('..', '..', 'src', 'DLLPickle', 'Public', 'Import-DPLibrary.ps1')))
 }
 
@@ -21,6 +22,11 @@ Describe 'Import-DPLibrary' -Tag 'Unit' {
             Mock -CommandName Get-DPConfig -MockWith {
                 [PSCustomObject]@{
                     SkipLibraries = @()
+                }
+            }
+            Mock -CommandName Get-DPRuntimeProfile -MockWith {
+                [PSCustomObject]@{
+                    targetFramework = 'net8.0'
                 }
             }
         }
@@ -167,8 +173,18 @@ Describe 'Import-DPLibrary' -Tag 'Unit' {
             $ChildScript = @'
 $ErrorActionPreference = 'Stop'
 $Payload = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('__PAYLOAD__')) | ConvertFrom-Json
-$TfmDirectory = Join-Path -Path $Payload.FixtureRoot -ChildPath ([IO.Path]::Combine('bin', 'net8.0'))
+$RuntimePolicyPath = Join-Path -Path $Payload.RepoRoot -ChildPath 'src\DLLPickle\SupportedRuntimeProfiles.json'
+$RuntimePolicy = Get-Content -LiteralPath $RuntimePolicyPath -Raw | ConvertFrom-Json
+$RuntimeProfile = @($RuntimePolicy.profiles | Where-Object {
+        $_.powerShellMajor -eq $PSVersionTable.PSVersion.Major -and $_.powerShellMinor -eq $PSVersionTable.PSVersion.Minor
+    })
+if ($RuntimeProfile.Count -ne 1 -or $RuntimeProfile[0].dotnetMajor -ne [Environment]::Version.Major) {
+    throw 'The child process does not match exactly one supported runtime profile.'
+}
+$TargetFramework = [string]$RuntimeProfile[0].targetFramework
+$TfmDirectory = Join-Path -Path $Payload.FixtureRoot -ChildPath ([IO.Path]::Combine('bin', $TargetFramework))
 $null = New-Item -Path $TfmDirectory -ItemType Directory -Force
+Copy-Item -LiteralPath $RuntimePolicyPath -Destination (Join-Path $Payload.FixtureRoot 'SupportedRuntimeProfiles.json') -Force
 $DependencyPath = Join-Path -Path $TfmDirectory -ChildPath 'Z.Synthetic.Dependency.dll'
 $ConsumerPath = Join-Path -Path $TfmDirectory -ChildPath 'A.Synthetic.Consumer.dll'
 $CompilerRoot = Join-Path -Path $Payload.FixtureRoot -ChildPath 'compiler'
@@ -190,7 +206,7 @@ Set-Content -LiteralPath $DependencySourcePath -Value $DependencySource -Encodin
 Set-Content -LiteralPath $DependencyProjectPath -Value @"
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>$TargetFramework</TargetFramework>
     <AssemblyName>Z.Synthetic.Dependency</AssemblyName>
     <RootNamespace>$($Payload.FixtureId)</RootNamespace>
   </PropertyGroup>
@@ -214,7 +230,7 @@ Set-Content -LiteralPath $ConsumerSourcePath -Value $ConsumerSource -Encoding UT
 Set-Content -LiteralPath $ConsumerProjectPath -Value @"
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>$TargetFramework</TargetFramework>
     <AssemblyName>A.Synthetic.Consumer</AssemblyName>
     <RootNamespace>$($Payload.FixtureId)</RootNamespace>
   </PropertyGroup>
@@ -232,6 +248,7 @@ if ($LASTEXITCODE -ne 0) {
 
 . (Join-Path $Payload.RepoRoot 'src\DLLPickle\Public\Get-DPConfig.ps1')
 . (Join-Path $Payload.RepoRoot 'src\DLLPickle\Private\Resolve-DPDLLLoadOrder.ps1')
+. (Join-Path $Payload.RepoRoot 'src\DLLPickle\Private\Get-DPRuntimeProfile.ps1')
 . (Join-Path $Payload.RepoRoot 'src\DLLPickle\Public\Import-DPLibrary.ps1')
 function Get-DPConfig { [PSCustomObject]@{ SkipLibraries = @(); ShowLogo = $false } }
 function Invoke-DPConflictCheck {}
@@ -281,7 +298,8 @@ if ($ConsumerType.GetMethod('GetValue').Invoke($null, @()) -ne 'resolved') {
             $ChildScriptPath = Join-Path -Path $TestDrive -ChildPath 'Invoke-SyntheticDependencyTest.ps1'
             Set-Content -LiteralPath $ChildScriptPath -Value $ChildScript -Encoding UTF8
 
-            $ProcessOutput = @(& pwsh -NoProfile -NonInteractive -File $ChildScriptPath 2>&1)
+            $ChildPowerShellExecutable = [Environment]::ProcessPath
+            $ProcessOutput = @(& $ChildPowerShellExecutable -NoProfile -NonInteractive -File $ChildScriptPath 2>&1)
             $ProcessExitCode = $LASTEXITCODE
 
             $ProcessExitCode | Should -Be 0 -Because ($ProcessOutput -join [Environment]::NewLine)
@@ -323,7 +341,16 @@ if (
     throw 'PEReader metadata inspection types are unavailable in the isolated child process.'
 }
 
-$TfmDirectory = Join-Path -Path $Payload.FixtureRoot -ChildPath ([IO.Path]::Combine('bin', 'net8.0'))
+$RuntimePolicyPath = Join-Path -Path $Payload.RepoRoot -ChildPath 'src\DLLPickle\SupportedRuntimeProfiles.json'
+$RuntimePolicy = Get-Content -LiteralPath $RuntimePolicyPath -Raw | ConvertFrom-Json
+$RuntimeProfile = @($RuntimePolicy.profiles | Where-Object {
+        $_.powerShellMajor -eq $PSVersionTable.PSVersion.Major -and $_.powerShellMinor -eq $PSVersionTable.PSVersion.Minor
+    })
+if ($RuntimeProfile.Count -ne 1 -or $RuntimeProfile[0].dotnetMajor -ne [Environment]::Version.Major) {
+    throw 'The child process does not match exactly one supported runtime profile.'
+}
+$TargetFramework = [string]$RuntimeProfile[0].targetFramework
+$TfmDirectory = Join-Path -Path $Payload.FixtureRoot -ChildPath ([IO.Path]::Combine('bin', $TargetFramework))
 $CompilerRoot = Join-Path -Path $Payload.FixtureRoot -ChildPath 'compiler'
 $DependencyProjectRoot = Join-Path -Path $CompilerRoot -ChildPath 'Dependency'
 $ConsumerProjectRoot = Join-Path -Path $CompilerRoot -ChildPath 'Consumer'
@@ -332,6 +359,7 @@ $MarkerPath = Join-Path -Path $Payload.FixtureRoot -ChildPath 'module-initialize
 $null = New-Item -Path $TfmDirectory -ItemType Directory -Force
 $null = New-Item -Path $DependencyProjectRoot -ItemType Directory -Force
 $null = New-Item -Path $ConsumerProjectRoot -ItemType Directory -Force
+Copy-Item -LiteralPath $RuntimePolicyPath -Destination (Join-Path $Payload.FixtureRoot 'SupportedRuntimeProfiles.json') -Force
 
 $DependencyPath = Join-Path -Path $TfmDirectory -ChildPath 'Z.MetadataOnly.Dependency.dll'
 $ConsumerPath = Join-Path -Path $TfmDirectory -ChildPath 'A.MetadataOnly.Consumer.dll'
@@ -347,7 +375,7 @@ Set-Content -LiteralPath (Join-Path $DependencyProjectRoot 'Dependency.cs') -Val
 Set-Content -LiteralPath (Join-Path $DependencyProjectRoot 'Z.MetadataOnly.Dependency.csproj') -Value @"
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>$TargetFramework</TargetFramework>
     <AssemblyName>Z.MetadataOnly.Dependency</AssemblyName>
     <RootNamespace>$($Payload.FixtureId)</RootNamespace>
   </PropertyGroup>
@@ -380,7 +408,7 @@ Set-Content -LiteralPath (Join-Path $ConsumerProjectRoot 'Consumer.cs') -Value $
 Set-Content -LiteralPath (Join-Path $ConsumerProjectRoot 'A.MetadataOnly.Consumer.csproj') -Value @"
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>$TargetFramework</TargetFramework>
     <AssemblyName>A.MetadataOnly.Consumer</AssemblyName>
     <RootNamespace>$($Payload.FixtureId)</RootNamespace>
   </PropertyGroup>
@@ -423,7 +451,8 @@ if ($ProbeLoadedAssemblies.Count -gt 0) {
             $ChildScriptPath = Join-Path -Path $TestDrive -ChildPath 'Invoke-MetadataOnlyDependencyTest.ps1'
             Set-Content -LiteralPath $ChildScriptPath -Value $ChildScript -Encoding UTF8
 
-            $ProcessOutput = @(& pwsh -NoProfile -NonInteractive -File $ChildScriptPath 2>&1)
+            $ChildPowerShellExecutable = [Environment]::ProcessPath
+            $ProcessOutput = @(& $ChildPowerShellExecutable -NoProfile -NonInteractive -File $ChildScriptPath 2>&1)
             $ProcessExitCode = $LASTEXITCODE
             $ProcessOutputText = $ProcessOutput -join [Environment]::NewLine
 

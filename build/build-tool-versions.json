@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "modules": [
+    {
+      "name": "Pester",
+      "version": "5.7.1",
+      "skipPublisherCheck": true
+    },
+    {
+      "name": "InvokeBuild",
+      "version": "5.14.23",
+      "skipPublisherCheck": false
+    },
+    {
+      "name": "PSScriptAnalyzer",
+      "version": "1.25.0",
+      "skipPublisherCheck": false
+    },
+    {
+      "name": "Microsoft.PowerShell.PlatyPS",
+      "version": "1.0.3",
+      "skipPublisherCheck": false
+    }
+  ]
+}

@@ -1,19 +1,21 @@
 ---
 id: GAP-003
 title: Add representative EXO and Teams probe commands
-status: open
+status: in-progress
 severity: high
 area: runtime-probes
 owner: maintainer
 created: 2026-06-23
-updated: 2026-06-23
+updated: 2026-08-08
 related_issues: []
 related_prs: []
 related_docs:
   - docs/Architecture.md
   - build/dependency-policy.json
   - docs/DEPENDENCIES.md
-related_tests: []
+related_tests:
+  - tests/Unit/DependencyPolicy.Tests.ps1
+  - tests/Unit/UpstreamInventoryProfile.Tests.ps1
 resolution_pr:
 resolved_on:
 ---
@@ -22,7 +24,7 @@ resolved_on:
 
 ## Status
 
-**Current status:** Open.
+**Current status:** In progress. The probe-command contract and tooling are implemented; exact profile/platform evidence has not yet been accepted.
 
 ## Problem
 
@@ -34,8 +36,10 @@ DLLPickle's preload/block classification depends on observed runtime ownership, 
 
 ## Current evidence
 
-- `docs/Architecture.md` says static narrows but runtime decides.
-- `docs/Architecture.md` records that EXO/Teams ALC ownership is not yet captured because bare `Import-Module` does not eagerly load their identity assemblies.
+- `build/dependency-policy.json` assigns `Get-ConnectionInformation -ErrorAction SilentlyContinue | Out-Null` and a read-only `Get-Team` execution with errors suppressed to the deterministic no-auth tier. The Teams command executes the cmdlet surface without claiming an authenticated tenant read.
+- It separately records `Get-EXOMailbox -ResultSize 1 | Out-Null` and an access-token-based `Connect-MicrosoftTeams` / `Get-CsTenant` / `Disconnect-MicrosoftTeams` sequence as authenticated read-only release gates.
+- `Get-DLLPickleUpstreamInventory.ps1` passes the profile-specific deterministic command into the exact stock-host snapshot process.
+- Unit tests validate policy parsing, probe separation, exact-host inventory, and selected-asset evidence without service authentication.
 
 ## Desired end state
 
@@ -43,13 +47,13 @@ The runtime probe system supports representative `-ProbeCommand` execution for E
 
 ## Acceptance criteria
 
-- [ ] Define safe, representative probe commands for ExchangeOnlineManagement and MicrosoftTeams.
-- [ ] Update the relevant runtime probe tooling to support module-specific probe commands if it does not already.
-- [ ] Record the selected probe commands in `build/dependency-policy.json` or another authoritative policy/configuration file.
-- [ ] Add tests for probe-command configuration parsing and invocation behavior without requiring live authentication.
-- [ ] Document which probes are CI-capable and which require maintainer-run/auth-tier validation.
-- [ ] Update `docs/Architecture.md` §7, §9, or §10 as needed.
-- [ ] Update `docs/gaps/README.md` and this file when resolved or superseded.
+- [x] Define safe, representative probe commands for ExchangeOnlineManagement and MicrosoftTeams.
+- [x] Update the relevant runtime probe tooling to support module-specific probe commands if it does not already.
+- [x] Record the selected probe commands in `build/dependency-policy.json` or another authoritative policy/configuration file.
+- [x] Add tests for probe-command configuration parsing and invocation behavior without requiring live authentication.
+- [x] Document which probes are CI-capable and which require maintainer-run/auth-tier validation.
+- [x] Update `docs/Architecture.md` §7, §9, or §10 as needed.
+- [ ] Accept fresh exact-profile evidence for all required platforms and then update `docs/gaps/README.md` and this file as resolved.
 
 ## Implementation notes for Codex
 
@@ -61,4 +65,4 @@ The runtime probe system supports representative `-ProbeCommand` execution for E
 
 ## Resolution notes
 
-Pending.
+Implementation is present in the current change. Resolution remains pending until the nine profile/platform baselines contain reviewed fingerprints rather than `requires-profile-refresh` placeholders.

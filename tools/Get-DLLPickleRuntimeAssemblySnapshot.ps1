@@ -19,6 +19,17 @@
 .PARAMETER Strict
     Fails when a requested module cannot be imported or the probe command throws. Use this mode when
     collecting adjudication evidence so a partial snapshot cannot be mistaken for a successful probe.
+.PARAMETER PowerShellExecutable
+    Exact stock pwsh/pwsh.exe to launch. Defaults to the current process executable.
+.PARAMETER PowerShellVersion
+    Optional exact servicing patch expected from the child process.
+.PARAMETER TargetFramework
+    Expected TFM for the child CLR. The probe fails if it does not match.
+.PARAMETER ModuleManifestPath
+    Optional exact manifest path for each ModuleName, in the same order. This prevents
+    a user- or machine-wide module of the same name from satisfying the evidence run.
+.PARAMETER ModuleSearchPath
+    Optional isolated module roots assigned inside the fresh child process before import.
 .OUTPUTS
     PSCustomObject[] one row per loaded tracked assembly: Name, Version, Alc, Path.
 #>
@@ -37,10 +48,42 @@ param(
     [string]$PolicyPath,
 
     [Parameter()]
+    [string]$PowerShellExecutable = [Environment]::ProcessPath,
+
+    [Parameter()]
+    [version]$PowerShellVersion,
+
+    [Parameter()]
+    [ValidatePattern('^net\d+\.0$')]
+    [string]$TargetFramework,
+
+    [Parameter()]
+    [string[]]$ModuleManifestPath,
+
+    [Parameter()]
+    [string[]]$ModuleSearchPath,
+
+    [Parameter()]
     [switch]$Strict
 )
 
 $ErrorActionPreference = 'Stop'
+$ResolvedModuleManifestPaths = @($ModuleManifestPath | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+if ($ResolvedModuleManifestPaths.Count -gt 0 -and $ResolvedModuleManifestPaths.Count -ne $ModuleName.Count) {
+    throw 'ModuleManifestPath must contain one exact path for every ModuleName.'
+}
+foreach ($ManifestPath in $ResolvedModuleManifestPaths) {
+    if (-not (Test-Path -LiteralPath $ManifestPath -PathType Leaf)) {
+        throw "Module manifest was not found: $ManifestPath"
+    }
+}
+
+$ExecutableCommand = Get-Command -Name $PowerShellExecutable -ErrorAction Stop
+$ResolvedPowerShellExecutable = if ($ExecutableCommand.CommandType -eq 'Application') {
+    $ExecutableCommand.Source
+} else {
+    throw "PowerShellExecutable must resolve to an application, not $($ExecutableCommand.CommandType): $PowerShellExecutable"
+}
 
 $HelperScript = Join-Path -Path $PSScriptRoot -ChildPath 'Get-DLLPickleLoadedTrackedAssembly.ps1'
 if (-not $PolicyPath) {
@@ -48,24 +91,47 @@ if (-not $PolicyPath) {
 }
 
 $ChildScript = @'
-param($ModuleNames, $PreloadManifest, $ProbeCommand, $HelperScript, $PolicyPath, [switch]$StrictMode)
+param($ModuleNames, $ModuleManifestPathsEncoded, $IsolatedModulePath, $PreloadManifest, $ProbeCommand, $HelperScript, $PolicyPath, $ResultPath, $ExpectedPowerShellVersion, $ExpectedTargetFramework, [switch]$StrictMode)
 $ModuleNames = $ModuleNames -split ','
+$ModuleManifestPaths = if ($ModuleManifestPathsEncoded) {
+    $ManifestJson = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($ModuleManifestPathsEncoded))
+    @($ManifestJson | ConvertFrom-Json)
+} else {
+    @()
+}
+$ModuleManifestPaths = @($ModuleManifestPaths)
+$env:PSModulePath = if ($IsolatedModulePath) { $IsolatedModulePath } else { $env:PSModulePath }
 $ErrorActionPreference = 'Continue'
+$ActualTargetFramework = 'net{0}.0' -f [Environment]::Version.Major
+if ($ExpectedPowerShellVersion -and $PSVersionTable.PSVersion.ToString() -ne $ExpectedPowerShellVersion) {
+    throw "PowerShell version mismatch. Expected $ExpectedPowerShellVersion but detected $($PSVersionTable.PSVersion)."
+}
+if ($ExpectedTargetFramework -and $ActualTargetFramework -ne $ExpectedTargetFramework) {
+    throw "Target framework mismatch. Expected $ExpectedTargetFramework but detected $ActualTargetFramework."
+}
 if ($PreloadManifest) {
     if ($StrictMode) {
         Import-Module $PreloadManifest -Force -ErrorAction Stop
-        Import-DPLibrary -SuppressLogo -ErrorAction Stop | Out-Null
+        $ImportResults = @(Import-DPLibrary -SuppressLogo -ErrorAction Stop)
+        $FailedImports = @($ImportResults | Where-Object { [string]$_.Status -eq 'Failed' })
+        if ($FailedImports.Count -gt 0) {
+            throw "DLLPickle preload reported $($FailedImports.Count) failed assembly load(s)."
+        }
     } else {
         Import-Module $PreloadManifest -Force
         Import-DPLibrary -SuppressLogo | Out-Null
     }
 }
-foreach ($Name in $ModuleNames) {
+$ImportedModulePaths = @()
+for ($ModuleIndex = 0; $ModuleIndex -lt $ModuleNames.Count; $ModuleIndex++) {
+    $Name = $ModuleNames[$ModuleIndex]
+    $ImportTarget = if ($ModuleManifestPaths.Count -gt 0) { [string]$ModuleManifestPaths[$ModuleIndex] } else { $Name }
     if ($StrictMode) {
-        Import-Module $Name -Force -ErrorAction Stop
+        Import-Module -Name $ImportTarget -Force -ErrorAction Stop
     } else {
-        Import-Module $Name -Force -ErrorAction Continue
+        Import-Module -Name $ImportTarget -Force -ErrorAction Continue
     }
+    $ImportedModulePaths += $ImportTarget
 }
 if ($ProbeCommand) {
     if ($StrictMode) {
@@ -74,33 +140,63 @@ if ($ProbeCommand) {
         try { Invoke-Expression $ProbeCommand | Out-Null } catch { }
     }
 }
-& $HelperScript -PolicyPath $PolicyPath | ConvertTo-Json -Depth 5
+$Rows = @(& $HelperScript -PolicyPath $PolicyPath)
+foreach ($Row in $Rows) {
+    $Row | Add-Member -NotePropertyName PowerShellVersion -NotePropertyValue $PSVersionTable.PSVersion.ToString()
+    $Row | Add-Member -NotePropertyName DotNetVersion -NotePropertyValue ([Environment]::Version.ToString())
+    $Row | Add-Member -NotePropertyName TargetFramework -NotePropertyValue $ActualTargetFramework
+    $Row | Add-Member -NotePropertyName ExecutablePath -NotePropertyValue ([Environment]::ProcessPath)
+    $Row | Add-Member -NotePropertyName PSHome -NotePropertyValue $PSHOME
+    $Row | Add-Member -NotePropertyName ModuleSet -NotePropertyValue @($ModuleNames)
+    $Row | Add-Member -NotePropertyName ImportOrder -NotePropertyValue @($ModuleNames)
+    $Row | Add-Member -NotePropertyName ImportedModulePaths -NotePropertyValue @($ImportedModulePaths)
+    $Row | Add-Member -NotePropertyName IsolatedModulePath -NotePropertyValue $env:PSModulePath
+    $Row | Add-Member -NotePropertyName DllPicklePreloaded -NotePropertyValue (-not [string]::IsNullOrWhiteSpace($PreloadManifest))
+}
+ConvertTo-Json -InputObject @($Rows) -Depth 8 | Set-Content -LiteralPath $ResultPath -Encoding utf8NoBOM
 '@
 
-$TempScript = Join-Path ([System.IO.Path]::GetTempPath()) ("dpp-snap-{0}.ps1" -f ([System.Guid]::NewGuid().ToString('n')))
+$TempId = [System.Guid]::NewGuid().ToString('n')
+$TempScript = Join-Path ([System.IO.Path]::GetTempPath()) ("dpp-snap-{0}.ps1" -f $TempId)
+$TempResult = Join-Path ([System.IO.Path]::GetTempPath()) ("dpp-snap-{0}.json" -f $TempId)
 Set-Content -LiteralPath $TempScript -Value $ChildScript -Encoding utf8NoBOM
 try {
     $ChildArguments = @(
         '-NoProfile', '-NonInteractive', '-File', $TempScript,
         '-ModuleNames', ($ModuleName -join ','),
         '-HelperScript', $HelperScript,
-        '-PolicyPath', $PolicyPath
+        '-PolicyPath', $PolicyPath,
+        '-ResultPath', $TempResult
     )
+    if ($PowerShellVersion) { $ChildArguments += @('-ExpectedPowerShellVersion', $PowerShellVersion.ToString()) }
+    if ($TargetFramework) { $ChildArguments += @('-ExpectedTargetFramework', $TargetFramework) }
+    if ($ResolvedModuleManifestPaths.Count -gt 0) {
+        $ManifestJson = ConvertTo-Json -InputObject @($ResolvedModuleManifestPaths) -Compress
+        $ManifestEncoded = [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($ManifestJson))
+        $ChildArguments += @('-ModuleManifestPathsEncoded', $ManifestEncoded)
+    }
+    if ($ModuleSearchPath.Count -gt 0) {
+        $ChildArguments += @('-IsolatedModulePath', (@($ModuleSearchPath) -join [System.IO.Path]::PathSeparator))
+    }
     if ($PreloadDllPickleManifest) { $ChildArguments += @('-PreloadManifest', $PreloadDllPickleManifest) }
     if ($ProbeCommand) { $ChildArguments += @('-ProbeCommand', $ProbeCommand) }
     if ($Strict.IsPresent) {
         $ChildArguments += '-StrictMode'
-        $Raw = & pwsh @ChildArguments 2>&1
+        $Raw = & $ResolvedPowerShellExecutable @ChildArguments 2>&1
         if ($LASTEXITCODE -ne 0) {
             $ChildError = ($Raw | Out-String).Trim()
             throw "DLLPickle runtime assembly snapshot failed in strict mode. $ChildError"
         }
     } else {
-        $Raw = & pwsh @ChildArguments
+        $Raw = & $ResolvedPowerShellExecutable @ChildArguments
     }
-    $Json = ($Raw | Out-String).Trim()
+    if (-not (Test-Path -LiteralPath $TempResult -PathType Leaf)) {
+        throw 'DLLPickle runtime assembly snapshot did not produce its result file.'
+    }
+    $Json = (Get-Content -LiteralPath $TempResult -Raw).Trim()
     if ([string]::IsNullOrWhiteSpace($Json)) { return @() }
     @($Json | ConvertFrom-Json)
 } finally {
     Remove-Item -LiteralPath $TempScript -Force -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath $TempResult -Force -ErrorAction SilentlyContinue
 }

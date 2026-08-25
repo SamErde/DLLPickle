@@ -12,6 +12,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Documented the manual release dispatch process trap: Architecture §8.3 now spells out which changes auto-publish, which do not, and when a deliberate `workflow_dispatch` run is required, backed by new `Release-and-Publish` path/version-gate guardrail tests (GAP-006).
 - Documented the unresolved review-thread maintenance workflow so review threads are not resolved as a substitute for code, test, or documentation changes (GAP-010).
 - Added a structural gap-register guard (`tests/Unit/GapRegister.Tests.ps1`) that validates gap status values, index membership, index/frontmatter status agreement, and `resolution_pr`/`resolved_on` on resolved gaps; surfaced and fixed GAP-001's missing index row (GAP-011).
+- Multi-targeted the shipped dependency payload for the exact Microsoft-supported PowerShell profiles currently in scope: 7.4 / `net8.0`, 7.5 / `net9.0`, and 7.6 / `net10.0`. The loader now selects with both PowerShell and CLR versions and fails closed on unknown, malformed, duplicate, or mismatched mappings.
+- Added a canonical exact-patch/OS test matrix, checksum-verified stock-host provisioning, scheduled lifecycle enforcement, and a stable aggregate gate spanning all nine PowerShell/OS cells. Optional `multi-pwsh` provisioning remains CI-only and is explicitly rejected from the published artifact.
+- Added fingerprint-deduplicated scheduled publication: validated patch-only runtime updates open one automation PR, while new/changed/retiring support lines and profile-aware compatibility findings update one review issue only when their stable evidence fingerprint changes.
+- Made upstream inventory, conflict fingerprints, import-order evidence, probe commands, and baselines profile/platform aware. Deterministic no-auth and credential-dependent authenticated read-only tiers are reported separately; unexecuted credentialed probes remain release gates.
+- Derived TFM compatibility from NuGet's restored `project.assets.json`, preserved common package versions across all TFMs by default, and routed conditional pins, classification changes, or material artifact growth to maintainer review.
+- Added generated Microsoft support and upstream-evidence documentation, exact package-composition inspection, and deterministic per-TFM/full-artifact size reporting with a committed baseline.
 
 ## [2.2.2] - 2026-06-22
 

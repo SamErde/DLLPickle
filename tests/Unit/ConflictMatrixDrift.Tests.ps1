@@ -7,15 +7,19 @@ BeforeAll {
             $Diverges,
             $Alc = 'Default',
             $Versions = @(),
-            $ShippedBy = @()
+            $ShippedBy = @(),
+            $Hashes = @(),
+            $AlcOwners = @($Alc)
         )
 
         [PSCustomObject]@{
-            Name      = $Name
-            Diverges  = $Diverges
-            AlcOwner  = $Alc
-            Versions  = @($Versions)
-            ShippedBy = @($ShippedBy)
+            Name       = $Name
+            Diverges   = $Diverges
+            AlcOwner   = $Alc
+            AlcOwners  = @($AlcOwners)
+            Versions   = @($Versions)
+            ShippedBy  = @($ShippedBy)
+            Hashes     = @($Hashes)
         }
     }
     function Get-DriftMatrix { param($Rows) [PSCustomObject]@{ Assemblies = @($Rows) } }
@@ -42,6 +46,40 @@ Describe 'Compare-DLLPickleConflictMatrix' -Tag 'Unit' {
         $r = & $ScriptPath -Baseline $b -Current $c
         $r.HasMaterialDrift | Should -BeTrue
         $r.Findings.AlcOwnershipChanges | Should -Contain 'Azure.Core'
+    }
+
+    It 'flags a selected-hash change even when the assembly is not version-divergent' {
+        $b = Get-DriftMatrix @(
+            Get-DriftRow 'Microsoft.Identity.Client' $false 'Default' @('4.84.1.0') @('Az.Accounts') @('aaaa')
+        )
+        $c = Get-DriftMatrix @(
+            Get-DriftRow 'Microsoft.Identity.Client' $false 'Default' @('4.84.1.0') @('Az.Accounts') @('bbbb')
+        )
+
+        $r = & $ScriptPath -Baseline $b -Current $c
+
+        $r.HasMaterialDrift | Should -BeTrue
+        $r.Findings.HashChanges | Should -HaveCount 1
+        $r.Findings.HashChanges[0].Name | Should -Be 'Microsoft.Identity.Client'
+        @($r.Findings.HashChanges[0].Baseline) | Should -Be @('aaaa')
+        @($r.Findings.HashChanges[0].Current) | Should -Be @('bbbb')
+    }
+
+    It 'flags added and removed tracked assemblies outside the version-conflict surface' {
+        $b = Get-DriftMatrix @(
+            Get-DriftRow 'Microsoft.Identity.Client' $false
+            Get-DriftRow 'Azure.Core' $false
+        )
+        $c = Get-DriftMatrix @(
+            Get-DriftRow 'Microsoft.Identity.Client' $false
+            Get-DriftRow 'System.ClientModel' $false
+        )
+
+        $r = & $ScriptPath -Baseline $b -Current $c
+
+        $r.HasMaterialDrift | Should -BeTrue
+        $r.Findings.NewTrackedAssemblies | Should -Contain 'System.ClientModel'
+        $r.Findings.RemovedTrackedAssemblies | Should -Contain 'Azure.Core'
     }
 
     It 'flags a version-set change with structured before and after values' {
@@ -78,5 +116,36 @@ Describe 'Compare-DLLPickleConflictMatrix' -Tag 'Unit' {
 
         $r.HasMaterialDrift | Should -BeTrue
         $r.Findings.RemovedConflicts | Should -Contain 'Microsoft.OData.Core'
+    }
+
+    It 'emits a stable finding fingerprint for report deduplication' {
+        $b = Get-DriftMatrix @(Get-DriftRow 'Azure.Core' $true 'Default' @('1.50.0.0') @('Az.Accounts'))
+        $c = Get-DriftMatrix @(Get-DriftRow 'Azure.Core' $true 'Default' @('1.51.0.0') @('Az.Accounts'))
+
+        $first = & $ScriptPath -Baseline $b -Current $c
+        $second = & $ScriptPath -Baseline $b -Current $c
+        $changed = Get-DriftMatrix @(Get-DriftRow 'Azure.Core' $true 'Default' @('1.52.0.0') @('Az.Accounts'))
+        $different = & $ScriptPath -Baseline $b -Current $changed
+
+        $first.FindingFingerprint | Should -Match '^[a-f0-9]{64}$'
+        $first.FindingFingerprint | Should -BeExactly $second.FindingFingerprint
+        $different.FindingFingerprint | Should -Not -BeExactly $first.FindingFingerprint
+    }
+
+    It 'rejects comparisons across different runtime profiles' {
+        $b = Get-DriftMatrix @(Get-DriftRow 'Azure.Core' $true)
+        $b | Add-Member -NotePropertyName ProfileKey -NotePropertyValue 'ps7.4-net8.0-windows-x64'
+        $c = Get-DriftMatrix @(Get-DriftRow 'Azure.Core' $true)
+        $c | Add-Member -NotePropertyName ProfileKey -NotePropertyValue 'ps7.5-net9.0-windows-x64'
+
+        { & $ScriptPath -Baseline $b -Current $c } | Should -Throw '*different runtime profiles*'
+    }
+
+    It 'rejects a comparison when only one matrix declares a runtime profile' {
+        $b = Get-DriftMatrix @(Get-DriftRow 'Azure.Core' $true)
+        $b | Add-Member -NotePropertyName ProfileKey -NotePropertyValue 'ps7.4-net8.0-windows-x64'
+        $c = Get-DriftMatrix @(Get-DriftRow 'Azure.Core' $true)
+
+        { & $ScriptPath -Baseline $b -Current $c } | Should -Throw '*only one declares*'
     }
 }

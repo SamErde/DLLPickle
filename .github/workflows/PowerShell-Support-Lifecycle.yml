@@ -1,0 +1,375 @@
+name: PowerShell Support Lifecycle
+
+on:
+  schedule:
+    - cron: "17 9 * * 1"
+  workflow_dispatch:
+
+# Discovery and archive validation remain read-only. Dedicated publication jobs use
+# stable fingerprints to suppress duplicate pull requests, issues, and comments.
+permissions:
+  contents: read
+
+concurrency:
+  group: powershell-support-lifecycle
+  cancel-in-progress: false
+
+jobs:
+  discover:
+    name: Discover supported PowerShell updates
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      has_patch: ${{ steps.proposal.outputs.has_patch }}
+      runtime_matrix: ${{ steps.proposal.outputs.runtime_matrix }}
+      support_review: ${{ steps.proposal.outputs.support_review }}
+      policy_current: ${{ steps.lifecycle-policy.outcome == 'success' }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Discover servicing and support-contract updates
+        shell: pwsh
+        run: ./tools/Get-DLLPicklePowerShellSupportUpdate.ps1 -OutputPath ./artifacts/lifecycle/powershell-support-update.json
+
+      - name: Prepare a checksum-pinned candidate matrix
+        id: proposal
+        shell: pwsh
+        run: |
+          $ReportPath = './artifacts/lifecycle/powershell-support-update.json'
+          $CandidatePath = './artifacts/lifecycle/candidate-test-matrix.json'
+          $Report = Get-Content -LiteralPath $ReportPath -Raw | ConvertFrom-Json
+          $HasPatch = [bool]$Report.MatrixOnlyUpdateAvailable
+          if ($HasPatch) {
+              $Parameters = @{
+                  UpdateReportPath = $ReportPath
+                  OutputPath = $CandidatePath
+                  PrepareCandidate = $true
+              }
+              ./tools/Update-DLLPicklePowerShellTestMatrix.ps1 @Parameters | Out-Null
+          } else {
+              Copy-Item -LiteralPath ./build/powershell-test-matrix.json -Destination $CandidatePath
+          }
+          $RuntimeMatrix = ./tools/New-DLLPicklePowerShellTestMatrix.ps1 -MatrixPath $CandidatePath -Compress
+          "has_patch=$($HasPatch.ToString().ToLowerInvariant())" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "runtime_matrix=$RuntimeMatrix" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "support_review=$(([bool]$Report.SupportContractReviewRequired).ToString().ToLowerInvariant())" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+      - name: Summarize support update discovery
+        if: always() && hashFiles('artifacts/lifecycle/powershell-support-update.json') != ''
+        shell: pwsh
+        run: |
+          $Report = Get-Content -LiteralPath './artifacts/lifecycle/powershell-support-update.json' -Raw | ConvertFrom-Json
+          @(
+            '### PowerShell support update discovery'
+            ''
+            "- Patch updates: $(@($Report.PatchUpdates).Count)"
+            "- New GA lines: $(@($Report.NewLines).Count)"
+            "- Support-contract review required: $($Report.SupportContractReviewRequired)"
+            "- Patch publication fingerprint: ``$($Report.PatchProposalFingerprint)``"
+            "- Support-contract fingerprint: ``$($Report.SupportContractFingerprint)``"
+            '- Publishing status: validated findings are published once per stable fingerprint'
+          ) | Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY
+
+      - name: Check lifecycle evidence and retirement windows
+        id: lifecycle-policy
+        continue-on-error: true
+        shell: pwsh
+        run: ./tools/Test-DLLPickleRuntimeProfilePolicy.ps1 -Mode Scheduled
+
+      - name: Upload support discovery evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: powershell-support-discovery
+          path: ./artifacts/lifecycle
+          if-no-files-found: error
+          retention-days: 30
+
+  candidate-runtime:
+    name: Validate proposed PowerShell ${{ matrix.powerShellVersion }} on ${{ matrix.platform }}
+    needs: discover
+    if: ${{ needs.discover.outputs.has_patch == 'true' }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.discover.outputs.runtime_matrix) }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Download checksum-pinned candidate matrix
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: powershell-support-discovery
+          path: ./downloaded-support-discovery
+
+      - name: Provision and verify the proposed official archive
+        shell: pwsh
+        env:
+          MATRIX_POWERSHELL_VERSION: ${{ matrix.powerShellVersion }}
+          MATRIX_PLATFORM: ${{ matrix.platform }}
+          MATRIX_ARCHITECTURE: ${{ matrix.architecture }}
+          RUNTIME_INSTALL_ROOT: ${{ runner.temp }}/dllpickle-support-candidate
+          RUNTIME_IDENTITY_PATH: ./runtime-identity-${{ matrix.powerShellVersion }}-${{ matrix.platform }}.json
+        run: |
+          $Parameters = @{
+              Provider = 'DirectArchive'
+              PowerShellVersion = $env:MATRIX_POWERSHELL_VERSION
+              Platform = $env:MATRIX_PLATFORM
+              Architecture = $env:MATRIX_ARCHITECTURE
+              InstallRoot = $env:RUNTIME_INSTALL_ROOT
+              MatrixPath = './downloaded-support-discovery/candidate-test-matrix.json'
+              PassThru = $true
+          }
+          $Identity = ./tools/Install-DLLPickleTestPowerShell.ps1 @Parameters
+          $Identity | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $env:RUNTIME_IDENTITY_PATH -Encoding utf8
+
+      - name: Upload proposed runtime identity
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: powershell-update-runtime-${{ matrix.powerShellVersion }}-${{ matrix.platform }}-${{ matrix.architecture }}
+          path: ./runtime-identity-*.json
+          if-no-files-found: error
+          retention-days: 30
+
+  finalize-patch-proposal:
+    name: Finalize verified PowerShell patch proposal
+    needs: [discover, candidate-runtime]
+    if: ${{ always() && needs.discover.outputs.has_patch == 'true' && needs.discover.outputs.policy_current == 'true' && needs.candidate-runtime.result == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Create GitHub App token for servicing publication
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Download discovery evidence
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: powershell-support-discovery
+          path: ./downloaded-support-discovery
+
+      - name: Download all proposed runtime identities
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: powershell-update-runtime-*
+          path: ./downloaded-runtime-identities
+          merge-multiple: true
+
+      - name: Finalize and validate the reviewable matrix proposal
+        shell: pwsh
+        run: |
+          $ProposalRoot = './artifacts/lifecycle/proposal'
+          $MatrixPath = Join-Path $ProposalRoot 'powershell-test-matrix.json'
+          $Parameters = @{
+              UpdateReportPath = './downloaded-support-discovery/powershell-support-update.json'
+              RuntimeIdentityPath = './downloaded-runtime-identities'
+              OutputPath = $MatrixPath
+          }
+          ./tools/Update-DLLPicklePowerShellTestMatrix.ps1 @Parameters | Out-Null
+          ./tools/Test-DLLPickleRuntimeProfilePolicy.ps1 -TestMatrixPath $MatrixPath -Mode Scheduled
+          ./tools/New-DLLPickleSupportDocumentation.ps1 -TestMatrixPath $MatrixPath -OutputDirectory (Join-Path $ProposalRoot 'generated-docs') | Out-Null
+          @(
+              '### Verified PowerShell servicing proposal'
+              ''
+              '- Official archives: checksum and runtime identity validated on all nine cells'
+              '- Output: reviewable matrix and generated documentation artifacts'
+              '- Publication: one pull request per stable validated fingerprint'
+          ) | Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY
+
+      - name: Upload verified patch proposal
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: powershell-support-patch-proposal
+          path: ./artifacts/lifecycle/proposal
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish one servicing-patch pull request per validated fingerprint
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $ProposalRoot = './artifacts/lifecycle/proposal'
+          $Report = Get-Content -LiteralPath './downloaded-support-discovery/powershell-support-update.json' -Raw | ConvertFrom-Json
+          $Fingerprint = [string]$Report.PatchProposalFingerprint
+          if ($Fingerprint -notmatch '^[a-f0-9]{64}$') {
+              throw 'The validated patch proposal did not contain a stable SHA-256 publication fingerprint.'
+          }
+
+          $BranchName = "automation/powershell-patch-$($Fingerprint.Substring(0, 16))"
+          $ExistingPullRequests = @(gh pr list --state all --head $BranchName --limit 10 --json number,state,url,body | ConvertFrom-Json)
+          if ($LASTEXITCODE -ne 0) {
+              throw 'Failed to query existing PowerShell servicing pull requests.'
+          }
+          if ($ExistingPullRequests.Count -gt 0) {
+              "Fingerprint already published as $($ExistingPullRequests[0].url); no duplicate pull request created." | Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY
+              exit 0
+          }
+
+          Copy-Item -LiteralPath (Join-Path $ProposalRoot 'powershell-test-matrix.json') -Destination './build/powershell-test-matrix.json'
+          foreach ($GeneratedDocument in @(Get-ChildItem -LiteralPath (Join-Path $ProposalRoot 'generated-docs') -File)) {
+              Copy-Item -LiteralPath $GeneratedDocument.FullName -Destination (Join-Path './docs/generated' $GeneratedDocument.Name)
+          }
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git switch -c $BranchName
+          git add build/powershell-test-matrix.json docs/generated
+          git diff --cached --quiet
+          if ($LASTEXITCODE -eq 0) {
+              Write-Host 'The validated proposal is already present in the checked-out branch; no pull request is needed.'
+              exit 0
+          }
+          git commit -m 'ci: update PowerShell servicing patches'
+          if ($LASTEXITCODE -ne 0) {
+              throw 'Failed to commit the validated PowerShell servicing proposal.'
+          }
+          git push --set-upstream origin $BranchName
+          if ($LASTEXITCODE -ne 0) {
+              throw 'Failed to publish the validated PowerShell servicing branch.'
+          }
+
+          $Versions = @($Report.PatchUpdates.CandidateVersion | Sort-Object) -join ', '
+          $Title = "ci: update PowerShell servicing patches to $Versions"
+          $Body = @(
+              'Automated PowerShell servicing-patch proposal.'
+              ''
+              "Candidate patches: $Versions"
+              '- Official archive checksums verified for Windows, Linux, and macOS x64.'
+              '- Exact runtime identity verified in all proposed matrix cells.'
+              '- Generated support documentation refreshed from the validated matrix.'
+              '- Support-line additions and retirements are intentionally excluded.'
+              ''
+              "Validation run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+              ''
+              [string]$Report.PatchProposalMarker
+          ) -join [System.Environment]::NewLine
+          $Arguments = @('pr', 'create', '--title', $Title, '--body', $Body, '--base', 'main', '--head', $BranchName)
+          & gh @Arguments
+          if ($LASTEXITCODE -ne 0) {
+              throw 'Failed to open the validated PowerShell servicing pull request.'
+          }
+
+  support-contract-warning:
+    name: Require review for new or retiring support lines
+    needs: discover
+    if: ${{ needs.discover.outputs.support_review == 'true' }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Download discovery evidence
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: powershell-support-discovery
+          path: ./downloaded-support-discovery
+
+      - name: Publish one support-contract finding per stable fingerprint
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $Report = Get-Content -LiteralPath './downloaded-support-discovery/powershell-support-update.json' -Raw | ConvertFrom-Json
+          $Fingerprint = [string]$Report.SupportContractFingerprint
+          if ($Fingerprint -notmatch '^[a-f0-9]{64}$') {
+              throw 'The support-contract report did not contain a stable SHA-256 publication fingerprint.'
+          }
+
+          $Title = 'PowerShell support-contract review required'
+          $Body = @(
+              'Automated lifecycle discovery found a support-contract decision that must not be applied without maintainer review.'
+              ''
+              'New GA lines:'
+              $(if (@($Report.NewLines).Count -eq 0) { '- None' } else { @($Report.NewLines | Sort-Object ReleaseLine | ForEach-Object { "- $($_.ReleaseLine): latest $($_.LatestVersion), lifecycle end $($_.LifecycleEndDate); CLR/TFM mapping and initial evidence pending" }) })
+              ''
+              'Retiring or expired declared lines:'
+              $(if (@($Report.Lifecycle | Where-Object Status -IN @('RetiringSoon', 'Expired')).Count -eq 0) { '- None' } else { @($Report.Lifecycle | Where-Object Status -IN @('RetiringSoon', 'Expired') | Sort-Object ReleaseLine | ForEach-Object { "- $($_.ReleaseLine): $($_.Status), lifecycle end $($_.LifecycleEnd), $($_.DaysRemaining) day(s) remaining" }) })
+              ''
+              'Lifecycle date changes:'
+              $(if (@($Report.LifecycleDateChanges).Count -eq 0) { '- None' } else { @($Report.LifecycleDateChanges | Sort-Object ReleaseLine | ForEach-Object { "- $($_.ReleaseLine): matrix $($_.MatrixLifecycleEnd), live $($_.LifecycleEnd)" }) })
+              ''
+              "Declared lines missing from live lifecycle data: $(@($Report.LifecycleMissingLines) -join ', ')"
+              "Supported lines not declared by DLLPickle: $(@($Report.UndeclaredSupportedLines) -join ', ')"
+              ''
+              'Required decision: review the support contract. Adding or removing a line changes the loader, shipped TFMs, package size, documentation, and profile-aware compatibility evidence.'
+              ''
+              "Discovery run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+              ''
+              [string]$Report.SupportContractMarker
+          ) -join [System.Environment]::NewLine
+
+          $Candidates = @(gh issue list --state all --search "$Title in:title" --limit 20 --json number,state,title | ConvertFrom-Json | Where-Object title -EQ $Title)
+          if ($LASTEXITCODE -ne 0) {
+              throw 'Failed to query existing PowerShell support-contract issues.'
+          }
+          $ExistingIssue = $Candidates | Select-Object -First 1
+          $AlreadyReported = $false
+          if ($ExistingIssue) {
+              $ExistingContent = gh issue view $ExistingIssue.number --json body,comments | ConvertFrom-Json
+              if ($LASTEXITCODE -ne 0) {
+                  throw 'Failed to read the existing PowerShell support-contract issue.'
+              }
+              $PublishedText = @($ExistingContent.body) + @($ExistingContent.comments.body)
+              $AlreadyReported = ./tools/Test-DLLPickleFindingFingerprintReported.ps1 -Fingerprint $Fingerprint -Text $PublishedText
+          }
+
+          if ($AlreadyReported) {
+              Write-Host "Support-contract fingerprint $Fingerprint is already reported; suppressing a duplicate comment."
+          } elseif ($ExistingIssue) {
+              if ([string]$ExistingIssue.state -eq 'CLOSED') {
+                  gh issue reopen $ExistingIssue.number
+                  if ($LASTEXITCODE -ne 0) { throw 'Failed to reopen the support-contract issue for a new finding.' }
+              }
+              gh issue comment $ExistingIssue.number --body $Body
+              if ($LASTEXITCODE -ne 0) { throw 'Failed to publish the new support-contract finding.' }
+          } else {
+              gh issue create --title $Title --body $Body
+              if ($LASTEXITCODE -ne 0) { throw 'Failed to open the support-contract review issue.' }
+          }
+
+          throw 'A new, changing, retiring, or expired PowerShell support line requires maintainer review; automatic contract mutation is blocked.'
+
+  lifecycle-policy-gate:
+    name: Enforce current lifecycle policy after publication
+    needs: [discover, support-contract-warning]
+    if: ${{ always() }}
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Enforce fail-closed lifecycle result
+        shell: pwsh
+        env:
+          LIFECYCLE_POLICY_CURRENT: ${{ needs.discover.outputs.policy_current }}
+        run: |
+          if ($env:LIFECYCLE_POLICY_CURRENT -ne 'true') {
+              throw 'The declared runtime lifecycle policy is expired, stale, or otherwise not current. Discovery evidence and any support-contract finding were published before this gate failed.'
+          }
+          Write-Host 'The declared runtime lifecycle policy is current.'

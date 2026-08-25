@@ -17,7 +17,7 @@
 .PARAMETER NameLike
     Optional wildcard patterns; when supplied, an assembly must ALSO match one of them to be returned.
 .OUTPUTS
-    PSCustomObject[] with Name, Version, Alc, Path. Sorted by Name.
+    PSCustomObject[] with Name, Version, ALC, path, hash, OS, platform, and architecture. Sorted by Name.
 #>
 [CmdletBinding()]
 param(
@@ -35,6 +35,23 @@ if (-not $PolicyPath) {
 }
 
 $TrackedNames = @((Get-Content -LiteralPath $PolicyPath -Raw | ConvertFrom-Json).trackedAssemblies)
+$Platform = if ([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::Windows)) {
+    'windows'
+} elseif ([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::OSX)) {
+    'macos'
+} elseif ([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::Linux)) {
+    'linux'
+} else {
+    'unknown'
+}
+$OperatingSystemDescription = [System.Runtime.InteropServices.RuntimeInformation]::OSDescription
+if ($Platform -eq 'macos') {
+    $MacOSProductVersion = (& /usr/bin/sw_vers -productVersion).Trim()
+    if ($LASTEXITCODE -ne 0 -or $MacOSProductVersion -notmatch '^\d+\.\d+(?:\.\d+)?$') {
+        throw "Could not normalize the macOS product version returned by sw_vers: '$MacOSProductVersion'."
+    }
+    $OperatingSystemDescription = "macOS $MacOSProductVersion"
+}
 
 [System.AppDomain]::CurrentDomain.GetAssemblies() |
     Where-Object { $TrackedNames -contains $_.GetName().Name } |
@@ -48,11 +65,22 @@ $TrackedNames = @((Get-Content -LiteralPath $PolicyPath -Raw | ConvertFrom-Json)
     } |
     ForEach-Object {
         $Alc = [System.Runtime.Loader.AssemblyLoadContext]::GetLoadContext($_)
+        $AssemblyPath = $_.Location
         [PSCustomObject]@{
-            Name    = $_.GetName().Name
-            Version = $_.GetName().Version.ToString()
-            Alc     = if ($Alc -and $Alc.Name) { $Alc.Name } else { 'Default' }
-            Path    = $_.Location
+            Name         = $_.GetName().Name
+            Version      = $_.GetName().Version.ToString()
+            FullName     = $_.FullName
+            Alc          = if ($Alc -and $Alc.Name) { $Alc.Name } else { 'Default' }
+            IsCollectible = if ($Alc) { $Alc.IsCollectible } else { $false }
+            Path         = $AssemblyPath
+            Sha256       = if (-not [string]::IsNullOrWhiteSpace($AssemblyPath) -and (Test-Path -LiteralPath $AssemblyPath -PathType Leaf)) {
+                (Get-FileHash -LiteralPath $AssemblyPath -Algorithm SHA256).Hash.ToLowerInvariant()
+            } else {
+                $null
+            }
+            OS           = $OperatingSystemDescription
+            Platform     = $Platform
+            Architecture = [System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString().ToLowerInvariant()
         }
     } |
     Sort-Object Name

@@ -4,6 +4,72 @@ BeforeAll {
 }
 
 Describe 'Dependency policy baseline' -Tag 'Unit' {
+    It 'keys classifications and validation gates by every supported PowerShell/TFM profile' {
+        @($script:Policy.runtimeProfiles) | Should -HaveCount 3
+        @($script:Policy.runtimeProfiles.powerShellLine) | Should -Be @('7.4', '7.5', '7.6')
+        @($script:Policy.runtimeProfiles.targetFramework) | Should -Be @('net8.0', 'net9.0', 'net10.0')
+
+        foreach ($RuntimeProfile in @($script:Policy.runtimeProfiles)) {
+            @($RuntimeProfile.platforms) | Should -Be @('windows', 'linux', 'macos')
+            @($RuntimeProfile.monitoredModuleSet) | Should -Not -BeNullOrEmpty
+            @($RuntimeProfile.importOrders) | Should -HaveCount 2
+            @($RuntimeProfile.preloadAssemblyNames) | Should -Not -BeNullOrEmpty
+            @($RuntimeProfile.blockedAssemblyNames) | Should -Not -BeNullOrEmpty
+            $RuntimeProfile.validationTiers.deterministicImportNoAuth.required | Should -BeTrue
+            $RuntimeProfile.validationTiers.authenticatedReadOnly.writesAllowed | Should -BeFalse
+            foreach ($Platform in @('windows', 'linux', 'macos')) {
+                $RuntimeProfile.baselines.$Platform.PSObject.Properties.Name | Should -Contain 'scenarioFingerprint'
+                $RuntimeProfile.baselines.$Platform.PSObject.Properties.Name | Should -Contain 'evidencePath'
+                $RuntimeProfile.baselines.$Platform.PSObject.Properties.Name | Should -Contain 'evidenceFingerprint'
+                $RuntimeProfile.baselines.$Platform.evidencePath | Should -Be "profile-evidence/ps$($RuntimeProfile.powerShellLine)-$($RuntimeProfile.targetFramework)-$Platform-x64.json"
+            }
+        }
+    }
+
+    It 'applies every preload and block decision to all three isolated TFMs' {
+        foreach ($decision in @($script:Policy.preload + $script:Policy.blockedPreloadAssemblies)) {
+            @($decision.targetFrameworks) | Should -Be @('net8.0', 'net9.0', 'net10.0')
+        }
+    }
+
+    It 'keeps every duplicated runtime-profile list aligned with its shared policy source' {
+        $ExpectedModules = @($script:Policy.monitoredModules.name | Sort-Object)
+        $ExpectedPreloads = @($script:Policy.preload.assemblyName | Sort-Object)
+        $ExpectedBlocks = @($script:Policy.blockedPreloadAssemblies.assemblyName | Sort-Object)
+        $ExpectedTargetFrameworks = @(
+            @($script:Policy.preload + $script:Policy.blockedPreloadAssemblies).targetFrameworks |
+                Sort-Object -Unique
+        )
+        $CanonicalImportOrders = $script:Policy.runtimeProfiles[0].importOrders | ConvertTo-Json -Depth 5 -Compress
+        $CanonicalKnownConflictIds = @($script:Policy.runtimeProfiles[0].knownConflictIds | Sort-Object)
+        $CanonicalValidationTiers = $script:Policy.runtimeProfiles[0].validationTiers | ConvertTo-Json -Depth 5 -Compress
+
+        @($script:Policy.runtimeProfiles.targetFramework | Sort-Object) | Should -Be $ExpectedTargetFrameworks
+        foreach ($RuntimeProfile in @($script:Policy.runtimeProfiles)) {
+            @($RuntimeProfile.monitoredModuleSet | Sort-Object) | Should -Be $ExpectedModules
+            @($RuntimeProfile.preloadAssemblyNames | Sort-Object) | Should -Be $ExpectedPreloads
+            @($RuntimeProfile.blockedAssemblyNames | Sort-Object) | Should -Be $ExpectedBlocks
+            ($RuntimeProfile.importOrders | ConvertTo-Json -Depth 5 -Compress) | Should -BeExactly $CanonicalImportOrders
+            @($RuntimeProfile.knownConflictIds | Sort-Object) | Should -Be $CanonicalKnownConflictIds
+            ($RuntimeProfile.validationTiers | ConvertTo-Json -Depth 5 -Compress) | Should -BeExactly $CanonicalValidationTiers
+        }
+    }
+
+    It 'records deterministic and authenticated read-only probes separately' {
+        foreach ($module in @($script:Policy.monitoredModules)) {
+            $module.umbrellaModule | Should -Not -BeNullOrEmpty
+            $module.deterministicProbeCommand | Should -Not -BeNullOrEmpty
+            $module.authenticatedReadOnlyProbeCommand | Should -Not -BeNullOrEmpty
+        }
+        ($script:Policy.monitoredModules | Where-Object name -eq 'ExchangeOnlineManagement').authenticatedReadOnlyProbeCommand | Should -Match 'Get-EXOMailbox'
+        $TeamsPolicy = $script:Policy.monitoredModules | Where-Object name -eq 'MicrosoftTeams'
+        $TeamsPolicy.deterministicProbeCommand | Should -Match '^Get-Team\b'
+        $TeamsPolicy.deterministicProbeCommand | Should -Not -Match 'Get-Command'
+        $TeamsPolicy.authenticatedReadOnlyProbeCommand | Should -Match 'Connect-MicrosoftTeams'
+        $TeamsPolicy.authenticatedReadOnlyProbeCommand | Should -Match 'Get-CsTenant'
+        $TeamsPolicy.authenticatedReadOnlyProbeCommand | Should -Match 'Disconnect-MicrosoftTeams'
+    }
+
     It 'explicitly monitors Az.Resources as the #193 collision source' {
         $MonitoredNames = @($script:Policy.monitoredModules.name)
         $MonitoredNames | Should -Contain 'Az.Resources'
@@ -82,6 +148,8 @@ Describe 'Dependency policy baseline' -Tag 'Unit' {
         @($ConflictRow[0].versions) | Should -Be @('4.0.3.0', '7.0.0.0', '9.0.0.0')
         @($ConflictRow[0].shippedBy) | Should -Be @('Az.Accounts', 'ExchangeOnlineManagement', 'Microsoft.Graph.Authentication', 'MicrosoftTeams')
         $BlockEntry | Should -HaveCount 1
+        @($BlockEntry[0].platforms) | Should -Be @('Windows')
+        $BlockEntry[0].universalArtifactRequired | Should -BeTrue
     }
 
 }

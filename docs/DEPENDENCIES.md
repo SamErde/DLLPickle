@@ -5,16 +5,19 @@ update policies.
 
 ## Runtime Baseline
 
-DLLPickle now targets **PowerShell 7.4+** with a single **net8.0** runtime
-profile. Legacy Windows PowerShell 5.1 and .NET Framework dependency paths are
-no longer supported.
+DLLPickle ships three physically isolated bundles for the exact profiles in the
+[generated support matrix](generated/Support-Matrix.md): PowerShell 7.4 / .NET 8
+(`net8.0`), PowerShell 7.5 / .NET 9 (`net9.0`), and PowerShell 7.6 / .NET 10
+(`net10.0`). The loader checks both the PowerShell minor and CLR major and fails
+closed on an undeclared or mismatched profile. Legacy Windows PowerShell 5.1 and
+.NET Framework dependency paths are not supported by the automated preloader.
 
 The *automated* fix (`Import-DPLibrary` / `Import-DPBaseProfile`) requires
-PowerShell 7.4+ / .NET 8 because it depends on `AssemblyLoadContext`. The
+one of those supported .NET profiles because it depends on `AssemblyLoadContext`. The
 *inspection / diagnostic* helpers (`Find-DLLInPSModulePath`,
 `Get-ModuleImportCandidate`, `Get-ModulesWithDependency`,
 `Get-ModulesWithVersionSortedIdentityClient`, `Test-DPLibraryConflict`) are
-intentionally cross-edition — from a PowerShell 7.4+ session they still inspect
+intentionally cross-edition — from a supported PowerShell session they still inspect
 the current-user Windows PowerShell roots (for example
 `Documents\WindowsPowerShell\Modules`), and when actually running on 5.1 they
 also auto-seed the all-users WinPS root. That lets a Windows PowerShell 5.1
@@ -35,16 +38,16 @@ For usage guidance, see [README.md](../README.md) and [docs/index.md](index.md).
 ## Dependency Management Strategy
 
 Every tracked-dependency release is first checked for **target-framework
-alignment**: it must restore, build, and pass tests on `net8.0` under
-`--locked-mode`, and ship a net8.0-consumable assembly asset (for example
-`net8.0`, `netstandard2.0`, or `netstandard2.1`, as verified by
-`tools/Test-DLLPickleTfmAlignment.ps1`). Only then does the severity of the
-version jump decide how it ships:
+alignment**: it must restore under `--locked-mode`, build and pass tests for all
+three TFMs, and have NuGet select a managed asset for every preload package in
+each restored `project.assets.json` target graph. `tools/Test-DLLPickleTfmAlignment.ps1`
+records those selected assets rather than approximating compatibility from folder
+names. Only then does the severity of the version jump decide how it ships:
 
 | Update Type | Policy |
 | ----------- | ------ |
-| **Patch / Minor** (x.Y.Z) | After the TFM-alignment + test gate, approve and merge with a detailed PR comment. Identity-library bumps are the module's core deliverable, so they ship as a **minor** module release — Dependabot's `deps:` commit is a recognized minor release prefix, so an auto-merged bump publishes a minor release on its own. |
-| **Major** (X.y.z) | Still fully tested and TFM-verified, with the conflict surface re-adjudicated, but opened as a **draft PR with fully detailed notes** — **not** auto-merged and **not** auto-published. A maintainer promotes and merges it, publishing a **major** release (`breaking:`). |
+| **Patch / Minor** (x.Y.Z) | May auto-approve and register auto-merge only when the exact actor/author, file-set, complete TFM/runtime matrix, upstream-policy, build, artifact-size, and dependency-review gates pass. A conditional TFM pin, classification edit, or material size growth routes to review. Identity-library bumps ship as a **minor** module release through the `deps:` prefix. |
+| **Major** (X.y.z) | Fully tested and TFM-verified, with per-TFM graph/asset/assembly/size evidence and the conflict surface re-adjudicated, but converted to a **draft PR** — **not** auto-merged and **not** auto-published. A maintainer promotes and merges it as a **major** release (`breaking:`). |
 | **Upstream PowerShell module drift** | Candidate PR or issue after the scheduled inventory + drift check. |
 
 > **Publish note.** A merged dependency PR publishes a new gallery version only
@@ -61,8 +64,9 @@ version jump decide how it ships:
 The automation that supports this: Dependabot opens NuGet update PRs; the
 **Dependabot-Auto-Approve** workflow auto-approves and squash-merges patch/minor
 updates (restricted to the exact `DLLPickle.csproj` / `packages.lock.json`
-allow-list, and only after the `Build gate`, `Validate upstream compatibility
-tooling`, and `dependency-review` required checks pass) and excludes major
+  allow-list, and only after the `Build gate`, `Validate upstream compatibility
+  tooling`, complete exact-runtime matrix, artifact-size policy, and
+  `dependency-review` required checks pass) and excludes major
 updates from auto-merge, converting them to a reviewed **draft PR** with detailed
 notes instead.
 
@@ -99,7 +103,10 @@ docs-, policy-, and tooling-only changes do not trigger a release. See
 Dependabot tracks NuGet package releases, but DLLPickle also tracks the DLLs
 bundled by upstream PowerShell modules. The scheduled **Upstream Compatibility**
 workflow uses `build/dependency-policy.json` and tools under `tools/` to
-inventory latest PSGallery releases and propose safe candidate pin updates.
+inventory the newest compatible PSGallery release independently in each exact
+PowerShell profile. It records the umbrella and constituent module, selected
+asset path, hash, ALC, OS, architecture, import order, and deterministic probe.
+The generated status is [Compatibility Evidence](generated/Compatibility-Evidence.md).
 
 Monitored modules:
 
@@ -119,7 +126,9 @@ candidate generation, restore, build, and issue reproduction tests pass.
 ## NuGet Package Dependencies
 
 Version strategy in `DLLPickle.csproj` is **major-locked floating** (`N.*`); the
-lock file pins the concrete resolved version.
+lock file pins the concrete resolved version for all three TFMs. Common versions
+are preserved across TFMs unless profile evidence requires a reviewed conditional
+pin.
 
 | Package | Version Strategy | Notes |
 | ------- | ---------------- | ----- |
@@ -157,16 +166,15 @@ their own code owners:
   sessions can fail when one module binds to a lower, incompatible assembly.
 - Candidate pin updates are generated from upstream module inventories and still
   require full validation before publication.
-- `Azure.Core` is intentionally **not** preloaded on the PowerShell 7.4+
-  (net8.0) profile. Az.Accounts 5.x isolates its Azure SDK stack in a private
+- `Azure.Core` is intentionally **not** preloaded on any supported ALC-capable
+  profile. Az.Accounts 5.x isolates its Azure SDK stack in a private
   `AssemblyLoadContext`; preloading `Azure.Core` into the default load context
   splits the identity of `Azure.Core.TokenRequestContext` across load contexts
   and breaks `Connect-AzAccount` with a `MissingMethodException` on
   `InteractiveBrowserCredential.AuthenticateAsync`. Graph, Exchange, and Teams
-  resolve a compatible `Azure.Core` themselves on .NET 8, so the preload is
+  resolve a compatible `Azure.Core` themselves, so the preload is
   unnecessary. `Azure.Core` remains report-only in policy for monitoring. The
-  original net48-only `Azure.Core` preload (#183) does not apply to the net8.0
-  baseline.
+  original net48-only `Azure.Core` preload (#183) does not apply to these profiles.
 - OData families remain report-only in policy because preloading them by
   default can break compatibility when upstream modules require different OData
   identities.
@@ -206,6 +214,8 @@ Manual review required for:
 - Major version upgrades
 - New package additions
 - Changes to version strategy
+- A new conditional per-TFM package pin or preload/block classification change
+- A material breach of `build/artifact-size-baseline.json`
 
 ## References
 

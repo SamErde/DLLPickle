@@ -46,12 +46,173 @@ env:
   MODULE_NAME: DLLPickle
   MODULE_DIR: ./module/DLLPickle
   MANIFEST_PATH: ./src/DLLPickle/DLLPickle.psd1
+  AUTHENTICATED_WORKFLOW_FILE: Authenticated-Compatibility.yml
+  AUTHENTICATED_EVIDENCE_ARTIFACT: authenticated-compatibility-evidence
+  MANUAL_AUTHENTICATED_EVIDENCE_PATH: ./build/authenticated-evidence/initial-multitarget-major.json
 
 jobs:
+  authenticated-release-gate:
+    name: Require Authenticated Compatibility
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Prefer exact-commit evidence from the future protected credentialed workflow. Until that
+    # environment exists, one reviewed manual transition record may authorize only the initial
+    # 3.0.0 bundle fingerprint and expires within 30 days. Neither route permits writes.
+    if: |
+      github.repository_owner == 'SamErde' &&
+      (
+        github.event_name == 'workflow_dispatch' ||
+        (github.event_name == 'pull_request' && github.event.pull_request.merged == true)
+      )
+
+    permissions:
+      actions: read
+      contents: read
+
+    outputs:
+      release_sha: ${{ steps.release-candidate.outputs.release_sha }}
+      evidence_mode: ${{ steps.authenticated-evidence.outputs.evidence_mode }}
+      allowed_release_version: ${{ steps.authenticated-evidence.outputs.allowed_release_version }}
+
+    steps:
+      - name: Checkout release candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          ref: main
+          persist-credentials: false
+
+      - name: Resolve immutable release candidate
+        id: release-candidate
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $ReleaseSha = (git rev-parse HEAD).Trim()
+          if ($ReleaseSha -notmatch '^[a-f0-9]{40}$') {
+            throw "Could not resolve the checked-out main commit as an immutable release candidate: '$ReleaseSha'."
+          }
+          "release_sha=$ReleaseSha" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          Write-Host "Immutable release candidate: $ReleaseSha"
+
+      - name: Validate authenticated release policy
+        shell: pwsh
+        run: |
+          $Policy = Get-Content -LiteralPath './build/dependency-policy.json' -Raw | ConvertFrom-Json
+          $RequiredProfiles = @(
+            $Policy.runtimeProfiles | Where-Object {
+              $_.validationTiers.authenticatedReadOnly.requiredBeforeRelease -eq $true
+            }
+          )
+          if ($RequiredProfiles.Count -eq 0) {
+            throw 'No runtime profile declares the authenticated read-only tier as required before release.'
+          }
+
+          $WriteEnabledProfiles = @(
+            $RequiredProfiles | Where-Object {
+              $_.validationTiers.authenticatedReadOnly.writesAllowed -ne $false
+            }
+          )
+          if ($WriteEnabledProfiles.Count -gt 0) {
+            throw 'A required authenticated release profile does not explicitly prohibit writes.'
+          }
+
+      - name: Require protected or bounded authenticated evidence
+        id: authenticated-evidence
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_SHA: ${{ steps.release-candidate.outputs.release_sha }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $EvidenceSha = $env:RELEASE_SHA
+          if ($EvidenceSha -notmatch '^[a-f0-9]{40}$') {
+            throw "Could not resolve the exact release-candidate SHA for authenticated evidence: '$EvidenceSha'."
+          }
+
+          $RunArguments = @(
+            'run', 'list'
+            '--repo', $env:GITHUB_REPOSITORY
+            '--workflow', $env:AUTHENTICATED_WORKFLOW_FILE
+            '--commit', $EvidenceSha
+            '--status', 'success'
+            '--limit', '20'
+            '--json', 'databaseId,headSha,conclusion,createdAt,url'
+          )
+          $ProtectedEvidenceRun = $null
+          $ProtectedWorkflowPath = Join-Path '.github/workflows' $env:AUTHENTICATED_WORKFLOW_FILE
+          $ProtectedWorkflowConfigured = Test-Path -LiteralPath $ProtectedWorkflowPath -PathType Leaf
+          if ($ProtectedWorkflowConfigured) {
+            $RunJson = & gh @RunArguments 2>$null
+            if ($LASTEXITCODE -ne 0) {
+              throw "Could not query protected authenticated workflow '$($env:AUTHENTICATED_WORKFLOW_FILE)' for exact commit '$EvidenceSha'."
+            }
+            $MatchingRuns = @(
+              $RunJson | ConvertFrom-Json | Where-Object {
+                $_.headSha -eq $EvidenceSha -and $_.conclusion -eq 'success'
+              }
+            )
+            foreach ($CandidateRun in @($MatchingRuns | Sort-Object createdAt -Descending)) {
+              $ArtifactJson = & gh api "/repos/$($env:GITHUB_REPOSITORY)/actions/runs/$($CandidateRun.databaseId)/artifacts" 2>$null
+              if ($LASTEXITCODE -ne 0) {
+                throw "Could not query artifacts for protected authenticated workflow run '$($CandidateRun.databaseId)'."
+              }
+              $EvidenceArtifacts = @(
+                ($ArtifactJson | ConvertFrom-Json).artifacts | Where-Object {
+                  $_.name -eq $env:AUTHENTICATED_EVIDENCE_ARTIFACT -and -not $_.expired
+                }
+              )
+              if ($EvidenceArtifacts.Count -eq 1) {
+                $ProtectedEvidenceRun = $CandidateRun
+                break
+              }
+            }
+            if ($MatchingRuns.Count -gt 0 -and -not $ProtectedEvidenceRun) {
+              throw "Successful protected authenticated workflow runs exist for '$EvidenceSha', but none has exactly one unexpired '$($env:AUTHENTICATED_EVIDENCE_ARTIFACT)' artifact."
+            }
+          } else {
+            Write-Information -MessageData "Protected authenticated workflow '$($env:AUTHENTICATED_WORKFLOW_FILE)' is not configured; evaluating the bounded manual transition only." -InformationAction Continue
+          }
+
+          if ($ProtectedEvidenceRun) {
+            $EvidenceMode = 'protected-exact-commit-workflow'
+            $AllowedReleaseVersion = ''
+            $EvidenceReference = $ProtectedEvidenceRun.url
+          } elseif (-not $ProtectedWorkflowConfigured -and (Test-Path -LiteralPath $env:MANUAL_AUTHENTICATED_EVIDENCE_PATH -PathType Leaf)) {
+            $ManualEvidenceParameters = @{
+              EvidencePath = $env:MANUAL_AUTHENTICATED_EVIDENCE_PATH
+              RepositoryRoot = '.'
+              TestMatrixPath = './build/powershell-test-matrix.json'
+              DependencyPolicyPath = './build/dependency-policy.json'
+              Mode = 'Release'
+            }
+            $ManualEvidence = ./tools/Test-DLLPickleManualAuthenticatedEvidence.ps1 @ManualEvidenceParameters
+            $EvidenceMode = 'manual-interactive-transition'
+            $AllowedReleaseVersion = [string]$ManualEvidence.AllowedReleaseVersion
+            $EvidenceReference = "``$($env:MANUAL_AUTHENTICATED_EVIDENCE_PATH)`` (expires $($ManualEvidence.ExpiresAtUtc))"
+          } elseif ($ProtectedWorkflowConfigured) {
+            throw "Release is blocked: protected authenticated workflow '$($env:AUTHENTICATED_WORKFLOW_FILE)' is configured but has no successful exact-commit evidence with one unexpired '$($env:AUTHENTICATED_EVIDENCE_ARTIFACT)' artifact."
+          } else {
+            throw 'Release is blocked: the protected authenticated workflow is not configured and no accepted bounded manual transition evidence is committed.'
+          }
+
+          "evidence_mode=$EvidenceMode" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "allowed_release_version=$AllowedReleaseVersion" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+          @(
+            '### Authenticated release evidence'
+            ''
+            "- Candidate SHA: ``$EvidenceSha``"
+            "- Evidence mode: ``$EvidenceMode``"
+            "- Evidence reference: $EvidenceReference"
+            $(if ($AllowedReleaseVersion) { "- Allowed release version: ``$AllowedReleaseVersion``" })
+            '- Required profiles prohibit writes: True'
+          ) | Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY
+
   analyze:
     name: Analyze and Determine Version
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    needs: authenticated-release-gate
     # Only run for merged PRs to main or manual dispatch
     if: |
       github.repository_owner == 'SamErde' &&
@@ -114,10 +275,26 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-          # Releases always target main (create-tag, build, and publish all use main), so analyze the
-          # commit history on main too. This keeps the bump calculation consistent with the released
-          # commit even for manual workflow_dispatch runs started from a non-main branch.
-          ref: main
+          # Use the same immutable main commit accepted by the authenticated evidence gate.
+          ref: ${{ needs.authenticated-release-gate.outputs.release_sha }}
+          persist-credentials: false
+
+      - name: Refresh official PowerShell servicing state
+        shell: pwsh
+        run: ./tools/Get-DLLPicklePowerShellSupportUpdate.ps1 -OutputPath ./artifacts/lifecycle/powershell-support-update.json -RequireCurrent
+
+      - name: Validate supported PowerShell lifecycle policy
+        shell: pwsh
+        run: ./tools/Test-DLLPickleRuntimeProfilePolicy.ps1 -Mode Release -LifecycleEvidencePath ./artifacts/lifecycle/powershell-support-update.json
+
+      - name: Upload release lifecycle evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-lifecycle-evidence
+          path: ./artifacts/lifecycle/powershell-support-update.json
+          if-no-files-found: warn
+          retention-days: 30
 
       - name: Determine version and bump type
         id: determine_version
@@ -126,6 +303,9 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
           MANUAL_BUMP_INPUT: ${{ inputs.version_bump }}
           MANUAL_BUMP_EVENT: ${{ github.event.inputs.version_bump }}
+          RELEASE_SHA: ${{ needs.authenticated-release-gate.outputs.release_sha }}
+          AUTHENTICATED_EVIDENCE_MODE: ${{ needs.authenticated-release-gate.outputs.evidence_mode }}
+          AUTHENTICATED_ALLOWED_RELEASE_VERSION: ${{ needs.authenticated-release-gate.outputs.allowed_release_version }}
         run: |
           # Pass manual bump parameter to Get-VersionBump for centralized version logic
           Write-Host "Analyzing version requirements..."
@@ -174,11 +354,24 @@ jobs:
           $NewVersion     = $VersionResult.NewVersion
           $CurrentVersion = [version]$VersionResult.CurrentVersion
 
+          if ($ShouldRelease -and $env:AUTHENTICATED_EVIDENCE_MODE -eq 'manual-interactive-transition') {
+              if ([string]::IsNullOrWhiteSpace($env:AUTHENTICATED_ALLOWED_RELEASE_VERSION) -or
+                  [string]$NewVersion -ne $env:AUTHENTICATED_ALLOWED_RELEASE_VERSION) {
+                  throw "Bounded manual authenticated evidence permits only version '$($env:AUTHENTICATED_ALLOWED_RELEASE_VERSION)', not '$NewVersion'."
+              }
+          }
+
           Write-Host "`nVersion Analysis Results:"
           Write-Host "Current version: $($CurrentVersion.ToString())"
           Write-Host "Version bump type: $NewVersionType"
           Write-Host "New version: $NewVersion"
           Write-Host "Should release: $ShouldRelease"
+
+          $CheckedOutSha = (git rev-parse HEAD).Trim()
+          if ($CheckedOutSha -ne $env:RELEASE_SHA) {
+              throw "Analyze checked out $CheckedOutSha, but authenticated evidence approved $($env:RELEASE_SHA)."
+          }
+          $ReleaseSha = $env:RELEASE_SHA
 
           # Determine workflow trigger
           if ($env:EVENT_NAME -eq "workflow_dispatch") {
@@ -207,12 +400,12 @@ jobs:
               "current_version=$($CurrentVersion.ToString())" >> $env:GITHUB_OUTPUT
               "previous_tag=$PreviousTag" >> $env:GITHUB_OUTPUT
               "trigger_source=$TriggerSource" >> $env:GITHUB_OUTPUT
+              "release_sha=$ReleaseSha" >> $env:GITHUB_OUTPUT
               exit 0
           }
 
-          # Set outputs. Capture the resolved main commit so every downstream job (tag, build,
-          # sync, release, publish) operates on exactly this SHA, even if main advances mid-release.
-          $ReleaseSha = (git rev-parse HEAD).Trim()
+          # Set outputs. Every downstream job (tag, build, sync, release, publish) operates on the
+          # exact commit accepted by the authenticated release gate, even if main advances.
           "should_release=true" >> $env:GITHUB_OUTPUT
           "version_bump=$NewVersionType" >> $env:GITHUB_OUTPUT
           "current_version=$($CurrentVersion.ToString())" >> $env:GITHUB_OUTPUT
@@ -381,6 +574,33 @@ jobs:
               Write-Error "Version stamping failed: $_"
               exit 1
           }
+
+      - name: Revalidate stamped release artifact
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $CompositionParameters = @{
+            ModulePath = './module/DLLPickle'
+            SkipBuildOutputComparison = $true
+            OutputPath = './artifacts/release/artifact-composition.json'
+            Strict = $true
+          }
+          ./tools/Test-DLLPicklePackageArtifact.ps1 @CompositionParameters
+
+          $SizeParameters = @{
+            ModulePath = './module/DLLPickle'
+            OutputPath = './artifacts/release/artifact-size.json'
+            Strict = $true
+          }
+          ./tools/New-DLLPickleArtifactSizeReport.ps1 @SizeParameters
+
+      - name: Upload stamped release policy reports
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: stamped-release-policy-reports
+          path: ./artifacts/release
+          if-no-files-found: warn
 
       - name: Upload updated module
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -748,7 +968,7 @@ jobs:
     name: Release Summary
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    needs: [analyze, update-version, build-and-test, create-release, publish, rollback-on-failure, sync-module-manifest]
+    needs: [authenticated-release-gate, analyze, update-version, build-and-test, create-release, publish, rollback-on-failure, sync-module-manifest]
     if: always()
 
     permissions:
@@ -770,6 +990,7 @@ jobs:
           ### Workflow Status
           | Step | Status |
           |------|--------|
+          | Authenticated Compatibility | ${{ needs.authenticated-release-gate.result }} |
           | Analyze | ${{ needs.analyze.result }} |
           | Create Tag | ${{ needs.update-version.result }} |
           | Build & Test | ${{ needs.build-and-test.result }} |
