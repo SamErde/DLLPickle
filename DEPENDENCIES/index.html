@@ -1,0 +1,943 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A PowerShell module that helps you get un-stuck from version conflicts (aka DLL pickle) that occur when using modules that depend on multiple versions of the same dependencies such as the Microsoft Authentication Library (MSAL).">
+      
+      
+        <meta name="author" content="Sam Erde">
+      
+      
+        <link rel="canonical" href="https://day3bits.com/DLLPickle/DEPENDENCIES/">
+      
+      
+        <link rel="prev" href="../Deep-Dive/">
+      
+      
+        <link rel="next" href="../Troubleshooting/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Dependencies - DLLPickle PowerShell Module</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#external-dependencies" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="DLLPickle PowerShell Module" class="md-header__button md-logo" aria-label="DLLPickle PowerShell Module" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            DLLPickle PowerShell Module
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Dependencies
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m14.3 16-.7-2h-3.2l-.7 2H7.8L11 7h2l3.2 9zM20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12zm-9.15 3.96h2.3L12 9z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_2" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to system preference"  type="radio" name="__palette" id="__palette_2">
+    
+      <label class="md-header__button md-icon" title="Switch to system preference" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/SamErde/DLLPickle" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    SamErde/DLLPickle
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="DLLPickle PowerShell Module" class="md-nav__button md-logo" aria-label="DLLPickle PowerShell Module" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    DLLPickle PowerShell Module
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/SamErde/DLLPickle" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    SamErde/DLLPickle
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Deep-Dive/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deep Dive
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dependencies
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dependencies
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#runtime-baseline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Runtime Baseline
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#purpose" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Purpose
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dependency-management-strategy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dependency Management Strategy
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#versioning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Versioning
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#upstream-compatibility-automation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Upstream Compatibility Automation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#nuget-package-dependencies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        NuGet Package Dependencies
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="NuGet Package Dependencies">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#upstream-package-documentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Upstream package documentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#version-pinning-rationale" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Version Pinning Rationale
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lock-file-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lock File Workflow
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#supply-chain-security" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Supply Chain Security
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        References
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+  
+
+
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="external-dependencies">External Dependencies<a class="headerlink" href="#external-dependencies" title="Permanent link">&para;</a></h1>
+<p>This document tracks the external NuGet packages used by DLLPickle and their
+update policies.</p>
+<h2 id="runtime-baseline">Runtime Baseline<a class="headerlink" href="#runtime-baseline" title="Permanent link">&para;</a></h2>
+<p>DLLPickle now targets <strong>PowerShell 7.4+</strong> with a single <strong>net8.0</strong> runtime
+profile. Legacy Windows PowerShell 5.1 and .NET Framework dependency paths are
+no longer supported.</p>
+<p>The <em>automated</em> fix (<code>Import-DPLibrary</code> / <code>Import-DPBaseProfile</code>) requires
+PowerShell 7.4+ / .NET 8 because it depends on <code>AssemblyLoadContext</code>. The
+<em>inspection / diagnostic</em> helpers (<code>Find-DLLInPSModulePath</code>,
+<code>Get-ModuleImportCandidate</code>, <code>Get-ModulesWithDependency</code>,
+<code>Get-ModulesWithVersionSortedIdentityClient</code>, <code>Test-DPLibraryConflict</code>) are
+intentionally cross-edition — from a PowerShell 7.4+ session they still inspect
+the current-user Windows PowerShell roots (for example
+<code>Documents\WindowsPowerShell\Modules</code>), and when actually running on 5.1 they
+also auto-seed the all-users WinPS root. That lets a Windows PowerShell 5.1
+user still discover which module to load first and apply the conflict
+workaround manually. See
+<a href="../Architecture/">Architecture.md</a> §1.2 for the full platform-support
+contract.</p>
+<h2 id="purpose">Purpose<a class="headerlink" href="#purpose" title="Permanent link">&para;</a></h2>
+<p>DLLPickle deliberately maintains current Microsoft authentication and identity
+libraries to resolve DLL version conflicts in mixed-module PowerShell sessions.
+This is a core feature, not a bug: we want the newest compatible versions
+loaded first.</p>
+<p>For usage guidance, see <a href="../README.md">README.md</a> and <a href="../">docs/index.md</a>.</p>
+<h2 id="dependency-management-strategy">Dependency Management Strategy<a class="headerlink" href="#dependency-management-strategy" title="Permanent link">&para;</a></h2>
+<p>Every tracked-dependency release is first checked for <strong>target-framework
+alignment</strong>: it must restore, build, and pass tests on <code>net8.0</code> under
+<code>--locked-mode</code>, and ship a net8.0-consumable assembly asset (for example
+<code>net8.0</code>, <code>netstandard2.0</code>, or <code>netstandard2.1</code>, as verified by
+<code>tools/Test-DLLPickleTfmAlignment.ps1</code>). Only then does the severity of the
+version jump decide how it ships:</p>
+<table>
+<thead>
+<tr>
+<th>Update Type</th>
+<th>Policy</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Patch / Minor</strong> (x.Y.Z)</td>
+<td>After the TFM-alignment + test gate, approve and merge with a detailed PR comment. Identity-library bumps are the module&rsquo;s core deliverable, so they ship as a <strong>minor</strong> module release — Dependabot&rsquo;s <code>deps:</code> commit is a recognized minor release prefix, so an auto-merged bump publishes a minor release on its own.</td>
+</tr>
+<tr>
+<td><strong>Major</strong> (X.y.z)</td>
+<td>Still fully tested and TFM-verified, with the conflict surface re-adjudicated, but opened as a <strong>draft PR with fully detailed notes</strong> — <strong>not</strong> auto-merged and <strong>not</strong> auto-published. A maintainer promotes and merges it, publishing a <strong>major</strong> release (<code>breaking:</code>).</td>
+</tr>
+<tr>
+<td><strong>Upstream PowerShell module drift</strong></td>
+<td>Candidate PR or issue after the scheduled inventory + drift check.</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Publish note.</strong> A merged dependency PR publishes a new gallery version only
+when its commit also carries a release-worthy Conventional Commit prefix (see
+Versioning, below). Dependabot&rsquo;s NuGet commits use the <code>deps:</code> prefix, which
+<code>Get-VersionBump.ps1</code> recognizes as a <strong>minor</strong> release prefix, so an
+auto-merged minor/patch bump publishes a <strong>minor</strong> release on its own. Major
+dependency PRs are converted to a reviewed draft with detailed notes (not
+auto-merged or auto-published) and merged carrying a <code>breaking:</code> prefix; an
+explicit TFM-alignment check (<code>tools/Test-DLLPickleTfmAlignment.ps1</code>) runs
+fail-closed in the candidate flow. See
+<a href="../Architecture/">Architecture.md</a> §8.2.</p>
+</blockquote>
+<p>The automation that supports this: Dependabot opens NuGet update PRs; the
+<strong>Dependabot-Auto-Approve</strong> workflow auto-approves and squash-merges patch/minor
+updates (restricted to the exact <code>DLLPickle.csproj</code> / <code>packages.lock.json</code>
+allow-list, and only after the <code>Build gate</code>, <code>Validate upstream compatibility
+tooling</code>, and <code>dependency-review</code> required checks pass) and excludes major
+updates from auto-merge, converting them to a reviewed <strong>draft PR</strong> with detailed
+notes instead.</p>
+<h2 id="versioning">Versioning<a class="headerlink" href="#versioning" title="Permanent link">&para;</a></h2>
+<p>DLLPickle follows <a href="https://semver.org/">Semantic Versioning</a> (<code>MAJOR.MINOR.PATCH</code>).
+Releases are cut automatically by the <strong>Release-and-Publish</strong> workflow, which
+derives the bump <strong>solely from the <a href="https://www.conventionalcommits.org/">Conventional Commit</a>
+prefixes</strong> of the commits since the last tag (see
+<a href="../.github/ci-scripts/Get-VersionBump.ps1"><code>../.github/ci-scripts/Get-VersionBump.ps1</code></a>):</p>
+<table>
+<thead>
+<tr>
+<th>Bump</th>
+<th>Commit prefix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>MAJOR</strong> (<code>X.y.z</code>)</td>
+<td><code>BREAKING CHANGE:</code>, <code>breaking:</code>, or <code>major-release</code></td>
+</tr>
+<tr>
+<td><strong>MINOR</strong> (<code>x.Y.z</code>)</td>
+<td><code>feat:</code> (or <code>minor:</code>), and <code>deps:</code> (Dependabot&rsquo;s NuGet bumps)</td>
+</tr>
+<tr>
+<td><strong>PATCH</strong> (<code>x.y.Z</code>)</td>
+<td><code>fix:</code>, <code>perf:</code>, <code>refactor:</code>, <code>security:</code>, or <code>chore:</code></td>
+</tr>
+</tbody>
+</table>
+<p>The bump is decided by the commit prefix alone — there is <strong>no</strong> separate
+detection of dependency or MSAL version changes. The automated MSAL /
+identity-library bumps that are the module&rsquo;s core purpose land as <code>deps:</code>
+(Dependabot&rsquo;s NuGet prefix), which <code>Get-VersionBump.ps1</code> maps to a <strong>minor</strong>
+release, so an auto-merged minor/patch bump produces a minor release on its own.
+A bundled-library <strong>major</strong> jump is reviewed as a draft PR and merged carrying a
+<code>breaking:</code> prefix. See <a href="../Architecture/">Architecture.md</a> §8.2 for the
+full lifecycle.</p>
+<p>A new PowerShell Gallery version is published <strong>only</strong> when a change affects the
+published module bundle (<code>src/DLLPickle/**</code> or the bundled package set). CI-,
+docs-, policy-, and tooling-only changes do not trigger a release. See
+<a href="../CHANGELOG.md">CHANGELOG.md</a> for the released history.</p>
+<h2 id="upstream-compatibility-automation">Upstream Compatibility Automation<a class="headerlink" href="#upstream-compatibility-automation" title="Permanent link">&para;</a></h2>
+<p>Dependabot tracks NuGet package releases, but DLLPickle also tracks the DLLs
+bundled by upstream PowerShell modules. The scheduled <strong>Upstream Compatibility</strong>
+workflow uses <code>build/dependency-policy.json</code> and tools under <code>tools/</code> to
+inventory latest PSGallery releases and propose safe candidate pin updates.</p>
+<p>Monitored modules:</p>
+<ul>
+<li><code>Microsoft.Graph.Authentication</code></li>
+<li><code>ExchangeOnlineManagement</code></li>
+<li><code>Az.Storage</code></li>
+<li><code>Az.Accounts</code></li>
+<li><code>MicrosoftTeams</code></li>
+<li><code>Az.Resources</code></li>
+</ul>
+<p><code>Az.Resources</code> is monitored explicitly because it is the observed collision
+source for the #193 <code>Microsoft.Extensions.*</code> transitive-assembly conflict.</p>
+<p>The workflow is fail-closed: it only opens a candidate PR after inventory,
+candidate generation, restore, build, and issue reproduction tests pass.</p>
+<h2 id="nuget-package-dependencies">NuGet Package Dependencies<a class="headerlink" href="#nuget-package-dependencies" title="Permanent link">&para;</a></h2>
+<p>Version strategy in <code>DLLPickle.csproj</code> is <strong>major-locked floating</strong> (<code>N.*</code>); the
+lock file pins the concrete resolved version.</p>
+<table>
+<thead>
+<tr>
+<th>Package</th>
+<th>Version Strategy</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Microsoft.Identity.Client</code></td>
+<td><code>4.*</code> (major-locked float)</td>
+<td>Aligns base profile MSAL line</td>
+</tr>
+<tr>
+<td><code>Microsoft.Identity.Client.Broker</code></td>
+<td><code>4.*</code> (major-locked float)</td>
+<td>Kept aligned with MSAL</td>
+</tr>
+<tr>
+<td><code>Microsoft.Identity.Client.Extensions.Msal</code></td>
+<td><code>4.*</code> (major-locked float)</td>
+<td>Kept aligned with MSAL cache helper line</td>
+</tr>
+<tr>
+<td><code>Microsoft.Identity.Client.NativeInterop</code></td>
+<td><code>0.*</code> (major-locked float)</td>
+<td>Includes native runtime files; tracks the broker requirement</td>
+</tr>
+<tr>
+<td><code>Microsoft.IdentityModel.Abstractions</code></td>
+<td><code>8.*</code></td>
+<td>Identity model support</td>
+</tr>
+<tr>
+<td><code>Microsoft.IdentityModel.Logging</code></td>
+<td><code>8.*</code></td>
+<td>Identity diagnostics/logging</td>
+</tr>
+<tr>
+<td><code>Microsoft.IdentityModel.JsonWebTokens</code></td>
+<td><code>8.*</code></td>
+<td>JWT handling</td>
+</tr>
+<tr>
+<td><code>Microsoft.IdentityModel.Tokens</code></td>
+<td><code>8.*</code></td>
+<td>Token validation/processing</td>
+</tr>
+<tr>
+<td><code>System.IdentityModel.Tokens.Jwt</code></td>
+<td><code>8.*</code></td>
+<td>JWT handlers</td>
+</tr>
+</tbody>
+</table>
+<h3 id="upstream-package-documentation">Upstream package documentation<a class="headerlink" href="#upstream-package-documentation" title="Permanent link">&para;</a></h3>
+<p>The libraries DLLPickle tracks for preloading are maintained and documented by
+their own code owners:</p>
+<ul>
+<li><a href="https://www.nuget.org/packages/Microsoft.Identity.Abstractions">Microsoft.Identity.Abstractions</a></li>
+<li><a href="https://www.nuget.org/packages/Microsoft.Identity.Client">Microsoft.Identity.Client</a></li>
+<li><a href="https://www.nuget.org/packages/Microsoft.IdentityModel.Abstractions">Microsoft.IdentityModel.Abstractions</a></li>
+<li><a href="https://www.nuget.org/packages/Microsoft.IdentityModel.JsonWebTokens">Microsoft.IdentityModel.JsonWebTokens</a></li>
+<li><a href="https://www.nuget.org/packages/Microsoft.IdentityModel.Logging">Microsoft.IdentityModel.Logging</a></li>
+<li><a href="https://www.nuget.org/packages/Microsoft.IdentityModel.Tokens">Microsoft.IdentityModel.Tokens</a></li>
+<li><a href="https://www.nuget.org/packages/System.IdentityModel.Tokens.Jwt">System.IdentityModel.Tokens.Jwt</a></li>
+</ul>
+<h2 id="version-pinning-rationale">Version Pinning Rationale<a class="headerlink" href="#version-pinning-rationale" title="Permanent link">&para;</a></h2>
+<ul>
+<li>The MSAL managed family (<code>Microsoft.Identity.Client</code> and friends) and the
+  IdentityModel family use <strong>major-locked floating</strong> references (<code>4.*</code>, <code>0.*</code>,
+  <code>8.*</code>) in <code>DLLPickle.csproj</code>: Dependabot can move the minor/patch within the
+  major, but a major jump is a deliberate, reviewed change.
+  <code>packages.lock.json</code> pins the <strong>concrete resolved version</strong>, so every build and
+  restore (<code>--locked-mode</code>) is reproducible. This matters because mixed-module
+  sessions can fail when one module binds to a lower, incompatible assembly.</li>
+<li>Candidate pin updates are generated from upstream module inventories and still
+  require full validation before publication.</li>
+<li><code>Azure.Core</code> is intentionally <strong>not</strong> preloaded on the PowerShell 7.4+
+  (net8.0) profile. Az.Accounts 5.x isolates its Azure SDK stack in a private
+  <code>AssemblyLoadContext</code>; preloading <code>Azure.Core</code> into the default load context
+  splits the identity of <code>Azure.Core.TokenRequestContext</code> across load contexts
+  and breaks <code>Connect-AzAccount</code> with a <code>MissingMethodException</code> on
+  <code>InteractiveBrowserCredential.AuthenticateAsync</code>. Graph, Exchange, and Teams
+  resolve a compatible <code>Azure.Core</code> themselves on .NET 8, so the preload is
+  unnecessary. <code>Azure.Core</code> remains report-only in policy for monitoring. The
+  original net48-only <code>Azure.Core</code> preload (#183) does not apply to the net8.0
+  baseline.</li>
+<li>OData families remain report-only in policy because preloading them by
+  default can break compatibility when upstream modules require different OData
+  identities.</li>
+</ul>
+<h2 id="lock-file-workflow">Lock File Workflow<a class="headerlink" href="#lock-file-workflow" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Restore in CI and local build runs in <code>--locked-mode</code>.</li>
+<li>When package references change in <code>src/DLLPickle.Build/DLLPickle.csproj</code>,
+  refresh the lock file:</li>
+</ul>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">dotnet</span> <span class="n">restore</span> <span class="n">src</span><span class="p">/</span><span class="n">DLLPickle</span><span class="p">.</span><span class="n">Build</span><span class="p">/</span><span class="n">DLLPickle</span><span class="p">.</span><span class="n">csproj</span> <span class="p">-</span><span class="n">-force-evaluate</span>
+</code></pre></div>
+<ul>
+<li>Commit the updated <code>src/DLLPickle.Build/packages.lock.json</code> in the same
+  change.</li>
+<li>Validate lock consistency:</li>
+</ul>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="n">dotnet</span> <span class="n">restore</span> <span class="n">src</span><span class="p">/</span><span class="n">DLLPickle</span><span class="p">.</span><span class="n">Build</span><span class="p">/</span><span class="n">DLLPickle</span><span class="p">.</span><span class="n">csproj</span> <span class="p">-</span><span class="n">-locked-mode</span>
+</code></pre></div>
+<h2 id="supply-chain-security">Supply Chain Security<a class="headerlink" href="#supply-chain-security" title="Permanent link">&para;</a></h2>
+<p>Protections in place:</p>
+<ol>
+<li>Dependabot monitoring and update PRs</li>
+<li>Dependency Review checks</li>
+<li>OSSF Scorecard monitoring</li>
+<li>Package lock file for reproducible restore</li>
+<li>Automated build and test validation</li>
+<li>CODEOWNERS review gates</li>
+<li>Upstream compatibility inventory + candidate PR workflow</li>
+</ol>
+<p>Manual review required for:</p>
+<ul>
+<li>Major version upgrades</li>
+<li>New package additions</li>
+<li>Changes to version strategy</li>
+</ul>
+<h2 id="references">References<a class="headerlink" href="#references" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="/.github/dependabot.yml">Dependabot Configuration</a></li>
+<li><a href="/.github/workflows/Dependabot-Auto-Approve.yml">Auto-Approve Workflow</a></li>
+<li><a href="/.github/workflows/Dependency-Review.yml">Dependency Review Workflow</a></li>
+<li><a href="/.github/workflows/Validate-Packages.yml">Package Validation Workflow</a></li>
+<li><a href="/.github/CODEOWNERS">CODEOWNERS</a></li>
+<li><a href="/SECURITY.md">Security Policy</a></li>
+<li><a href="/.github/CONTRIBUTING.md">Contributing Guide</a></li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      (c) 2026 Sam Erde
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.path", "navigation.instant", "navigation.instant.prefetch", "navigation.tracking", "navigation.sections", "navigation.expand", "navigation.top", "toc.follow", "toc.integrate"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>
