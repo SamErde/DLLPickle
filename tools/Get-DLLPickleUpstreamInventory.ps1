@@ -3,10 +3,11 @@
     Builds an assembly inventory for upstream PowerShell modules.
 
 .DESCRIPTION
-    Reads build/dependency-policy.json, downloads the latest monitored modules
-    from PSGallery unless SkipDownload is used, inventories bundled DLL assembly
-    identities, and writes a structured JSON report for CI/CD compatibility
-    checks.
+    Reads build/dependency-policy.json, resolves the newest monitored module release
+    compatible with the exact tested PowerShell line, and launches that explicit stock
+    executable to capture only the tracked assembly assets actually selected at runtime.
+    The report records the PowerShell/CLR/TFM/OS profile, umbrella and constituent module,
+    assembly identity, hash, path, and load context.
 
 .PARAMETER PolicyPath
     Path to the dependency policy JSON file.
@@ -27,6 +28,12 @@
 .PARAMETER Force
     Removes any existing saved copy before downloading a module.
 
+.PARAMETER PowerShellExecutable
+    Exact stock pwsh/pwsh.exe used for runtime asset selection.
+
+.PARAMETER TestMatrixPath
+    Canonical exact servicing-patch and profile matrix.
+
 .EXAMPLE
     ./tools/Get-DLLPickleUpstreamInventory.ps1 -OutputPath ./artifacts/upstream/inventory.json
 
@@ -38,15 +45,15 @@
 param(
     [Parameter()]
     [ValidateNotNullOrEmpty()]
-    [string]$PolicyPath = (Join-Path -Path (Split-Path -Parent $PSScriptRoot) -ChildPath 'build\dependency-policy.json'),
+    [string]$PolicyPath = (Join-Path -Path (Split-Path -Parent $PSScriptRoot) -ChildPath 'build/dependency-policy.json'),
 
     [Parameter()]
     [ValidateNotNullOrEmpty()]
-    [string]$OutputPath = (Join-Path -Path (Split-Path -Parent $PSScriptRoot) -ChildPath 'artifacts\upstreamCompatibility\upstream-inventory.json'),
+    [string]$OutputPath = (Join-Path -Path (Split-Path -Parent $PSScriptRoot) -ChildPath 'artifacts/upstreamCompatibility/upstream-inventory.json'),
 
     [Parameter()]
     [ValidateNotNullOrEmpty()]
-    [string]$ModuleCachePath = (Join-Path -Path (Split-Path -Parent $PSScriptRoot) -ChildPath 'artifacts\upstreamCompatibility\modules'),
+    [string]$ModuleCachePath = (Join-Path -Path (Split-Path -Parent $PSScriptRoot) -ChildPath 'artifacts/upstreamCompatibility/modules'),
 
     [Parameter()]
     [ValidateNotNullOrEmpty()]
@@ -56,7 +63,15 @@ param(
     [switch]$SkipDownload,
 
     [Parameter()]
-    [switch]$Force
+    [switch]$Force,
+
+    [Parameter()]
+    [ValidateNotNullOrEmpty()]
+    [string]$PowerShellExecutable = [Environment]::ProcessPath,
+
+    [Parameter()]
+    [ValidateNotNullOrEmpty()]
+    [string]$TestMatrixPath = (Join-Path -Path (Split-Path -Parent $PSScriptRoot) -ChildPath 'build/powershell-test-matrix.json')
 )
 
 $ErrorActionPreference = 'Stop'
@@ -102,44 +117,60 @@ function Get-DLLPickleLatestModulePath {
         Select-Object -First 1
 }
 
-function Get-DLLPickleAssemblyInventory {
+function Get-DLLPickleRuntimeIdentity {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)]
-        [string]$ModulePath,
-
-        [Parameter(Mandatory)]
-        [string[]]$TrackedAssembly
+        [string]$ExecutablePath
     )
 
-    $TrackedLookup = @{}
-    foreach ($AssemblyName in $TrackedAssembly) {
-        $TrackedLookup[$AssemblyName] = $true
+    $Probe = @'
+$Platform = if ([Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([Runtime.InteropServices.OSPlatform]::Windows)) {
+    'windows'
+} elseif ([Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([Runtime.InteropServices.OSPlatform]::OSX)) {
+    'macos'
+} else {
+    'linux'
+}
+[ordered]@{
+    powerShellVersion = $PSVersionTable.PSVersion.ToString()
+    dotNetVersion = [Environment]::Version.ToString()
+    dotNetMajor = [Environment]::Version.Major
+    executablePath = [Environment]::ProcessPath
+    psHome = $PSHOME
+    platform = $Platform
+    architecture = [Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString().ToLowerInvariant()
+} | ConvertTo-Json -Compress
+'@
+    $Raw = @(& $ExecutablePath -NoLogo -NoProfile -NonInteractive -Command $Probe 2>&1)
+    if ($LASTEXITCODE -ne 0) {
+        throw "PowerShell runtime identity probe failed: $($Raw -join [Environment]::NewLine)"
     }
-
-    Get-ChildItem -LiteralPath $ModulePath -Filter '*.dll' -File -Recurse |
-        ForEach-Object {
-            try {
-                $AssemblyName = [System.Reflection.AssemblyName]::GetAssemblyName($_.FullName)
-                [PSCustomObject]@{
-                    Name                   = $AssemblyName.Name
-                    Version                = $AssemblyName.Version.ToString()
-                    PackageVersionCandidate = ConvertTo-DLLPicklePackageVersion -AssemblyVersion $AssemblyName.Version
-                    FullName               = $AssemblyName.FullName
-                    RelativePath           = $_.FullName.Substring($ModulePath.Length).TrimStart('\', '/')
-                    Path                   = $_.FullName
-                    IsTracked              = [bool]$TrackedLookup[$AssemblyName.Name]
-                }
-            } catch [System.BadImageFormatException] {
-                Write-Verbose "Skipping non-.NET DLL '$($_.FullName)'."
-            }
-        } |
-        Sort-Object -Property Name, Version, RelativePath
+    $Raw -join [Environment]::NewLine | ConvertFrom-Json -ErrorAction Stop
 }
 
 $ResolvedPolicyPath = (Resolve-Path -LiteralPath $PolicyPath).Path
 $Policy = Get-Content -LiteralPath $ResolvedPolicyPath -Raw | ConvertFrom-Json
-$TrackedAssemblies = @($Policy.trackedAssemblies | ForEach-Object { [string]$_ })
+$ResolvedMatrixPath = (Resolve-Path -LiteralPath $TestMatrixPath).Path
+$TestMatrix = Get-Content -LiteralPath $ResolvedMatrixPath -Raw | ConvertFrom-Json
+$ExecutableCommand = Get-Command -Name $PowerShellExecutable -ErrorAction Stop
+if ($ExecutableCommand.CommandType -ne 'Application') {
+    throw "PowerShellExecutable must resolve to an application: $PowerShellExecutable"
+}
+$ResolvedPowerShellExecutable = $ExecutableCommand.Source
+$RuntimeIdentity = Get-DLLPickleRuntimeIdentity -ExecutablePath $ResolvedPowerShellExecutable
+$RuntimeProfiles = @($TestMatrix.profiles | Where-Object powerShellVersion -eq $RuntimeIdentity.powerShellVersion)
+if ($RuntimeProfiles.Count -ne 1) {
+    throw "Runtime PowerShell $($RuntimeIdentity.powerShellVersion) is not an exact, unique test-matrix profile."
+}
+$RuntimeProfile = $RuntimeProfiles[0]
+if ([int]$RuntimeIdentity.dotNetMajor -ne [int]$RuntimeProfile.dotnetMajor) {
+    throw "Runtime CLR mismatch for PowerShell $($RuntimeIdentity.powerShellVersion). Expected CLR $($RuntimeProfile.dotnetMajor), detected CLR $($RuntimeIdentity.dotNetMajor)."
+}
+$ProfileKey = 'ps{0}-{1}-{2}-{3}' -f (
+    '{0}.{1}' -f $RuntimeProfile.powerShellMajor, $RuntimeProfile.powerShellMinor
+), $RuntimeProfile.targetFramework, $RuntimeIdentity.platform, $RuntimeIdentity.architecture
+$SnapshotScriptPath = Join-Path -Path $PSScriptRoot -ChildPath 'Get-DLLPickleRuntimeAssemblySnapshot.ps1'
 $PolicyModules = @($Policy.monitoredModules)
 if ($ModuleName) {
     $Requested = @{}
@@ -161,21 +192,35 @@ if (-not $SkipDownload.IsPresent) {
     foreach ($PolicyModule in $PolicyModules) {
         $Name = [string]$PolicyModule.name
         $Repository = if ($PolicyModule.repository) { [string]$PolicyModule.repository } else { 'PSGallery' }
-        $GalleryModule = Find-Module -Name $Name -Repository $Repository -ErrorAction Stop
+        $GalleryModules = @(Find-Module -Name $Name -Repository $Repository -AllVersions -ErrorAction Stop)
+        $GalleryModule = $GalleryModules |
+            Where-Object {
+                -not $_.PowerShellVersion -or [version]$_.PowerShellVersion -le [version]$RuntimeIdentity.powerShellVersion
+            } |
+            Sort-Object -Property { [version]([string]$_.Version) } -Descending |
+            Select-Object -First 1
+        if (-not $GalleryModule) {
+            throw "No release of module '$Name' declares compatibility with PowerShell $($RuntimeIdentity.powerShellVersion)."
+        }
         $ResolvedModuleVersions[$Name] = $GalleryModule.Version
     }
-}
 
-$ModuleResults = foreach ($PolicyModule in $PolicyModules) {
-    $Name = [string]$PolicyModule.name
-    $Repository = if ($PolicyModule.repository) { [string]$PolicyModule.repository } else { 'PSGallery' }
-
-    if (-not $SkipDownload.IsPresent) {
-        $ModuleRoot = Join-Path -Path $ModuleCachePath -ChildPath $Name
-        if ($Force.IsPresent -and (Test-Path -LiteralPath $ModuleRoot)) {
-            Remove-Item -LiteralPath $ModuleRoot -Recurse -Force
+    # Prepare the complete cache before taking any runtime snapshot. A monitored module can save
+    # another monitored module as a dependency, so removing/replacing roots during the snapshot
+    # loop could otherwise make earlier rows describe a transient cache state.
+    if ($Force.IsPresent) {
+        foreach ($PolicyModule in $PolicyModules) {
+            $Name = [string]$PolicyModule.name
+            $ModuleRoot = Join-Path -Path $ModuleCachePath -ChildPath $Name
+            if (Test-Path -LiteralPath $ModuleRoot) {
+                Remove-Item -LiteralPath $ModuleRoot -Recurse -Force
+            }
         }
+    }
 
+    foreach ($PolicyModule in $PolicyModules) {
+        $Name = [string]$PolicyModule.name
+        $Repository = if ($PolicyModule.repository) { [string]$PolicyModule.repository } else { 'PSGallery' }
         $SaveModuleParameters = @{
             Name            = $Name
             RequiredVersion = $ResolvedModuleVersions[$Name]
@@ -189,28 +234,141 @@ $ModuleResults = foreach ($PolicyModule in $PolicyModules) {
         }
         Save-Module @SaveModuleParameters
     }
+}
 
-    $SavedModule = Get-DLLPickleLatestModulePath -RootPath $ModuleCachePath -Name $Name
+$ModuleResults = foreach ($PolicyModule in $PolicyModules) {
+    $Name = [string]$PolicyModule.name
+    $Repository = if ($PolicyModule.repository) { [string]$PolicyModule.repository } else { 'PSGallery' }
+
+    $SavedModule = if ($SkipDownload.IsPresent) {
+        Get-DLLPickleLatestModulePath -RootPath $ModuleCachePath -Name $Name
+    } else {
+        $ResolvedModulePath = Join-Path -Path $ModuleCachePath -ChildPath (
+            [System.IO.Path]::Combine($Name, [string]$ResolvedModuleVersions[$Name])
+        )
+        Get-Item -LiteralPath $ResolvedModulePath -ErrorAction SilentlyContinue
+    }
     if (-not $SavedModule) {
         throw "Module '$Name' was not found under '$ModuleCachePath'."
     }
 
-    $Assemblies = @(Get-DLLPickleAssemblyInventory -ModulePath $SavedModule.FullName -TrackedAssembly $TrackedAssemblies)
+    $ModuleManifestPath = Get-ChildItem -LiteralPath $SavedModule.FullName -Filter "$Name.psd1" -File -Recurse |
+        Sort-Object -Property { $_.FullName.Length } |
+        Select-Object -First 1
+    if (-not $ModuleManifestPath) {
+        throw "Module manifest '$Name.psd1' was not found under '$($SavedModule.FullName)'."
+    }
+    $OriginalPSModulePath = $env:PSModulePath
+    $Manifest = $null
+    try {
+        $SystemModulePath = Join-Path -Path $RuntimeIdentity.psHome -ChildPath 'Modules'
+        $env:PSModulePath = @($ModuleCachePath, $SystemModulePath) -join [System.IO.Path]::PathSeparator
+        # Real gallery manifests can contain module-manifest expressions such as a
+        # PSEdition-dependent RootModule. Import-PowerShellDataFile deliberately rejects
+        # those expressions; Test-ModuleManifest evaluates the constrained manifest grammar
+        # and returns the compatibility metadata PowerShell itself uses. Validate only after
+        # isolating PSModulePath so RequiredModules saved beside the monitored module resolve.
+        $Manifest = Test-ModuleManifest -Path $ModuleManifestPath.FullName -ErrorAction Stop
+
+        $SnapshotParameters = @{
+            ModuleName              = @($Name)
+            ModuleManifestPath      = @($ModuleManifestPath.FullName)
+            ModuleSearchPath        = @($ModuleCachePath, $SystemModulePath)
+            PolicyPath              = $ResolvedPolicyPath
+            PowerShellExecutable    = $ResolvedPowerShellExecutable
+            PowerShellVersion       = [version]$RuntimeIdentity.powerShellVersion
+            TargetFramework         = [string]$RuntimeProfile.targetFramework
+            Strict                  = $true
+        }
+        if (-not [string]::IsNullOrWhiteSpace([string]$PolicyModule.deterministicProbeCommand)) {
+            $SnapshotParameters['ProbeCommand'] = [string]$PolicyModule.deterministicProbeCommand
+        }
+        $RuntimeAssemblies = @(& $SnapshotScriptPath @SnapshotParameters)
+    } finally {
+        $env:PSModulePath = $OriginalPSModulePath
+    }
+
+    $Assemblies = @(
+        foreach ($Assembly in $RuntimeAssemblies) {
+            $ConstituentModule = $Name
+            if (-not [string]::IsNullOrWhiteSpace([string]$Assembly.Path)) {
+                $FullAssemblyPath = [System.IO.Path]::GetFullPath($Assembly.Path)
+                $FullModuleCachePath = [System.IO.Path]::GetFullPath($ModuleCachePath)
+                $FullPSHomePath = [System.IO.Path]::GetFullPath($RuntimeIdentity.psHome)
+                $RelativeToCache = [System.IO.Path]::GetRelativePath(
+                    $FullModuleCachePath,
+                    $FullAssemblyPath
+                )
+                $RelativeToPSHome = [System.IO.Path]::GetRelativePath($FullPSHomePath, $FullAssemblyPath)
+                $IsWithinModuleCache = -not $RelativeToCache.StartsWith('..', [System.StringComparison]::Ordinal) -and
+                    -not [System.IO.Path]::IsPathRooted($RelativeToCache)
+                $IsWithinPSHome = -not $RelativeToPSHome.StartsWith('..', [System.StringComparison]::Ordinal) -and
+                    -not [System.IO.Path]::IsPathRooted($RelativeToPSHome)
+                if (-not $IsWithinModuleCache -and -not $IsWithinPSHome) {
+                    throw "Runtime evidence selected an assembly outside the isolated module cache and exact PSHOME: $FullAssemblyPath"
+                }
+                if ($IsWithinModuleCache) {
+                    $ConstituentModule = ($RelativeToCache -split '[\\/]')[0]
+                }
+            }
+            [PSCustomObject]@{
+                Name                    = [string]$Assembly.Name
+                Version                 = [string]$Assembly.Version
+                PackageVersionCandidate = ConvertTo-DLLPicklePackageVersion -AssemblyVersion ([version]$Assembly.Version)
+                FullName                = [string]$Assembly.FullName
+                Path                    = [string]$Assembly.Path
+                SelectedAssetPath       = [string]$Assembly.Path
+                Sha256                  = [string]$Assembly.Sha256
+                Alc                     = [string]$Assembly.Alc
+                IsCollectible           = [bool]$Assembly.IsCollectible
+                ConstituentModule       = $ConstituentModule
+                PowerShellVersion       = [string]$Assembly.PowerShellVersion
+                DotNetVersion           = [string]$Assembly.DotNetVersion
+                TargetFramework         = [string]$Assembly.TargetFramework
+                OS                      = [string]$Assembly.OS
+                Platform                = [string]$Assembly.Platform
+                Architecture            = [string]$Assembly.Architecture
+            }
+        }
+    )
     [PSCustomObject]@{
-        Name              = $Name
-        Version           = $SavedModule.Name
-        Repository        = $Repository
-        ModulePath        = $SavedModule.FullName
-        Purpose           = [string]$PolicyModule.purpose
-        Assemblies        = $Assemblies
-        TrackedAssemblies = @($Assemblies | Where-Object IsTracked)
+        Name                       = $Name
+        UmbrellaModule             = if ($PolicyModule.umbrellaModule) { [string]$PolicyModule.umbrellaModule } else { $Name }
+        ConstituentModule          = $Name
+        Version                    = $SavedModule.Name
+        LatestCompatibleVersion    = $SavedModule.Name
+        Repository                 = $Repository
+        ModulePath                 = $SavedModule.FullName
+        ModuleManifestPath         = if ($ModuleManifestPath) { $ModuleManifestPath.FullName } else { $null }
+        ManifestPowerShellVersion  = if ($Manifest -and $Manifest.PowerShellVersion) { $Manifest.PowerShellVersion.ToString() } else { $null }
+        CompatiblePSEditions       = if ($Manifest) { @($Manifest.CompatiblePSEditions) } else { @() }
+        Purpose                    = [string]$PolicyModule.purpose
+        DeterministicProbeCommand  = [string]$PolicyModule.deterministicProbeCommand
+        Assemblies                 = $Assemblies
+        TrackedAssemblies          = $Assemblies
     }
 }
 
 $Report = [PSCustomObject]@{
+    SchemaVersion   = 2
     GeneratedAtUtc  = [System.DateTimeOffset]::UtcNow.ToString('o')
     PolicyPath      = $ResolvedPolicyPath
+    TestMatrixPath  = $ResolvedMatrixPath
     ModuleCachePath = (Resolve-Path -LiteralPath $ModuleCachePath).Path
+    ProfileKey      = $ProfileKey
+    ValidationTier  = 'DeterministicImportNoAuth'
+    Profile         = [PSCustomObject]@{
+        PowerShellVersion = [string]$RuntimeIdentity.powerShellVersion
+        PowerShellLine    = '{0}.{1}' -f $RuntimeProfile.powerShellMajor, $RuntimeProfile.powerShellMinor
+        DotNetVersion     = [string]$RuntimeIdentity.dotNetVersion
+        DotNetMajor       = [int]$RuntimeIdentity.dotNetMajor
+        TargetFramework   = [string]$RuntimeProfile.targetFramework
+        ExecutablePath    = [string]$RuntimeIdentity.executablePath
+        PSHome            = [string]$RuntimeIdentity.psHome
+        Platform          = [string]$RuntimeIdentity.platform
+        Architecture      = [string]$RuntimeIdentity.architecture
+    }
+    ModuleSet       = @($ModuleResults.Name)
     Modules         = @($ModuleResults)
 }
 

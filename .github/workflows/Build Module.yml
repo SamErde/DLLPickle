@@ -76,7 +76,17 @@ jobs:
               # docs/gaps/ is build-relevant: the gap-register guard (tests/Unit/GapRegister.Tests.ps1)
               # must run when gap files or their index change, otherwise a docs-only gap edit would skip
               # the very check that detects gap-register drift (GAP-011).
-              $Patterns = @('^src/', '^build/', '^tests/', '^tools/', '^docs/gaps/', '^\.github/ci-scripts/', '^\.github/workflows/Build Module\.yml$')
+              $Patterns = @(
+                  '^src/'
+                  '^build/'
+                  '^tests/'
+                  '^tools/'
+                  '^docs/gaps/'
+                  '^\.github/ci-scripts/'
+                  '^\.github/workflows/Build Module\.yml$'
+                  '^global\.json$'
+                  '^build/powershell-test-matrix\.json$'
+              )
               $Relevant = $false
               foreach ($File in $Files) {
                   foreach ($Pattern in $Patterns) {
@@ -90,6 +100,29 @@ jobs:
           }
           "relevant=$($Relevant.ToString().ToLowerInvariant())" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           Write-Host "Build-relevant change detected: $Relevant"
+
+  runtime-matrix:
+    name: Generate exact PowerShell runtime matrix
+    needs: changes
+    if: ${{ always() && (inputs.ref != '' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.relevant != 'false') }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    outputs:
+      matrix: ${{ steps.generate.outputs.matrix }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+          persist-credentials: false
+
+      - name: Generate matrix from support policy
+        id: generate
+        shell: pwsh
+        run: |
+          $Matrix = ./tools/New-DLLPicklePowerShellTestMatrix.ps1 -Compress
+          "matrix=$Matrix" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
 
   build:
 
@@ -122,13 +155,13 @@ jobs:
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
         ref: ${{ inputs.ref || github.ref }}
+        persist-credentials: false
 
-    # Install the .NET 8 SDK pinned by global.json so the build does not depend on the runner image
-    # having an 8.0.x SDK preinstalled (Invoke-Build's RestoreDependencies task invokes dotnet).
+    # Install the exact .NET SDK pinned by global.json so the build does not depend on the runner image.
     - name: Setup .NET
       uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
       with:
-        dotnet-version: "8.0.x"
+        global-json-file: global.json
         cache: true
         cache-dependency-path: "src/DLLPickle.Build/packages.lock.json"
 
@@ -136,9 +169,9 @@ jobs:
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ${{ matrix.module_cache_paths }}
-        key: ${{ runner.os }}-psmodules-${{ hashFiles('build/DLLPickle.Build.ps1', '.github/ci-scripts/Actions_Bootstrap.ps1') }}
+        key: ${{ runner.os }}-${{ runner.arch }}-pwsh-${{ hashFiles('build/build-tool-versions.json') }}-psmodules-${{ hashFiles('build/DLLPickle.Build.ps1', 'build/DLLPickle.Tooling.ps1', '.github/ci-scripts/Actions_Bootstrap.ps1') }}
         restore-keys: |
-          ${{ runner.os }}-psmodules-
+          ${{ runner.os }}-${{ runner.arch }}-pwsh-${{ hashFiles('build/build-tool-versions.json') }}-psmodules-
 
     - name: Bootstrap
       shell: pwsh
@@ -147,17 +180,47 @@ jobs:
     - name: Test and Build (Windows)
       if: runner.os == 'Windows'
       shell: pwsh
-      run: Invoke-Build -File ./build/DLLPickle.Build.ps1
+      run: ./tools/Invoke-DLLPickleBuild.ps1
 
     - name: Test and Build (Linux/macOS)
       if: runner.os != 'Windows'
       shell: pwsh
-      run: Invoke-Build -File ./build/DLLPickle.Build.ps1 -Task BuildCrossPlatform
+      run: ./tools/Invoke-DLLPickleBuild.ps1 -Task BuildCrossPlatform
+
+    - name: Verify package composition and size policy
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        $CompositionParameters = @{
+          OutputPath = './artifacts/package/artifact-composition.json'
+          Strict = $true
+        }
+        $Composition = ./tools/Test-DLLPicklePackageArtifact.ps1 @CompositionParameters
+
+        $SizeParameters = @{
+          OutputPath = './artifacts/package/artifact-size.json'
+          Strict = $true
+        }
+        $Size = ./tools/New-DLLPickleArtifactSizeReport.ps1 @SizeParameters
+
+        @(
+          '### Package policy'
+          ''
+          "- Target frameworks: $($Composition.ActualTargetFrameworks -join ', ')"
+          "- Artifact composition: $($Composition.Passed)"
+          "- Material size review required: $($Size.ReviewRequired)"
+          "- Full unpacked bytes: $($Size.FullArtifact.UnpackedBytes)"
+          "- Full deterministic compressed bytes: $($Size.FullArtifact.CompressedBytes)"
+        ) | Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY
 
     - name: Generate PSScriptAnalyzer SARIF
       if: always() && runner.os == 'Windows'
       shell: pwsh
       run: |
+        . ./build/DLLPickle.Tooling.ps1
+        $ToolPolicy = Get-DLLPickleBuildToolPolicy
+        $AnalyzerVersion = Get-DLLPickleBuildToolVersion -Policy $ToolPolicy -Name 'PSScriptAnalyzer'
+        $null = Import-DLLPickleBuildTool -Name 'PSScriptAnalyzer' -RequiredVersion $AnalyzerVersion
         $null = New-Item -Path ./artifacts -ItemType Directory -Force
         $Results = @(Invoke-ScriptAnalyzer -Path ./src/DLLPickle -Settings ./build/PSScriptAnalyzerSettings.psd1 -Recurse)
 
@@ -195,7 +258,7 @@ jobs:
             runs      = @([ordered]@{
                 tool    = @{ driver = @{
                     name    = 'PSScriptAnalyzer'
-                    version = (Get-Module PSScriptAnalyzer -ListAvailable | Sort-Object Version -Descending | Select-Object -First 1).Version.ToString()
+                    version = (Get-Module PSScriptAnalyzer).Version.ToString()
                     rules   = $Rules
                 }}
                 results = $SarifResults
@@ -219,6 +282,14 @@ jobs:
         path: ./artifacts/testOutput
         if-no-files-found: warn
 
+    - name: Upload package policy reports
+      if: always() && runner.os == 'Windows'
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        name: package-policy-reports
+        path: ./artifacts/package
+        if-no-files-found: warn
+
     - name: Upload zip module archive build
       if: runner.os == 'Windows'
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -235,6 +306,217 @@ jobs:
         path: ./module/DLLPickle
         if-no-files-found: warn
 
+  runtime-tests:
+    name: PowerShell ${{ matrix.powerShellVersion }} on ${{ matrix.platform }}
+    needs: runtime-matrix
+    if: ${{ needs.runtime-matrix.result == 'success' }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.runtime-matrix.outputs.matrix) }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+          persist-credentials: false
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: "src/DLLPickle.Build/packages.lock.json"
+
+      - name: Cache exact stock PowerShell archive and payload
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/dllpickle-test-powershell
+          key: ${{ runner.os }}-${{ runner.arch }}-${{ matrix.provider }}-${{ matrix.powerShellVersion }}-${{ hashFiles('build/powershell-test-matrix.json', 'tools/Install-DLLPickleTestPowerShell.ps1') }}
+
+      - name: Cache isolated PowerShell build modules
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/dllpickle-psmodules/${{ matrix.powerShellVersion }}
+          key: ${{ runner.os }}-${{ runner.arch }}-pwsh-${{ matrix.powerShellVersion }}-tools-${{ hashFiles('build/build-tool-versions.json', 'build/DLLPickle.Tooling.ps1', '.github/ci-scripts/Actions_Bootstrap.ps1') }}
+
+      - name: Provision and verify exact stock PowerShell
+        id: runtime
+        shell: pwsh
+        env:
+          MATRIX_PROVIDER: ${{ matrix.provider }}
+          MATRIX_POWERSHELL_VERSION: ${{ matrix.powerShellVersion }}
+          MATRIX_PLATFORM: ${{ matrix.platform }}
+          MATRIX_ARCHITECTURE: ${{ matrix.architecture }}
+          RUNTIME_INSTALL_ROOT: ${{ runner.temp }}/dllpickle-test-powershell
+        run: |
+          $InstallParameters = @{
+              Provider = $env:MATRIX_PROVIDER
+              PowerShellVersion = $env:MATRIX_POWERSHELL_VERSION
+              Platform = $env:MATRIX_PLATFORM
+              Architecture = $env:MATRIX_ARCHITECTURE
+              InstallRoot = $env:RUNTIME_INSTALL_ROOT
+              PassThru = $true
+          }
+          $Identity = ./tools/Install-DLLPickleTestPowerShell.ps1 @InstallParameters
+          "DLLPICKLE_TEST_PWSH=$($Identity.ExecutablePath)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "DLLPICKLE_TEST_TFM=$($Identity.TargetFramework)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          $Identity | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath ./runtime-identity.json -Encoding utf8
+
+      - name: Bootstrap exact tools in an isolated module path
+        shell: pwsh
+        env:
+          CELL_MODULE_ROOT: ${{ runner.temp }}/dllpickle-psmodules/${{ matrix.powerShellVersion }}
+        run: |
+          $CellModuleRoot = $env:CELL_MODULE_ROOT
+          $SystemModuleRoot = Join-Path -Path (Split-Path -Path $env:DLLPICKLE_TEST_PWSH -Parent) -ChildPath 'Modules'
+          $IsolatedModulePath = @($CellModuleRoot, $SystemModuleRoot) -join [System.IO.Path]::PathSeparator
+          "DLLPICKLE_TEST_PSMODULEPATH=$IsolatedModulePath" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          $env:PSModulePath = $IsolatedModulePath
+          & $env:DLLPICKLE_TEST_PWSH -NoLogo -NoProfile -NonInteractive -File ./.github/ci-scripts/Actions_Bootstrap.ps1 -ModuleInstallPath $CellModuleRoot
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Run unit tests in a fresh exact-runtime process
+        shell: pwsh
+        run: |
+          $env:PSModulePath = $env:DLLPICKLE_TEST_PSMODULEPATH
+          & $env:DLLPICKLE_TEST_PWSH -NoLogo -NoProfile -NonInteractive -File ./tools/Invoke-DLLPickleBuild.ps1 -Task Test
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Build, package, and run integration regressions in a fresh exact-runtime process
+        shell: pwsh
+        run: |
+          $env:PSModulePath = $env:DLLPICKLE_TEST_PSMODULEPATH
+          & $env:DLLPICKLE_TEST_PWSH -NoLogo -NoProfile -NonInteractive -File ./tools/Invoke-DLLPickleBuild.ps1 -Task IssueReproTest
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Inspect the exact-runtime package and resolved TFM assets
+        shell: pwsh
+        run: |
+          $env:PSModulePath = $env:DLLPICKLE_TEST_PSMODULEPATH
+          & $env:DLLPICKLE_TEST_PWSH -NoLogo -NoProfile -NonInteractive -File ./tools/Test-DLLPicklePackageArtifact.ps1 -Strict
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:DLLPICKLE_TEST_PWSH -NoLogo -NoProfile -NonInteractive -File ./tools/Test-DLLPickleTfmAlignment.ps1 -Strict
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Capture selected bundle and assembly load-context evidence
+        if: ${{ always() && steps.runtime.outcome == 'success' }}
+        shell: pwsh
+        env:
+          MATRIX_POWERSHELL_VERSION: ${{ matrix.powerShellVersion }}
+          MATRIX_TARGET_FRAMEWORK: ${{ matrix.targetFramework }}
+          RUNTIME_EVIDENCE_PATH: ./artifacts/runtime-evidence-${{ matrix.powerShellVersion }}-${{ matrix.platform }}.json
+        run: |
+          $EvidenceParameters = @{
+              PowerShellExecutable = $env:DLLPICKLE_TEST_PWSH
+              PowerShellVersion = $env:MATRIX_POWERSHELL_VERSION
+              TargetFramework = $env:MATRIX_TARGET_FRAMEWORK
+              ModuleManifestPath = './module/DLLPickle/DLLPickle.psd1'
+              OutputPath = $env:RUNTIME_EVIDENCE_PATH
+          }
+          ./tools/New-DLLPickleRuntimeProfileEvidence.ps1 @EvidenceParameters
+
+      - name: Upload structured runtime result
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: runtime-${{ matrix.powerShellVersion }}-${{ matrix.platform }}-${{ matrix.architecture }}
+          path: |
+            runtime-identity.json
+            artifacts/runtime-evidence-*.json
+            artifacts/testOutput/*.xml
+          if-no-files-found: warn
+          retention-days: 14
+
+  dependency-change-report:
+    name: Per-TFM dependency change report
+    needs: [build, runtime-tests]
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.actor == 'dependabot[bot]' &&
+      github.event.pull_request.user.login == 'dependabot[bot]' &&
+      needs.build.result == 'success' &&
+      needs.runtime-tests.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+
+    steps:
+      - name: Check out candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Check out pull request base
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: dependency-baseline
+          persist-credentials: false
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - name: Restore and build baseline and candidate graphs
+        shell: pwsh
+        run: |
+          $BaselineGlobalJson = './dependency-baseline/global.json'
+          if (Test-Path -LiteralPath $BaselineGlobalJson -PathType Leaf) {
+              Remove-Item -LiteralPath $BaselineGlobalJson -Force
+          }
+          $Projects = @(
+            './dependency-baseline/src/DLLPickle.Build/DLLPickle.csproj'
+            './src/DLLPickle.Build/DLLPickle.csproj'
+          )
+          foreach ($Project in $Projects) {
+            dotnet restore $Project --locked-mode
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            dotnet build $Project --configuration Release --no-restore
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+
+      - name: Download package size evidence
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: package-policy-reports
+          path: downloaded-package-policy
+
+      - name: Download exact-runtime scenario evidence
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: runtime-*
+          path: downloaded-runtime-evidence
+
+      - name: Generate per-TFM major-update evidence
+        shell: pwsh
+        run: |
+          $Parameters = @{
+            BaselineProjectAssetsPath = './dependency-baseline/src/DLLPickle.Build/obj/project.assets.json'
+            CandidateProjectAssetsPath = './src/DLLPickle.Build/obj/project.assets.json'
+            BaselineBuildOutputRoot = './dependency-baseline/src/DLLPickle.Build/bin/Release'
+            CandidateBuildOutputRoot = './src/DLLPickle.Build/bin/Release'
+            SupportPolicyPath = './src/DLLPickle/SupportedRuntimeProfiles.json'
+            DependencyPolicyPath = './build/dependency-policy.json'
+            SizeReportPath = './downloaded-package-policy/artifact-size.json'
+            ScenarioEvidencePath = './downloaded-runtime-evidence'
+            OutputPath = './artifacts/dependency/dependency-change-report.json'
+          }
+          ./tools/New-DLLPickleDependencyChangeReport.ps1 @Parameters
+
+      - name: Upload per-TFM dependency report
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: dependency-change-report
+          path: ./artifacts/dependency/dependency-change-report.json
+          if-no-files-found: error
+          retention-days: 30
+
   build-gate:
     name: Build gate
     # Aggregate required-check target. GitHub evaluates a matrix job's `if` BEFORE expanding the
@@ -243,18 +525,48 @@ jobs:
     # for status". This single, always-running job is the stable check to require instead: it passes
     # when the matrix build succeeded OR was skipped (no build-relevant changes) and fails when the
     # build failed or was cancelled.
-    needs: build
+    needs: [changes, runtime-matrix, build, runtime-tests, dependency-change-report]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
       - name: Aggregate build result
         shell: pwsh
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_REF: ${{ inputs.ref }}
+          BUILD_RELEVANT: ${{ needs.changes.outputs.relevant }}
         run: |
-          $Result = '${{ needs.build.result }}'
-          Write-Host "build job result: $Result"
-          if ($Result -eq 'success' -or $Result -eq 'skipped') {
+          $Results = @{
+              changes = '${{ needs.changes.result }}'
+              runtimeMatrix = '${{ needs.runtime-matrix.result }}'
+              build = '${{ needs.build.result }}'
+              runtimeTests = '${{ needs.runtime-tests.result }}'
+              dependencyChangeReport = '${{ needs.dependency-change-report.result }}'
+          }
+          $Results.GetEnumerator() | Sort-Object Name | ForEach-Object {
+              Write-Host "$($_.Name) job result: $($_.Value)"
+          }
+          $BuildRequired = -not [string]::IsNullOrWhiteSpace($env:INPUT_REF) -or
+              $env:EVENT_NAME -eq 'workflow_dispatch' -or
+              $env:BUILD_RELEVANT -ne 'false'
+          Write-Host "Exact runtime validation required: $BuildRequired"
+
+          $Failures = [System.Collections.Generic.List[string]]::new()
+          foreach ($Result in $Results.GetEnumerator()) {
+              if ($Result.Value -notin @('success', 'skipped')) {
+                  $Failures.Add($Result.Name)
+              }
+          }
+          if ($BuildRequired) {
+              foreach ($RequiredJob in @('runtimeMatrix', 'build', 'runtimeTests')) {
+                  if ($Results[$RequiredJob] -ne 'success' -and -not $Failures.Contains($RequiredJob)) {
+                      $Failures.Add($RequiredJob)
+                  }
+              }
+          }
+          if ($Failures.Count -eq 0) {
               Write-Host 'Build gate passed.'
               exit 0
           }
-          Write-Host "::error::Build gate failed (build result: $Result)."
+          Write-Host "::error::Build gate failed: $(@($Failures | Sort-Object -Unique) -join ', ')."
           exit 1

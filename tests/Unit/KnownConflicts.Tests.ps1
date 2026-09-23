@@ -92,6 +92,18 @@ Describe 'Shipped KnownConflicts.json source' -Tag 'Unit' {
         $Odata.workaround | Should -Match 'runspace in the same process does NOT help'
         $Odata.workaround | Should -Match 'Do not re-enable OData preloading'
         $Odata.evidence.reAdjudicationRequired | Should -Match 'both import orders'
+        $Odata.requiresProcessIsolation | Should -BeTrue
+        @($Odata.importOrders) | Should -HaveCount 2
+        @($Odata.runtimeProfiles.powerShellLine) | Should -Be @('7.4', '7.5', '7.6')
+        @($Odata.runtimeProfiles.targetFramework) | Should -Be @('net8.0', 'net9.0', 'net10.0')
+        $Odata.validationTiers.deterministicImportNoAuth.required | Should -BeTrue
+        $Odata.validationTiers.authenticatedReadOnly.requiredBeforeRelease | Should -BeTrue
+        $Odata.validationTiers.authenticatedReadOnly.writesAllowed | Should -BeFalse
+        $Odata.validationTiers.authenticatedReadOnly.status | Should -Be 'not-run-no-approved-credentials'
+        @($Odata.runtimeProfiles | Where-Object powerShellLine -EQ '7.4').evidenceStatus |
+            Should -Be 'stale-requires-refresh-issue-273'
+        @($Odata.runtimeProfiles | Where-Object powerShellLine -IN @('7.5', '7.6')).evidenceStatus |
+            Should -Be @('requires-ci-evidence', 'requires-ci-evidence')
     }
 }
 

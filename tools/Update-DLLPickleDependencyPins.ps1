@@ -12,7 +12,9 @@
     applied.
 
 .PARAMETER InventoryPath
-    Path to a JSON report produced by Get-DLLPickleUpstreamInventory.ps1.
+    One or more JSON reports produced by Get-DLLPickleUpstreamInventory.ps1. When
+    profile-aware reports are supplied, every target framework is reconciled across
+    its operating-system inventories before a common pin is changed.
 
 .PARAMETER PolicyPath
     Path to the dependency policy JSON file.
@@ -24,7 +26,8 @@
     Path where the JSON candidate report is written.
 
 .PARAMETER Restore
-    Runs dotnet restore --force-evaluate when a project file change is applied.
+    Runs dotnet restore --force-evaluate when a project file change is applied or
+    when an unchanged floating reference must be reevaluated against upstream state.
 
 .EXAMPLE
     ./tools/Update-DLLPickleDependencyPins.ps1 -InventoryPath ./artifacts/upstream/inventory.json -Restore
@@ -37,19 +40,19 @@
 param(
     [Parameter(Mandatory)]
     [ValidateNotNullOrEmpty()]
-    [string]$InventoryPath,
+    [string[]]$InventoryPath,
 
     [Parameter()]
     [ValidateNotNullOrEmpty()]
-    [string]$PolicyPath = (Join-Path -Path (Split-Path -Parent $PSScriptRoot) -ChildPath 'build\dependency-policy.json'),
+    [string]$PolicyPath = (Join-Path -Path (Split-Path -Parent $PSScriptRoot) -ChildPath 'build/dependency-policy.json'),
 
     [Parameter()]
     [ValidateNotNullOrEmpty()]
-    [string]$ProjectPath = (Join-Path -Path (Split-Path -Parent $PSScriptRoot) -ChildPath 'src\DLLPickle.Build\DLLPickle.csproj'),
+    [string]$ProjectPath = (Join-Path -Path (Split-Path -Parent $PSScriptRoot) -ChildPath 'src/DLLPickle.Build/DLLPickle.csproj'),
 
     [Parameter()]
     [ValidateNotNullOrEmpty()]
-    [string]$OutputPath = (Join-Path -Path (Split-Path -Parent $PSScriptRoot) -ChildPath 'artifacts\upstreamCompatibility\candidate-report.json'),
+    [string]$OutputPath = (Join-Path -Path (Split-Path -Parent $PSScriptRoot) -ChildPath 'artifacts/upstreamCompatibility/candidate-report.json'),
 
     [Parameter()]
     [switch]$Restore
@@ -86,31 +89,80 @@ function Get-DLLPickleCurrentPackageReference {
         [string]$TargetFramework
     )
 
+    function Test-DLLPickleTargetFrameworkCondition {
+        param(
+            [Parameter()]
+            [AllowEmptyString()]
+            [string]$Condition,
+
+            [Parameter(Mandatory)]
+            [string]$Framework
+        )
+
+        if ([string]::IsNullOrWhiteSpace($Condition) -or $Condition -notmatch '\$\(TargetFramework\)') {
+            return $true
+        }
+
+        $ConditionMatch = [regex]::Match(
+            $Condition,
+            "^\s*'?\$\(TargetFramework\)'?\s*(?<operator>==|!=)\s*'(?<framework>[^']+)'\s*$"
+        )
+        if (-not $ConditionMatch.Success) {
+            throw "Unsupported TargetFramework condition in PackageReference automation: $Condition"
+        }
+
+        $ConditionFramework = $ConditionMatch.Groups['framework'].Value
+        if ($ConditionMatch.Groups['operator'].Value -eq '==') {
+            return $Framework -eq $ConditionFramework
+        }
+        return $Framework -ne $ConditionFramework
+    }
+
+    $ResolvedReferences = [System.Collections.Generic.List[object]]::new()
+    $ItemGroupCondition = $null
     for ($Index = 0; $Index -lt $ProjectContent.Count; $Index++) {
         $Line = $ProjectContent[$Index]
+        if ($Line -match '<ItemGroup\b') {
+            if ($null -ne $ItemGroupCondition) {
+                throw 'Nested ItemGroup elements are not supported by dependency pin automation.'
+            }
+            $ItemGroupConditionMatch = [regex]::Match($Line, 'Condition\s*=\s*"([^"]*)"')
+            $ItemGroupCondition = if ($ItemGroupConditionMatch.Success) { $ItemGroupConditionMatch.Groups[1].Value } else { '' }
+        }
+
         $MatchesPackage = $Line -match ('Include="{0}"' -f [regex]::Escape($PackageName))
+        $ReferenceConditionMatch = [regex]::Match($Line, 'Condition\s*=\s*"([^"]*)"')
+        $ReferenceCondition = if ($ReferenceConditionMatch.Success) { $ReferenceConditionMatch.Groups[1].Value } else { '' }
         $MatchesTargetFramework = if ([string]::IsNullOrWhiteSpace($TargetFramework) -or $TargetFramework -eq '*') {
             $true
-        } elseif ($Line -match 'TargetFramework') {
-            $Line -match ('TargetFramework.*{0}' -f [regex]::Escape($TargetFramework))
         } else {
-            # In single-target projects, PackageReference entries are often unconditional.
-            $true
+            (Test-DLLPickleTargetFrameworkCondition -Condition $ItemGroupCondition -Framework $TargetFramework) -and
+                (Test-DLLPickleTargetFrameworkCondition -Condition $ReferenceCondition -Framework $TargetFramework)
         }
 
         if ($MatchesPackage -and $MatchesTargetFramework) {
             $VersionMatch = [regex]::Match($Line, 'Version="([^"]+)"')
             if ($VersionMatch.Success) {
-                return [PSCustomObject]@{
+                $ResolvedReferences.Add([PSCustomObject]@{
                     Index   = $Index
                     Line    = $Line
                     Version = $VersionMatch.Groups[1].Value
-                }
+                    ItemGroupCondition = $ItemGroupCondition
+                    ReferenceCondition = $ReferenceCondition
+                })
             }
+        }
+
+        if ($Line -match '</ItemGroup>') {
+            $ItemGroupCondition = $null
         }
     }
 
-    return $null
+    if ($ResolvedReferences.Count -gt 1) {
+        throw "PackageReference '$PackageName' resolves ambiguously for target framework '$TargetFramework' at project lines $(@($ResolvedReferences.Index | ForEach-Object { $_ + 1 }) -join ', ')."
+    }
+
+    return @($ResolvedReferences)[0]
 }
 
 function ConvertTo-DLLPickleUpdatedPackageReferenceContent {
@@ -132,102 +184,293 @@ function ConvertTo-DLLPickleUpdatedPackageReferenceContent {
     $UpdatedContent
 }
 
-$ResolvedInventoryPath = (Resolve-Path -LiteralPath $InventoryPath).Path
+function Get-DLLPicklePackageReferenceMajor {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [string]$Version
+    )
+
+    $Match = [regex]::Match($Version.Trim(), '^\[?(?<major>\d+)(?:\.(?:\d+|\*)){1,3}\]?$')
+    if (-not $Match.Success) {
+        throw "PackageReference version '$Version' is not a supported exact or major-floating version."
+    }
+
+    return [int]$Match.Groups['major'].Value
+}
+
+function Get-DLLPicklePinTargetFramework {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [object]$Pin
+    )
+
+    $TargetFrameworks = @(
+        if ($Pin.PSObject.Properties.Name -contains 'targetFrameworks') {
+            @($Pin.targetFrameworks)
+        } elseif ($Pin.PSObject.Properties.Name -contains 'targetFramework') {
+            @($Pin.targetFramework)
+        }
+    ) |
+        ForEach-Object { [string]$_ } |
+        Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+        Select-Object -Unique
+
+    if ($TargetFrameworks.Count -eq 0) {
+        throw "Dependency pin '$($Pin.packageName)' does not declare targetFrameworks."
+    }
+
+    return @($TargetFrameworks)
+}
+
+$ResolvedInventoryPaths = @($InventoryPath | ForEach-Object { (Resolve-Path -LiteralPath $_).Path } | Sort-Object -Unique)
 $ResolvedPolicyPath = (Resolve-Path -LiteralPath $PolicyPath).Path
 $ResolvedProjectPath = (Resolve-Path -LiteralPath $ProjectPath).Path
 
-$Inventory = Get-Content -LiteralPath $ResolvedInventoryPath -Raw | ConvertFrom-Json
+$Inventories = @(
+    foreach ($ResolvedInventoryPath in $ResolvedInventoryPaths) {
+        $Inventory = Get-Content -LiteralPath $ResolvedInventoryPath -Raw | ConvertFrom-Json
+        [PSCustomObject]@{
+            Path = $ResolvedInventoryPath
+            Data = $Inventory
+            ProfileKey = if ($Inventory.PSObject.Properties.Name -contains 'ProfileKey') { [string]$Inventory.ProfileKey } else { $null }
+            TargetFramework = if ($Inventory.Profile -and $Inventory.Profile.PSObject.Properties.Name -contains 'TargetFramework') { [string]$Inventory.Profile.TargetFramework } else { $null }
+        }
+    }
+)
 $Policy = Get-Content -LiteralPath $ResolvedPolicyPath -Raw | ConvertFrom-Json
 $ProjectContent = @(Get-Content -LiteralPath $ResolvedProjectPath)
 $ProjectChanged = $false
+$RestoreRequired = $false
+$RestoreExecuted = $false
 
 $Changes = New-Object System.Collections.Generic.List[object]
 $Warnings = New-Object System.Collections.Generic.List[string]
 
 foreach ($Pin in @($Policy.preload)) {
+    $TargetFrameworks = @(Get-DLLPicklePinTargetFramework -Pin $Pin)
     $SourceModuleLookup = @{}
     foreach ($SourceModule in @($Pin.sourceModules)) {
         $SourceModuleLookup[[string]$SourceModule] = $true
     }
 
-    $CandidateAssemblies = @(
-        foreach ($Module in @($Inventory.Modules)) {
-            if (-not $SourceModuleLookup[[string]$Module.Name]) {
-                continue
-            }
+    $TfmCandidates = [System.Collections.Generic.List[object]]::new()
+    $CandidateResolutionFailed = $false
+    foreach ($TargetFramework in $TargetFrameworks) {
+        $RelevantInventories = @($Inventories | Where-Object {
+                [string]::IsNullOrWhiteSpace($_.TargetFramework) -or $_.TargetFramework -eq $TargetFramework
+            })
+        if ($RelevantInventories.Count -eq 0) {
+            $Warnings.Add("No upstream inventory was supplied for target framework '$TargetFramework'.")
+            $CandidateResolutionFailed = $true
+            continue
+        }
 
-            foreach ($Assembly in @($Module.TrackedAssemblies)) {
-                if ([string]$Assembly.Name -eq [string]$Pin.assemblyName) {
+        $PerInventoryCandidates = @(
+            foreach ($InventoryRecord in $RelevantInventories) {
+                $Candidates = @(
+                    foreach ($Module in @($InventoryRecord.Data.Modules)) {
+                        if (-not $SourceModuleLookup[[string]$Module.Name]) {
+                            continue
+                        }
+
+                        foreach ($Assembly in @($Module.TrackedAssemblies)) {
+                            if ([string]$Assembly.Name -eq [string]$Pin.assemblyName) {
+                                [PSCustomObject]@{
+                                    InventoryPath   = [string]$InventoryRecord.Path
+                                    ProfileKey      = [string]$InventoryRecord.ProfileKey
+                                    TargetFramework = $TargetFramework
+                                    ModuleName      = [string]$Module.Name
+                                    ModuleVersion   = [string]$Module.Version
+                                    AssemblyName    = [string]$Assembly.Name
+                                    AssemblyVersion = [string]$Assembly.Version
+                                    PackageVersion  = ConvertTo-DLLPickleNuGetVersion -AssemblyVersion ([string]$Assembly.Version)
+                                    RelativePath    = [string]$Assembly.RelativePath
+                                }
+                            }
+                        }
+                    }
+                )
+                if ($Candidates.Count -eq 0) {
+                    $Warnings.Add(("No upstream assembly '{0}' was found for target framework '{1}' in source modules: {2}" -f $Pin.assemblyName, $TargetFramework, (@($Pin.sourceModules) -join ', ')))
+                    $CandidateResolutionFailed = $true
+                    continue
+                }
+                $Candidates | Sort-Object -Property { [version]$_.AssemblyVersion } -Descending | Select-Object -First 1
+            }
+        )
+        if ($PerInventoryCandidates.Count -ne $RelevantInventories.Count) {
+            $CandidateResolutionFailed = $true
+            continue
+        }
+
+        $DistinctVersions = @($PerInventoryCandidates.PackageVersion | Sort-Object -Unique)
+        $TfmCandidates.Add([PSCustomObject]@{
+                TargetFramework        = $TargetFramework
+                PackageVersion         = [string]($PerInventoryCandidates | Sort-Object -Property { [version]$_.PackageVersion } -Descending | Select-Object -First 1).PackageVersion
+                CrossPlatformConsistent = $DistinctVersions.Count -eq 1
+                ProfileCandidates      = @($PerInventoryCandidates)
+            })
+        if ($DistinctVersions.Count -ne 1) {
+            $Warnings.Add(("Upstream assembly '{0}' resolves to inconsistent package versions for target framework '{1}': {2}. No automatic update was applied." -f $Pin.assemblyName, $TargetFramework, ($DistinctVersions -join ', ')))
+        }
+    }
+
+    if ($CandidateResolutionFailed -or $TfmCandidates.Count -ne $TargetFrameworks.Count) {
+        continue
+    }
+
+    $IsCapped = -not [string]::IsNullOrWhiteSpace([string]$Pin.maximumPackageVersion)
+    if ($IsCapped) {
+        $MaximumPackageVersion = [string]$Pin.maximumPackageVersion
+        $HighestCandidateVersion = @($TfmCandidates.PackageVersion | Sort-Object { [version]$_ } -Descending)[0]
+        $CappedTargetFrameworks = @($TfmCandidates | Where-Object { [version]$_.PackageVersion -gt [version]$MaximumPackageVersion } | ForEach-Object TargetFramework)
+        if ($CappedTargetFrameworks.Count -gt 0) {
+            $Warnings.Add((
+                    "PackageReference '{0}' candidate '{1}' exceeds maximum '{2}' for target frameworks '{3}'; using maximum version." -f
+                    $Pin.packageName,
+                    $HighestCandidateVersion,
+                    $MaximumPackageVersion,
+                    ($CappedTargetFrameworks -join ', ')
+                ))
+        }
+    }
+
+    $VersionPolicy = if ($Pin.versionPolicy) { [string]$Pin.versionPolicy } else { 'exact' }
+    foreach ($TfmCandidate in $TfmCandidates) {
+        $TargetVersion = [string]$TfmCandidate.PackageVersion
+        if ($IsCapped -and [version]$TargetVersion -gt [version]$MaximumPackageVersion) {
+            $TargetVersion = $MaximumPackageVersion
+        }
+        # A capped float must be exact; otherwise restore could resolve above the cap.
+        $TfmCandidate | Add-Member -NotePropertyName FormattedVersion -NotePropertyValue $(if ($VersionPolicy -eq 'minorPatchFloat' -and -not $IsCapped) {
+                '{0}.*' -f ([version]$TargetVersion).Major
+            } else {
+                '[{0}]' -f $TargetVersion
+            })
+    }
+
+    $CurrentReferences = @(
+        foreach ($TargetFramework in $TargetFrameworks) {
+            $Reference = Get-DLLPickleCurrentPackageReference -ProjectContent $ProjectContent -PackageName ([string]$Pin.packageName) -TargetFramework $TargetFramework
+            [PSCustomObject]@{
+                TargetFramework = $TargetFramework
+                Reference       = $Reference
+            }
+        }
+    )
+    $MissingTargetFrameworks = @($CurrentReferences | Where-Object { -not $_.Reference } | Select-Object -ExpandProperty TargetFramework)
+
+    if ($MissingTargetFrameworks.Count -gt 0) {
+        $Warnings.Add(("PackageReference '{0}' was not found for target frameworks '{1}'; no automatic insert or partial update was attempted." -f $Pin.packageName, ($MissingTargetFrameworks -join ', ')))
+        continue
+    }
+
+    $MajorTransitions = @(
+        if ($VersionPolicy -eq 'minorPatchFloat' -and -not $IsCapped) {
+            foreach ($CurrentReference in $CurrentReferences) {
+                $TfmCandidate = @($TfmCandidates | Where-Object TargetFramework -EQ $CurrentReference.TargetFramework)[0]
+                $CurrentMajor = Get-DLLPicklePackageReferenceMajor -Version ([string]$CurrentReference.Reference.Version)
+                $CandidateMajor = ([version][string]$TfmCandidate.PackageVersion).Major
+                if ($CurrentMajor -ne $CandidateMajor) {
                     [PSCustomObject]@{
-                        ModuleName      = [string]$Module.Name
-                        ModuleVersion   = [string]$Module.Version
-                        AssemblyName    = [string]$Assembly.Name
-                        AssemblyVersion = [string]$Assembly.Version
-                        PackageVersion  = ConvertTo-DLLPickleNuGetVersion -AssemblyVersion ([string]$Assembly.Version)
-                        RelativePath    = [string]$Assembly.RelativePath
+                        TargetFramework  = [string]$CurrentReference.TargetFramework
+                        CurrentVersion   = [string]$CurrentReference.Reference.Version
+                        CandidateVersion = '{0}.*' -f $CandidateMajor
                     }
                 }
             }
         }
     )
+    $MajorTransitionRequired = $MajorTransitions.Count -gt 0
 
-    if ($CandidateAssemblies.Count -eq 0) {
-        $Warnings.Add(("No upstream assembly '{0}' was found in source modules: {1}" -f $Pin.assemblyName, (@($Pin.sourceModules) -join ', ')))
-        continue
-    }
-
-    $TargetAssembly = $CandidateAssemblies |
-        Sort-Object -Property { [version]$_.AssemblyVersion } -Descending |
-        Select-Object -First 1
-    $TargetVersion = [string]$TargetAssembly.PackageVersion
-    $IsCapped = -not [string]::IsNullOrWhiteSpace([string]$Pin.maximumPackageVersion)
-    if ($IsCapped) {
-        $MaximumPackageVersion = [string]$Pin.maximumPackageVersion
-        if ([version]$TargetVersion -gt [version]$MaximumPackageVersion) {
-            $Warnings.Add((
-                    "PackageReference '{0}' candidate '{1}' exceeds maximum '{2}' for target framework '{3}'; using maximum version." -f
-                    $Pin.packageName,
-                    $TargetVersion,
-                    $MaximumPackageVersion,
-                    $Pin.targetFramework
-                ))
-            $TargetVersion = $MaximumPackageVersion
+    $UniqueReferenceIndices = @($CurrentReferences.Reference.Index | Select-Object -Unique)
+    $UsesConditionalReferences = $UniqueReferenceIndices.Count -gt 1
+    $DistinctCandidateVersions = @($TfmCandidates.FormattedVersion | Sort-Object -Unique)
+    $ConditionalPinRequired = $DistinctCandidateVersions.Count -gt 1 -and -not $UsesConditionalReferences
+    $CrossPlatformConsistent = @($TfmCandidates | Where-Object { -not $_.CrossPlatformConsistent }).Count -eq 0
+    $TfmResults = @(
+        foreach ($CurrentReference in $CurrentReferences) {
+            $TfmCandidate = @($TfmCandidates | Where-Object TargetFramework -EQ $CurrentReference.TargetFramework)[0]
+            [PSCustomObject]@{
+                TargetFramework  = [string]$CurrentReference.TargetFramework
+                CurrentVersion   = [string]$CurrentReference.Reference.Version
+                CandidateVersion = [string]$TfmCandidate.FormattedVersion
+                ReferenceIndex   = [int]$CurrentReference.Reference.Index
+                CrossPlatformConsistent = [bool]$TfmCandidate.CrossPlatformConsistent
+                Applied          = $false
+            }
         }
-    }
+    )
 
-    $VersionPolicy = if ($Pin.versionPolicy) { [string]$Pin.versionPolicy } else { 'exact' }
-    # A minorPatchFloat rule normally writes a floating 'N.*' reference. But when the entry also
-    # declares maximumPackageVersion, a floating reference would let restore resolve ABOVE the cap,
-    # so a capped entry is written as an exact '[x.y.z]' pinned at the capped target to enforce it.
-    $FormattedVersion = if ($VersionPolicy -eq 'minorPatchFloat' -and -not $IsCapped) {
-        '{0}.*' -f ([version]$TargetVersion).Major
-    } else {
-        '[{0}]' -f $TargetVersion
-    }
-    $CurrentReference = Get-DLLPickleCurrentPackageReference -ProjectContent $ProjectContent -PackageName ([string]$Pin.packageName) -TargetFramework ([string]$Pin.targetFramework)
-
-    if (-not $CurrentReference) {
-        $Warnings.Add(("PackageReference '{0}' for target framework '{1}' was not found; no automatic insert was attempted." -f $Pin.packageName, $Pin.targetFramework))
-        continue
-    }
+    $AllProfileCandidates = @($TfmCandidates.ProfileCandidates)
+    $TargetAssembly = $AllProfileCandidates | Sort-Object -Property { [version]$_.AssemblyVersion } -Descending | Select-Object -First 1
 
     $Change = [PSCustomObject]@{
         PackageName           = [string]$Pin.packageName
-        TargetFramework       = [string]$Pin.targetFramework
-        CurrentVersion        = [string]$CurrentReference.Version
-        CandidateVersion      = $FormattedVersion
+        TargetFrameworks      = @($TargetFrameworks)
+        CurrentVersions       = @($CurrentReferences.Reference.Version | Select-Object -Unique)
+        CandidateVersion      = if ($DistinctCandidateVersions.Count -eq 1) { [string]$DistinctCandidateVersions[0] } else { $null }
+        CandidateVersions     = @($DistinctCandidateVersions)
         SourceModule          = [string]$TargetAssembly.ModuleName
         SourceModuleVersion   = [string]$TargetAssembly.ModuleVersion
         SourceAssemblyVersion = [string]$TargetAssembly.AssemblyVersion
+        UsesConditionalReferences = $UsesConditionalReferences
+        ConditionalPinRequired    = $ConditionalPinRequired
+        MajorTransitionRequired   = $MajorTransitionRequired
+        CrossPlatformConsistent   = $CrossPlatformConsistent
+        ReviewRequired            = $UsesConditionalReferences -or $ConditionalPinRequired -or $MajorTransitionRequired -or -not $CrossPlatformConsistent
+        TfmResults                = @($TfmResults)
+        RestoreRequired           = $false
         Applied               = $false
         Reason                = [string]$Pin.reason
     }
 
-    if ([string]$CurrentReference.Version -ne $FormattedVersion) {
-        if ($PSCmdlet.ShouldProcess($ResolvedProjectPath, ("Update {0} {1} from {2} to {3}" -f $Pin.packageName, $Pin.targetFramework, $CurrentReference.Version, $FormattedVersion))) {
-            $ProjectContent = @(ConvertTo-DLLPickleUpdatedPackageReferenceContent -ProjectContent $ProjectContent -Index $CurrentReference.Index -NewVersion $FormattedVersion)
+    if ($ConditionalPinRequired) {
+        $Warnings.Add(("PackageReference '{0}' requires different versions by target framework ({1}); introducing conditional references requires maintainer review and was not automated." -f $Pin.packageName, ($DistinctCandidateVersions -join ', ')))
+        $Changes.Add($Change)
+        continue
+    }
+    if (-not $CrossPlatformConsistent) {
+        $Changes.Add($Change)
+        continue
+    }
+    if ($MajorTransitionRequired) {
+        $TransitionSummary = @(
+            $MajorTransitions | ForEach-Object {
+                '{0}: {1} -> {2}' -f $_.TargetFramework, $_.CurrentVersion, $_.CandidateVersion
+            }
+        ) -join '; '
+        $Warnings.Add(("PackageReference '{0}' floating candidate crosses a package major ({1}); maintainer review is required and no automatic update was applied." -f $Pin.packageName, $TransitionSummary))
+        $Changes.Add($Change)
+        continue
+    }
+    if ($VersionPolicy -eq 'minorPatchFloat' -and -not $IsCapped) {
+        $RestoreRequired = $true
+        $Change.RestoreRequired = $true
+    }
+
+    foreach ($ReferenceIndex in $UniqueReferenceIndices) {
+        $ReferencesAtIndex = @($CurrentReferences | Where-Object { $_.Reference.Index -eq $ReferenceIndex })
+        $CurrentVersion = [string]$ReferencesAtIndex[0].Reference.Version
+        $ReferenceCandidateVersions = @($TfmResults | Where-Object ReferenceIndex -EQ $ReferenceIndex | ForEach-Object CandidateVersion | Sort-Object -Unique)
+        if ($ReferenceCandidateVersions.Count -ne 1) {
+            throw "PackageReference '$($Pin.packageName)' maps one project entry to incompatible target-framework candidates."
+        }
+        $FormattedVersion = [string]$ReferenceCandidateVersions[0]
+        if ($CurrentVersion -eq $FormattedVersion) {
+            continue
+        }
+
+        $ReferenceTargetFrameworks = @($ReferencesAtIndex.TargetFramework)
+        if ($PSCmdlet.ShouldProcess($ResolvedProjectPath, ("Update {0} for {1} from {2} to {3}" -f $Pin.packageName, ($ReferenceTargetFrameworks -join ', '), $CurrentVersion, $FormattedVersion))) {
+            $ProjectContent = @(ConvertTo-DLLPickleUpdatedPackageReferenceContent -ProjectContent $ProjectContent -Index $ReferenceIndex -NewVersion $FormattedVersion)
             $ProjectChanged = $true
             $Change.Applied = $true
+            foreach ($TfmResult in @($Change.TfmResults | Where-Object { $_.ReferenceIndex -eq $ReferenceIndex })) {
+                $TfmResult.Applied = $true
+            }
         }
     }
 
@@ -236,17 +479,21 @@ foreach ($Pin in @($Policy.preload)) {
 
 $BlockedFindings = @(
     foreach ($BlockedAssembly in @($Policy.blockedPreloadAssemblies)) {
-        foreach ($Module in @($Inventory.Modules)) {
-            foreach ($Assembly in @($Module.TrackedAssemblies)) {
-                if ([string]$Assembly.Name -eq [string]$BlockedAssembly.assemblyName) {
-                    [PSCustomObject]@{
-                        AssemblyName  = [string]$Assembly.Name
-                        Version       = [string]$Assembly.Version
-                        ModuleName    = [string]$Module.Name
-                        ModuleVersion = [string]$Module.Version
-                        RelativePath  = [string]$Assembly.RelativePath
-                        Action        = [string]$BlockedAssembly.updateMode
-                        Reason        = [string]$BlockedAssembly.reason
+        foreach ($InventoryRecord in $Inventories) {
+            foreach ($Module in @($InventoryRecord.Data.Modules)) {
+                foreach ($Assembly in @($Module.TrackedAssemblies)) {
+                    if ([string]$Assembly.Name -eq [string]$BlockedAssembly.assemblyName) {
+                        [PSCustomObject]@{
+                            AssemblyName  = [string]$Assembly.Name
+                            Version       = [string]$Assembly.Version
+                            ModuleName    = [string]$Module.Name
+                            ModuleVersion = [string]$Module.Version
+                            RelativePath  = [string]$Assembly.RelativePath
+                            ProfileKey    = [string]$InventoryRecord.ProfileKey
+                            TargetFrameworks = @($BlockedAssembly.targetFrameworks)
+                            Action        = [string]$BlockedAssembly.updateMode
+                            Reason        = [string]$BlockedAssembly.reason
+                        }
                     }
                 }
             }
@@ -256,8 +503,11 @@ $BlockedFindings = @(
 
 if ($ProjectChanged) {
     Set-Content -LiteralPath $ResolvedProjectPath -Value $ProjectContent -Encoding UTF8
+}
 
-    if ($Restore.IsPresent) {
+if ($Restore.IsPresent -and ($ProjectChanged -or $RestoreRequired)) {
+    $RestoreApproved = $ProjectChanged -or $PSCmdlet.ShouldProcess($ResolvedProjectPath, 'Reevaluate unchanged floating PackageReference entries and refresh the lock file')
+    if ($RestoreApproved) {
         $ProjectDirectory = Split-Path -Path $ResolvedProjectPath -Parent
         Push-Location -LiteralPath $ProjectDirectory
         try {
@@ -265,6 +515,7 @@ if ($ProjectChanged) {
             if ($LASTEXITCODE -ne 0) {
                 throw "dotnet restore failed with exit code $LASTEXITCODE."
             }
+            $RestoreExecuted = $true
         } finally {
             Pop-Location
         }
@@ -273,10 +524,13 @@ if ($ProjectChanged) {
 
 $Report = [PSCustomObject]@{
     GeneratedAtUtc   = [System.DateTimeOffset]::UtcNow.ToString('o')
-    InventoryPath    = $ResolvedInventoryPath
+    InventoryPaths   = @($ResolvedInventoryPaths)
     PolicyPath       = $ResolvedPolicyPath
     ProjectPath      = $ResolvedProjectPath
     ProjectChanged   = $ProjectChanged
+    RestoreRequired  = $RestoreRequired
+    RestoreExecuted  = $RestoreExecuted
+    ReviewRequired   = @($Changes | Where-Object ReviewRequired).Count -gt 0
     Changes          = @($Changes.ToArray())
     BlockedFindings  = @($BlockedFindings)
     Warnings         = @($Warnings.ToArray())

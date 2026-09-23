@@ -25,7 +25,7 @@ updates:
       interval: "weekly"
       day: "sunday"
     groups:
-      all-actions:
+      ci-tooling-actions:
         patterns: ["*"]
     commit-message:
       prefix: "ci"
@@ -36,15 +36,25 @@ updates:
     schedule:
       interval: "daily"
     groups:
-      nuget-minor-patch:
-        patterns: ["*"]
+      runtime-bundle-minor-patch:
+        patterns:
+          - "Microsoft.Identity.Client*"
+          - "Microsoft.IdentityModel.*"
+          - "System.IdentityModel.Tokens.Jwt"
+          - "System.Security.Cryptography.ProtectedData"
+          - "Microsoft.Extensions.DependencyInjection.Abstractions"
+          - "Microsoft.Extensions.Logging.Abstractions"
         update-types:
           - "minor"
           - "patch"
     commit-message:
       prefix: "deps"
       prefix-development: "deps"
-    # Note: Major version PRs are created but require manual approval. The Dependabot-Auto-Approve workflow handles selective auto-approval:
+    # Runtime dependencies are intentionally separate from GitHub Actions and the
+    # exact PowerShell build-tool pins in build/build-tool-versions.json. The
+    # optional pre-1.0 multi-pwsh pin is CI provisioning policy and always requires
+    # reviewed test-matrix evidence; it is not a NuGet dependency.
+    # Major version PRs are created but require manual approval. The Dependabot-Auto-Approve workflow handles selective auto-approval:
     # - Auto-approves: patch and minor updates
     # - Requires manual review: major version updates
 

@@ -1,36 +1,54 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "description": "DLLPickle upstream dependency compatibility policy.",
+  "description": "DLLPickle profile-aware upstream dependency compatibility policy. Classifications are evaluated independently by PowerShell line, TFM, platform, module set, and import order.",
   "monitoredModules": [
     {
       "name": "Microsoft.Graph.Authentication",
       "repository": "PSGallery",
-      "purpose": "Graph authentication stack and Azure.Core compatibility source."
+      "purpose": "Graph authentication stack and Azure.Core compatibility source.",
+      "umbrellaModule": "Microsoft.Graph",
+      "deterministicProbeCommand": "Get-Command Connect-MgGraph | Out-Null",
+      "authenticatedReadOnlyProbeCommand": "Get-MgContext | Out-Null"
     },
     {
       "name": "ExchangeOnlineManagement",
       "repository": "PSGallery",
-      "purpose": "Exchange identity, broker, and OData compatibility source."
+      "purpose": "Exchange identity, broker, and OData compatibility source.",
+      "umbrellaModule": "ExchangeOnlineManagement",
+      "deterministicProbeCommand": "Get-ConnectionInformation -ErrorAction SilentlyContinue | Out-Null",
+      "authenticatedReadOnlyProbeCommand": "Get-EXOMailbox -ResultSize 1 | Out-Null"
     },
     {
       "name": "Az.Storage",
       "repository": "PSGallery",
-      "purpose": "Az Storage OData compatibility source for Exchange coexistence."
+      "purpose": "Az Storage OData compatibility source for Exchange coexistence.",
+      "umbrellaModule": "Az",
+      "deterministicProbeCommand": "Get-Command Get-AzStorageAccount | Out-Null",
+      "authenticatedReadOnlyProbeCommand": "Get-AzStorageAccount | Select-Object -First 1 | Out-Null"
     },
     {
       "name": "Az.Accounts",
       "repository": "PSGallery",
-      "purpose": "Az identity stack compatibility source."
+      "purpose": "Az identity stack compatibility source.",
+      "umbrellaModule": "Az",
+      "deterministicProbeCommand": "Get-AzContext -ErrorAction SilentlyContinue | Out-Null",
+      "authenticatedReadOnlyProbeCommand": "Get-AzContext | Out-Null"
     },
     {
       "name": "MicrosoftTeams",
       "repository": "PSGallery",
-      "purpose": "Teams identity stack compatibility source."
+      "purpose": "Teams identity stack compatibility source.",
+      "umbrellaModule": "MicrosoftTeams",
+      "deterministicProbeCommand": "Get-Team -ErrorAction SilentlyContinue | Select-Object -First 1 | Out-Null",
+      "authenticatedReadOnlyProbeCommand": "Connect-MicrosoftTeams -AccessTokens @($env:DLLPICKLE_GRAPH_ACCESS_TOKEN, $env:DLLPICKLE_TEAMS_ACCESS_TOKEN) | Out-Null; try { Get-CsTenant | Out-Null } finally { Disconnect-MicrosoftTeams | Out-Null }"
     },
     {
       "name": "Az.Resources",
       "repository": "PSGallery",
-      "purpose": "Observed #193 collision source for Microsoft.Extensions.* transitive assemblies."
+      "purpose": "Observed #193 collision source for Microsoft.Extensions.* transitive assemblies.",
+      "umbrellaModule": "Az",
+      "deterministicProbeCommand": "Get-Command Get-AzResource | Out-Null",
+      "authenticatedReadOnlyProbeCommand": "Get-AzResource | Select-Object -First 1 | Out-Null"
     }
   ],
   "trackedAssemblies": [
@@ -322,7 +340,6 @@
     {
       "packageName": "Microsoft.Identity.Client",
       "assemblyName": "Microsoft.Identity.Client",
-      "targetFramework": "net8.0",
       "classification": "preload",
       "versionPolicy": "minorPatchFloat",
       "sourceModules": [
@@ -337,12 +354,16 @@
         "alcOwner": "Default",
         "basis": "In the cross-module conflict surface; default-ALC-shared. Preloading the MSAL line is validated by the 2.0.1/2.0.2 four-module connect and underpins the #156 broker fix.",
         "decidedOn": "2026-05-31"
-      }
+      },
+      "targetFrameworks": [
+        "net8.0",
+        "net9.0",
+        "net10.0"
+      ]
     },
     {
       "packageName": "Microsoft.Identity.Client.Broker",
       "assemblyName": "Microsoft.Identity.Client.Broker",
-      "targetFramework": "net8.0",
       "classification": "preload",
       "versionPolicy": "minorPatchFloat",
       "sourceModules": [
@@ -357,12 +378,16 @@
         "alcOwner": "Default",
         "basis": "Default-ALC-shared; the #156 reproduction is a WithBroker missing-method failure when the broker line is misaligned. Validated by the 2.0.1/2.0.2 four-module connect.",
         "decidedOn": "2026-05-31"
-      }
+      },
+      "targetFrameworks": [
+        "net8.0",
+        "net9.0",
+        "net10.0"
+      ]
     },
     {
       "packageName": "Microsoft.Identity.Client.Extensions.Msal",
       "assemblyName": "Microsoft.Identity.Client.Extensions.Msal",
-      "targetFramework": "net8.0",
       "classification": "preload",
       "versionPolicy": "minorPatchFloat",
       "sourceModules": [
@@ -376,12 +401,16 @@
         "alcOwner": "Default",
         "basis": "Block CANDIDATE by ALC ownership (observed in Az's AzSharedAssemblyLoadContext), but runtime decides PRELOAD: preloading the MSAL/cache-helper line is proven safe by the 2.0.1/2.0.2 four-module connect. Only the Azure SDK stack breaks when preloaded.",
         "decidedOn": "2026-05-31"
-      }
+      },
+      "targetFrameworks": [
+        "net8.0",
+        "net9.0",
+        "net10.0"
+      ]
     },
     {
       "packageName": "Microsoft.Identity.Client.NativeInterop",
       "assemblyName": "Microsoft.Identity.Client.NativeInterop",
-      "targetFramework": "net8.0",
       "classification": "preload",
       "versionPolicy": "minorPatchFloat",
       "sourceModules": [
@@ -394,12 +423,16 @@
         "alcOwner": "Default",
         "basis": "Ships native runtime DLLs that Import-DPLibrary surfaces on PATH. Tracks the broker requirement; validated by the 2.0.1/2.0.2 four-module connect.",
         "decidedOn": "2026-05-31"
-      }
+      },
+      "targetFrameworks": [
+        "net8.0",
+        "net9.0",
+        "net10.0"
+      ]
     },
     {
       "packageName": "Microsoft.IdentityModel.Abstractions",
       "assemblyName": "Microsoft.IdentityModel.Abstractions",
-      "targetFramework": "net8.0",
       "classification": "preload",
       "versionPolicy": "minorPatchFloat",
       "sourceModules": [
@@ -414,12 +447,16 @@
         "alcOwner": "Default",
         "basis": "Default-ALC-shared token-handling stack in the conflict surface; preloading a coherent 8.x line keeps mixed imports consistent (validated 2.0.1/2.0.2).",
         "decidedOn": "2026-05-31"
-      }
+      },
+      "targetFrameworks": [
+        "net8.0",
+        "net9.0",
+        "net10.0"
+      ]
     },
     {
       "packageName": "Microsoft.IdentityModel.JsonWebTokens",
       "assemblyName": "Microsoft.IdentityModel.JsonWebTokens",
-      "targetFramework": "net8.0",
       "classification": "preload",
       "versionPolicy": "minorPatchFloat",
       "sourceModules": [
@@ -434,12 +471,16 @@
         "alcOwner": "Default",
         "basis": "Default-ALC-shared token-handling stack in the conflict surface; coherent 8.x preload validated 2.0.1/2.0.2.",
         "decidedOn": "2026-05-31"
-      }
+      },
+      "targetFrameworks": [
+        "net8.0",
+        "net9.0",
+        "net10.0"
+      ]
     },
     {
       "packageName": "Microsoft.IdentityModel.Logging",
       "assemblyName": "Microsoft.IdentityModel.Logging",
-      "targetFramework": "net8.0",
       "classification": "preload",
       "versionPolicy": "minorPatchFloat",
       "sourceModules": [
@@ -454,12 +495,16 @@
         "alcOwner": "Default",
         "basis": "Default-ALC-shared token-handling stack in the conflict surface; coherent 8.x preload validated 2.0.1/2.0.2.",
         "decidedOn": "2026-05-31"
-      }
+      },
+      "targetFrameworks": [
+        "net8.0",
+        "net9.0",
+        "net10.0"
+      ]
     },
     {
       "packageName": "Microsoft.IdentityModel.Tokens",
       "assemblyName": "Microsoft.IdentityModel.Tokens",
-      "targetFramework": "net8.0",
       "classification": "preload",
       "versionPolicy": "minorPatchFloat",
       "sourceModules": [
@@ -474,12 +519,16 @@
         "alcOwner": "Default",
         "basis": "Default-ALC-shared token-handling stack in the conflict surface; coherent 8.x preload validated 2.0.1/2.0.2. Its incidental Microsoft.Extensions.* transitives are excluded from the bundle (see blockedPreloadAssemblies / #193).",
         "decidedOn": "2026-05-31"
-      }
+      },
+      "targetFrameworks": [
+        "net8.0",
+        "net9.0",
+        "net10.0"
+      ]
     },
     {
       "packageName": "System.IdentityModel.Tokens.Jwt",
       "assemblyName": "System.IdentityModel.Tokens.Jwt",
-      "targetFramework": "net8.0",
       "classification": "preload",
       "versionPolicy": "minorPatchFloat",
       "sourceModules": [
@@ -494,7 +543,12 @@
         "alcOwner": "Default",
         "basis": "Default-ALC-shared; aligned with the IdentityModel 8.x preload. Validated 2.0.1/2.0.2.",
         "decidedOn": "2026-05-31"
-      }
+      },
+      "targetFrameworks": [
+        "net8.0",
+        "net9.0",
+        "net10.0"
+      ]
     }
   ],
   "blockedPreloadAssemblies": [
@@ -508,12 +562,17 @@
         "MicrosoftTeams"
       ],
       "updateMode": "reportOnly",
-      "reason": "Azure.Core is intentionally not preloaded on the PowerShell 7.4+ (net8.0) profile. Az.Accounts 5.x isolates its Azure SDK stack in a private AssemblyLoadContext; preloading Azure.Core into the default load context splits Azure.Core.TokenRequestContext across load contexts and breaks Connect-AzAccount with a MissingMethodException on InteractiveBrowserCredential.AuthenticateAsync. Graph, Exchange, and Teams resolve a compatible Azure.Core themselves on .NET 8, so the preload is unnecessary for them. The original net48-only Azure.Core preload (#183) does not apply to the net8.0 baseline.",
+      "reason": "Azure.Core is intentionally not preloaded on any supported modern runtime profile (net8.0, net9.0, or net10.0). Az.Accounts 5.x isolates its Azure SDK stack in a private AssemblyLoadContext; preloading Azure.Core into the default load context splits Azure.Core.TokenRequestContext across load contexts and breaks Connect-AzAccount with a MissingMethodException on InteractiveBrowserCredential.AuthenticateAsync. Graph, Exchange, and Teams resolve a compatible Azure.Core themselves, so the preload is unnecessary for them. The original net48-only Azure.Core preload (#183) does not apply to the modern profiles.",
       "evidence": {
         "alcOwner": "AzSharedAssemblyLoadContext / msgraph-load-context",
         "basis": "Runtime probe 2026-05-31: Az.Accounts and Microsoft.Graph.Authentication both self-isolate Azure.Core in private ALCs and run different versions side-by-side (1.50 vs 1.51.1). Preloading into the default ALC splits TokenRequestContext -> Connect-AzAccount MissingMethodException. Removed from the bundle in 2.0.1.",
         "decidedOn": "2026-05-31"
-      }
+      },
+      "targetFrameworks": [
+        "net8.0",
+        "net9.0",
+        "net10.0"
+      ]
     },
     {
       "packageName": "Azure.Identity",
@@ -523,12 +582,17 @@
         "Az.Accounts"
       ],
       "updateMode": "reportOnly",
-      "reason": "Azure SDK stack self-isolated by Az.Accounts (and Graph); not preloaded on the net8.0 profile.",
+      "reason": "Azure SDK stack self-isolated by Az.Accounts (and Graph); not preloaded on the supported net8.0, net9.0, or net10.0 profiles.",
       "evidence": {
         "alcOwner": "AzSharedAssemblyLoadContext",
         "basis": "Runtime probe 2026-05-31: loaded into Az's private ALC (1.13.0). Belongs to the Azure SDK stack that breaks when preloaded (Azure.Core class). Not bundled by DLLPickle.",
         "decidedOn": "2026-05-31"
-      }
+      },
+      "targetFrameworks": [
+        "net8.0",
+        "net9.0",
+        "net10.0"
+      ]
     },
     {
       "packageName": "Azure.Identity.Broker",
@@ -538,12 +602,17 @@
         "Az.Accounts"
       ],
       "updateMode": "reportOnly",
-      "reason": "Azure SDK broker stack self-managed by Az; not preloaded on the net8.0 profile.",
+      "reason": "Azure SDK broker stack self-managed by Az; not preloaded on the supported net8.0, net9.0, or net10.0 profiles.",
       "evidence": {
         "alcOwner": "AzSharedAssemblyLoadContext",
         "basis": "In the conflict surface; part of the Az-self-isolated Azure SDK stack. Not bundled by DLLPickle.",
         "decidedOn": "2026-05-31"
-      }
+      },
+      "targetFrameworks": [
+        "net8.0",
+        "net9.0",
+        "net10.0"
+      ]
     },
     {
       "packageName": "System.ClientModel",
@@ -553,12 +622,17 @@
         "Microsoft.Graph.Authentication"
       ],
       "updateMode": "reportOnly",
-      "reason": "Azure SDK transitive (Azure.Core dependency) self-managed by Graph/Az; not preloaded on the net8.0 profile.",
+      "reason": "Azure SDK transitive (Azure.Core dependency) self-managed by Graph/Az; not preloaded on the supported net8.0, net9.0, or net10.0 profiles.",
       "evidence": {
         "alcOwner": "msgraph-load-context",
         "basis": "Runtime probe 2026-05-31: loaded into Graph's private ALC (1.9.0) alongside Azure.Core. Transitive of the blocked Azure.Core. Not bundled by DLLPickle.",
         "decidedOn": "2026-05-31"
-      }
+      },
+      "targetFrameworks": [
+        "net8.0",
+        "net9.0",
+        "net10.0"
+      ]
     },
     {
       "packageName": "Microsoft.Extensions.DependencyInjection.Abstractions",
@@ -576,7 +650,12 @@
         "decidedOn": "2026-05-31",
         "issue": "193",
         "trackingScope": "Az.Resources is included in monitoredModules so upstream inventory captures this assembly family from the observed #193 collision source. #193 remains a DLLPickle-bundle-vs-consumer collision (not a cross-module version split), so the cross-module conflict-surface gate still may not flag every change by itself; preserve the regression guard against re-bundling in tests/Integration/DLLPickle.IntegrationTest.Tests.ps1 and re-adjudicate runtime behavior when Az.Resources dependency content changes."
-      }
+      },
+      "targetFrameworks": [
+        "net8.0",
+        "net9.0",
+        "net10.0"
+      ]
     },
     {
       "packageName": "Microsoft.Extensions.Logging.Abstractions",
@@ -593,7 +672,12 @@
         "decidedOn": "2026-05-31",
         "issue": "193",
         "trackingScope": "Az.Resources does not ship this assembly; the refreshed inventory observes Microsoft.Extensions.Logging.Abstractions only in MicrosoftTeams (a single shipper, so it does not diverge cross-module and is not in the conflict surface). It is excluded from the bundle as the paired dependency of Microsoft.Extensions.DependencyInjection.Abstractions, which Az.Resources does ship and which is now monitored and present in the conflict surface. #193 remains a DLLPickle-bundle-vs-consumer collision; preserve the regression guard against re-bundling in tests/Integration/DLLPickle.IntegrationTest.Tests.ps1 and re-adjudicate runtime behavior when Az.Resources dependency content changes."
-      }
+      },
+      "targetFrameworks": [
+        "net8.0",
+        "net9.0",
+        "net10.0"
+      ]
     },
     {
       "packageName": "System.Security.Cryptography.ProtectedData",
@@ -602,16 +686,22 @@
       "platforms": [
         "Windows"
       ],
+      "universalArtifactRequired": true,
       "sourceModules": [
         "PowerShell"
       ],
       "updateMode": "reportOnly",
-      "reason": "Runtime-provided BCL assembly supplied by PowerShell on Windows; does not require bundling. On non-Windows platforms, PowerShell does not provide this assembly, so it is allowed to be bundled transitively via Microsoft.Identity.Client.Extensions.Msal without creating a conflict.",
+      "reason": "Runtime-provided BCL assembly supplied by PowerShell on Windows, so Import-DPLibrary must not preload the bundled copy there. PowerShell does not provide it on Linux or macOS, so the single platform-neutral release artifact must include it for the MSAL extensions dependency chain.",
       "evidence": {
         "alcOwner": "PowerShell host / Default (Windows)",
-        "basis": "Windows build validation on 2026-06-23 found that the MSAL extensions dependency copied NuGet System.Security.Cryptography.ProtectedData 4.5.0 into the bundle while PowerShell already supplied the runtime assembly. A direct ExcludeAssets=runtime reference keeps that host-provided assembly out of DLLPickle's preload set. On non-Windows platforms, the runtime assets are retained to satisfy the dependency chain.",
+        "basis": "Windows validation on 2026-06-23 established that PowerShell supplies this assembly. The release pipeline publishes one module artifact assembled on Windows, so excluding the runtime asset at build time also removed it for Linux and macOS. The universal artifact now retains the file, while the shipped runtime profile policy filters it from Windows preloading and permits it on non-Windows hosts.",
         "decidedOn": "2026-06-23"
-      }
+      },
+      "targetFrameworks": [
+        "net8.0",
+        "net9.0",
+        "net10.0"
+      ]
     },
     {
       "packageName": "Microsoft.OData.Core",
@@ -625,7 +715,12 @@
       "reason": "Issue #174 showed that default OData preloading can break Az.Storage when ExchangeOnlineManagement and Az.Storage require incompatible OData identities.",
       "evidence": {
         "basis": "Az.Storage 9.6.1 ships Microsoft.OData.Core 7.6.4; ExchangeOnlineManagement 3.9.2 requires 7.22.0. Both load into the default ALC; no preload version can satisfy both. See issue #174 and the shipped conflict-data entry '174-odata-azstorage-exo' (src/DLLPickle/KnownConflicts.json) for the runtime adjudication."
-      }
+      },
+      "targetFrameworks": [
+        "net8.0",
+        "net9.0",
+        "net10.0"
+      ]
     },
     {
       "packageName": "Microsoft.OData.Edm",
@@ -639,7 +734,12 @@
       "reason": "Keep the OData family out of the default preload set unless a future isolation strategy is implemented.",
       "evidence": {
         "basis": "OData family dependency paired with Microsoft.OData.Core; same default-ALC conflict as Core. See issue #174 and the shipped conflict-data entry '174-odata-azstorage-exo' (src/DLLPickle/KnownConflicts.json) for the runtime adjudication."
-      }
+      },
+      "targetFrameworks": [
+        "net8.0",
+        "net9.0",
+        "net10.0"
+      ]
     },
     {
       "packageName": "Microsoft.Spatial",
@@ -653,6 +753,302 @@
       "reason": "Keep the OData family out of the default preload set unless a future isolation strategy is implemented.",
       "evidence": {
         "basis": "OData family dependency paired with Microsoft.OData.Core; same default-ALC conflict as Core. See issue #174 and the shipped conflict-data entry '174-odata-azstorage-exo' (src/DLLPickle/KnownConflicts.json) for the runtime adjudication."
+      },
+      "targetFrameworks": [
+        "net8.0",
+        "net9.0",
+        "net10.0"
+      ]
+    }
+  ],
+  "runtimeProfiles": [
+    {
+      "powerShellLine": "7.4",
+      "targetFramework": "net8.0",
+      "dotnetMajor": 8,
+      "baselineStatus": "stale-requires-refresh-issue-273",
+      "baselineEvidence": "Legacy Windows snapshot from 2026-06-25; not authoritative for other operating systems.",
+      "platforms": [
+        "windows",
+        "linux",
+        "macos"
+      ],
+      "monitoredModuleSet": [
+        "Microsoft.Graph.Authentication",
+        "ExchangeOnlineManagement",
+        "Az.Storage",
+        "Az.Accounts",
+        "MicrosoftTeams",
+        "Az.Resources"
+      ],
+      "importOrders": [
+        [
+          "ExchangeOnlineManagement",
+          "MicrosoftTeams",
+          "Microsoft.Graph.Authentication",
+          "Az.Accounts"
+        ],
+        [
+          "Az.Accounts",
+          "Microsoft.Graph.Authentication",
+          "ExchangeOnlineManagement",
+          "MicrosoftTeams"
+        ]
+      ],
+      "preloadAssemblyNames": [
+        "Microsoft.Identity.Client",
+        "Microsoft.Identity.Client.Broker",
+        "Microsoft.Identity.Client.Extensions.Msal",
+        "Microsoft.Identity.Client.NativeInterop",
+        "Microsoft.IdentityModel.Abstractions",
+        "Microsoft.IdentityModel.JsonWebTokens",
+        "Microsoft.IdentityModel.Logging",
+        "Microsoft.IdentityModel.Tokens",
+        "System.IdentityModel.Tokens.Jwt"
+      ],
+      "blockedAssemblyNames": [
+        "Azure.Core",
+        "Azure.Identity",
+        "Azure.Identity.Broker",
+        "System.ClientModel",
+        "Microsoft.Extensions.DependencyInjection.Abstractions",
+        "Microsoft.Extensions.Logging.Abstractions",
+        "System.Security.Cryptography.ProtectedData",
+        "Microsoft.OData.Core",
+        "Microsoft.OData.Edm",
+        "Microsoft.Spatial"
+      ],
+      "knownConflictIds": [
+        "174-odata-azstorage-exo"
+      ],
+      "validationTiers": {
+        "deterministicImportNoAuth": {
+          "required": true,
+          "credentialsRequired": false
+        },
+        "authenticatedReadOnly": {
+          "requiredBeforeRelease": true,
+          "credentialsRequired": true,
+          "writesAllowed": false,
+          "status": "not-run-no-approved-credentials"
+        }
+      },
+      "baselines": {
+        "windows": {
+          "status": "accepted",
+          "conflictSurfaceFingerprint": "b2ef2e3b81097f9759e215a994053e084fe074faf799b8293b1c24f8ab0a192d",
+          "scenarioFingerprint": "dc2b138e15169b85da6579fe7e2ac17f81b3853889b6cee45d5c26f8add70d78",
+          "evidencePath": "profile-evidence/ps7.4-net8.0-windows-x64.json",
+          "evidenceFingerprint": "db3ea852a32ee2f9dcd21d44efc272ff18fd80157a4a036417bd2b2c73d6ae9e"
+        },
+        "linux": {
+          "status": "accepted",
+          "conflictSurfaceFingerprint": "f2ed8b0b9b1c45a252ca86d06f3f7c4a1a1200f95a7e94e9446cca421f53b000",
+          "scenarioFingerprint": "4cbde0f6edd69e935b7a2948bbf3c36293ba5abe2333007b11092b088c55ef19",
+          "evidencePath": "profile-evidence/ps7.4-net8.0-linux-x64.json",
+          "evidenceFingerprint": "3e5a3e1d771b9cc6ee31f1605a037a2af26493ed6858bb528a54b597de575283"
+        },
+        "macos": {
+          "status": "accepted",
+          "conflictSurfaceFingerprint": "0aadbc0d363b8a16bb6b591c6a1f7d61266a6bb60aa02f23dac8eb9c9b1547a8",
+          "scenarioFingerprint": "95992a216513d3223431587940d36bd89758af9562e201c7ad40989fbeb220bc",
+          "evidencePath": "profile-evidence/ps7.4-net8.0-macos-x64.json",
+          "evidenceFingerprint": "a1ffa4ad38d1aa25421931e86c9617e0477ace74dc7cbcb7fac882ff62eb19da"
+        }
+      },
+      "legacyUnscopedBaseline": {
+        "conflictSurfaceFingerprint": "03b94d1603f2d7af09021a738fe9b7ed028dd18bba361e55bbe866bb1febaae0",
+        "evidence": "Legacy Windows snapshot from 2026-06-25; not authoritative for other operating systems."
+      }
+    },
+    {
+      "powerShellLine": "7.5",
+      "targetFramework": "net9.0",
+      "dotnetMajor": 9,
+      "baselineStatus": "requires-ci-evidence",
+      "baselineEvidence": "No profile-specific baseline has been accepted; the nine-cell CI evidence lane must run.",
+      "platforms": [
+        "windows",
+        "linux",
+        "macos"
+      ],
+      "monitoredModuleSet": [
+        "Microsoft.Graph.Authentication",
+        "ExchangeOnlineManagement",
+        "Az.Storage",
+        "Az.Accounts",
+        "MicrosoftTeams",
+        "Az.Resources"
+      ],
+      "importOrders": [
+        [
+          "ExchangeOnlineManagement",
+          "MicrosoftTeams",
+          "Microsoft.Graph.Authentication",
+          "Az.Accounts"
+        ],
+        [
+          "Az.Accounts",
+          "Microsoft.Graph.Authentication",
+          "ExchangeOnlineManagement",
+          "MicrosoftTeams"
+        ]
+      ],
+      "preloadAssemblyNames": [
+        "Microsoft.Identity.Client",
+        "Microsoft.Identity.Client.Broker",
+        "Microsoft.Identity.Client.Extensions.Msal",
+        "Microsoft.Identity.Client.NativeInterop",
+        "Microsoft.IdentityModel.Abstractions",
+        "Microsoft.IdentityModel.JsonWebTokens",
+        "Microsoft.IdentityModel.Logging",
+        "Microsoft.IdentityModel.Tokens",
+        "System.IdentityModel.Tokens.Jwt"
+      ],
+      "blockedAssemblyNames": [
+        "Azure.Core",
+        "Azure.Identity",
+        "Azure.Identity.Broker",
+        "System.ClientModel",
+        "Microsoft.Extensions.DependencyInjection.Abstractions",
+        "Microsoft.Extensions.Logging.Abstractions",
+        "System.Security.Cryptography.ProtectedData",
+        "Microsoft.OData.Core",
+        "Microsoft.OData.Edm",
+        "Microsoft.Spatial"
+      ],
+      "knownConflictIds": [
+        "174-odata-azstorage-exo"
+      ],
+      "validationTiers": {
+        "deterministicImportNoAuth": {
+          "required": true,
+          "credentialsRequired": false
+        },
+        "authenticatedReadOnly": {
+          "requiredBeforeRelease": true,
+          "credentialsRequired": true,
+          "writesAllowed": false,
+          "status": "not-run-no-approved-credentials"
+        }
+      },
+      "baselines": {
+        "windows": {
+          "status": "accepted",
+          "conflictSurfaceFingerprint": "335a11b2b849902e213614891c43dcf864f40d193ee587e10dc58a6ccd40d729",
+          "scenarioFingerprint": "36684a8b67017021ed7540ccc1c4eaaf2d4a53a1a4c807f4433f78c7d324d001",
+          "evidencePath": "profile-evidence/ps7.5-net9.0-windows-x64.json",
+          "evidenceFingerprint": "ac62ce357b779bddc117d6234d1fbf3edcbc09bfa755053f1ce32d97dbe8dc4f"
+        },
+        "linux": {
+          "status": "accepted",
+          "conflictSurfaceFingerprint": "16eaccc3fd30948d4ff09ef9228345229de68e53e4fe0f100d9683c513a1fc84",
+          "scenarioFingerprint": "af15d53b9bc05c4423165de6d8c13b3e3445d3fb0cdab010e7cf54982ab78980",
+          "evidencePath": "profile-evidence/ps7.5-net9.0-linux-x64.json",
+          "evidenceFingerprint": "00f9cdd3507b3480950cb9cf2230e86405e98ef88eca08e05bc62bf4f6fa34d3"
+        },
+        "macos": {
+          "status": "accepted",
+          "conflictSurfaceFingerprint": "1cc79f2f3af66f0d4b1793e5311df21066980435e89c75ba710a2f643b9884d7",
+          "scenarioFingerprint": "4e39d071eda5c4fa9be584bb1805a0932c0fc8113e1f27194aa6760d3a3f541a",
+          "evidencePath": "profile-evidence/ps7.5-net9.0-macos-x64.json",
+          "evidenceFingerprint": "dd70b37eec9f32c08c75198544dbc9f40635ea3046287d835c9d0c5074a6831d"
+        }
+      }
+    },
+    {
+      "powerShellLine": "7.6",
+      "targetFramework": "net10.0",
+      "dotnetMajor": 10,
+      "baselineStatus": "requires-ci-evidence",
+      "baselineEvidence": "No profile-specific baseline has been accepted; the nine-cell CI evidence lane must run.",
+      "platforms": [
+        "windows",
+        "linux",
+        "macos"
+      ],
+      "monitoredModuleSet": [
+        "Microsoft.Graph.Authentication",
+        "ExchangeOnlineManagement",
+        "Az.Storage",
+        "Az.Accounts",
+        "MicrosoftTeams",
+        "Az.Resources"
+      ],
+      "importOrders": [
+        [
+          "ExchangeOnlineManagement",
+          "MicrosoftTeams",
+          "Microsoft.Graph.Authentication",
+          "Az.Accounts"
+        ],
+        [
+          "Az.Accounts",
+          "Microsoft.Graph.Authentication",
+          "ExchangeOnlineManagement",
+          "MicrosoftTeams"
+        ]
+      ],
+      "preloadAssemblyNames": [
+        "Microsoft.Identity.Client",
+        "Microsoft.Identity.Client.Broker",
+        "Microsoft.Identity.Client.Extensions.Msal",
+        "Microsoft.Identity.Client.NativeInterop",
+        "Microsoft.IdentityModel.Abstractions",
+        "Microsoft.IdentityModel.JsonWebTokens",
+        "Microsoft.IdentityModel.Logging",
+        "Microsoft.IdentityModel.Tokens",
+        "System.IdentityModel.Tokens.Jwt"
+      ],
+      "blockedAssemblyNames": [
+        "Azure.Core",
+        "Azure.Identity",
+        "Azure.Identity.Broker",
+        "System.ClientModel",
+        "Microsoft.Extensions.DependencyInjection.Abstractions",
+        "Microsoft.Extensions.Logging.Abstractions",
+        "System.Security.Cryptography.ProtectedData",
+        "Microsoft.OData.Core",
+        "Microsoft.OData.Edm",
+        "Microsoft.Spatial"
+      ],
+      "knownConflictIds": [
+        "174-odata-azstorage-exo"
+      ],
+      "validationTiers": {
+        "deterministicImportNoAuth": {
+          "required": true,
+          "credentialsRequired": false
+        },
+        "authenticatedReadOnly": {
+          "requiredBeforeRelease": true,
+          "credentialsRequired": true,
+          "writesAllowed": false,
+          "status": "not-run-no-approved-credentials"
+        }
+      },
+      "baselines": {
+        "windows": {
+          "status": "accepted",
+          "conflictSurfaceFingerprint": "1c5b37d886f13577fa1380c11ede9dc225fe517a281103b8076a8924d90389f3",
+          "scenarioFingerprint": "ff71ef233c126de350e6d01de17838c3963ebc16dcbad5b1598a03ffd12b57b7",
+          "evidencePath": "profile-evidence/ps7.6-net10.0-windows-x64.json",
+          "evidenceFingerprint": "a9f7107ef9360feef67f1eca1fb7afcabdb217f1c14b6415bdcbba76df07a48e"
+        },
+        "linux": {
+          "status": "accepted",
+          "conflictSurfaceFingerprint": "96c2933d465d2c94b3f7caf53095788bed1ea51dd4a46290a88ec5a4a60ca643",
+          "scenarioFingerprint": "9ce72aabd07190fbe7f42070b45756b2d9297256357e0ae0798978ae14265f73",
+          "evidencePath": "profile-evidence/ps7.6-net10.0-linux-x64.json",
+          "evidenceFingerprint": "8f7e16648edefdfdf0f4f7edb09984c5fb43788363a770f8f36ce594a40938c8"
+        },
+        "macos": {
+          "status": "accepted",
+          "conflictSurfaceFingerprint": "e7f221fbab3f96e5cf10fb6c21d811e56d1b58b0aa079c8c4b1869573442ba56",
+          "scenarioFingerprint": "9c23ccd74eed68a1ef25d4d9da3b39ed797d445b1ba1ffb4db5b6d65469e55e6",
+          "evidencePath": "profile-evidence/ps7.6-net10.0-macos-x64.json",
+          "evidenceFingerprint": "631d8a315d5b16a3b417e2089cb6daf0629125986b3eec82335e8f4b283b8ea7"
+        }
       }
     }
   ]

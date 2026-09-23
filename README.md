@@ -17,7 +17,7 @@ A PowerShell module that helps you get un-stuck from dependency version conflict
 
 ### Prerequisites
 
-PowerShell 7.4 or later on Linux, macOS, or Windows.
+One of the Microsoft-supported PowerShell lines in the [generated support matrix](docs/generated/Support-Matrix.md) on Linux, macOS, or Windows. The current contract is PowerShell 7.4, 7.5, and 7.6, each with its matching .NET runtime bundle.
 
 ### Installation
 
@@ -57,7 +57,7 @@ For diagnostic detail, add `-ShowLoaderExceptions -Verbose`.
 - `Get-ModulesWithDependency` — list installed modules that package a given dependency.
 - `Get-ModulesWithVersionSortedIdentityClient` — compare modules by packaged `Microsoft.Identity.Client.dll` version.
 
-> The inspection helpers are **cross-edition**. `Import-DPLibrary` needs PowerShell 7.4+, but these helpers also scan the Windows PowerShell module roots — so a **Windows PowerShell 5.1** user can run them to find which module to load first and apply the "first one wins" fix manually.
+> The inspection helpers are **cross-edition**. `Import-DPLibrary` needs a supported PowerShell/.NET profile, but these helpers also scan the Windows PowerShell module roots — so a **Windows PowerShell 5.1** user can use a supported PowerShell session to find which module to load first and apply the "first one wins" fix manually.
 
 Full syntax and examples: [docs index](docs/index.md) · [command reference](docs/DLLPickle.md).
 
@@ -65,9 +65,13 @@ Full syntax and examples: [docs index](docs/index.md) · [command reference](doc
 
 Many PowerShell modules — Az, Exchange Online, Microsoft Graph, Teams, and more — bundle their own copy of the Microsoft Authentication Library (MSAL) and related DLLs. A single PowerShell session can only load **one** version of a given DLL, so when two modules ship different versions you hit *"an assembly with the same name is already loaded"* and authentication breaks.
 
-DLL Pickle preloads a current, compatible set of these assemblies **first**, so the "first one wins" rule works in your favor and the modules you load afterward reuse what's already there. A new DLL Pickle release is published automatically whenever a new MSAL version ships — so keep it updated and load it first.
+DLL Pickle preloads a current, compatible set of these assemblies **first**, so the "first one wins" rule works in your favor and the modules you load afterward reuse what's already there. Dependency updates are locked, tested across every supported PowerShell/OS profile, and released only after the compatibility gates pass.
 
-For the full explanation (and the real-world issues that motivated it), read the [Deep Dive](docs/Deep-Dive.md). The supported platform is **PowerShell 7.4+ (Core, net8.0)**. Compatibility, versioning, and dependency details live in [DEPENDENCIES.md](docs/DEPENDENCIES.md).
+The loader selects `net8.0`, `net9.0`, or `net10.0` from the exact PowerShell minor and CLR major and fails closed on an unknown or mismatched pair.
+
+For the full explanation (and the real-world issues that motivated it), read the [Deep Dive](docs/Deep-Dive.md).
+
+Compatibility, versioning, and dependency details live in [DEPENDENCIES.md](docs/DEPENDENCIES.md).
 
 ## 📚 Documentation Map
 
@@ -78,5 +82,7 @@ For the full explanation (and the real-world issues that motivated it), read the
 - Changelog and active work: [CHANGELOG.md](CHANGELOG.md)
 - Architecture blueprint and planned enhancements: [docs/Architecture.md](docs/Architecture.md)
 - Dependency, versioning, and supply-chain policy: [DEPENDENCIES.md](docs/DEPENDENCIES.md)
+- Generated Microsoft support contract: [Support Matrix](docs/generated/Support-Matrix.md)
+- Generated upstream evidence and explicit gaps: [Compatibility Evidence](docs/generated/Compatibility-Evidence.md)
 - Contribution workflow: [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md)
 - Security vulnerability reporting: [SECURITY.md](SECURITY.md)

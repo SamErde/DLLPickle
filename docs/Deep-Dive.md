@@ -32,10 +32,16 @@ PowerShell modules:
 
 ## How DLLPickle Works
 
-`Import-DPLibrary` loads DLLs from the module's packaged `bin` folder that
-matches the supported runtime target:
+`Import-DPLibrary` selects a physically isolated DLL directory using both the
+PowerShell minor and CLR major:
 
-- `bin/net8.0` for PowerShell 7.4+
+- `bin/net8.0` for PowerShell 7.4 / .NET 8
+- `bin/net9.0` for PowerShell 7.5 / .NET 9
+- `bin/net10.0` for PowerShell 7.6 / .NET 10
+
+The [generated support matrix](generated/Support-Matrix.md) supplies the current
+Microsoft lifecycle and exact CI patch evidence. An unknown or mismatched pair
+fails closed rather than rolling forward to another bundle.
 
 To improve reliability, the loader:
 
@@ -52,7 +58,7 @@ predictable and diagnosable.
 
 ## The inspection helpers (and Windows PowerShell 5.1)
 
-`Import-DPLibrary` is the *automated* fix, and it needs PowerShell 7.4+ / .NET 8
+`Import-DPLibrary` is the *automated* fix, and it needs a declared supported PowerShell/.NET profile
 because it depends on `AssemblyLoadContext`. But DLLPickle also ships a set of
 **inspection helpers** that are deliberately cross-edition:
 
@@ -69,7 +75,7 @@ because it depends on `AssemblyLoadContext`. But DLLPickle also ships a set of
 
 These exist so the project charter still helps environments the preloader cannot
 reach. A **Windows PowerShell 5.1** user who hits the same DLL conflict can run
-these helpers from a PowerShell 7.4+ session, inspect the current-user Windows
+these helpers from a supported PowerShell session, inspect the current-user Windows
 PowerShell module roots from there, see which installed module ships the newest
 identity DLL, and connect to that service *first* — the same "first one wins"
 idea, applied by hand. The automated preload is the convenience; the manual
@@ -89,7 +95,8 @@ workflow:
 - `build/dependency-policy.json` declares monitored PSGallery modules, tracked
   assembly families, per-assembly version policies, and blocked preload families.
 - `tools/Get-DLLPickleUpstreamInventory.ps1` downloads and inventories the
-  latest monitored modules.
+  newest release compatible with the exact tested PowerShell profile, then
+  records only the assets actually selected in that stock host.
 - `tools/Update-DLLPickleDependencyPins.ps1` compares the inventory with the
   policy and applies safe candidate pin updates (major-locked floating `N.*`, or an exact pin when a `maximumPackageVersion` cap applies).
 - `.github/workflows/Upstream-Compatibility.yml` runs the inventory and
@@ -107,10 +114,11 @@ The monitored module set currently includes:
 `Az.Resources` is monitored explicitly because it is the observed trigger for
 the #193 `Microsoft.Extensions.*` collision family.
 
-The workflow is fail-closed. It may open a candidate PR when a policy-supported
-pin changes, such as a Graph or Teams `Azure.Core` update. It does not merge or
-publish changed preload behavior unless the
-candidate passes restore, build, and issue reproduction validation.
+The workflow is fail-closed. It may propose a candidate when a policy-supported
+identity pin changes. It does not merge or publish changed preload behavior unless
+the candidate passes locked restore, all-TFM build, the exact nine-cell runtime
+matrix, profile/platform conflict baselines, artifact composition, size, and issue
+reproduction validation.
 
 Some dependency families are deliberately report-only. For example, OData
 assemblies are tracked because ExchangeOnlineManagement and Az.Storage can
@@ -118,13 +126,13 @@ require incompatible versions in one process, but OData is not added to the
 default preload set unless a future isolation strategy makes that safe.
 
 `Azure.Core` is also report-only. It is intentionally not preloaded on the
-PowerShell 7.4+ profile: both `Az.Accounts` (`AzSharedAssemblyLoadContext`) and
+supported ALC-capable profiles: both `Az.Accounts` (`AzSharedAssemblyLoadContext`) and
 `Microsoft.Graph.Authentication` (`msgraph-load-context`) isolate their Azure SDK
 stack in private `AssemblyLoadContext`s — they even run different `Azure.Core`
 versions side-by-side without conflict. Preloading `Azure.Core` into the default
 load context splits the identity of `Azure.Core.TokenRequestContext` across that
 boundary and breaks `Connect-AzAccount`. Because the modules self-manage it, the
-preload is unnecessary on .NET 8.
+preload is unnecessary on the supported .NET runtimes.
 
 > **Windows PowerShell 5.1 caveat:** this module self-isolation relies on
 > `AssemblyLoadContext`, which only exists on .NET (Core) 5+. Windows PowerShell
@@ -155,11 +163,13 @@ only prepares the process and imports modules so connection commands such as
 `Connect-AzAccount` can run afterward using credentials and tenant choices from
 the caller's environment.
 
-Live testing confirms the full base profile can connect to Exchange Online,
-Microsoft Teams, Microsoft Graph, and Az.Accounts in one session. Because
-DLLPickle no longer preloads `Azure.Core` on the net8.0 profile, Az.Accounts'
-private `AssemblyLoadContext` resolves a single, consistent `Azure.Core`, and
-`Connect-AzAccount` succeeds alongside the Graph/Exchange/Teams identity stack.
+Historical authenticated testing confirmed the full base profile on the earlier
+`net8.0` bundle. Current deterministic CI covers every declared PowerShell/OS
+profile, but authenticated read-only checks remain explicit release gates until
+approved credentials produce fresh artifacts. See
+[Compatibility Evidence](generated/Compatibility-Evidence.md) for the exact
+unexecuted commands. DLLPickle does not preload `Azure.Core`, so Az.Accounts'
+private `AssemblyLoadContext` can resolve a consistent copy.
 
 ## Why This Helps
 

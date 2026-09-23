@@ -50,9 +50,9 @@ The repository has an automated integration test that compares the policy, proje
 
 - [x] A test exists that asserts every `preload` package is represented in `DLLPickle.csproj`.
 - [x] A test exists that asserts preload package references do not exclude runtime assets.
-- [x] A test exists that asserts blocked package references exclude runtime assets when they are present in `DLLPickle.csproj`.
+- [x] A test exists that asserts ordinary blocked package references exclude runtime assets, while explicitly universal platform-scoped dependencies retain theirs.
 - [x] A test exists that asserts every preload assembly appears in the built `bin/net8.0` output.
-- [x] A test exists that asserts blocked assemblies do not appear in the built `bin/net8.0` output.
+- [x] A test exists that asserts ordinary blocked assemblies do not appear in built TFM outputs and that universal platform-scoped dependencies are bundled but skipped on their host-provided platform.
 - [x] A test exists that asserts the built `bin/net8.0` output does not contain unclassified managed assemblies.
 - [x] PR #257 has merged.
 - [x] The gap frontmatter is updated to `status: resolved` after merge.

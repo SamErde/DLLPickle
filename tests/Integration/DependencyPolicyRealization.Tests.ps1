@@ -3,7 +3,15 @@ BeforeAll {
     $PolicyPath = Join-Path -Path (Join-Path -Path $ProjectRoot -ChildPath 'build') -ChildPath 'dependency-policy.json'
     $ProjectPath = Join-Path -Path (Join-Path -Path (Join-Path -Path $ProjectRoot -ChildPath 'src') -ChildPath 'DLLPickle.Build') -ChildPath 'DLLPickle.csproj'
     $BuiltModuleRoot = Join-Path -Path (Join-Path -Path $ProjectRoot -ChildPath 'module') -ChildPath 'DLLPickle'
-    $BuiltBinPath = Join-Path -Path (Join-Path -Path $BuiltModuleRoot -ChildPath 'bin') -ChildPath 'net8.0'
+    $RuntimePolicyPath = Join-Path -Path $BuiltModuleRoot -ChildPath 'SupportedRuntimeProfiles.json'
+    $RuntimePolicy = Get-Content -LiteralPath $RuntimePolicyPath -Raw | ConvertFrom-Json
+    $RuntimeProfile = @($RuntimePolicy.profiles | Where-Object {
+            $_.powerShellMajor -eq $PSVersionTable.PSVersion.Major -and $_.powerShellMinor -eq $PSVersionTable.PSVersion.Minor
+        })
+    if ($RuntimeProfile.Count -ne 1 -or $RuntimeProfile[0].dotnetMajor -ne [Environment]::Version.Major) {
+        throw 'The integration-test process does not match exactly one supported runtime profile.'
+    }
+    $BuiltBinPath = Join-Path -Path (Join-Path -Path $BuiltModuleRoot -ChildPath 'bin') -ChildPath $RuntimeProfile[0].targetFramework
 
     if (-not (Test-Path -LiteralPath $PolicyPath -PathType Leaf)) {
         throw "Dependency policy not found: $PolicyPath"
@@ -171,6 +179,10 @@ Describe 'Dependency policy realization' -Tag 'Integration' {
                     continue
                 }
 
+                if ([bool]$BlockedPoliciesByPackageName[$PackageName].universalArtifactRequired) {
+                    continue
+                }
+
                 $ExcludeAssets = @(Get-ExcludedAssetName -PackageReference $PackageReferenceByName[$PackageName])
                 if ($ExcludeAssets -notcontains 'runtime' -and $ExcludeAssets -notcontains 'all') {
                     $PackageName
@@ -179,6 +191,21 @@ Describe 'Dependency policy realization' -Tag 'Integration' {
         )
 
         $BlockedReferencesWithoutRuntimeExclusion | Should -BeNullOrEmpty
+    }
+
+    It 'retains runtime assets required by the universal cross-platform artifact' {
+        $MissingUniversalRuntimeAssets = @(
+            $Policy.blockedPreloadAssemblies |
+                Where-Object { [bool]$_.universalArtifactRequired } |
+                Where-Object {
+                    -not $PackageReferenceByName.ContainsKey([string]$_.packageName) -or
+                    @(Get-ExcludedAssetName -PackageReference $PackageReferenceByName[[string]$_.packageName]) -contains 'runtime' -or
+                    [string]$_.assemblyName -notin $BuiltAssemblyNames
+                } |
+                ForEach-Object { $_.assemblyName }
+        )
+
+        $MissingUniversalRuntimeAssets | Should -BeNullOrEmpty
     }
 
     It 'bundles every preload assembly' {
@@ -194,7 +221,10 @@ Describe 'Dependency policy realization' -Tag 'Integration' {
         # Filter blocked assemblies to only those applicable to the current platform
         $ApplicableBlockedAssemblyNames = @(
             $Policy.blockedPreloadAssemblies |
-                Where-Object { Test-PackageApplicableToCurrentPlatform -PackageName $_.packageName } |
+                Where-Object {
+                    (Test-PackageApplicableToCurrentPlatform -PackageName $_.packageName) -and
+                    -not [bool]$_.universalArtifactRequired
+                } |
                 ForEach-Object { $_.assemblyName } |
                 Sort-Object -Unique
         )
@@ -212,7 +242,10 @@ Describe 'Dependency policy realization' -Tag 'Integration' {
         # (i.e., blocked on other platforms, legitimately bundled on this platform)
         $AllowedBlockedAssemblyNames = @(
             $Policy.blockedPreloadAssemblies |
-                Where-Object { -not (Test-PackageApplicableToCurrentPlatform -PackageName $_.packageName) } |
+                Where-Object {
+                    -not (Test-PackageApplicableToCurrentPlatform -PackageName $_.packageName) -or
+                    [bool]$_.universalArtifactRequired
+                } |
                 ForEach-Object { $_.assemblyName } |
                 Sort-Object -Unique
         )
