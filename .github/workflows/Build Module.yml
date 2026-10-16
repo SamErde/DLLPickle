@@ -122,6 +122,7 @@ jobs:
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
         ref: ${{ inputs.ref || github.ref }}
+        persist-credentials: false
 
     # Install the .NET 8 SDK pinned by global.json so the build does not depend on the runner image
     # having an 8.0.x SDK preinstalled (Invoke-Build's RestoreDependencies task invokes dotnet).
