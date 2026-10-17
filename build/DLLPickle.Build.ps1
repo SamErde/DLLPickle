@@ -183,8 +183,10 @@ function Invoke-IsolatedPester {
     )
 
     if ($CoverageSourcePath.Count -gt 0) {
-        $Arguments += '-CoverageSourcePath'
-        $Arguments += $CoverageSourcePath
+        $Arguments += @(
+            '-CoverageSourcePathsJson'
+            ($CoverageSourcePath | ConvertTo-Json -Compress)
+        )
     }
     if ($EnableCodeCoverage) {
         $Arguments += @(

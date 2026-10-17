@@ -9,7 +9,7 @@ param(
     [Parameter(Mandatory)]
     [string]$TestResultPath,
 
-    [string[]]$CoverageSourcePath = @(),
+    [string]$CoverageSourcePathsJson,
 
     [string]$CodeCoverageOutputPath,
 
@@ -57,6 +57,7 @@ try {
     $PesterConfiguration.TestResult.OutputFormat = $TestResultFormat
 
     if ($EnableCodeCoverage) {
+        $CoverageSourcePath = @($CoverageSourcePathsJson | ConvertFrom-Json)
         $PesterConfiguration.CodeCoverage.Enabled = $true
         $PesterConfiguration.CodeCoverage.Path = $CoverageSourcePath
         $PesterConfiguration.CodeCoverage.CoveragePercentTarget = $CoveragePercentTarget
