@@ -77,22 +77,23 @@
     ]
   },
   "baseline": {
-    "capturedOn": "2026-06-25",
+    "capturedOn": "2026-10-17",
     "moduleVersions": {
-      "Az.Accounts": "5.5.0",
-      "Microsoft.Graph.Authentication": "2.38.0",
-      "ExchangeOnlineManagement": "3.10.0",
-      "MicrosoftTeams": "7.8.0",
-      "Az.Storage": "9.7.0",
-      "Az.Resources": "10.0.0"
+      "Az.Accounts": "5.5.3",
+      "Microsoft.Graph.Authentication": "2.41.2",
+      "ExchangeOnlineManagement": "3.10.1",
+      "MicrosoftTeams": "8.0.0",
+      "Az.Storage": "9.7.2",
+      "Az.Resources": "10.2.1"
     },
-    "conflictSurfaceFingerprint": "03b94d1603f2d7af09021a738fe9b7ed028dd18bba361e55bbe866bb1febaae0",
+    "conflictSurfaceFingerprint": "97cb4339be699089ba06b9be4af6384058a8abd80740290f92c68ed3d901baec",
     "conflictSurface": [
       {
         "name": "Azure.Core",
         "versions": [
           "1.50.0.0",
-          "1.51.1.0"
+          "1.51.1.0",
+          "1.57.0.0"
         ],
         "shippedBy": [
           "Az.Accounts",
@@ -103,8 +104,8 @@
       {
         "name": "Azure.Identity",
         "versions": [
-          "1.17.2.0",
-          "1.18.0.0"
+          "1.18.0.0",
+          "1.21.0.0"
         ],
         "shippedBy": [
           "Az.Accounts",
@@ -114,8 +115,8 @@
       {
         "name": "Azure.Identity.Broker",
         "versions": [
-          "1.1.0.0",
-          "1.4.0.0"
+          "1.4.0.0",
+          "1.6.0.0"
         ],
         "shippedBy": [
           "Az.Accounts",
@@ -126,19 +127,32 @@
         "name": "Microsoft.Extensions.DependencyInjection.Abstractions",
         "versions": [
           "2.2.0.0",
-          "8.0.0.0"
+          "10.0.0.0"
         ],
         "shippedBy": [
+          "Az.Accounts",
           "Az.Resources",
+          "MicrosoftTeams"
+        ]
+      },
+      {
+        "name": "Microsoft.Extensions.Logging.Abstractions",
+        "versions": [
+          "2.2.0.0",
+          "10.0.0.0"
+        ],
+        "shippedBy": [
+          "Az.Accounts",
           "MicrosoftTeams"
         ]
       },
       {
         "name": "Microsoft.Identity.Client",
         "versions": [
-          "4.81.0.0",
-          "4.82.1.0",
-          "4.83.1.0"
+          "4.82.0.0",
+          "4.83.1.0",
+          "4.84.0.0",
+          "4.90.0.0"
         ],
         "shippedBy": [
           "Az.Accounts",
@@ -150,9 +164,10 @@
       {
         "name": "Microsoft.Identity.Client.Broker",
         "versions": [
-          "4.78.0.0",
-          "4.81.0.0",
-          "4.83.1.0"
+          "4.82.0.0",
+          "4.83.1.0",
+          "4.84.0.0",
+          "4.90.0.0"
         ],
         "shippedBy": [
           "Az.Accounts",
@@ -164,9 +179,9 @@
       {
         "name": "Microsoft.Identity.Client.Extensions.Msal",
         "versions": [
-          "4.78.0.0",
-          "4.81.0.0",
-          "4.83.1.0"
+          "4.82.0.0",
+          "4.84.0.0",
+          "4.90.0.0"
         ],
         "shippedBy": [
           "Az.Accounts",
@@ -178,7 +193,8 @@
         "name": "Microsoft.Identity.Client.NativeInterop",
         "versions": [
           "0.19.4.0",
-          "0.20.2.0"
+          "0.20.4.0",
+          "0.20.6.0"
         ],
         "shippedBy": [
           "Az.Accounts",
@@ -191,8 +207,8 @@
         "name": "Microsoft.IdentityModel.Abstractions",
         "versions": [
           "8.14.0.0",
-          "8.17.0.0",
-          "8.18.0.0"
+          "8.18.0.0",
+          "8.19.2.0"
         ],
         "shippedBy": [
           "Az.Accounts",
@@ -204,7 +220,7 @@
       {
         "name": "Microsoft.IdentityModel.JsonWebTokens",
         "versions": [
-          "8.17.0.0",
+          "8.19.2.0",
           "8.3.0.0",
           "8.9.0.0"
         ],
@@ -216,7 +232,7 @@
       {
         "name": "Microsoft.IdentityModel.Logging",
         "versions": [
-          "8.17.0.0",
+          "8.19.2.0",
           "8.3.0.0",
           "8.9.0.0"
         ],
@@ -228,7 +244,7 @@
       {
         "name": "Microsoft.IdentityModel.Tokens",
         "versions": [
-          "8.17.0.0",
+          "8.19.2.0",
           "8.3.0.0",
           "8.9.0.0"
         ],
@@ -273,7 +289,7 @@
       {
         "name": "System.ClientModel",
         "versions": [
-          "1.8.0.0",
+          "1.13.0.0",
           "1.9.0.0"
         ],
         "shippedBy": [
@@ -284,7 +300,7 @@
       {
         "name": "System.IdentityModel.Tokens.Jwt",
         "versions": [
-          "8.17.0.0",
+          "8.19.2.0",
           "8.3.0.0"
         ],
         "shippedBy": [
@@ -308,14 +324,49 @@
       }
     ],
     "validation": {
-      "pullRequest": 264,
+      "pullRequest": 303,
       "result": "tracked-conflict-classified-and-excluded",
-      "validatedOn": "2026-06-25",
+      "validatedOn": "2026-10-17",
       "evidence": [
-        "Adding Az.Resources to the monitored module set for issue #193 / GAP-002 refreshed the baseline capture on 2026-06-25, adding Az.Resources 10.0.0 to the monitored module versions and exposing Microsoft.Extensions.DependencyInjection.Abstractions as an 18th conflict row across Az.Resources and MicrosoftTeams at assembly versions 2.2.0.0 and 8.0.0.0; the prior 17 conflict rows were unchanged and Az.Resources is the only module that contributes the new row.",
-        "The assembly is classified block because the contributing modules already diverge on Microsoft.Extensions.DependencyInjection.Abstractions and DLLPickle must not re-bundle it; its paired Microsoft.Extensions.Logging.Abstractions is excluded alongside it but is shipped only by MicrosoftTeams, so it does not appear in the cross-module conflict surface.",
-        "The conflict-surface fingerprint was recomputed to 03b94d1603f2d7af09021a738fe9b7ed028dd18bba361e55bbe866bb1febaae0, and the refreshed baseline is exercised by the policy-realization guard and the dependency-policy unit and non-live integration suites."
-      ]
+        "The 2026-10-17 upstream inventory for Microsoft.Graph.Authentication 2.41.2, ExchangeOnlineManagement 3.10.1, Az.Storage 9.7.2, Az.Accounts 5.5.3, MicrosoftTeams 8.0.0, and Az.Resources 10.2.1 added Microsoft.Extensions.Logging.Abstractions to the conflict surface and moved Microsoft.Extensions.DependencyInjection.Abstractions to versions 2.2.0.0 and 10.0.0.0; Az.Accounts is now an additional contributor to both paired Microsoft.Extensions assemblies.",
+        "Both Microsoft.Extensions assemblies remain classified block under #193: they are incidental transitives and are directly referenced with ExcludeAssets=runtime, so the new upstream copies remain outside DLLPickle's preload bundle. No preload classification changed.",
+        "The conflict-surface fingerprint was recomputed to 97cb4339be699089ba06b9be4af6384058a8abd80740290f92c68ed3d901baec, and the refreshed baseline is exercised by the policy-realization guard and the dependency-policy unit and non-live integration suites."
+      ],
+      "runtimeDifferential": {
+        "validatedOn": "2026-10-17",
+        "host": "Windows PowerShell 7.6.7",
+        "orders": [
+          [
+            "ExchangeOnlineManagement",
+            "MicrosoftTeams",
+            "Microsoft.Graph.Authentication",
+            "Az.Accounts"
+          ],
+          [
+            "Az.Accounts",
+            "Microsoft.Graph.Authentication",
+            "ExchangeOnlineManagement",
+            "MicrosoftTeams"
+          ]
+        ],
+        "withoutDllPickle": {
+          "allOrdersImported": true,
+          "observations": [
+            "Azure.Core 1.57.0.0 remained in AzSharedAssemblyLoadContext.",
+            "Microsoft.Identity.Client ownership varied by import order, including a private AzSharedAssemblyLoadContext load.",
+            "System.Security.Cryptography.ProtectedData 10.0.0.0 was supplied by the PowerShell host in the Default context."
+          ]
+        },
+        "withDllPickle": {
+          "allOrdersImported": true,
+          "observations": [
+            "The preloaded MSAL and IdentityModel assemblies loaded once in the Default context at the resolved DLLPickle versions.",
+            "Azure.Core 1.57.0.0 remained in AzSharedAssemblyLoadContext rather than being preloaded.",
+            "System.Security.Cryptography.ProtectedData 10.0.0.0 remained host-provided in the Default context and was not bundled."
+          ]
+        },
+        "verdict": "Both configured import orders completed successfully with and without DLLPickle; the differential supports retaining the current preload/block classifications for this update."
+      }
     }
   },
   "preload": [
@@ -565,6 +616,7 @@
       "assemblyName": "Microsoft.Extensions.DependencyInjection.Abstractions",
       "classification": "block",
       "sourceModules": [
+        "Az.Accounts",
         "MicrosoftTeams",
         "Az.Resources"
       ],
@@ -583,16 +635,17 @@
       "assemblyName": "Microsoft.Extensions.Logging.Abstractions",
       "classification": "block",
       "sourceModules": [
+        "Az.Accounts",
         "MicrosoftTeams"
       ],
       "updateMode": "reportOnly",
       "reason": "#193: paired with DependencyInjection.Abstractions (depends on it); same incidental-transitive collision with Az modules. Excluded from the bundle (ExcludeAssets=runtime).",
       "evidence": {
         "alcOwner": "Default (collision)",
-        "basis": "Excluded alongside DependencyInjection.Abstractions in 2.0.2. Microsoft.IdentityModel.Tokens still loads without it bundled (resolves lazily / supplied by the consuming service modules).",
+        "basis": "Excluded alongside DependencyInjection.Abstractions in 2.0.2. Microsoft.IdentityModel.Tokens still loads without it bundled (resolves lazily / supplied by the consuming service modules). The 2026-10-17 inventory confirms the same paired exclusion remains necessary as Az.Accounts now contributes version 10.0.0.0.",
         "decidedOn": "2026-05-31",
         "issue": "193",
-        "trackingScope": "Az.Resources does not ship this assembly; the refreshed inventory observes Microsoft.Extensions.Logging.Abstractions only in MicrosoftTeams (a single shipper, so it does not diverge cross-module and is not in the conflict surface). It is excluded from the bundle as the paired dependency of Microsoft.Extensions.DependencyInjection.Abstractions, which Az.Resources does ship and which is now monitored and present in the conflict surface. #193 remains a DLLPickle-bundle-vs-consumer collision; preserve the regression guard against re-bundling in tests/Integration/DLLPickle.IntegrationTest.Tests.ps1 and re-adjudicate runtime behavior when Az.Resources dependency content changes."
+        "trackingScope": "The refreshed inventory now observes Microsoft.Extensions.Logging.Abstractions from Az.Accounts and MicrosoftTeams at versions 10.0.0.0 and 2.2.0.0. It remains excluded from the bundle as the paired dependency of Microsoft.Extensions.DependencyInjection.Abstractions, which Az.Resources and Az.Accounts ship. #193 remains a DLLPickle-bundle-vs-consumer collision; preserve the regression guard against re-bundling in tests/Integration/DLLPickle.IntegrationTest.Tests.ps1 and re-adjudicate runtime behavior when upstream dependency content changes."
       }
     },
     {
