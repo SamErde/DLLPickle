@@ -74,6 +74,10 @@ Describe 'Dependency policy baseline' -Tag 'Unit' {
         $script:Policy.baseline.validation.result | Should -BeExactly 'tracked-conflict-classified-and-excluded'
         $script:Policy.baseline.validation.validatedOn | Should -BeExactly '2026-10-17'
         @($script:Policy.baseline.validation.evidence) | Should -Not -BeNullOrEmpty
+        $script:Policy.baseline.validation.runtimeDifferential.verdict | Should -Match 'Both configured import orders completed successfully'
+        @($script:Policy.baseline.validation.runtimeDifferential.orders) | Should -HaveCount 2
+        $script:Policy.baseline.validation.runtimeDifferential.withoutDllPickle.allOrdersImported | Should -BeTrue
+        $script:Policy.baseline.validation.runtimeDifferential.withDllPickle.allOrdersImported | Should -BeTrue
     }
 
     It 'records the ProtectedData conflict row and block classification' {

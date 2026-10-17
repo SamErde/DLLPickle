@@ -435,15 +435,16 @@ Add-BuildTask Test {
         Write-Build Gray ('      ...CODE COVERAGE - CommandsExecutedCount: {0}' -f $TestResults.CodeCoverage.CommandsExecutedCount)
         Write-Build Gray ('      ...CODE COVERAGE - CommandsAnalyzedCount: {0}' -f $TestResults.CodeCoverage.CommandsAnalyzedCount)
 
-        if ($TestResults.CodeCoverage.NumberOfCommandsExecuted -ne 0) {
-            $CoveragePercent = '{0:N2}' -f ($TestResults.CodeCoverage.CommandsExecutedCount / $TestResults.CodeCoverage.CommandsAnalyzedCount * 100)
+        if ($TestResults.CodeCoverage.CommandsAnalyzedCount -gt 0) {
+            $CoveragePercentValue = $TestResults.CodeCoverage.CommandsExecutedCount / $TestResults.CodeCoverage.CommandsAnalyzedCount * 100
+            $CoveragePercent = '{0:N2}' -f $CoveragePercentValue
 
-            if ($TestResults.CodeCoverage.NumberOfCommandsMissed -gt 0) {
-                'Failed to analyze "{0}" commands' -f $TestResults.CodeCoverage.NumberOfCommandsMissed
+            if ($TestResults.CodeCoverage.CommandsMissedCount -gt 0) {
+                'Failed to analyze "{0}" commands' -f $TestResults.CodeCoverage.CommandsMissedCount
             }
             Write-Host "PowerShell Commands not tested:`n$(ConvertTo-Json -InputObject $TestResults.CodeCoverage.MissedCommands)"
 
-            if ([Int]$CoveragePercent -lt $CoverageThreshold) {
+            if ($CoveragePercentValue -lt $CoverageThreshold) {
                 throw ('Failed to meet code coverage threshold of {0}% with only {1}% coverage' -f $CoverageThreshold, $CoveragePercent)
             } else {
                 Write-Build Cyan "      $('Covered {0}% of {1} analyzed commands in {2} files.' -f $CoveragePercent, $TestResults.CodeCoverage.CommandsAnalyzedCount, $TestResults.CodeCoverage.FilesAnalyzedCount)"

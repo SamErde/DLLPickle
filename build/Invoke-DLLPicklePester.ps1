@@ -72,15 +72,16 @@ try {
 
     $TestResults = Invoke-Pester -Configuration $PesterConfiguration
     $FailedTests = @($TestResults.TestResult | Where-Object { $_ -and $_.Result -ne 'Passed' })
+    $CommandsExecutedCount = [int]$TestResults.CodeCoverage.CommandsExecutedCount
+    $CommandsAnalyzedCount = [int]$TestResults.CodeCoverage.CommandsAnalyzedCount
     $MissedCommands = @($TestResults.CodeCoverage.MissedCommands | Where-Object { $_ })
 
     $Summary = [ordered]@{
         FailedCount = [int]$TestResults.FailedCount
         CodeCoverage = [ordered]@{
-            CommandsExecutedCount = [int]$TestResults.CodeCoverage.CommandsExecutedCount
-            CommandsAnalyzedCount = [int]$TestResults.CodeCoverage.CommandsAnalyzedCount
-            NumberOfCommandsExecuted = [int]$TestResults.CodeCoverage.NumberOfCommandsExecuted
-            NumberOfCommandsMissed = [int]$TestResults.CodeCoverage.NumberOfCommandsMissed
+            CommandsExecutedCount = $CommandsExecutedCount
+            CommandsAnalyzedCount = $CommandsAnalyzedCount
+            CommandsMissedCount = [Math]::Max(0, $CommandsAnalyzedCount - $CommandsExecutedCount)
             FilesAnalyzedCount = [int]$TestResults.CodeCoverage.FilesAnalyzedCount
             MissedCommands = $MissedCommands
         }

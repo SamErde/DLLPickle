@@ -331,7 +331,42 @@
         "The 2026-10-17 upstream inventory for Microsoft.Graph.Authentication 2.41.2, ExchangeOnlineManagement 3.10.1, Az.Storage 9.7.2, Az.Accounts 5.5.3, MicrosoftTeams 8.0.0, and Az.Resources 10.2.1 added Microsoft.Extensions.Logging.Abstractions to the conflict surface and moved Microsoft.Extensions.DependencyInjection.Abstractions to versions 2.2.0.0 and 10.0.0.0; Az.Accounts is now an additional contributor to both paired Microsoft.Extensions assemblies.",
         "Both Microsoft.Extensions assemblies remain classified block under #193: they are incidental transitives and are directly referenced with ExcludeAssets=runtime, so the new upstream copies remain outside DLLPickle's preload bundle. No preload classification changed.",
         "The conflict-surface fingerprint was recomputed to 97cb4339be699089ba06b9be4af6384058a8abd80740290f92c68ed3d901baec, and the refreshed baseline is exercised by the policy-realization guard and the dependency-policy unit and non-live integration suites."
-      ]
+      ],
+      "runtimeDifferential": {
+        "validatedOn": "2026-10-17",
+        "host": "Windows PowerShell 7.6.7",
+        "orders": [
+          [
+            "ExchangeOnlineManagement",
+            "MicrosoftTeams",
+            "Microsoft.Graph.Authentication",
+            "Az.Accounts"
+          ],
+          [
+            "Az.Accounts",
+            "Microsoft.Graph.Authentication",
+            "ExchangeOnlineManagement",
+            "MicrosoftTeams"
+          ]
+        ],
+        "withoutDllPickle": {
+          "allOrdersImported": true,
+          "observations": [
+            "Azure.Core 1.57.0.0 remained in AzSharedAssemblyLoadContext.",
+            "Microsoft.Identity.Client ownership varied by import order, including a private AzSharedAssemblyLoadContext load.",
+            "System.Security.Cryptography.ProtectedData 10.0.0.0 was supplied by the PowerShell host in the Default context."
+          ]
+        },
+        "withDllPickle": {
+          "allOrdersImported": true,
+          "observations": [
+            "The preloaded MSAL and IdentityModel assemblies loaded once in the Default context at the resolved DLLPickle versions.",
+            "Azure.Core 1.57.0.0 remained in AzSharedAssemblyLoadContext rather than being preloaded.",
+            "System.Security.Cryptography.ProtectedData 10.0.0.0 remained host-provided in the Default context and was not bundled."
+          ]
+        },
+        "verdict": "Both configured import orders completed successfully with and without DLLPickle; the differential supports retaining the current preload/block classifications for this update."
+      }
     }
   },
   "preload": [
