@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
-  "contentFingerprint": "ac62ce357b779bddc117d6234d1fbf3edcbc09bfa755053f1ce32d97dbe8dc4f",
+  "contentFingerprint": "29d5324658da622038b6dabe5268d030a894d9d365d48b665f4e4be26a82f5c3",
   "provenance": {
-    "sourceRunId": "31349870045",
-    "sourceRunUrl": "https://github.com/SamErde/DLLPickle/actions/runs/31349870045",
-    "sourceCommitSha": "586b1fed1189d9a34e6b054dbffa07b62a706d97",
-    "capturedAtUtc": "2026-08-10T02:30:33.0000000+00:00",
+    "sourceRunId": "39093670313",
+    "sourceRunUrl": "https://github.com/SamErde/DLLPickle/actions/runs/39093670313",
+    "sourceCommitSha": "953f939beac0e826316e9eb14281c746aaf56862",
+    "capturedAtUtc": "2026-10-18T03:31:50.0000000+00:00",
     "observedOperatingSystems": [
       "Microsoft Windows 10.0.26100"
     ]
@@ -13,9 +13,9 @@
   "content": {
     "profile": {
       "profileKey": "ps7.5-net9.0-windows-x64",
-      "powerShellVersion": "7.5.9",
+      "powerShellVersion": "7.5.12",
       "powerShellLine": "7.5",
-      "dotNetVersion": "9.0.18",
+      "dotNetVersion": "9.0.21",
       "dotNetMajor": 9,
       "targetFramework": "net9.0",
       "platform": "windows",
@@ -25,8 +25,8 @@
       "deterministicImportNoAuth": {
         "status": "passed",
         "writesPerformed": false,
-        "conflictSurfaceFingerprint": "335a11b2b849902e213614891c43dcf864f40d193ee587e10dc58a6ccd40d729",
-        "scenarioFingerprint": "36684a8b67017021ed7540ccc1c4eaaf2d4a53a1a4c807f4433f78c7d324d001"
+        "conflictSurfaceFingerprint": "761f6e317c230eb79bf1832b369df561aa210bd0ea0756614990b37ba1257f69",
+        "scenarioFingerprint": "5e5ca07fab44e72889fcbcdd4c75cf534d5ee99afa27c80d691882dfad95ec73"
       },
       "authenticatedReadOnly": {
         "status": "not-run-no-approved-credentials",
@@ -46,8 +46,8 @@
         "name": "Az.Accounts",
         "umbrellaModule": "Az",
         "constituentModule": "Az.Accounts",
-        "version": "5.5.2",
-        "latestCompatibleVersion": "5.5.2",
+        "version": "5.5.3",
+        "latestCompatibleVersion": "5.5.3",
         "repository": "PSGallery",
         "manifestPowerShellVersion": "5.1",
         "compatiblePSEditions": [
@@ -65,7 +65,7 @@
             "assemblyLoadContext": "AzSharedAssemblyLoadContext",
             "isCollectible": false,
             "contributor": "Az.Accounts",
-            "selectedAsset": "upstream:Az.Accounts/5.5.2/lib/netstandard2.0/Azure.Core.dll"
+            "selectedAsset": "upstream:Az.Accounts/5.5.3/lib/netstandard2.0/Azure.Core.dll"
           },
           {
             "assemblyName": "Microsoft.Identity.Client.Extensions.Msal",
@@ -76,14 +76,14 @@
             "assemblyLoadContext": "AzSharedAssemblyLoadContext",
             "isCollectible": false,
             "contributor": "Az.Accounts",
-            "selectedAsset": "upstream:Az.Accounts/5.5.2/lib/netstandard2.0/Microsoft.Identity.Client.Extensions.Msal.dll"
+            "selectedAsset": "upstream:Az.Accounts/5.5.3/lib/netstandard2.0/Microsoft.Identity.Client.Extensions.Msal.dll"
           },
           {
             "assemblyName": "System.Security.Cryptography.ProtectedData",
             "assemblyVersion": "9.0.0.0",
             "packageVersionCandidate": "9.0.0",
             "fullName": "System.Security.Cryptography.ProtectedData, Version=9.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
-            "sha256": "eee01276c62b271b9e77f434a854920c33fd45b4415d1c5512cbfa048b275a9c",
+            "sha256": "c63cad18f427586fe37c8745c5914acc5956bb6a53459ce5450681ef519ada17",
             "assemblyLoadContext": "Default",
             "isCollectible": false,
             "contributor": "Az.Accounts",
@@ -95,8 +95,8 @@
         "name": "Az.Resources",
         "umbrellaModule": "Az",
         "constituentModule": "Az.Resources",
-        "version": "10.1.0",
-        "latestCompatibleVersion": "10.1.0",
+        "version": "10.2.1",
+        "latestCompatibleVersion": "10.2.1",
         "repository": "PSGallery",
         "manifestPowerShellVersion": "5.1",
         "compatiblePSEditions": [
@@ -114,7 +114,7 @@
             "assemblyLoadContext": "AzSharedAssemblyLoadContext",
             "isCollectible": false,
             "contributor": "Az.Accounts",
-            "selectedAsset": "upstream:Az.Accounts/5.5.2/lib/netstandard2.0/Azure.Core.dll"
+            "selectedAsset": "upstream:Az.Accounts/5.5.3/lib/netstandard2.0/Azure.Core.dll"
           },
           {
             "assemblyName": "Microsoft.Extensions.DependencyInjection.Abstractions",
@@ -125,7 +125,7 @@
             "assemblyLoadContext": "Default",
             "isCollectible": false,
             "contributor": "Az.Resources",
-            "selectedAsset": "upstream:Az.Resources/10.1.0/Microsoft.Extensions.DependencyInjection.Abstractions.dll"
+            "selectedAsset": "upstream:Az.Resources/10.2.1/Microsoft.Extensions.DependencyInjection.Abstractions.dll"
           },
           {
             "assemblyName": "Microsoft.Identity.Client.Extensions.Msal",
@@ -136,14 +136,14 @@
             "assemblyLoadContext": "AzSharedAssemblyLoadContext",
             "isCollectible": false,
             "contributor": "Az.Accounts",
-            "selectedAsset": "upstream:Az.Accounts/5.5.2/lib/netstandard2.0/Microsoft.Identity.Client.Extensions.Msal.dll"
+            "selectedAsset": "upstream:Az.Accounts/5.5.3/lib/netstandard2.0/Microsoft.Identity.Client.Extensions.Msal.dll"
           },
           {
             "assemblyName": "System.Security.Cryptography.ProtectedData",
             "assemblyVersion": "9.0.0.0",
             "packageVersionCandidate": "9.0.0",
             "fullName": "System.Security.Cryptography.ProtectedData, Version=9.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
-            "sha256": "eee01276c62b271b9e77f434a854920c33fd45b4415d1c5512cbfa048b275a9c",
+            "sha256": "c63cad18f427586fe37c8745c5914acc5956bb6a53459ce5450681ef519ada17",
             "assemblyLoadContext": "Default",
             "isCollectible": false,
             "contributor": "Az.Resources",
@@ -174,7 +174,7 @@
             "assemblyLoadContext": "AzSharedAssemblyLoadContext",
             "isCollectible": false,
             "contributor": "Az.Accounts",
-            "selectedAsset": "upstream:Az.Accounts/5.5.2/lib/netstandard2.0/Azure.Core.dll"
+            "selectedAsset": "upstream:Az.Accounts/5.5.3/lib/netstandard2.0/Azure.Core.dll"
           },
           {
             "assemblyName": "Microsoft.Identity.Client.Extensions.Msal",
@@ -185,7 +185,7 @@
             "assemblyLoadContext": "AzSharedAssemblyLoadContext",
             "isCollectible": false,
             "contributor": "Az.Accounts",
-            "selectedAsset": "upstream:Az.Accounts/5.5.2/lib/netstandard2.0/Microsoft.Identity.Client.Extensions.Msal.dll"
+            "selectedAsset": "upstream:Az.Accounts/5.5.3/lib/netstandard2.0/Microsoft.Identity.Client.Extensions.Msal.dll"
           },
           {
             "assemblyName": "Microsoft.OData.Core",
@@ -229,14 +229,14 @@
             "assemblyLoadContext": "AzSharedAssemblyLoadContext",
             "isCollectible": false,
             "contributor": "Az.Accounts",
-            "selectedAsset": "upstream:Az.Accounts/5.5.2/lib/netstandard2.0/System.ClientModel.dll"
+            "selectedAsset": "upstream:Az.Accounts/5.5.3/lib/netstandard2.0/System.ClientModel.dll"
           },
           {
             "assemblyName": "System.Security.Cryptography.ProtectedData",
             "assemblyVersion": "9.0.0.0",
             "packageVersionCandidate": "9.0.0",
             "fullName": "System.Security.Cryptography.ProtectedData, Version=9.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
-            "sha256": "eee01276c62b271b9e77f434a854920c33fd45b4415d1c5512cbfa048b275a9c",
+            "sha256": "c63cad18f427586fe37c8745c5914acc5956bb6a53459ce5450681ef519ada17",
             "assemblyLoadContext": "Default",
             "isCollectible": false,
             "contributor": "Az.Storage",
@@ -260,8 +260,8 @@
         "name": "Microsoft.Graph.Authentication",
         "umbrellaModule": "Microsoft.Graph",
         "constituentModule": "Microsoft.Graph.Authentication",
-        "version": "2.39.0",
-        "latestCompatibleVersion": "2.39.0",
+        "version": "2.41.2",
+        "latestCompatibleVersion": "2.41.2",
         "repository": "PSGallery",
         "manifestPowerShellVersion": "5.1",
         "compatiblePSEditions": [
@@ -269,37 +269,14 @@
           "Desktop"
         ],
         "deterministicProbeCommand": "Get-Command Connect-MgGraph | Out-Null",
-        "selectedAssets": [
-          {
-            "assemblyName": "Azure.Core",
-            "assemblyVersion": "1.51.1.0",
-            "packageVersionCandidate": "1.51.1",
-            "fullName": "Azure.Core, Version=1.51.1.0, Culture=neutral, PublicKeyToken=92742159e12e44c8",
-            "sha256": "f734878c493959695f189f6d52d72d9a4601152e1486950895b0628160784cb5",
-            "assemblyLoadContext": "msgraph-load-context",
-            "isCollectible": false,
-            "contributor": "Microsoft.Graph.Authentication",
-            "selectedAsset": "upstream:Microsoft.Graph.Authentication/2.39.0/Dependencies/Core/Azure.Core.dll"
-          },
-          {
-            "assemblyName": "System.ClientModel",
-            "assemblyVersion": "1.9.0.0",
-            "packageVersionCandidate": "1.9.0",
-            "fullName": "System.ClientModel, Version=1.9.0.0, Culture=neutral, PublicKeyToken=92742159e12e44c8",
-            "sha256": "0b49fd44c751de7a9fd7eb0a3a1104fbfb3bd5d8d616f4af5b3ca6c98a8dd614",
-            "assemblyLoadContext": "msgraph-load-context",
-            "isCollectible": false,
-            "contributor": "Microsoft.Graph.Authentication",
-            "selectedAsset": "upstream:Microsoft.Graph.Authentication/2.39.0/Dependencies/System.ClientModel.dll"
-          }
-        ]
+        "selectedAssets": []
       },
       {
         "name": "MicrosoftTeams",
         "umbrellaModule": "MicrosoftTeams",
         "constituentModule": "MicrosoftTeams",
-        "version": "7.9.0",
-        "latestCompatibleVersion": "7.9.0",
+        "version": "8.0.0",
+        "latestCompatibleVersion": "8.0.0",
         "repository": "PSGallery",
         "manifestPowerShellVersion": "5.1",
         "compatiblePSEditions": [
@@ -313,42 +290,35 @@
             "assemblyVersion": "4.82.0.0",
             "packageVersionCandidate": "4.82.0",
             "fullName": "Microsoft.Identity.Client, Version=4.82.0.0, Culture=neutral, PublicKeyToken=0a613f4dd989e8ae",
-            "sha256": "35b5b56e0c0a1fef35e7865943cd8d8bec25a7facc225d01078ca6fd7b41b9a9",
+            "sha256": "fab7a2f2ffdebe09682e3c373f3d3d6de3d9fd06a4aa86ac45ca1333f149391c",
             "assemblyLoadContext": "Default",
             "isCollectible": false,
             "contributor": "MicrosoftTeams",
-            "selectedAsset": "upstream:MicrosoftTeams/7.9.0/netcoreapp3.1/Microsoft.Identity.Client.dll"
+            "selectedAsset": "upstream:MicrosoftTeams/8.0.0/netcoreapp3.1/Microsoft.Identity.Client.dll"
           }
         ]
       }
     ],
     "conflictMatrix": {
-      "conflictSurface": [
-        "Azure.Core",
-        "System.ClientModel"
-      ],
+      "conflictSurface": [],
       "assemblies": [
         {
           "name": "Azure.Core",
           "shippedBy": [
             "Az.Accounts",
             "Az.Resources",
-            "Az.Storage",
-            "Microsoft.Graph.Authentication"
+            "Az.Storage"
           ],
           "versions": [
-            "1.51.1.0",
             "1.57.0.0"
           ],
           "hashes": [
-            "7ec9feb7738364d2d3a7a598f7c0cff090fdff971086d45cfb35a67858c6f5c7",
-            "f734878c493959695f189f6d52d72d9a4601152e1486950895b0628160784cb5"
+            "7ec9feb7738364d2d3a7a598f7c0cff090fdff971086d45cfb35a67858c6f5c7"
           ],
           "assemblyLoadContexts": [
-            "AzSharedAssemblyLoadContext",
-            "msgraph-load-context"
+            "AzSharedAssemblyLoadContext"
           ],
-          "diverges": true,
+          "diverges": false,
           "selections": [
             {
               "contributor": "Az.Accounts",
@@ -367,12 +337,6 @@
               "version": "1.57.0.0",
               "sha256": "7ec9feb7738364d2d3a7a598f7c0cff090fdff971086d45cfb35a67858c6f5c7",
               "assemblyLoadContext": "AzSharedAssemblyLoadContext"
-            },
-            {
-              "contributor": "Microsoft.Graph.Authentication",
-              "version": "1.51.1.0",
-              "sha256": "f734878c493959695f189f6d52d72d9a4601152e1486950895b0628160784cb5",
-              "assemblyLoadContext": "msgraph-load-context"
             }
           ]
         },
@@ -409,7 +373,7 @@
             "4.82.0.0"
           ],
           "hashes": [
-            "35b5b56e0c0a1fef35e7865943cd8d8bec25a7facc225d01078ca6fd7b41b9a9"
+            "fab7a2f2ffdebe09682e3c373f3d3d6de3d9fd06a4aa86ac45ca1333f149391c"
           ],
           "assemblyLoadContexts": [
             "Default"
@@ -419,7 +383,7 @@
             {
               "contributor": "MicrosoftTeams",
               "version": "4.82.0.0",
-              "sha256": "35b5b56e0c0a1fef35e7865943cd8d8bec25a7facc225d01078ca6fd7b41b9a9",
+              "sha256": "fab7a2f2ffdebe09682e3c373f3d3d6de3d9fd06a4aa86ac45ca1333f149391c",
               "assemblyLoadContext": "Default"
             }
           ]
@@ -537,34 +501,24 @@
         {
           "name": "System.ClientModel",
           "shippedBy": [
-            "Az.Storage",
-            "Microsoft.Graph.Authentication"
+            "Az.Storage"
           ],
           "versions": [
-            "1.13.0.0",
-            "1.9.0.0"
+            "1.13.0.0"
           ],
           "hashes": [
-            "0b49fd44c751de7a9fd7eb0a3a1104fbfb3bd5d8d616f4af5b3ca6c98a8dd614",
             "113a90cac8ff3cee04e52960f52897d5c0d2c40a1f05f3ae04289498c7bb7065"
           ],
           "assemblyLoadContexts": [
-            "AzSharedAssemblyLoadContext",
-            "msgraph-load-context"
+            "AzSharedAssemblyLoadContext"
           ],
-          "diverges": true,
+          "diverges": false,
           "selections": [
             {
               "contributor": "Az.Storage",
               "version": "1.13.0.0",
               "sha256": "113a90cac8ff3cee04e52960f52897d5c0d2c40a1f05f3ae04289498c7bb7065",
               "assemblyLoadContext": "AzSharedAssemblyLoadContext"
-            },
-            {
-              "contributor": "Microsoft.Graph.Authentication",
-              "version": "1.9.0.0",
-              "sha256": "0b49fd44c751de7a9fd7eb0a3a1104fbfb3bd5d8d616f4af5b3ca6c98a8dd614",
-              "assemblyLoadContext": "msgraph-load-context"
             }
           ]
         },
@@ -579,7 +533,7 @@
             "9.0.0.0"
           ],
           "hashes": [
-            "eee01276c62b271b9e77f434a854920c33fd45b4415d1c5512cbfa048b275a9c"
+            "c63cad18f427586fe37c8745c5914acc5956bb6a53459ce5450681ef519ada17"
           ],
           "assemblyLoadContexts": [
             "Default"
@@ -589,19 +543,19 @@
             {
               "contributor": "Az.Accounts",
               "version": "9.0.0.0",
-              "sha256": "eee01276c62b271b9e77f434a854920c33fd45b4415d1c5512cbfa048b275a9c",
+              "sha256": "c63cad18f427586fe37c8745c5914acc5956bb6a53459ce5450681ef519ada17",
               "assemblyLoadContext": "Default"
             },
             {
               "contributor": "Az.Resources",
               "version": "9.0.0.0",
-              "sha256": "eee01276c62b271b9e77f434a854920c33fd45b4415d1c5512cbfa048b275a9c",
+              "sha256": "c63cad18f427586fe37c8745c5914acc5956bb6a53459ce5450681ef519ada17",
               "assemblyLoadContext": "Default"
             },
             {
               "contributor": "Az.Storage",
               "version": "9.0.0.0",
-              "sha256": "eee01276c62b271b9e77f434a854920c33fd45b4415d1c5512cbfa048b275a9c",
+              "sha256": "c63cad18f427586fe37c8745c5914acc5956bb6a53459ce5450681ef519ada17",
               "assemblyLoadContext": "Default"
             }
           ]
@@ -639,7 +593,7 @@
             "sha256": "7ec9feb7738364d2d3a7a598f7c0cff090fdff971086d45cfb35a67858c6f5c7",
             "assemblyLoadContext": "AzSharedAssemblyLoadContext",
             "isCollectible": false,
-            "selectedAsset": "upstream:Az.Accounts/5.5.2/lib/netstandard2.0/Azure.Core.dll"
+            "selectedAsset": "upstream:Az.Accounts/5.5.3/lib/netstandard2.0/Azure.Core.dll"
           },
           {
             "name": "Microsoft.Identity.Client.Extensions.Msal",
@@ -648,7 +602,7 @@
             "sha256": "10f799a3ff80ccffc2b0a9dc9534465ef68deb5de79340b63bf20c5a58e6bbda",
             "assemblyLoadContext": "AzSharedAssemblyLoadContext",
             "isCollectible": false,
-            "selectedAsset": "upstream:Az.Accounts/5.5.2/lib/netstandard2.0/Microsoft.Identity.Client.Extensions.Msal.dll"
+            "selectedAsset": "upstream:Az.Accounts/5.5.3/lib/netstandard2.0/Microsoft.Identity.Client.Extensions.Msal.dll"
           },
           {
             "name": "Microsoft.OData.Core",
@@ -684,13 +638,13 @@
             "sha256": "113a90cac8ff3cee04e52960f52897d5c0d2c40a1f05f3ae04289498c7bb7065",
             "assemblyLoadContext": "AzSharedAssemblyLoadContext",
             "isCollectible": false,
-            "selectedAsset": "upstream:Az.Accounts/5.5.2/lib/netstandard2.0/System.ClientModel.dll"
+            "selectedAsset": "upstream:Az.Accounts/5.5.3/lib/netstandard2.0/System.ClientModel.dll"
           },
           {
             "name": "System.Security.Cryptography.ProtectedData",
             "version": "9.0.0.0",
             "fullName": "System.Security.Cryptography.ProtectedData, Version=9.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
-            "sha256": "eee01276c62b271b9e77f434a854920c33fd45b4415d1c5512cbfa048b275a9c",
+            "sha256": "c63cad18f427586fe37c8745c5914acc5956bb6a53459ce5450681ef519ada17",
             "assemblyLoadContext": "Default",
             "isCollectible": false,
             "selectedAsset": "runtime:System.Security.Cryptography.ProtectedData.dll"
@@ -727,7 +681,7 @@
             "sha256": "7ec9feb7738364d2d3a7a598f7c0cff090fdff971086d45cfb35a67858c6f5c7",
             "assemblyLoadContext": "AzSharedAssemblyLoadContext",
             "isCollectible": false,
-            "selectedAsset": "upstream:Az.Accounts/5.5.2/lib/netstandard2.0/Azure.Core.dll"
+            "selectedAsset": "upstream:Az.Accounts/5.5.3/lib/netstandard2.0/Azure.Core.dll"
           },
           {
             "name": "Microsoft.Identity.Client",
@@ -835,7 +789,7 @@
             "sha256": "113a90cac8ff3cee04e52960f52897d5c0d2c40a1f05f3ae04289498c7bb7065",
             "assemblyLoadContext": "AzSharedAssemblyLoadContext",
             "isCollectible": false,
-            "selectedAsset": "upstream:Az.Accounts/5.5.2/lib/netstandard2.0/System.ClientModel.dll"
+            "selectedAsset": "upstream:Az.Accounts/5.5.3/lib/netstandard2.0/System.ClientModel.dll"
           },
           {
             "name": "System.IdentityModel.Tokens.Jwt",
@@ -850,7 +804,7 @@
             "name": "System.Security.Cryptography.ProtectedData",
             "version": "9.0.0.0",
             "fullName": "System.Security.Cryptography.ProtectedData, Version=9.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
-            "sha256": "eee01276c62b271b9e77f434a854920c33fd45b4415d1c5512cbfa048b275a9c",
+            "sha256": "c63cad18f427586fe37c8745c5914acc5956bb6a53459ce5450681ef519ada17",
             "assemblyLoadContext": "Default",
             "isCollectible": false,
             "selectedAsset": "runtime:System.Security.Cryptography.ProtectedData.dll"
@@ -887,7 +841,7 @@
             "sha256": "7ec9feb7738364d2d3a7a598f7c0cff090fdff971086d45cfb35a67858c6f5c7",
             "assemblyLoadContext": "AzSharedAssemblyLoadContext",
             "isCollectible": false,
-            "selectedAsset": "upstream:Az.Accounts/5.5.2/lib/netstandard2.0/Azure.Core.dll"
+            "selectedAsset": "upstream:Az.Accounts/5.5.3/lib/netstandard2.0/Azure.Core.dll"
           },
           {
             "name": "Microsoft.Identity.Client.Extensions.Msal",
@@ -896,7 +850,7 @@
             "sha256": "10f799a3ff80ccffc2b0a9dc9534465ef68deb5de79340b63bf20c5a58e6bbda",
             "assemblyLoadContext": "AzSharedAssemblyLoadContext",
             "isCollectible": false,
-            "selectedAsset": "upstream:Az.Accounts/5.5.2/lib/netstandard2.0/Microsoft.Identity.Client.Extensions.Msal.dll"
+            "selectedAsset": "upstream:Az.Accounts/5.5.3/lib/netstandard2.0/Microsoft.Identity.Client.Extensions.Msal.dll"
           },
           {
             "name": "Microsoft.OData.Core",
@@ -932,13 +886,13 @@
             "sha256": "113a90cac8ff3cee04e52960f52897d5c0d2c40a1f05f3ae04289498c7bb7065",
             "assemblyLoadContext": "AzSharedAssemblyLoadContext",
             "isCollectible": false,
-            "selectedAsset": "upstream:Az.Accounts/5.5.2/lib/netstandard2.0/System.ClientModel.dll"
+            "selectedAsset": "upstream:Az.Accounts/5.5.3/lib/netstandard2.0/System.ClientModel.dll"
           },
           {
             "name": "System.Security.Cryptography.ProtectedData",
             "version": "9.0.0.0",
             "fullName": "System.Security.Cryptography.ProtectedData, Version=9.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
-            "sha256": "eee01276c62b271b9e77f434a854920c33fd45b4415d1c5512cbfa048b275a9c",
+            "sha256": "c63cad18f427586fe37c8745c5914acc5956bb6a53459ce5450681ef519ada17",
             "assemblyLoadContext": "Default",
             "isCollectible": false,
             "selectedAsset": "runtime:System.Security.Cryptography.ProtectedData.dll"
@@ -975,7 +929,7 @@
             "sha256": "7ec9feb7738364d2d3a7a598f7c0cff090fdff971086d45cfb35a67858c6f5c7",
             "assemblyLoadContext": "AzSharedAssemblyLoadContext",
             "isCollectible": false,
-            "selectedAsset": "upstream:Az.Accounts/5.5.2/lib/netstandard2.0/Azure.Core.dll"
+            "selectedAsset": "upstream:Az.Accounts/5.5.3/lib/netstandard2.0/Azure.Core.dll"
           },
           {
             "name": "Microsoft.Identity.Client",
@@ -1083,7 +1037,7 @@
             "sha256": "113a90cac8ff3cee04e52960f52897d5c0d2c40a1f05f3ae04289498c7bb7065",
             "assemblyLoadContext": "AzSharedAssemblyLoadContext",
             "isCollectible": false,
-            "selectedAsset": "upstream:Az.Accounts/5.5.2/lib/netstandard2.0/System.ClientModel.dll"
+            "selectedAsset": "upstream:Az.Accounts/5.5.3/lib/netstandard2.0/System.ClientModel.dll"
           },
           {
             "name": "System.IdentityModel.Tokens.Jwt",
@@ -1098,7 +1052,7 @@
             "name": "System.Security.Cryptography.ProtectedData",
             "version": "9.0.0.0",
             "fullName": "System.Security.Cryptography.ProtectedData, Version=9.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
-            "sha256": "eee01276c62b271b9e77f434a854920c33fd45b4415d1c5512cbfa048b275a9c",
+            "sha256": "c63cad18f427586fe37c8745c5914acc5956bb6a53459ce5450681ef519ada17",
             "assemblyLoadContext": "Default",
             "isCollectible": false,
             "selectedAsset": "runtime:System.Security.Cryptography.ProtectedData.dll"
@@ -1116,9 +1070,9 @@
         ],
         "importedModuleAssets": [
           "upstream:ExchangeOnlineManagement/3.10.1/ExchangeOnlineManagement.psd1",
-          "upstream:MicrosoftTeams/7.9.0/MicrosoftTeams.psd1",
-          "upstream:Microsoft.Graph.Authentication/2.39.0/Microsoft.Graph.Authentication.psd1",
-          "upstream:Az.Accounts/5.5.2/Az.Accounts.psd1"
+          "upstream:MicrosoftTeams/8.0.0/MicrosoftTeams.psd1",
+          "upstream:Microsoft.Graph.Authentication/2.41.2/Microsoft.Graph.Authentication.psd1",
+          "upstream:Az.Accounts/5.5.3/Az.Accounts.psd1"
         ],
         "dllPicklePreloaded": false,
         "expectedLimitation": false,
@@ -1136,30 +1090,21 @@
         "assemblies": [
           {
             "name": "Azure.Core",
-            "version": "1.51.1.0",
-            "fullName": "Azure.Core, Version=1.51.1.0, Culture=neutral, PublicKeyToken=92742159e12e44c8",
-            "sha256": "f734878c493959695f189f6d52d72d9a4601152e1486950895b0628160784cb5",
-            "assemblyLoadContext": "msgraph-load-context",
-            "isCollectible": false,
-            "selectedAsset": "upstream:Microsoft.Graph.Authentication/2.39.0/Dependencies/Core/Azure.Core.dll"
-          },
-          {
-            "name": "Azure.Core",
             "version": "1.57.0.0",
             "fullName": "Azure.Core, Version=1.57.0.0, Culture=neutral, PublicKeyToken=92742159e12e44c8",
             "sha256": "7ec9feb7738364d2d3a7a598f7c0cff090fdff971086d45cfb35a67858c6f5c7",
             "assemblyLoadContext": "AzSharedAssemblyLoadContext",
             "isCollectible": false,
-            "selectedAsset": "upstream:Az.Accounts/5.5.2/lib/netstandard2.0/Azure.Core.dll"
+            "selectedAsset": "upstream:Az.Accounts/5.5.3/lib/netstandard2.0/Azure.Core.dll"
           },
           {
             "name": "Microsoft.Identity.Client",
             "version": "4.82.0.0",
             "fullName": "Microsoft.Identity.Client, Version=4.82.0.0, Culture=neutral, PublicKeyToken=0a613f4dd989e8ae",
-            "sha256": "35b5b56e0c0a1fef35e7865943cd8d8bec25a7facc225d01078ca6fd7b41b9a9",
+            "sha256": "fab7a2f2ffdebe09682e3c373f3d3d6de3d9fd06a4aa86ac45ca1333f149391c",
             "assemblyLoadContext": "Default",
             "isCollectible": false,
-            "selectedAsset": "upstream:MicrosoftTeams/7.9.0/netcoreapp3.1/Microsoft.Identity.Client.dll"
+            "selectedAsset": "upstream:MicrosoftTeams/8.0.0/netcoreapp3.1/Microsoft.Identity.Client.dll"
           },
           {
             "name": "Microsoft.Identity.Client.Extensions.Msal",
@@ -1168,22 +1113,13 @@
             "sha256": "10f799a3ff80ccffc2b0a9dc9534465ef68deb5de79340b63bf20c5a58e6bbda",
             "assemblyLoadContext": "AzSharedAssemblyLoadContext",
             "isCollectible": false,
-            "selectedAsset": "upstream:Az.Accounts/5.5.2/lib/netstandard2.0/Microsoft.Identity.Client.Extensions.Msal.dll"
-          },
-          {
-            "name": "System.ClientModel",
-            "version": "1.9.0.0",
-            "fullName": "System.ClientModel, Version=1.9.0.0, Culture=neutral, PublicKeyToken=92742159e12e44c8",
-            "sha256": "0b49fd44c751de7a9fd7eb0a3a1104fbfb3bd5d8d616f4af5b3ca6c98a8dd614",
-            "assemblyLoadContext": "msgraph-load-context",
-            "isCollectible": false,
-            "selectedAsset": "upstream:Microsoft.Graph.Authentication/2.39.0/Dependencies/System.ClientModel.dll"
+            "selectedAsset": "upstream:Az.Accounts/5.5.3/lib/netstandard2.0/Microsoft.Identity.Client.Extensions.Msal.dll"
           },
           {
             "name": "System.Security.Cryptography.ProtectedData",
             "version": "9.0.0.0",
             "fullName": "System.Security.Cryptography.ProtectedData, Version=9.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
-            "sha256": "eee01276c62b271b9e77f434a854920c33fd45b4415d1c5512cbfa048b275a9c",
+            "sha256": "c63cad18f427586fe37c8745c5914acc5956bb6a53459ce5450681ef519ada17",
             "assemblyLoadContext": "Default",
             "isCollectible": false,
             "selectedAsset": "runtime:System.Security.Cryptography.ProtectedData.dll"
@@ -1201,9 +1137,9 @@
         ],
         "importedModuleAssets": [
           "upstream:ExchangeOnlineManagement/3.10.1/ExchangeOnlineManagement.psd1",
-          "upstream:MicrosoftTeams/7.9.0/MicrosoftTeams.psd1",
-          "upstream:Microsoft.Graph.Authentication/2.39.0/Microsoft.Graph.Authentication.psd1",
-          "upstream:Az.Accounts/5.5.2/Az.Accounts.psd1"
+          "upstream:MicrosoftTeams/8.0.0/MicrosoftTeams.psd1",
+          "upstream:Microsoft.Graph.Authentication/2.41.2/Microsoft.Graph.Authentication.psd1",
+          "upstream:Az.Accounts/5.5.3/Az.Accounts.psd1"
         ],
         "dllPicklePreloaded": true,
         "expectedLimitation": false,
@@ -1221,21 +1157,12 @@
         "assemblies": [
           {
             "name": "Azure.Core",
-            "version": "1.51.1.0",
-            "fullName": "Azure.Core, Version=1.51.1.0, Culture=neutral, PublicKeyToken=92742159e12e44c8",
-            "sha256": "f734878c493959695f189f6d52d72d9a4601152e1486950895b0628160784cb5",
-            "assemblyLoadContext": "msgraph-load-context",
-            "isCollectible": false,
-            "selectedAsset": "upstream:Microsoft.Graph.Authentication/2.39.0/Dependencies/Core/Azure.Core.dll"
-          },
-          {
-            "name": "Azure.Core",
             "version": "1.57.0.0",
             "fullName": "Azure.Core, Version=1.57.0.0, Culture=neutral, PublicKeyToken=92742159e12e44c8",
             "sha256": "7ec9feb7738364d2d3a7a598f7c0cff090fdff971086d45cfb35a67858c6f5c7",
             "assemblyLoadContext": "AzSharedAssemblyLoadContext",
             "isCollectible": false,
-            "selectedAsset": "upstream:Az.Accounts/5.5.2/lib/netstandard2.0/Azure.Core.dll"
+            "selectedAsset": "upstream:Az.Accounts/5.5.3/lib/netstandard2.0/Azure.Core.dll"
           },
           {
             "name": "Microsoft.Identity.Client",
@@ -1310,15 +1237,6 @@
             "selectedAsset": "dllpickle:bin/net9.0/Microsoft.IdentityModel.Tokens.dll"
           },
           {
-            "name": "System.ClientModel",
-            "version": "1.9.0.0",
-            "fullName": "System.ClientModel, Version=1.9.0.0, Culture=neutral, PublicKeyToken=92742159e12e44c8",
-            "sha256": "0b49fd44c751de7a9fd7eb0a3a1104fbfb3bd5d8d616f4af5b3ca6c98a8dd614",
-            "assemblyLoadContext": "msgraph-load-context",
-            "isCollectible": false,
-            "selectedAsset": "upstream:Microsoft.Graph.Authentication/2.39.0/Dependencies/System.ClientModel.dll"
-          },
-          {
             "name": "System.IdentityModel.Tokens.Jwt",
             "version": "8.18.0.0",
             "fullName": "System.IdentityModel.Tokens.Jwt, Version=8.18.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35",
@@ -1331,7 +1249,7 @@
             "name": "System.Security.Cryptography.ProtectedData",
             "version": "9.0.0.0",
             "fullName": "System.Security.Cryptography.ProtectedData, Version=9.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
-            "sha256": "eee01276c62b271b9e77f434a854920c33fd45b4415d1c5512cbfa048b275a9c",
+            "sha256": "c63cad18f427586fe37c8745c5914acc5956bb6a53459ce5450681ef519ada17",
             "assemblyLoadContext": "Default",
             "isCollectible": false,
             "selectedAsset": "runtime:System.Security.Cryptography.ProtectedData.dll"
@@ -1348,10 +1266,10 @@
           "MicrosoftTeams"
         ],
         "importedModuleAssets": [
-          "upstream:Az.Accounts/5.5.2/Az.Accounts.psd1",
-          "upstream:Microsoft.Graph.Authentication/2.39.0/Microsoft.Graph.Authentication.psd1",
+          "upstream:Az.Accounts/5.5.3/Az.Accounts.psd1",
+          "upstream:Microsoft.Graph.Authentication/2.41.2/Microsoft.Graph.Authentication.psd1",
           "upstream:ExchangeOnlineManagement/3.10.1/ExchangeOnlineManagement.psd1",
-          "upstream:MicrosoftTeams/7.9.0/MicrosoftTeams.psd1"
+          "upstream:MicrosoftTeams/8.0.0/MicrosoftTeams.psd1"
         ],
         "dllPicklePreloaded": false,
         "expectedLimitation": false,
@@ -1374,7 +1292,7 @@
             "sha256": "7ec9feb7738364d2d3a7a598f7c0cff090fdff971086d45cfb35a67858c6f5c7",
             "assemblyLoadContext": "AzSharedAssemblyLoadContext",
             "isCollectible": false,
-            "selectedAsset": "upstream:Az.Accounts/5.5.2/lib/netstandard2.0/Azure.Core.dll"
+            "selectedAsset": "upstream:Az.Accounts/5.5.3/lib/netstandard2.0/Azure.Core.dll"
           },
           {
             "name": "Microsoft.Identity.Client",
@@ -1383,7 +1301,7 @@
             "sha256": "d18da88bce62a54fa71b3cdf9dfa4b4dfc9759521e872721535d5d5ff63a7651",
             "assemblyLoadContext": "AzSharedAssemblyLoadContext",
             "isCollectible": false,
-            "selectedAsset": "upstream:Az.Accounts/5.5.2/lib/netstandard2.0/Microsoft.Identity.Client.dll"
+            "selectedAsset": "upstream:Az.Accounts/5.5.3/lib/netstandard2.0/Microsoft.Identity.Client.dll"
           },
           {
             "name": "Microsoft.Identity.Client.Extensions.Msal",
@@ -1392,22 +1310,13 @@
             "sha256": "10f799a3ff80ccffc2b0a9dc9534465ef68deb5de79340b63bf20c5a58e6bbda",
             "assemblyLoadContext": "AzSharedAssemblyLoadContext",
             "isCollectible": false,
-            "selectedAsset": "upstream:Az.Accounts/5.5.2/lib/netstandard2.0/Microsoft.Identity.Client.Extensions.Msal.dll"
-          },
-          {
-            "name": "System.ClientModel",
-            "version": "1.13.0.0",
-            "fullName": "System.ClientModel, Version=1.13.0.0, Culture=neutral, PublicKeyToken=92742159e12e44c8",
-            "sha256": "113a90cac8ff3cee04e52960f52897d5c0d2c40a1f05f3ae04289498c7bb7065",
-            "assemblyLoadContext": "AzSharedAssemblyLoadContext",
-            "isCollectible": false,
-            "selectedAsset": "upstream:Az.Accounts/5.5.2/lib/netstandard2.0/System.ClientModel.dll"
+            "selectedAsset": "upstream:Az.Accounts/5.5.3/lib/netstandard2.0/Microsoft.Identity.Client.Extensions.Msal.dll"
           },
           {
             "name": "System.Security.Cryptography.ProtectedData",
             "version": "9.0.0.0",
             "fullName": "System.Security.Cryptography.ProtectedData, Version=9.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
-            "sha256": "eee01276c62b271b9e77f434a854920c33fd45b4415d1c5512cbfa048b275a9c",
+            "sha256": "c63cad18f427586fe37c8745c5914acc5956bb6a53459ce5450681ef519ada17",
             "assemblyLoadContext": "Default",
             "isCollectible": false,
             "selectedAsset": "runtime:System.Security.Cryptography.ProtectedData.dll"
@@ -1424,10 +1333,10 @@
           "MicrosoftTeams"
         ],
         "importedModuleAssets": [
-          "upstream:Az.Accounts/5.5.2/Az.Accounts.psd1",
-          "upstream:Microsoft.Graph.Authentication/2.39.0/Microsoft.Graph.Authentication.psd1",
+          "upstream:Az.Accounts/5.5.3/Az.Accounts.psd1",
+          "upstream:Microsoft.Graph.Authentication/2.41.2/Microsoft.Graph.Authentication.psd1",
           "upstream:ExchangeOnlineManagement/3.10.1/ExchangeOnlineManagement.psd1",
-          "upstream:MicrosoftTeams/7.9.0/MicrosoftTeams.psd1"
+          "upstream:MicrosoftTeams/8.0.0/MicrosoftTeams.psd1"
         ],
         "dllPicklePreloaded": true,
         "expectedLimitation": false,
@@ -1450,7 +1359,7 @@
             "sha256": "7ec9feb7738364d2d3a7a598f7c0cff090fdff971086d45cfb35a67858c6f5c7",
             "assemblyLoadContext": "AzSharedAssemblyLoadContext",
             "isCollectible": false,
-            "selectedAsset": "upstream:Az.Accounts/5.5.2/lib/netstandard2.0/Azure.Core.dll"
+            "selectedAsset": "upstream:Az.Accounts/5.5.3/lib/netstandard2.0/Azure.Core.dll"
           },
           {
             "name": "Microsoft.Identity.Client",
@@ -1525,15 +1434,6 @@
             "selectedAsset": "dllpickle:bin/net9.0/Microsoft.IdentityModel.Tokens.dll"
           },
           {
-            "name": "System.ClientModel",
-            "version": "1.13.0.0",
-            "fullName": "System.ClientModel, Version=1.13.0.0, Culture=neutral, PublicKeyToken=92742159e12e44c8",
-            "sha256": "113a90cac8ff3cee04e52960f52897d5c0d2c40a1f05f3ae04289498c7bb7065",
-            "assemblyLoadContext": "AzSharedAssemblyLoadContext",
-            "isCollectible": false,
-            "selectedAsset": "upstream:Az.Accounts/5.5.2/lib/netstandard2.0/System.ClientModel.dll"
-          },
-          {
             "name": "System.IdentityModel.Tokens.Jwt",
             "version": "8.18.0.0",
             "fullName": "System.IdentityModel.Tokens.Jwt, Version=8.18.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35",
@@ -1546,7 +1446,7 @@
             "name": "System.Security.Cryptography.ProtectedData",
             "version": "9.0.0.0",
             "fullName": "System.Security.Cryptography.ProtectedData, Version=9.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a",
-            "sha256": "eee01276c62b271b9e77f434a854920c33fd45b4415d1c5512cbfa048b275a9c",
+            "sha256": "c63cad18f427586fe37c8745c5914acc5956bb6a53459ce5450681ef519ada17",
             "assemblyLoadContext": "Default",
             "isCollectible": false,
             "selectedAsset": "runtime:System.Security.Cryptography.ProtectedData.dll"

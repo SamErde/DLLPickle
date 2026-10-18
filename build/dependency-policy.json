@@ -819,8 +819,8 @@
       "powerShellLine": "7.4",
       "targetFramework": "net8.0",
       "dotnetMajor": 8,
-      "baselineStatus": "stale-requires-refresh-issue-273",
-      "baselineEvidence": "Legacy Windows snapshot from 2026-06-25; not authoritative for other operating systems.",
+      "baselineStatus": "accepted",
+      "baselineEvidence": "Nine exact PowerShell/TFM/OS x64 normalized snapshots from GitHub Actions run 39093670313; accepted 2026-10-18.",
       "platforms": [
         "windows",
         "linux",
@@ -889,24 +889,24 @@
       "baselines": {
         "windows": {
           "status": "accepted",
-          "conflictSurfaceFingerprint": "b2ef2e3b81097f9759e215a994053e084fe074faf799b8293b1c24f8ab0a192d",
-          "scenarioFingerprint": "dc2b138e15169b85da6579fe7e2ac17f81b3853889b6cee45d5c26f8add70d78",
+          "conflictSurfaceFingerprint": "ed1ca2fd95efeeeabc3a45f75c331e58ab0e017e0b0524e6158a571b7c181eb9",
+          "scenarioFingerprint": "f549b677ce4422203ef0c99d7c8a1fd82ae1d4691bb1e74bf03d14307f55998d",
           "evidencePath": "profile-evidence/ps7.4-net8.0-windows-x64.json",
-          "evidenceFingerprint": "db3ea852a32ee2f9dcd21d44efc272ff18fd80157a4a036417bd2b2c73d6ae9e"
+          "evidenceFingerprint": "878a6892c6ff7b2ea87e3bdadc50d2b21b01a74504bf426f8d79f4c5cd2f33df"
         },
         "linux": {
           "status": "accepted",
-          "conflictSurfaceFingerprint": "f2ed8b0b9b1c45a252ca86d06f3f7c4a1a1200f95a7e94e9446cca421f53b000",
-          "scenarioFingerprint": "4cbde0f6edd69e935b7a2948bbf3c36293ba5abe2333007b11092b088c55ef19",
+          "conflictSurfaceFingerprint": "235867008c801db3c2d59dcef90ee0d247829fa9863f5b829bf59b0721bc241d",
+          "scenarioFingerprint": "a8a03336b69064c6d74e206e1faacd9f54d592e09b817ea2068b8c7ea70ab3c1",
           "evidencePath": "profile-evidence/ps7.4-net8.0-linux-x64.json",
-          "evidenceFingerprint": "3e5a3e1d771b9cc6ee31f1605a037a2af26493ed6858bb528a54b597de575283"
+          "evidenceFingerprint": "dd0b2f89376a062a8b9ae9bf1a77764a837c7e7fa4ba09b0fd78586b048f468a"
         },
         "macos": {
           "status": "accepted",
-          "conflictSurfaceFingerprint": "0aadbc0d363b8a16bb6b591c6a1f7d61266a6bb60aa02f23dac8eb9c9b1547a8",
-          "scenarioFingerprint": "95992a216513d3223431587940d36bd89758af9562e201c7ad40989fbeb220bc",
+          "conflictSurfaceFingerprint": "b4be33797df04c6c14269946d9a5a01e874b03be9c024f7210cc52e8f2d53ed0",
+          "scenarioFingerprint": "18d1a9a89ff8a1988c4f1fec7d03168a113e0e31b3622f983610015e9a21e99e",
           "evidencePath": "profile-evidence/ps7.4-net8.0-macos-x64.json",
-          "evidenceFingerprint": "a1ffa4ad38d1aa25421931e86c9617e0477ace74dc7cbcb7fac882ff62eb19da"
+          "evidenceFingerprint": "e7ae430aecf3aac10d5cbc6fc9ace5ebb68dc1add2b91f9ce6949ba35e746bc4"
         }
       },
       "legacyUnscopedBaseline": {
@@ -918,8 +918,8 @@
       "powerShellLine": "7.5",
       "targetFramework": "net9.0",
       "dotnetMajor": 9,
-      "baselineStatus": "requires-ci-evidence",
-      "baselineEvidence": "No profile-specific baseline has been accepted; the nine-cell CI evidence lane must run.",
+      "baselineStatus": "accepted",
+      "baselineEvidence": "Nine exact PowerShell/TFM/OS x64 normalized snapshots from GitHub Actions run 39093670313; accepted 2026-10-18.",
       "platforms": [
         "windows",
         "linux",
@@ -988,24 +988,24 @@
       "baselines": {
         "windows": {
           "status": "accepted",
-          "conflictSurfaceFingerprint": "335a11b2b849902e213614891c43dcf864f40d193ee587e10dc58a6ccd40d729",
-          "scenarioFingerprint": "36684a8b67017021ed7540ccc1c4eaaf2d4a53a1a4c807f4433f78c7d324d001",
+          "conflictSurfaceFingerprint": "761f6e317c230eb79bf1832b369df561aa210bd0ea0756614990b37ba1257f69",
+          "scenarioFingerprint": "5e5ca07fab44e72889fcbcdd4c75cf534d5ee99afa27c80d691882dfad95ec73",
           "evidencePath": "profile-evidence/ps7.5-net9.0-windows-x64.json",
-          "evidenceFingerprint": "ac62ce357b779bddc117d6234d1fbf3edcbc09bfa755053f1ce32d97dbe8dc4f"
+          "evidenceFingerprint": "29d5324658da622038b6dabe5268d030a894d9d365d48b665f4e4be26a82f5c3"
         },
         "linux": {
           "status": "accepted",
-          "conflictSurfaceFingerprint": "16eaccc3fd30948d4ff09ef9228345229de68e53e4fe0f100d9683c513a1fc84",
-          "scenarioFingerprint": "af15d53b9bc05c4423165de6d8c13b3e3445d3fb0cdab010e7cf54982ab78980",
+          "conflictSurfaceFingerprint": "45383ffb16c640b3400d4536999b66dec97a9ef1f178c0c972e0a948eb0a37f9",
+          "scenarioFingerprint": "9da0300d55d251ab4c72b816899f968b20be726e2ba810224f7e239093b31474",
           "evidencePath": "profile-evidence/ps7.5-net9.0-linux-x64.json",
-          "evidenceFingerprint": "00f9cdd3507b3480950cb9cf2230e86405e98ef88eca08e05bc62bf4f6fa34d3"
+          "evidenceFingerprint": "09b9dff592335b6900d498002dd482070562b513a6b99d34f6ebd89e8d6e529c"
         },
         "macos": {
           "status": "accepted",
-          "conflictSurfaceFingerprint": "1cc79f2f3af66f0d4b1793e5311df21066980435e89c75ba710a2f643b9884d7",
-          "scenarioFingerprint": "4e39d071eda5c4fa9be584bb1805a0932c0fc8113e1f27194aa6760d3a3f541a",
+          "conflictSurfaceFingerprint": "490cfa15313c451f4097f3a2e533df20ae38e533a07f6ee9b952628e69a1574d",
+          "scenarioFingerprint": "e42ad5a2f6702a97ad2b082372f0a3653a9f4c133f261eb78974b4d0656e3ee4",
           "evidencePath": "profile-evidence/ps7.5-net9.0-macos-x64.json",
-          "evidenceFingerprint": "dd70b37eec9f32c08c75198544dbc9f40635ea3046287d835c9d0c5074a6831d"
+          "evidenceFingerprint": "82495fcedb5dfe1d399d787291feef89d897c3c0a90e9214e064b0b85c0e5014"
         }
       }
     },
@@ -1013,8 +1013,8 @@
       "powerShellLine": "7.6",
       "targetFramework": "net10.0",
       "dotnetMajor": 10,
-      "baselineStatus": "requires-ci-evidence",
-      "baselineEvidence": "No profile-specific baseline has been accepted; the nine-cell CI evidence lane must run.",
+      "baselineStatus": "accepted",
+      "baselineEvidence": "Nine exact PowerShell/TFM/OS x64 normalized snapshots from GitHub Actions run 39093670313; accepted 2026-10-18.",
       "platforms": [
         "windows",
         "linux",
@@ -1083,24 +1083,24 @@
       "baselines": {
         "windows": {
           "status": "accepted",
-          "conflictSurfaceFingerprint": "1c5b37d886f13577fa1380c11ede9dc225fe517a281103b8076a8924d90389f3",
-          "scenarioFingerprint": "ff71ef233c126de350e6d01de17838c3963ebc16dcbad5b1598a03ffd12b57b7",
+          "conflictSurfaceFingerprint": "94dc8150ec730bd2bae146c10f85a523eaac117afa2470ad36a19afd4e8bbbbe",
+          "scenarioFingerprint": "8eeba8cebe935d304e91fd7695d16811cff8f2350953d286c121d32aa32a2f09",
           "evidencePath": "profile-evidence/ps7.6-net10.0-windows-x64.json",
-          "evidenceFingerprint": "a9f7107ef9360feef67f1eca1fb7afcabdb217f1c14b6415bdcbba76df07a48e"
+          "evidenceFingerprint": "1311589d1328f7d8800fbf53adcdd7e16b0c0454b3248c35c75513edf885d969"
         },
         "linux": {
           "status": "accepted",
-          "conflictSurfaceFingerprint": "96c2933d465d2c94b3f7caf53095788bed1ea51dd4a46290a88ec5a4a60ca643",
-          "scenarioFingerprint": "9ce72aabd07190fbe7f42070b45756b2d9297256357e0ae0798978ae14265f73",
+          "conflictSurfaceFingerprint": "dab7fbe60b5506166e3a70d17e497b87950fdc27655face89e7dc284c4893d8a",
+          "scenarioFingerprint": "efde78898811d02c9b9cb12dfe19b0da50c313e949a6920dec39188075c1f094",
           "evidencePath": "profile-evidence/ps7.6-net10.0-linux-x64.json",
-          "evidenceFingerprint": "8f7e16648edefdfdf0f4f7edb09984c5fb43788363a770f8f36ce594a40938c8"
+          "evidenceFingerprint": "3f0deb5835278f0fd33f7a03ae612f9c93b6a236fa18271ffe03f1d1e0819ed0"
         },
         "macos": {
           "status": "accepted",
-          "conflictSurfaceFingerprint": "e7f221fbab3f96e5cf10fb6c21d811e56d1b58b0aa079c8c4b1869573442ba56",
-          "scenarioFingerprint": "9c23ccd74eed68a1ef25d4d9da3b39ed797d445b1ba1ffb4db5b6d65469e55e6",
+          "conflictSurfaceFingerprint": "30c9c1afa00bfdef179534b0238430dbfa989ed472b64e5174702b1e645fcbb4",
+          "scenarioFingerprint": "d3274e8c1bf778e26f99af1b7026d3991e149530b59b2ec8dc0fad1cd3ea3629",
           "evidencePath": "profile-evidence/ps7.6-net10.0-macos-x64.json",
-          "evidenceFingerprint": "631d8a315d5b16a3b417e2089cb6daf0629125986b3eec82335e8f4b283b8ea7"
+          "evidenceFingerprint": "3b9688d476127919764e68d0b1d78716e2ed1b0507b742cafffaad4e49f10835"
         }
       }
     }
