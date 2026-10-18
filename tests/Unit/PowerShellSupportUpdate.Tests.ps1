@@ -63,7 +63,7 @@ BeforeAll {
         [PSCustomObject]@{ MatrixPath = $MatrixPath; ReleasePath = $ReleasePath; LifecyclePath = $LifecyclePath }
     }
 
-    function Set-ReviewedRetirementPolicy {
+    function Add-ReviewedRetirementPolicyFixture {
         param([string]$MatrixPath)
 
         $Matrix = Get-Content -LiteralPath $MatrixPath -Raw | ConvertFrom-Json
@@ -194,7 +194,7 @@ Describe 'PowerShell support update discovery' -Tag 'Unit' {
 
     It 'allows servicing proposals after reviewed retirement decisions are recorded' {
         $Fixture = Get-SupportUpdateFixture -Root $TestDrive -ReleaseVersions @('7.4.19', '7.5.10', '7.6.5')
-        Set-ReviewedRetirementPolicy -MatrixPath $Fixture.MatrixPath
+        Add-ReviewedRetirementPolicyFixture -MatrixPath $Fixture.MatrixPath
 
         $Report = & $script:DiscoveryPath -TestMatrixPath $Fixture.MatrixPath -ReleaseDataPath $Fixture.ReleasePath -LifecycleDataPath $Fixture.LifecyclePath -OutputPath (Join-Path $TestDrive 'reviewed-retirement.json') -AsOfUtc '2026-10-18T00:00:00Z'
 
@@ -206,7 +206,7 @@ Describe 'PowerShell support update discovery' -Tag 'Unit' {
 
     It 'retains only the fresh hosted-service holdover after upstream retirement' {
         $Fixture = Get-SupportUpdateFixture -Root $TestDrive -ReleaseVersions @('7.4.18', '7.5.9', '7.6.4')
-        Set-ReviewedRetirementPolicy -MatrixPath $Fixture.MatrixPath
+        Add-ReviewedRetirementPolicyFixture -MatrixPath $Fixture.MatrixPath
 
         $Report = & $script:DiscoveryPath -TestMatrixPath $Fixture.MatrixPath -ReleaseDataPath $Fixture.ReleasePath -LifecycleDataPath $Fixture.LifecyclePath -OutputPath (Join-Path $TestDrive 'post-retirement.json') -AsOfUtc '2026-11-11T08:00:00Z'
 
