@@ -40,7 +40,17 @@ function Get-DLLPicklePowerShellSupportState {
         if ($RetirementAction -notin @('retire-at-lifecycle-end', 'retain-for-hosted-service-compatibility')) {
             throw "PowerShell $ReleaseLine has unsupported retirement action '$RetirementAction'."
         }
-        if ([string]$Policy.decisionDate -notmatch '^\d{4}-\d{2}-\d{2}$' -or [string]::IsNullOrWhiteSpace([string]$Policy.reviewTrigger)) {
+        $DecisionDateUtc = [datetime]::MinValue
+        $DecisionDateIsValid = [datetime]::TryParseExact(
+            [string]$Policy.decisionDate,
+            'yyyy-MM-dd',
+            [System.Globalization.CultureInfo]::InvariantCulture,
+            [System.Globalization.DateTimeStyles]::AssumeUniversal -bor [System.Globalization.DateTimeStyles]::AdjustToUniversal,
+            [ref]$DecisionDateUtc
+        )
+        if (-not $DecisionDateIsValid -or
+            $DecisionDateUtc.Date -gt $EvaluationUtc.Date -or
+            [string]::IsNullOrWhiteSpace([string]$Policy.reviewTrigger)) {
             throw "PowerShell $ReleaseLine retirement policy must contain a decision date and review trigger."
         }
 

@@ -21,6 +21,10 @@ BeforeAll {
         $Matrix = Get-Content -LiteralPath $script:TestMatrixPath -Raw | ConvertFrom-Json
         $HoldoverProfile = $Matrix.profiles | Where-Object powerShellMinor -EQ 4
         $HoldoverProfile.supportPolicy.evidenceVerifiedUtc = $EvidenceVerifiedUtc
+        $FixtureDecisionDate = ([datetimeoffset]$LastVerifiedUtc).UtcDateTime.ToString('yyyy-MM-dd')
+        foreach ($RuntimeProfile in @($Matrix.profiles | Where-Object { $null -ne $_.supportPolicy })) {
+            $RuntimeProfile.supportPolicy.decisionDate = $FixtureDecisionDate
+        }
         $Matrix.lastVerifiedUtc = $LastVerifiedUtc
         $FixturePath = Join-Path $TestDrive "$Name.json"
         $Matrix | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $FixturePath -Encoding UTF8
@@ -223,6 +227,9 @@ Describe 'Runtime profile lifecycle enforcement' -Tag 'Unit' {
         $Matrix = Get-Content -LiteralPath $script:TestMatrixPath -Raw | ConvertFrom-Json
         $Matrix.lastVerifiedUtc = '2026-07-01T00:00:00Z'
         ($Matrix.profiles | Where-Object powerShellMinor -EQ 4).supportPolicy.evidenceVerifiedUtc = '2026-07-01T00:00:00Z'
+        foreach ($RuntimeProfile in @($Matrix.profiles | Where-Object { $null -ne $_.supportPolicy })) {
+            $RuntimeProfile.supportPolicy.decisionDate = '2026-07-01'
+        }
         $MatrixFixture = Join-Path $TestDrive 'matrix-stale.json'
         $Matrix | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $MatrixFixture -Encoding UTF8
 
@@ -235,6 +242,9 @@ Describe 'Runtime profile lifecycle enforcement' -Tag 'Unit' {
         $Matrix = Get-Content -LiteralPath $script:TestMatrixPath -Raw | ConvertFrom-Json
         $Matrix.lastVerifiedUtc = '2026-07-01T00:00:00Z'
         ($Matrix.profiles | Where-Object powerShellMinor -EQ 4).supportPolicy.evidenceVerifiedUtc = '2026-07-01T00:00:00Z'
+        foreach ($RuntimeProfile in @($Matrix.profiles | Where-Object { $null -ne $_.supportPolicy })) {
+            $RuntimeProfile.supportPolicy.decisionDate = '2026-07-01'
+        }
         $MatrixFixture = Join-Path $TestDrive 'matrix-scheduled-stale.json'
         $Matrix | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $MatrixFixture -Encoding UTF8
         $Warnings = @()

@@ -220,6 +220,30 @@ Describe 'PowerShell support update discovery' -Tag 'Unit' {
         @($Report.Lifecycle | Where-Object RetirementDecisionRecorded) | Should -HaveCount 2
     }
 
+    It 'rejects an invalid retirement decision calendar date' {
+        $Fixture = Get-SupportUpdateFixture -Root $TestDrive -ReleaseVersions @('7.4.18', '7.5.9', '7.6.4')
+        Add-ReviewedRetirementPolicyFixture -MatrixPath $Fixture.MatrixPath
+        $Matrix = Get-Content -LiteralPath $Fixture.MatrixPath -Raw | ConvertFrom-Json
+        @($Matrix.profiles | Where-Object powerShellMinor -EQ 5)[0].supportPolicy.decisionDate = '2026-99-99'
+        $Matrix | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $Fixture.MatrixPath -Encoding UTF8
+
+        {
+            & $script:DiscoveryPath -TestMatrixPath $Fixture.MatrixPath -ReleaseDataPath $Fixture.ReleasePath -LifecycleDataPath $Fixture.LifecyclePath -OutputPath (Join-Path $TestDrive 'invalid-decision-date.json') -AsOfUtc '2026-10-18T00:00:00Z'
+        } | Should -Throw '*decision date*'
+    }
+
+    It 'rejects a retirement decision dated after the evaluation date' {
+        $Fixture = Get-SupportUpdateFixture -Root $TestDrive -ReleaseVersions @('7.4.18', '7.5.9', '7.6.4')
+        Add-ReviewedRetirementPolicyFixture -MatrixPath $Fixture.MatrixPath
+        $Matrix = Get-Content -LiteralPath $Fixture.MatrixPath -Raw | ConvertFrom-Json
+        @($Matrix.profiles | Where-Object powerShellMinor -EQ 5)[0].supportPolicy.decisionDate = '2026-10-19'
+        $Matrix | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $Fixture.MatrixPath -Encoding UTF8
+
+        {
+            & $script:DiscoveryPath -TestMatrixPath $Fixture.MatrixPath -ReleaseDataPath $Fixture.ReleasePath -LifecycleDataPath $Fixture.LifecyclePath -OutputPath (Join-Path $TestDrive 'future-decision-date.json') -AsOfUtc '2026-10-18T23:59:59Z'
+        } | Should -Throw '*decision date*'
+    }
+
     It 'retains only the fresh hosted-service holdover after upstream retirement' {
         $Fixture = Get-SupportUpdateFixture -Root $TestDrive -ReleaseVersions @('7.4.18', '7.5.9', '7.6.4')
         Add-ReviewedRetirementPolicyFixture -MatrixPath $Fixture.MatrixPath
