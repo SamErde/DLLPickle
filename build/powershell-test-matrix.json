@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "lastVerifiedUtc": "2026-08-09T01:11:47Z",
+  "lastVerifiedUtc": "2026-10-18T03:10:45Z",
   "lifecycleSourceUrl": "https://learn.microsoft.com/en-us/lifecycle/products/powershell",
   "evidenceFreshnessDays": 30,
   "retirementWarningDays": 90,
   "profiles": [
     {
-      "powerShellVersion": "7.4.18",
+      "powerShellVersion": "7.4.21",
       "powerShellMajor": 7,
       "powerShellMinor": 4,
       "dotnetMajor": 8,
-      "dotnetRuntimeVersion": "8.0.29",
+      "dotnetRuntimeVersion": "8.0.32",
       "targetFramework": "net8.0",
       "lifecycleState": "Supported",
       "lifecycleEndDate": "2026-11-10",
@@ -36,11 +36,11 @@
       }
     },
     {
-      "powerShellVersion": "7.5.9",
+      "powerShellVersion": "7.5.12",
       "powerShellMajor": 7,
       "powerShellMinor": 5,
       "dotnetMajor": 9,
-      "dotnetRuntimeVersion": "9.0.18",
+      "dotnetRuntimeVersion": "9.0.21",
       "targetFramework": "net9.0",
       "lifecycleState": "Supported",
       "lifecycleEndDate": "2026-11-10",
@@ -52,11 +52,11 @@
       }
     },
     {
-      "powerShellVersion": "7.6.4",
+      "powerShellVersion": "7.6.7",
       "powerShellMajor": 7,
       "powerShellMinor": 6,
       "dotnetMajor": 10,
-      "dotnetRuntimeVersion": "10.0.10",
+      "dotnetRuntimeVersion": "10.0.13",
       "targetFramework": "net10.0",
       "lifecycleState": "Supported",
       "lifecycleEndDate": "2028-11-14",
@@ -85,76 +85,76 @@
   ],
   "archiveAssets": [
     {
-      "powerShellVersion": "7.4.18",
+      "powerShellVersion": "7.4.21",
       "platform": "windows",
       "architecture": "x64",
-      "fileName": "PowerShell-7.4.18-win-x64.zip",
-      "sha256": "d018ed5f92ff15a28442dce6a804b1e2aa6153d9fe1e9a06de8fd8142b171f4a",
-      "downloadUrl": "https://github.com/PowerShell/PowerShell/releases/download/v7.4.18/PowerShell-7.4.18-win-x64.zip"
+      "fileName": "PowerShell-7.4.21-win-x64.zip",
+      "sha256": "b47ee814b9fe5fe6b713a26667998cadd6bbb74cb3889fadea56c775f11953a2",
+      "downloadUrl": "https://github.com/PowerShell/PowerShell/releases/download/v7.4.21/PowerShell-7.4.21-win-x64.zip"
     },
     {
-      "powerShellVersion": "7.4.18",
+      "powerShellVersion": "7.4.21",
       "platform": "linux",
       "architecture": "x64",
-      "fileName": "powershell-7.4.18-linux-x64.tar.gz",
-      "sha256": "21962bfc832119fc8a58e5eba24bc48f0d31707ce94a4e48a90178a223eba619",
-      "downloadUrl": "https://github.com/PowerShell/PowerShell/releases/download/v7.4.18/powershell-7.4.18-linux-x64.tar.gz"
+      "fileName": "powershell-7.4.21-linux-x64.tar.gz",
+      "sha256": "3fc5e1567c450bd7bd5ae69ebb0a9a4a4e0418bbc36b0232cf6dd547f0bfc0eb",
+      "downloadUrl": "https://github.com/PowerShell/PowerShell/releases/download/v7.4.21/powershell-7.4.21-linux-x64.tar.gz"
     },
     {
-      "powerShellVersion": "7.4.18",
+      "powerShellVersion": "7.4.21",
       "platform": "macos",
       "architecture": "x64",
-      "fileName": "powershell-7.4.18-osx-x64.tar.gz",
-      "sha256": "7bcd1c95f3ae6e859a8209766db075bea6edf31952017e624ec79fb02879ab9d",
-      "downloadUrl": "https://github.com/PowerShell/PowerShell/releases/download/v7.4.18/powershell-7.4.18-osx-x64.tar.gz"
+      "fileName": "powershell-7.4.21-osx-x64.tar.gz",
+      "sha256": "9b51a3171cf270d444283330673adfab0f4f5551904ea8d70bcd68250bd315da",
+      "downloadUrl": "https://github.com/PowerShell/PowerShell/releases/download/v7.4.21/powershell-7.4.21-osx-x64.tar.gz"
     },
     {
-      "powerShellVersion": "7.5.9",
+      "powerShellVersion": "7.5.12",
       "platform": "windows",
       "architecture": "x64",
-      "fileName": "PowerShell-7.5.9-win-x64.zip",
-      "sha256": "1e769394e2cde496bf6c55797a51a88873091415a853fa3b56255b2329fa3ef8",
-      "downloadUrl": "https://github.com/PowerShell/PowerShell/releases/download/v7.5.9/PowerShell-7.5.9-win-x64.zip"
+      "fileName": "PowerShell-7.5.12-win-x64.zip",
+      "sha256": "d7717e274d9bcbbf60334b8a560e3ea20f9da887e9475a9b0e28036ede69b123",
+      "downloadUrl": "https://github.com/PowerShell/PowerShell/releases/download/v7.5.12/PowerShell-7.5.12-win-x64.zip"
     },
     {
-      "powerShellVersion": "7.5.9",
+      "powerShellVersion": "7.5.12",
       "platform": "linux",
       "architecture": "x64",
-      "fileName": "powershell-7.5.9-linux-x64.tar.gz",
-      "sha256": "492ff26bb958336bf61e597ce19e07648b4003bd2a08659e02f0e3e0446ebfe0",
-      "downloadUrl": "https://github.com/PowerShell/PowerShell/releases/download/v7.5.9/powershell-7.5.9-linux-x64.tar.gz"
+      "fileName": "powershell-7.5.12-linux-x64.tar.gz",
+      "sha256": "db85ae1f45005ffd20e456890585167257151fa99406ccd7ab344f7cf3a766fd",
+      "downloadUrl": "https://github.com/PowerShell/PowerShell/releases/download/v7.5.12/powershell-7.5.12-linux-x64.tar.gz"
     },
     {
-      "powerShellVersion": "7.5.9",
+      "powerShellVersion": "7.5.12",
       "platform": "macos",
       "architecture": "x64",
-      "fileName": "powershell-7.5.9-osx-x64.tar.gz",
-      "sha256": "528c261a07bc01466559183f868f8ed7fddc7e29c440e2339eba6f8a682a73a1",
-      "downloadUrl": "https://github.com/PowerShell/PowerShell/releases/download/v7.5.9/powershell-7.5.9-osx-x64.tar.gz"
+      "fileName": "powershell-7.5.12-osx-x64.tar.gz",
+      "sha256": "1643c7edbb046d6693f8383311bdbd83c6e04bde804ce6fc4c5fed089ee3bb08",
+      "downloadUrl": "https://github.com/PowerShell/PowerShell/releases/download/v7.5.12/powershell-7.5.12-osx-x64.tar.gz"
     },
     {
-      "powerShellVersion": "7.6.4",
+      "powerShellVersion": "7.6.7",
       "platform": "windows",
       "architecture": "x64",
-      "fileName": "PowerShell-7.6.4-win-x64.zip",
-      "sha256": "80832551c52809301e6071c8bac977beb5a2f1ec953eb4db9f94deb953333793",
-      "downloadUrl": "https://github.com/PowerShell/PowerShell/releases/download/v7.6.4/PowerShell-7.6.4-win-x64.zip"
+      "fileName": "PowerShell-7.6.7-win-x64.zip",
+      "sha256": "d2f952ebdbf24386cb8923553aa58e41a846db35a6155ea04c58142a4b16dbb7",
+      "downloadUrl": "https://github.com/PowerShell/PowerShell/releases/download/v7.6.7/PowerShell-7.6.7-win-x64.zip"
     },
     {
-      "powerShellVersion": "7.6.4",
+      "powerShellVersion": "7.6.7",
       "platform": "linux",
       "architecture": "x64",
-      "fileName": "powershell-7.6.4-linux-x64.tar.gz",
-      "sha256": "4471b5a36bfe86ec7af8525d36bb1cacba0128e7aac22d05cc064bc00e604721",
-      "downloadUrl": "https://github.com/PowerShell/PowerShell/releases/download/v7.6.4/powershell-7.6.4-linux-x64.tar.gz"
+      "fileName": "powershell-7.6.7-linux-x64.tar.gz",
+      "sha256": "6896f9e3a6b0a354bf470835a96da76d2f801cd50dcf047ad7c4563bf93bf431",
+      "downloadUrl": "https://github.com/PowerShell/PowerShell/releases/download/v7.6.7/powershell-7.6.7-linux-x64.tar.gz"
     },
     {
-      "powerShellVersion": "7.6.4",
+      "powerShellVersion": "7.6.7",
       "platform": "macos",
       "architecture": "x64",
-      "fileName": "powershell-7.6.4-osx-x64.tar.gz",
-      "sha256": "b58e4b96dbdca20c058d4462f33509d386c0d768751344611bc04aaf32e4187c",
-      "downloadUrl": "https://github.com/PowerShell/PowerShell/releases/download/v7.6.4/powershell-7.6.4-osx-x64.tar.gz"
+      "fileName": "powershell-7.6.7-osx-x64.tar.gz",
+      "sha256": "c354ca845cb81f9239bc0c6fbfd14256056400e4b269bd7a6373d113ad94c1e3",
+      "downloadUrl": "https://github.com/PowerShell/PowerShell/releases/download/v7.6.7/powershell-7.6.7-osx-x64.tar.gz"
     }
   ],
   "provisioning": {

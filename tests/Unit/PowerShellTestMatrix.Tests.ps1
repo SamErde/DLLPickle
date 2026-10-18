@@ -8,7 +8,7 @@ Describe 'Generated exact PowerShell test matrix' -Tag 'Unit' {
         $matrix = & $script:GeneratorPath -Compress | ConvertFrom-Json
 
         @($matrix.include) | Should -HaveCount 9
-        @($matrix.include.powerShellVersion | Sort-Object -Unique) | Should -Be @('7.4.18', '7.5.9', '7.6.4')
+        @($matrix.include.powerShellVersion | Sort-Object -Unique) | Should -Be @('7.4.21', '7.5.12', '7.6.7')
         @($matrix.include.platform | Sort-Object -Unique) | Should -Be @('linux', 'macos', 'windows')
         @($matrix.include.targetFramework | Sort-Object -Unique) | Should -Be @('net10.0', 'net8.0', 'net9.0')
     }

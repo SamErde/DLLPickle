@@ -13,7 +13,7 @@ Describe 'Runtime profile policy data' -Tag 'Unit' {
 
         $policy.schemaVersion | Should -Be 1
         @($policy.profiles) | Should -HaveCount 3
-        $rawPolicy | Should -Not -Match '7\.4\.18|7\.5\.9|7\.6\.4|multi-pwsh|MultiPwsh|lifecycle|checksum|sha256'
+        $rawPolicy | Should -Not -Match '7\.4\.21|7\.5\.12|7\.6\.7|multi-pwsh|MultiPwsh|lifecycle|checksum|sha256'
     }
 
     It 'maps every supported PowerShell line to one CLR major and TFM' {
@@ -49,7 +49,7 @@ Describe 'Runtime profile policy data' -Tag 'Unit' {
         $rawMatrix | Should -Match '"lastVerifiedUtc":\s*"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z"'
         $matrix.evidenceFreshnessDays | Should -BeGreaterThan 0
         $matrix.retirementWarningDays | Should -BeGreaterThan 0
-        @($matrix.profiles).powerShellVersion | Should -Be @('7.4.18', '7.5.9', '7.6.4')
+        @($matrix.profiles).powerShellVersion | Should -Be @('7.4.21', '7.5.12', '7.6.7')
         @($matrix.lanes).platform | Should -Be @('windows', 'linux', 'macos')
         @($matrix.archiveAssets) | Should -HaveCount 9
         $matrix.provisioning.optionalProvider.name | Should -Be 'MultiPwsh'
@@ -162,8 +162,13 @@ Describe 'Runtime profile lifecycle enforcement' -Tag 'Unit' {
     }
 
     It 'fails a release check when lifecycle verification is stale' {
+        $Matrix = Get-Content -LiteralPath $script:TestMatrixPath -Raw | ConvertFrom-Json
+        $Matrix.lastVerifiedUtc = '2026-07-01T00:00:00Z'
+        $MatrixFixture = Join-Path $TestDrive 'matrix-stale.json'
+        $Matrix | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $MatrixFixture -Encoding UTF8
+
         {
-            & $script:PolicyTestScriptPath -Mode Release -AsOfUtc ([datetime]'2026-09-15T00:00:00Z')
+            & $script:PolicyTestScriptPath -TestMatrixPath $MatrixFixture -Mode Release -AsOfUtc ([datetime]'2026-09-15T00:00:00Z')
         } | Should -Throw '*stale*last verified*'
     }
 

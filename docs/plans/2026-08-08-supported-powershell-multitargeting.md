@@ -23,9 +23,9 @@ These decisions are inputs to implementation and should not be silently re-adjud
 
    | PowerShell | Current documented patch | .NET runtime | TFM | Microsoft lifecycle state |
    | --- | --- | --- | --- | --- |
-   | 7.4 LTS | 7.4.18 | .NET 8 | `net8.0` | Supported; retirement listed in November 2026 |
-   | 7.5 | 7.5.9 | .NET 9 | `net9.0` | Supported; retirement listed in November 2026 |
-   | 7.6 LTS | 7.6.4 | .NET 10 | `net10.0` | Supported through November 2028 |
+   | 7.4 LTS | 7.4.21 | .NET 8 | `net8.0` | Supported; bounded hosted-service holdover after retirement |
+   | 7.5 | 7.5.12 | .NET 9 | `net9.0` | Supported; retire at the November 2026 lifecycle boundary |
+   | 7.6 LTS | 7.6.7 | .NET 10 | `net10.0` | Supported through November 2028 |
 
 3. Only the latest Microsoft-serviced patch in each supported release line is an authoritative test target. Exact patch pins are updated automatically after validation.
 4. Adding a new PowerShell minor line or removing a retired line changes the distributed support contract and requires maintainer review. It must not auto-merge.
