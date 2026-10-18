@@ -32,6 +32,7 @@ Describe 'Upstream compatibility workflow guardrails' -Tag 'Unit' {
         $UpstreamWorkflow | Should -Match ([regex]::Escape("'^tools/DLLPickle\.ProfileEvidence\.ps1$'"))
         $UpstreamWorkflow | Should -Match ([regex]::Escape("'^tools/Invoke-DLLPickleBuild\.ps1$'"))
         $UpstreamWorkflow | Should -Match ([regex]::Escape('tools/New-DLLPickleConflictMatrix.ps1'))
+        $UpstreamWorkflow | Should -Match ([regex]::Escape("'^tools/New-DLLPicklePowerShellTestMatrix\.ps1$'"))
         $UpstreamWorkflow | Should -Match ([regex]::Escape('tools/New-DLLPickleUpstreamScenarioEvidence.ps1'))
         $UpstreamWorkflow | Should -Match ([regex]::Escape("'^src/DLLPickle/'"))
     }

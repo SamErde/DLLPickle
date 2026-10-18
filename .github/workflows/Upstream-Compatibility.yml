@@ -78,6 +78,7 @@ jobs:
                 '^tools/Invoke-DLLPickleBuild\.ps1$',
                 '^tools/New-DLLPickleConflictMatrix\.ps1$',
                 '^tools/New-DLLPickleNormalizedProfileEvidence\.ps1$',
+                '^tools/New-DLLPicklePowerShellTestMatrix\.ps1$',
                 '^tools/New-DLLPickleUpstreamScenarioEvidence\.ps1$',
                 '^tools/Test-DLLPickleProfileConflictBaseline\.ps1$',
                 '^tools/Install-DLLPickleTestPowerShell\.ps1$',
