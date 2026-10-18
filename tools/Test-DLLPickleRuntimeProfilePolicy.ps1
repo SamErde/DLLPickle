@@ -59,6 +59,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'DLLPickle.PowerShellSupportPolicy.ps1')
 
 foreach ($RequiredInput in @(
         [PSCustomObject]@{ Name = 'Runtime profile policy'; Path = $RuntimePolicyPath }
@@ -127,6 +128,7 @@ if ($LifecycleEvidence) {
     if (@($LifecycleEvidence.lifecycleMissingLines).Count -gt 0) { $LiveEvidenceViolations.Add('declared lifecycle lines missing from live evidence') }
     if (@($LifecycleEvidence.undeclaredSupportedLines).Count -gt 0) { $LiveEvidenceViolations.Add('undeclared Microsoft-supported lines') }
     if (@($LifecycleEvidence.lifecycle | Where-Object Status -EQ 'Expired').Count -gt 0) { $LiveEvidenceViolations.Add('expired PowerShell lines') }
+    if (@($LifecycleEvidence.lifecycle | Where-Object Status -EQ 'HoldoverReviewDue').Count -gt 0) { $LiveEvidenceViolations.Add('hosted-service holdover review due') }
     $DeclaredReleaseLines = @($TestProfiles | ForEach-Object { '{0}.{1}' -f $_.powerShellMajor, $_.powerShellMinor } | Sort-Object -Unique)
     $EvidenceReleaseLines = @($LifecycleEvidence.lifecycle.ReleaseLine | ForEach-Object { [string]$_ } | Sort-Object -Unique)
     if (($DeclaredReleaseLines -join [char]0) -ne ($EvidenceReleaseLines -join [char]0)) { $LiveEvidenceViolations.Add('live lifecycle rows do not align with declared PowerShell lines') }
@@ -147,6 +149,7 @@ $EvidenceIsStale = $EvidenceAgeDays -gt [double]$TestMatrix.evidenceFreshnessDay
 
 $Results = [System.Collections.Generic.List[object]]::new()
 $ExpiredLines = [System.Collections.Generic.List[string]]::new()
+$HoldoverReviewDueLines = [System.Collections.Generic.List[string]]::new()
 $PacificTimeZone = try {
     [System.TimeZoneInfo]::FindSystemTimeZoneById('America/Los_Angeles')
 } catch {
@@ -169,19 +172,19 @@ foreach ($TestProfile in $TestProfiles) {
     )
     $EndExclusivePacific = [datetime]::SpecifyKind($EndDate.AddDays(1), [System.DateTimeKind]::Unspecified)
     $EndExclusiveUtc = [System.TimeZoneInfo]::ConvertTimeToUtc($EndExclusivePacific, $PacificTimeZone)
-    $DaysRemaining = [math]::Floor(($EndExclusiveUtc - $EvaluationUtc).TotalDays)
     $ReleaseLine = '{0}.{1}' -f $TestProfile.powerShellMajor, $TestProfile.powerShellMinor
-    $Status = if ($EvaluationUtc -ge $EndExclusiveUtc) {
+    $SupportState = Get-DLLPicklePowerShellSupportState -Profile $TestProfile -LifecycleEndExclusiveUtc $EndExclusiveUtc -AsOfUtc $EvaluationUtc -RetirementWarningDays ([int]$TestMatrix.retirementWarningDays)
+    $Status = $SupportState.Status
+    if ($Status -eq 'Expired') {
         $ExpiredLines.Add($ReleaseLine)
-        'Expired'
-    } elseif ($DaysRemaining -le [int]$TestMatrix.retirementWarningDays) {
-        'RetiringSoon'
-    } else {
-        'Supported'
+    } elseif ($Status -eq 'HoldoverReviewDue') {
+        $HoldoverReviewDueLines.Add($ReleaseLine)
     }
 
     if ($Mode -eq 'Scheduled' -and $Status -eq 'RetiringSoon') {
-        Write-Warning "PowerShell $ReleaseLine retires on $($TestProfile.lifecycleEndDate) ($DaysRemaining day(s) remaining)."
+        Write-Warning "PowerShell $ReleaseLine retires on $($TestProfile.lifecycleEndDate) ($($SupportState.DaysRemaining) day(s) remaining); action: $($SupportState.RetirementAction)."
+    } elseif ($Mode -eq 'Scheduled' -and $Status -eq 'CompatibilityHoldover') {
+        Write-Warning "PowerShell $ReleaseLine is retained as a hosted-service compatibility holdover; evidence age is $($SupportState.HoldoverEvidenceAgeDays) day(s)."
     }
 
     $Results.Add([PSCustomObject]@{
@@ -190,15 +193,20 @@ foreach ($TestProfile in $TestProfiles) {
             DotnetMajor       = [int]$TestProfile.dotnetMajor
             TargetFramework   = $TestProfile.targetFramework
             LifecycleEndDate  = $TestProfile.lifecycleEndDate
-            DaysRemaining     = $DaysRemaining
+            DaysRemaining     = $SupportState.DaysRemaining
             EvidenceAgeDays   = [math]::Round($EvidenceAgeDays, 2)
             Status            = $Status
+            RetirementAction  = $SupportState.RetirementAction
+            HoldoverEvidenceAgeDays = $SupportState.HoldoverEvidenceAgeDays
         })
 }
 
 $Violations = [System.Collections.Generic.List[string]]::new()
 if ($ExpiredLines.Count -gt 0) {
     $Violations.Add("expired PowerShell lines: $($ExpiredLines -join ', ')")
+}
+if ($HoldoverReviewDueLines.Count -gt 0) {
+    $Violations.Add("hosted-service holdover review due: $($HoldoverReviewDueLines -join ', ')")
 }
 if ($EvidenceIsStale) {
     $EvidenceDescription = if ($LifecycleEvidence) { "live evidence generated $VerifiedTimestamp" } else { "last verified $VerifiedTimestamp" }
@@ -211,8 +219,8 @@ if ($EvidenceIsStale) {
 if ($Mode -eq 'Release' -and $Violations.Count -gt 0) {
     throw "Runtime profile policy release check failed: $($Violations -join '; ')."
 }
-if ($Mode -eq 'Scheduled' -and $ExpiredLines.Count -gt 0) {
-    throw "Runtime profile policy contains expired PowerShell lines: $($ExpiredLines -join ', ')."
+if ($Mode -eq 'Scheduled' -and ($ExpiredLines.Count -gt 0 -or $HoldoverReviewDueLines.Count -gt 0)) {
+    throw "Runtime profile policy requires retirement action: $($Violations -join '; ')."
 }
 
 if ($PassThru) {

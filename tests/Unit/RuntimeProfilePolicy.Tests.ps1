@@ -108,10 +108,42 @@ Describe 'Runtime profile lifecycle enforcement' -Tag 'Unit' {
         @($result.Status | Sort-Object -Unique) | Should -Be @('Supported')
     }
 
-    It 'fails closed when a shipped support line is expired' {
+    It 'fails closed when a shipped support line expires without a holdover' {
         {
             & $script:PolicyTestScriptPath -Mode Release -AsOfUtc ([datetime]'2026-11-11T08:00:00Z')
-        } | Should -Throw '*expired*7.4*7.5*'
+        } | Should -Throw '*expired*7.5*'
+    }
+
+    It 'permits the bounded 7.4 hosted-service holdover while its evidence is fresh' {
+        $RuntimePolicy = Get-Content -LiteralPath $script:RuntimePolicyPath -Raw | ConvertFrom-Json
+        $Matrix = Get-Content -LiteralPath $script:TestMatrixPath -Raw | ConvertFrom-Json
+        $RuntimePolicy.profiles = @($RuntimePolicy.profiles | Where-Object powerShellMinor -EQ 4)
+        $Matrix.profiles = @($Matrix.profiles | Where-Object powerShellMinor -EQ 4)
+        $Matrix.lastVerifiedUtc = '2026-11-11T08:00:00Z'
+        $RuntimePolicyFixture = Join-Path $TestDrive 'runtime-policy-74.json'
+        $MatrixFixture = Join-Path $TestDrive 'matrix-74.json'
+        $RuntimePolicy | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $RuntimePolicyFixture -Encoding UTF8
+        $Matrix | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $MatrixFixture -Encoding UTF8
+
+        $Result = @(& $script:PolicyTestScriptPath -RuntimePolicyPath $RuntimePolicyFixture -TestMatrixPath $MatrixFixture -Mode Release -AsOfUtc ([datetime]'2026-11-11T08:01:00Z') -PassThru)
+
+        $Result.Status | Should -Be 'CompatibilityHoldover'
+        $Result.RetirementAction | Should -Be 'retain-for-hosted-service-compatibility'
+    }
+
+    It 'fails closed when hosted-service holdover evidence needs revalidation' {
+        $RuntimePolicy = Get-Content -LiteralPath $script:RuntimePolicyPath -Raw | ConvertFrom-Json
+        $Matrix = Get-Content -LiteralPath $script:TestMatrixPath -Raw | ConvertFrom-Json
+        $RuntimePolicy.profiles = @($RuntimePolicy.profiles | Where-Object powerShellMinor -EQ 4)
+        $Matrix.profiles = @($Matrix.profiles | Where-Object powerShellMinor -EQ 4)
+        $Matrix.lastVerifiedUtc = '2027-02-01T00:00:00Z'
+        $RuntimePolicyFixture = Join-Path $TestDrive 'runtime-policy-74-stale.json'
+        $MatrixFixture = Join-Path $TestDrive 'matrix-74-stale.json'
+        $RuntimePolicy | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $RuntimePolicyFixture -Encoding UTF8
+        $Matrix | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $MatrixFixture -Encoding UTF8
+
+        { & $script:PolicyTestScriptPath -RuntimePolicyPath $RuntimePolicyFixture -TestMatrixPath $MatrixFixture -Mode Release -AsOfUtc ([datetime]'2027-02-01T00:01:00Z') } |
+            Should -Throw '*holdover review due*7.4*'
     }
 
     It 'keeps a line supported through the end of its Pacific lifecycle day' {

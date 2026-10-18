@@ -312,7 +312,7 @@ jobs:
               $(if (@($Report.NewLines).Count -eq 0) { '- None' } else { @($Report.NewLines | Sort-Object ReleaseLine | ForEach-Object { "- $($_.ReleaseLine): latest $($_.LatestVersion), lifecycle end $($_.LifecycleEndDate); CLR/TFM mapping and initial evidence pending" }) })
               ''
               'Retiring or expired declared lines:'
-              $(if (@($Report.Lifecycle | Where-Object Status -IN @('RetiringSoon', 'Expired')).Count -eq 0) { '- None' } else { @($Report.Lifecycle | Where-Object Status -IN @('RetiringSoon', 'Expired') | Sort-Object ReleaseLine | ForEach-Object { "- $($_.ReleaseLine): $($_.Status), lifecycle end $($_.LifecycleEnd), $($_.DaysRemaining) day(s) remaining" }) })
+              $(if (@($Report.Lifecycle | Where-Object { ($_.Status -eq 'RetiringSoon' -and -not $_.RetirementDecisionRecorded) -or $_.Status -in @('Expired', 'HoldoverReviewDue') }).Count -eq 0) { '- None' } else { @($Report.Lifecycle | Where-Object { ($_.Status -eq 'RetiringSoon' -and -not $_.RetirementDecisionRecorded) -or $_.Status -in @('Expired', 'HoldoverReviewDue') } | Sort-Object ReleaseLine | ForEach-Object { "- $($_.ReleaseLine): $($_.Status), lifecycle end $($_.LifecycleEnd), $($_.DaysRemaining) day(s) remaining" }) })
               ''
               'Lifecycle date changes:'
               $(if (@($Report.LifecycleDateChanges).Count -eq 0) { '- None' } else { @($Report.LifecycleDateChanges | Sort-Object ReleaseLine | ForEach-Object { "- $($_.ReleaseLine): matrix $($_.MatrixLifecycleEnd), live $($_.LifecycleEnd)" }) })

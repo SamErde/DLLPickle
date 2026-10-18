@@ -186,7 +186,7 @@ Each task should finish with focused green tests before advancing. Preserve unre
 - [ ] Write failing schema, uniqueness, and cross-file-alignment tests.
 - [ ] Add the shipped runtime profile and non-shipped CI matrix.
 - [ ] Validate PowerShell minor, CLR major, TFM, supported OS, exact patch, lifecycle date, and evidence timestamp fields.
-- [ ] Add a release-time lifecycle check that fails if the package still claims an expired Microsoft support line.
+- [ ] Add a release-time lifecycle check that fails if the package claims an expired Microsoft support line without a fresh, reviewed hosted-service compatibility holdover.
 - [ ] Add a scheduled warning before an impending retirement.
 - [ ] Ensure an exact patch-only CI matrix update does not alter the shipped runtime contract.
 
@@ -329,7 +329,7 @@ If the newest upstream release does not support a still-supported PowerShell lin
 
 - [ ] Run analyzer, unit tests, integration tests, issue reproductions, locked restore, complete build, and packaging checks.
 - [ ] Run all available exact-runtime cells locally or through GitHub Actions.
-- [ ] Confirm the package contains only `net8.0`, `net9.0`, and `net10.0` while those lines remain Microsoft-supported.
+- [ ] Confirm the package contains only `net8.0`, `net9.0`, and `net10.0` while those lines remain Microsoft-supported or are covered by a fresh, reviewed hosted-service compatibility holdover.
 - [ ] Confirm no `multi-pwsh` executable, NuGet package, module dependency, code reference, or license payload is present in the artifact.
 - [ ] Confirm every claimed runtime reports the expected PowerShell, CLR, TFM, `$PSHOME`, and process executable.
 - [ ] Refresh Microsoft lifecycle state immediately before release.
@@ -349,7 +349,7 @@ Detection is automatic; support-contract changes are reviewed.
 - A new supported minor line opens a proposal PR or issue containing the PowerShell/.NET/TFM mapping, package-size estimate, build results, and initial upstream conflict evidence.
 - An approaching retirement opens a warning before the lifecycle deadline.
 - Removal of a retired line changes the loader, package contents, documentation, and support floor and therefore requires a reviewed release decision.
-- The release workflow fails closed if the package still claims a line past the verified Microsoft support end.
+- The release workflow fails closed if the package still claims a line past the verified Microsoft support end, unless a reviewed hosted-service compatibility holdover identifies the affected Microsoft service, cites current official documentation, and remains within its bounded evidence-freshness window. A holdover does not represent the retired PowerShell line as Microsoft-supported and must be revalidated or removed when its evidence expires.
 
 ### 6.3 Dependency updates
 
@@ -360,7 +360,7 @@ Detection is automatic; support-contract changes are reviewed.
 ## 7. Definition of done
 
 - [ ] PowerShell 7.3 and `net7.0` are absent from code, tests, artifacts, and support claims.
-- [ ] The published module contains one isolated payload for every and only currently Microsoft-supported PowerShell 7 line in scope.
+- [ ] The published module contains one isolated payload for every declared PowerShell 7 line in scope, with Microsoft lifecycle state and any bounded hosted-service holdover represented separately.
 - [ ] The loader selects the exact TFM using both PowerShell and CLR versions and fails closed on mismatches.
 - [ ] Every claimed PowerShell/OS cell executes the stock official `pwsh` binary for its exact pinned servicing patch.
 - [ ] Test logs and artifacts record PowerShell, CLR, TFM, executable path, `$PSHOME`, OS, architecture, and selected bundle.

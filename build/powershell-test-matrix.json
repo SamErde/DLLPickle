@@ -14,7 +14,26 @@
       "targetFramework": "net8.0",
       "lifecycleState": "Supported",
       "lifecycleEndDate": "2026-11-10",
-      "releaseNotesUrl": "https://learn.microsoft.com/en-us/powershell/scripting/whats-new/what-s-new-in-powershell-74"
+      "releaseNotesUrl": "https://learn.microsoft.com/en-us/powershell/scripting/whats-new/what-s-new-in-powershell-74",
+      "supportPolicy": {
+        "retirementAction": "retain-for-hosted-service-compatibility",
+        "decisionDate": "2026-10-17",
+        "evidenceVerifiedUtc": "2026-10-18T03:03:34Z",
+        "evidenceFreshnessDays": 90,
+        "reviewTrigger": "Revalidate when the evidence expires or when Azure Functions Linux Consumption supports PowerShell 7.6 or later without requiring a hosting-plan migration.",
+        "hostedServices": [
+          {
+            "name": "Azure Functions Linux Consumption",
+            "documentationUrl": "https://learn.microsoft.com/en-us/azure/azure-functions/functions-versions",
+            "finding": "PowerShell 7.4 is the last supported PowerShell version on Linux Consumption; moving to PowerShell 7.6 requires migration to Flex Consumption."
+          },
+          {
+            "name": "Azure Automation",
+            "documentationUrl": "https://learn.microsoft.com/en-us/azure/automation/automation-runbook-types",
+            "finding": "PowerShell 7.4 and PowerShell 7.6 are supported for cloud and hybrid jobs, so existing 7.4 automation remains a compatibility population during migration."
+          }
+        ]
+      }
     },
     {
       "powerShellVersion": "7.5.9",
@@ -25,7 +44,12 @@
       "targetFramework": "net9.0",
       "lifecycleState": "Supported",
       "lifecycleEndDate": "2026-11-10",
-      "releaseNotesUrl": "https://learn.microsoft.com/en-us/powershell/scripting/whats-new/what-s-new-in-powershell-75"
+      "releaseNotesUrl": "https://learn.microsoft.com/en-us/powershell/scripting/whats-new/what-s-new-in-powershell-75",
+      "supportPolicy": {
+        "retirementAction": "retire-at-lifecycle-end",
+        "decisionDate": "2026-10-17",
+        "reviewTrigger": "Remove the 7.5 profile after the Microsoft lifecycle boundary unless new official hosted-service evidence justifies a separately reviewed holdover."
+      }
     },
     {
       "powerShellVersion": "7.6.4",

@@ -17,7 +17,7 @@ A PowerShell module that helps you get un-stuck from dependency version conflict
 
 ### Prerequisites
 
-One of the Microsoft-supported PowerShell lines in the [generated support matrix](docs/generated/Support-Matrix.md) on Linux, macOS, or Windows. The current contract is PowerShell 7.4, 7.5, and 7.6, each with its matching .NET runtime bundle.
+One of the declared PowerShell lines in the [generated support matrix](docs/generated/Support-Matrix.md) on Linux, macOS, or Windows. The current contract is PowerShell 7.4, 7.5, and 7.6, each with its matching .NET runtime bundle. The matrix distinguishes Microsoft lifecycle support from a bounded hosted-service compatibility holdover.
 
 ### Installation
 

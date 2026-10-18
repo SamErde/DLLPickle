@@ -47,6 +47,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'DLLPickle.PowerShellSupportPolicy.ps1')
 
 function Get-DLLPickleStableFingerprint {
     [CmdletBinding()]
@@ -228,13 +229,18 @@ $LifecycleRows = @(
             continue
         }
         $EndDate = [datetime]::ParseExact([string]$LiveLifecycle[0].EndDate, 'yyyy-MM-dd', [System.Globalization.CultureInfo]::InvariantCulture)
-        $DaysRemaining = [math]::Floor(($EndDate.Date.AddDays(1) - $AsOfPacificDate).TotalDays)
+        $EndExclusivePacific = [datetime]::SpecifyKind($EndDate.Date.AddDays(1), [System.DateTimeKind]::Unspecified)
+        $EndExclusiveUtc = [System.TimeZoneInfo]::ConvertTimeToUtc($EndExclusivePacific, $PacificTimeZone)
+        $SupportState = Get-DLLPicklePowerShellSupportState -Profile $MatrixProfile -LifecycleEndExclusiveUtc $EndExclusiveUtc -AsOfUtc $AsOfUtc -RetirementWarningDays ([int]$TestMatrix.retirementWarningDays)
         [PSCustomObject]@{
             ReleaseLine   = $ReleaseLine
             LifecycleEnd  = [string]$LiveLifecycle[0].EndDate
             MatrixLifecycleEnd = [string]$MatrixProfile.lifecycleEndDate
-            DaysRemaining = $DaysRemaining
-            Status        = if ($DaysRemaining -le 0) { 'Expired' } elseif ($DaysRemaining -le [int]$TestMatrix.retirementWarningDays) { 'RetiringSoon' } else { 'Supported' }
+            DaysRemaining = $SupportState.DaysRemaining
+            Status        = $SupportState.Status
+            RetirementAction = $SupportState.RetirementAction
+            RetirementDecisionRecorded = $SupportState.RetirementDecisionRecorded
+            HoldoverEvidenceAgeDays = $SupportState.HoldoverEvidenceAgeDays
         }
     }
 )
@@ -248,7 +254,10 @@ $SupportContractReviewRequired =
     $UndeclaredSupportedLines.Count -gt 0 -or
     $LifecycleDateChanges.Count -gt 0 -or
     $LifecycleMissingLines.Count -gt 0 -or
-    @($LifecycleRows | Where-Object Status -IN @('RetiringSoon', 'Expired')).Count -gt 0
+    @($LifecycleRows | Where-Object {
+            ($_.Status -eq 'RetiringSoon' -and -not $_.RetirementDecisionRecorded) -or
+            $_.Status -in @('Expired', 'HoldoverReviewDue')
+        }).Count -gt 0
 $PatchCanonicalLines = @(
     foreach ($PatchUpdate in @($PatchUpdates | Sort-Object ReleaseLine)) {
         'patch|{0}|{1}|{2}' -f $PatchUpdate.ReleaseLine, $PatchUpdate.CurrentVersion, $PatchUpdate.CandidateVersion
@@ -270,7 +279,10 @@ $SupportContractCanonicalLines = @(
     foreach ($UndeclaredLine in @($UndeclaredSupportedLines | Sort-Object)) {
         'undeclared-supported|{0}' -f $UndeclaredLine
     }
-    foreach ($LifecycleState in @($LifecycleRows | Where-Object Status -IN @('RetiringSoon', 'Expired') | Sort-Object ReleaseLine)) {
+    foreach ($LifecycleState in @($LifecycleRows | Where-Object {
+                ($_.Status -eq 'RetiringSoon' -and -not $_.RetirementDecisionRecorded) -or
+                $_.Status -in @('Expired', 'HoldoverReviewDue')
+            } | Sort-Object ReleaseLine)) {
         'lifecycle-state|{0}|{1}|{2}' -f $LifecycleState.ReleaseLine, $LifecycleState.Status, $LifecycleState.LifecycleEnd
     }
 )
@@ -311,6 +323,8 @@ if ($RequireCurrent.IsPresent) {
     if ($LifecycleMissingLines.Count -gt 0) { $Violations.Add("declared lines missing from lifecycle data: $($LifecycleMissingLines -join ', ')") }
     $ExpiredLines = @($LifecycleRows | Where-Object Status -EQ 'Expired')
     if ($ExpiredLines.Count -gt 0) { $Violations.Add("expired lines: $($ExpiredLines.ReleaseLine -join ', ')") }
+    $HoldoverReviewDueLines = @($LifecycleRows | Where-Object Status -EQ 'HoldoverReviewDue')
+    if ($HoldoverReviewDueLines.Count -gt 0) { $Violations.Add("hosted-service holdover review due: $($HoldoverReviewDueLines.ReleaseLine -join ', ')") }
     if ($IncompletePatchUpdates.Count -gt 0) { $Violations.Add('candidate patch assets lack a complete official checksum set') }
     if ($Violations.Count -gt 0) {
         throw "PowerShell support matrix is not release-current: $($Violations -join '; ')."

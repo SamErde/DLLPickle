@@ -4,14 +4,24 @@
 
 Lifecycle and servicing data last verified: **2026-08-09**.
 
-| PowerShell line | Exact CI patch | .NET runtime | Bundled TFM | Microsoft lifecycle | Support end | Required OS cells |
-|---|---:|---:|---:|---|---:|---|
-| 7.4 | 7.4.18 | 8.0.29 | `net8.0` | Supported | 2026-11-10 | Windows, Linux, macOS |
-| 7.5 | 7.5.9 | 9.0.18 | `net9.0` | Supported | 2026-11-10 | Windows, Linux, macOS |
-| 7.6 | 7.6.4 | 10.0.10 | `net10.0` | Supported | 2028-11-14 | Windows, Linux, macOS |
+| PowerShell line | Exact CI patch | .NET runtime | Bundled TFM | Microsoft lifecycle | Support end | Project retirement policy | Required OS cells |
+|---|---:|---:|---:|---|---:|---|---|
+| 7.4 | 7.4.18 | 8.0.29 | `net8.0` | Supported | 2026-11-10 | Bounded hosted-service compatibility holdover | Windows, Linux, macOS |
+| 7.5 | 7.5.9 | 9.0.18 | `net9.0` | Supported | 2026-11-10 | Retire at Microsoft lifecycle end | Windows, Linux, macOS |
+| 7.6 | 7.6.4 | 10.0.10 | `net10.0` | Supported | 2028-11-14 | Review at lifecycle warning | Windows, Linux, macOS |
 
-This table is the Microsoft-supported runtime contract used by the loader and CI. Upstream module compatibility is a separate evidence question; see [Upstream compatibility evidence](Compatibility-Evidence.md). Exact servicing patches are test pins, not minimum patch claims for end users.
+This table is the declared runtime contract used by the loader and CI. Microsoft lifecycle status, project retirement policy, and upstream module compatibility are separate evidence questions; see [Upstream compatibility evidence](Compatibility-Evidence.md). Exact servicing patches are test pins, not minimum patch claims for end users.
 
 The module selects a bundle using both the PowerShell minor line and CLR major, then fails closed on a mismatched or unknown pair. Only the rows above are part of the current support contract.
+
+## Hosted-service compatibility holdovers
+
+A holdover preserves compatibility coverage after upstream PowerShell retirement; it does not claim that Microsoft still services that PowerShell release. Evidence expires and must be revalidated before another release can rely on it.
+
+PowerShell 7.4 holdover evidence verified **2026-10-18**:
+
+- [Azure Functions Linux Consumption](https://learn.microsoft.com/en-us/azure/azure-functions/functions-versions): PowerShell 7.4 is the last supported PowerShell version on Linux Consumption; moving to PowerShell 7.6 requires migration to Flex Consumption.
+- [Azure Automation](https://learn.microsoft.com/en-us/azure/automation/automation-runbook-types): PowerShell 7.4 and PowerShell 7.6 are supported for cloud and hybrid jobs, so existing 7.4 automation remains a compatibility population during migration.
+- Review trigger: Revalidate when the evidence expires or when Azure Functions Linux Consumption supports PowerShell 7.6 or later without requiring a hosting-plan migration.
 
 `multi-pwsh` is optional, checksum-pinned CI provisioning infrastructure. CI invokes the provisioned official `pwsh` executable directly. No multi-pwsh executable, package, manifest dependency, runtime reference, or license payload is published with DLLPickle.

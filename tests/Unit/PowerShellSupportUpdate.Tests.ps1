@@ -62,6 +62,34 @@ BeforeAll {
 
         [PSCustomObject]@{ MatrixPath = $MatrixPath; ReleasePath = $ReleasePath; LifecyclePath = $LifecyclePath }
     }
+
+    function Set-ReviewedRetirementPolicy {
+        param([string]$MatrixPath)
+
+        $Matrix = Get-Content -LiteralPath $MatrixPath -Raw | ConvertFrom-Json
+        $Profile74 = @($Matrix.profiles | Where-Object powerShellMinor -EQ 4)[0]
+        $Profile74 | Add-Member -NotePropertyName supportPolicy -NotePropertyValue ([PSCustomObject]@{
+                retirementAction = 'retain-for-hosted-service-compatibility'
+                decisionDate = '2026-10-17'
+                evidenceVerifiedUtc = '2026-10-17T12:00:00Z'
+                evidenceFreshnessDays = 90
+                reviewTrigger = 'Revalidate the hosted-service constraint.'
+                hostedServices = @(
+                    [PSCustomObject]@{
+                        name = 'Azure Functions Linux Consumption'
+                        documentationUrl = 'https://learn.microsoft.com/en-us/azure/azure-functions/functions-versions'
+                        finding = 'PowerShell 7.4 remains the last supported version on this plan.'
+                    }
+                )
+            }) -Force
+        $Profile75 = @($Matrix.profiles | Where-Object powerShellMinor -EQ 5)[0]
+        $Profile75 | Add-Member -NotePropertyName supportPolicy -NotePropertyValue ([PSCustomObject]@{
+                retirementAction = 'retire-at-lifecycle-end'
+                decisionDate = '2026-10-17'
+                reviewTrigger = 'Remove after upstream lifecycle end.'
+            }) -Force
+        $Matrix | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $MatrixPath -Encoding UTF8
+    }
 }
 
 Describe 'PowerShell support update discovery' -Tag 'Unit' {
@@ -162,6 +190,29 @@ Describe 'PowerShell support update discovery' -Tag 'Unit' {
         $First.SupportContractReviewRequired | Should -BeTrue
         @($First.Lifecycle | Where-Object Status -EQ 'RetiringSoon') | Should -HaveCount 2
         $First.SupportContractFingerprint | Should -BeExactly $Second.SupportContractFingerprint
+    }
+
+    It 'allows servicing proposals after reviewed retirement decisions are recorded' {
+        $Fixture = Get-SupportUpdateFixture -Root $TestDrive -ReleaseVersions @('7.4.19', '7.5.10', '7.6.5')
+        Set-ReviewedRetirementPolicy -MatrixPath $Fixture.MatrixPath
+
+        $Report = & $script:DiscoveryPath -TestMatrixPath $Fixture.MatrixPath -ReleaseDataPath $Fixture.ReleasePath -LifecycleDataPath $Fixture.LifecyclePath -OutputPath (Join-Path $TestDrive 'reviewed-retirement.json') -AsOfUtc '2026-10-18T00:00:00Z'
+
+        $Report.SupportContractReviewRequired | Should -BeFalse
+        $Report.MatrixOnlyUpdateAvailable | Should -BeTrue
+        @($Report.Lifecycle | Where-Object Status -EQ 'RetiringSoon') | Should -HaveCount 2
+        @($Report.Lifecycle | Where-Object RetirementDecisionRecorded) | Should -HaveCount 2
+    }
+
+    It 'retains only the fresh hosted-service holdover after upstream retirement' {
+        $Fixture = Get-SupportUpdateFixture -Root $TestDrive -ReleaseVersions @('7.4.18', '7.5.9', '7.6.4')
+        Set-ReviewedRetirementPolicy -MatrixPath $Fixture.MatrixPath
+
+        $Report = & $script:DiscoveryPath -TestMatrixPath $Fixture.MatrixPath -ReleaseDataPath $Fixture.ReleasePath -LifecycleDataPath $Fixture.LifecyclePath -OutputPath (Join-Path $TestDrive 'post-retirement.json') -AsOfUtc '2026-11-11T08:00:00Z'
+
+        @($Report.Lifecycle | Where-Object Status -EQ 'CompatibilityHoldover').ReleaseLine | Should -Be @('7.4')
+        @($Report.Lifecycle | Where-Object Status -EQ 'Expired').ReleaseLine | Should -Be @('7.5')
+        $Report.SupportContractReviewRequired | Should -BeTrue
     }
 
     It 'marks a release line expired on the first unsupported Pacific date' {

@@ -136,7 +136,9 @@ Describe 'Generated support documentation' -Tag 'Unit' {
     It 'separates Microsoft support, upstream evidence, and optional CI tooling claims' {
         $SupportMatrix = Get-Content -LiteralPath (Join-Path $script:ProjectRoot 'docs\generated\Support-Matrix.md') -Raw
         $Compatibility = Get-Content -LiteralPath (Join-Path $script:ProjectRoot 'docs\generated\Compatibility-Evidence.md') -Raw
-        $SupportMatrix | Should -Match 'Microsoft-supported runtime contract'
+        $SupportMatrix | Should -Match 'declared runtime contract'
+        $SupportMatrix | Should -Match 'Hosted-service compatibility holdovers'
+        $SupportMatrix | Should -Match 'Azure Functions Linux Consumption'
         $SupportMatrix | Should -Match 'multi-pwsh.*optional'
         $Compatibility | Should -Match 'release-gating gaps'
         $Compatibility | Should -Match 'process-isolation requirement'
