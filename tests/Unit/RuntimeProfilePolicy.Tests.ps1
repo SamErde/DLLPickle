@@ -93,7 +93,12 @@ Describe 'Runtime profile policy data' -Tag 'Unit' {
         $rawMatrix | Should -Match '"lastVerifiedUtc":\s*"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z"'
         $matrix.evidenceFreshnessDays | Should -BeGreaterThan 0
         $matrix.retirementWarningDays | Should -BeGreaterThan 0
+        $matrix.PSObject.Properties.Name | Should -Not -Contain 'candidateValidationPending'
         @($matrix.profiles).powerShellVersion | Should -Be @('7.4.21', '7.5.12', '7.6.7')
+        foreach ($RuntimeProfile in @($matrix.profiles)) {
+            [string]$RuntimeProfile.dotnetRuntimeVersion | Should -Match '^\d+\.\d+\.\d+$'
+            ([version]$RuntimeProfile.dotnetRuntimeVersion).Major | Should -Be ([int]$RuntimeProfile.dotnetMajor)
+        }
         @($matrix.lanes).platform | Should -Be @('windows', 'linux', 'macos')
         @($matrix.archiveAssets) | Should -HaveCount 9
         $matrix.provisioning.optionalProvider.name | Should -Be 'MultiPwsh'
@@ -143,6 +148,26 @@ Describe 'Runtime profile policy data' -Tag 'Unit' {
 }
 
 Describe 'Runtime profile lifecycle enforcement' -Tag 'Unit' {
+    It 'rejects a temporary candidate marker in canonical policy validation' {
+        $MatrixFixture = Get-TestMatrixFixturePath -Name 'matrix-pending-candidate' -EvidenceVerifiedUtc '2026-08-09T01:10:00Z' -LastVerifiedUtc '2026-08-09T01:10:00Z'
+        $Matrix = Get-Content -LiteralPath $MatrixFixture -Raw | ConvertFrom-Json
+        $Matrix | Add-Member -NotePropertyName candidateValidationPending -NotePropertyValue $true
+        $Matrix | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $MatrixFixture -Encoding UTF8
+
+        { & $script:PolicyTestScriptPath -TestMatrixPath $MatrixFixture -Mode Release -AsOfUtc ([datetime]'2026-08-09T01:11:47Z') } |
+            Should -Throw '*temporary candidateValidationPending marker*'
+    }
+
+    It 'rejects a canonical profile without an exact .NET runtime patch' {
+        $MatrixFixture = Get-TestMatrixFixturePath -Name 'matrix-missing-runtime-patch' -EvidenceVerifiedUtc '2026-08-09T01:10:00Z' -LastVerifiedUtc '2026-08-09T01:10:00Z'
+        $Matrix = Get-Content -LiteralPath $MatrixFixture -Raw | ConvertFrom-Json
+        $Matrix.profiles[0].dotnetRuntimeVersion = $null
+        $Matrix | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $MatrixFixture -Encoding UTF8
+
+        { & $script:PolicyTestScriptPath -TestMatrixPath $MatrixFixture -Mode Release -AsOfUtc ([datetime]'2026-08-09T01:11:47Z') } |
+            Should -Throw '*must declare an exact .NET runtime patch version*'
+    }
+
     It 'passes a release check while policy evidence is fresh and every line is supported' {
         $script:PolicyTestScriptPath | Should -Exist
         $MatrixFixture = Get-TestMatrixFixturePath -Name 'matrix-supported' -EvidenceVerifiedUtc '2026-08-09T01:10:00Z' -LastVerifiedUtc '2026-08-09T01:10:00Z'

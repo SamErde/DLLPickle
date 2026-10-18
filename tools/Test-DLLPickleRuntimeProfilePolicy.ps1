@@ -78,6 +78,9 @@ $TestMatrix = Get-Content -LiteralPath $TestMatrixPath -Raw | ConvertFrom-Json -
 if ($RuntimePolicy.schemaVersion -ne 1 -or $TestMatrix.schemaVersion -ne 1) {
     throw 'Unsupported runtime-profile policy schema version.'
 }
+if ($TestMatrix.PSObject.Properties.Name -contains 'candidateValidationPending') {
+    throw 'Canonical runtime-profile policy must not contain the temporary candidateValidationPending marker.'
+}
 
 $RuntimeProfiles = @($RuntimePolicy.profiles)
 $TestProfiles = @($TestMatrix.profiles)
@@ -163,6 +166,14 @@ foreach ($TestProfile in $TestProfiles) {
     $Version = [version]$TestProfile.powerShellVersion
     if ($Version.Major -ne $TestProfile.powerShellMajor -or $Version.Minor -ne $TestProfile.powerShellMinor) {
         throw "Exact PowerShell patch '$($TestProfile.powerShellVersion)' does not match its declared release line."
+    }
+    $DotnetRuntimeVersionText = [string]$TestProfile.dotnetRuntimeVersion
+    if ($DotnetRuntimeVersionText -notmatch '^\d+\.\d+\.\d+$') {
+        throw "Runtime profile '$($TestProfile.powerShellVersion)' must declare an exact .NET runtime patch version."
+    }
+    $DotnetRuntimeVersion = [version]$DotnetRuntimeVersionText
+    if ($DotnetRuntimeVersion.Major -ne [int]$TestProfile.dotnetMajor) {
+        throw "Exact .NET runtime patch '$DotnetRuntimeVersionText' does not match CLR major '$($TestProfile.dotnetMajor)'."
     }
     if ($TestProfile.targetFramework -ne "net$($TestProfile.dotnetMajor).0") {
         throw "Target framework '$($TestProfile.targetFramework)' does not match CLR major '$($TestProfile.dotnetMajor)'."
