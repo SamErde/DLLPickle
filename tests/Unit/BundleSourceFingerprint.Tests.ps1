@@ -10,13 +10,17 @@ BeforeAll {
         $BuildScriptRoot = Join-Path $Root 'build'
         $ToolsRoot = Join-Path $Root 'tools'
         $CiScriptsRoot = Join-Path $Root '.github\ci-scripts'
+        $WorkflowRoot = Join-Path $Root '.github\workflows'
         $null = New-Item -Path $ModuleRoot -ItemType Directory -Force
         $null = New-Item -Path $BuildRoot -ItemType Directory -Force
         $null = New-Item -Path $BuildScriptRoot -ItemType Directory -Force
         $null = New-Item -Path $ToolsRoot -ItemType Directory -Force
         $null = New-Item -Path $CiScriptsRoot -ItemType Directory -Force
+        $null = New-Item -Path $WorkflowRoot -ItemType Directory -Force
         Set-Content -LiteralPath (Join-Path $CiScriptsRoot 'Actions_Bootstrap.ps1') -Value 'Import-Module GitHubActions' -Encoding UTF8
         Set-Content -LiteralPath (Join-Path $CiScriptsRoot 'Update-ModuleVersion.ps1') -Value 'param([version]$Version)' -Encoding UTF8
+        Set-Content -LiteralPath (Join-Path $WorkflowRoot 'Build Module.yml') -Value 'jobs: { build: { steps: [] } }' -Encoding UTF8
+        Set-Content -LiteralPath (Join-Path $WorkflowRoot 'Release-and-Publish.yml') -Value 'jobs: { publish: { steps: [] } }' -Encoding UTF8
         Set-Content -LiteralPath (Join-Path $Root 'src\DLLPickle\DLLPickle.psd1') -Value '@{ ModuleVersion = ''0.0.0'' }' -Encoding UTF8
         Set-Content -LiteralPath (Join-Path $ModuleRoot 'Get-Thing.ps1') -Value 'function Get-Thing { ''thing'' }' -Encoding UTF8
         Set-Content -LiteralPath (Join-Path $BuildRoot 'DLLPickle.csproj') -Value '<Project />' -Encoding UTF8
@@ -45,6 +49,8 @@ Describe 'Published bundle source fingerprint' -Tag 'Unit' {
         @($First.files.path) | Should -Be @(
             '.github/ci-scripts/Actions_Bootstrap.ps1'
             '.github/ci-scripts/Update-ModuleVersion.ps1'
+            '.github/workflows/Build Module.yml'
+            '.github/workflows/Release-and-Publish.yml'
             'build/DLLPickle.Build.ps1'
             'build/DLLPickle.Settings.ps1'
             'build/DLLPickle.Tooling.ps1'
@@ -81,6 +87,8 @@ Describe 'Published bundle source fingerprint' -Tag 'Unit' {
     It 'changes when a release transformation script changes' -ForEach @(
         @{ RelativePath = '.github\ci-scripts\Actions_Bootstrap.ps1' }
         @{ RelativePath = '.github\ci-scripts\Update-ModuleVersion.ps1' }
+        @{ RelativePath = '.github\workflows\Build Module.yml' }
+        @{ RelativePath = '.github\workflows\Release-and-Publish.yml' }
     ) {
         param($RelativePath)
 
@@ -117,7 +125,7 @@ Describe 'Published bundle source fingerprint' -Tag 'Unit' {
         $Actual = Get-Content -LiteralPath $OutputPath -Raw | ConvertFrom-Json
 
         $Actual.fingerprint | Should -BeExactly $Expected.fingerprint
-        @($Actual.files).Count | Should -Be 12
+        @($Actual.files).Count | Should -Be 14
         Get-Content -LiteralPath $OutputPath -Raw | Should -Not -Match ([regex]::Escape($Root))
     }
 }

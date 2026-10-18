@@ -319,14 +319,26 @@ Describe 'Time-bounded manual authenticated evidence' -Tag 'Unit' {
         $CandidatePath = Join-Path $TestDrive 'candidate.json'
         $AcceptedPath = Join-Path $TestDrive 'accepted-output.json'
         $Candidate = Get-ManualAuthenticatedEvidenceFixture -Path $CandidatePath -AcceptanceStatus pending
+        $Candidate.provenance.captureStartedAtUtc = '2026-08-09T12:00:00.1234Z'
+        $Candidate.content.bridge.expiresAtUtc = '2026-08-23T17:30:00.1234+05:30'
+        $Candidate.contentFingerprint = Get-ManualEvidenceContentFingerprint -Evidence $Candidate
+        $Candidate | ConvertTo-Json -Depth 100 | Set-Content -LiteralPath $CandidatePath -Encoding UTF8
         $AcceptanceTool = Join-Path $script:RepositoryRoot 'tools\Set-DLLPickleManualAuthenticatedEvidenceAcceptance.ps1'
 
         $Result = & $AcceptanceTool -CandidateEvidencePath $CandidatePath -OutputPath $AcceptedPath -AcceptedBy 'maintainer' -Confidence high -AcceptedAtUtc ([System.DateTimeOffset]::Parse('2026-08-09T14:00:00Z')) -Confirm:$false
-        $Accepted = Get-Content -LiteralPath $AcceptedPath -Raw | ConvertFrom-Json
+        $AcceptedJson = Get-Content -LiteralPath $AcceptedPath -Raw
+        $Accepted = $AcceptedJson | ConvertFrom-Json
+        $AcceptedJsonDocument = [System.Text.Json.JsonDocument]::Parse($AcceptedJson)
+        try {
+            $AcceptedExpiresAtUtc = $AcceptedJsonDocument.RootElement.GetProperty('content').GetProperty('bridge').GetProperty('expiresAtUtc').GetString()
+        } finally {
+            $AcceptedJsonDocument.Dispose()
+        }
 
         $Accepted.acceptance.status | Should -Be 'accepted'
         $Accepted.acceptance.confidence | Should -Be 'high'
         $Accepted.contentFingerprint | Should -BeExactly $Candidate.contentFingerprint
+        $AcceptedExpiresAtUtc | Should -BeExactly '2026-08-23T17:30:00.1234+05:30'
         $Result.AllowedReleaseVersion | Should -Be '3.0.0'
         $Result.WritesPerformed | Should -BeFalse
     }

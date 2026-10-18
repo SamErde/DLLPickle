@@ -6,10 +6,10 @@ Computes a deterministic fingerprint of every published-bundle source input.
 Hashes module sources, the locked build project, and every repository input that
 controls release bundle construction or transformation: the build file, settings,
 tooling bootstrap, pinned tool policy, build entry point, release bootstrap,
-version stamping, and SDK selection. Repository-root paths and timestamps are
-excluded. The result can bind transitional manual authenticated evidence to bundle
-content even though committing that evidence necessarily changes the Git commit
-SHA.
+version stamping, release-producing workflows, and SDK selection. Repository-root
+paths and timestamps are excluded. The result can bind transitional manual
+authenticated evidence to bundle content even though committing that evidence
+necessarily changes the Git commit SHA.
 
 .PARAMETER RepositoryRoot
 Repository root containing src/DLLPickle and src/DLLPickle.Build.
@@ -42,6 +42,8 @@ if (-not (Test-Path -LiteralPath $ModuleSourceRoot -PathType Container)) {
 $RequiredRelativePaths = @(
     '.github/ci-scripts/Actions_Bootstrap.ps1'
     '.github/ci-scripts/Update-ModuleVersion.ps1'
+    '.github/workflows/Build Module.yml'
+    '.github/workflows/Release-and-Publish.yml'
     'build/DLLPickle.Build.ps1'
     'build/DLLPickle.Settings.ps1'
     'build/DLLPickle.Tooling.ps1'

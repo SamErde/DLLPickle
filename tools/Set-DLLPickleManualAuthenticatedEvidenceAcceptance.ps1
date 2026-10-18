@@ -43,7 +43,19 @@ $ValidationParameters = @{
     NowUtc = $AcceptedAtUtc
 }
 $null = & $ValidatorPath @ValidationParameters
-$Evidence = Get-Content -LiteralPath $CandidateEvidencePath -Raw | ConvertFrom-Json -ErrorAction Stop
+$EvidenceJson = Get-Content -LiteralPath $CandidateEvidencePath -Raw
+$Evidence = $EvidenceJson | ConvertFrom-Json -ErrorAction Stop
+$JsonDocument = [System.Text.Json.JsonDocument]::Parse($EvidenceJson)
+try {
+    $ExpiresAtUtcElement = $JsonDocument.RootElement.GetProperty('content').GetProperty('bridge').GetProperty('expiresAtUtc')
+    if ($ExpiresAtUtcElement.ValueKind -ne [System.Text.Json.JsonValueKind]::String) {
+        throw 'Manual authenticated evidence content.bridge.expiresAtUtc must be a JSON string.'
+    }
+    $ExactExpiresAtUtc = $ExpiresAtUtcElement.GetString()
+} finally {
+    $JsonDocument.Dispose()
+}
+$Evidence.content.bridge.expiresAtUtc = $ExactExpiresAtUtc
 $Evidence.acceptance.status = 'accepted'
 $Evidence.acceptance.acceptedAtUtc = $AcceptedAtUtc.ToUniversalTime().ToString('o')
 $Evidence.acceptance.acceptedBy = $AcceptedBy
