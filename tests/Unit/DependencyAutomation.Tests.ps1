@@ -53,8 +53,8 @@ Describe 'Dependency automation tooling' -Tag 'Unit' {
             $State = [System.AppDomain]::CurrentDomain.GetData('DLLPickle.DependencyAutomation.InventoryTestState')
             Add-Content -LiteralPath $State.EventLogPath -Value "find:$Name"
             if ($Name -eq 'Synthetic.One') {
-                [PSCustomObject]@{ Name = $Name; Version = '1.9.0' }
-                [PSCustomObject]@{ Name = $Name; Version = '1.10.0' }
+                [PSCustomObject]@{ Name = $Name; Version = '1.9.0'; AdditionalMetadata = @{ PowerShellVersion = '7.0' } }
+                [PSCustomObject]@{ Name = $Name; Version = '1.10.0'; AdditionalMetadata = @{ PowerShellVersion = "$($PSVersionTable.PSVersion.Major).$($PSVersionTable.PSVersion.Minor + 1)" } }
             } else {
                 [PSCustomObject]@{ Name = $Name; Version = '4.5.6' }
             }
@@ -77,7 +77,7 @@ Describe 'Dependency automation tooling' -Tag 'Unit' {
         $InventoryEvents | Should -Be @(
             'find:Synthetic.One'
             'find:Synthetic.Two'
-            'save:Synthetic.One:1.10.0'
+            'save:Synthetic.One:1.9.0'
             'save:Synthetic.Two:4.5.6'
             'probe:Synthetic.One'
             'probe:Synthetic.Two'

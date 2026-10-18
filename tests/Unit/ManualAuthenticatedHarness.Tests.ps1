@@ -65,6 +65,7 @@ Describe 'Manual authenticated compatibility harness guardrails' -Tag 'Unit' {
     It 'prepares exact pinned runtimes and refreshes latest compatible modules without authenticating' {
         $script:Initializer | Should -Match ([regex]::Escape("Provider = 'DirectArchive'"))
         $script:Initializer | Should -Match ([regex]::Escape("Platform = 'windows'"))
+        $script:Initializer | Should -Match ([regex]::Escape('MatrixPath = $TestMatrixPath'))
         $script:Initializer | Should -Match ([regex]::Escape('Force = $true'))
         $script:Initializer | Should -Match ([regex]::Escape('Where-Object {'))
         $script:Initializer | Should -Match ([regex]::Escape('[string]$_.Version -ne [string]$_.LatestCompatibleVersion'))

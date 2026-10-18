@@ -118,6 +118,49 @@ function Get-DLLPickleLatestModulePath {
         Select-Object -First 1
 }
 
+function Get-DLLPickleGalleryPowerShellVersion {
+    [CmdletBinding()]
+    [OutputType([version])]
+    param(
+        [Parameter(Mandatory)]
+        [object]$GalleryModule
+    )
+
+    $VersionText = $null
+    $TopLevelProperty = $GalleryModule.PSObject.Properties['PowerShellVersion']
+    if ($null -ne $TopLevelProperty -and -not [string]::IsNullOrWhiteSpace([string]$TopLevelProperty.Value)) {
+        $VersionText = [string]$TopLevelProperty.Value
+    } else {
+        $MetadataProperty = $GalleryModule.PSObject.Properties['AdditionalMetadata']
+        $Metadata = if ($null -ne $MetadataProperty) { $MetadataProperty.Value } else { $null }
+        if ($Metadata -is [System.Collections.IDictionary]) {
+            foreach ($Key in @($Metadata.Keys)) {
+                if ([System.StringComparer]::OrdinalIgnoreCase.Equals([string]$Key, 'PowerShellVersion')) {
+                    $VersionText = [string]$Metadata[$Key]
+                    break
+                }
+            }
+        } elseif ($null -ne $Metadata) {
+            $VersionProperty = $Metadata.PSObject.Properties |
+                Where-Object { [System.StringComparer]::OrdinalIgnoreCase.Equals([string]$_.Name, 'PowerShellVersion') } |
+                Select-Object -First 1
+            if ($null -ne $VersionProperty) {
+                $VersionText = [string]$VersionProperty.Value
+            }
+        }
+    }
+
+    if ([string]::IsNullOrWhiteSpace($VersionText)) {
+        return $null
+    }
+
+    $ParsedVersion = $null
+    if (-not [version]::TryParse($VersionText, [ref]$ParsedVersion)) {
+        throw "Gallery module '$($GalleryModule.Name)' version '$($GalleryModule.Version)' has invalid PowerShellVersion metadata '$VersionText'."
+    }
+    $ParsedVersion
+}
+
 function Get-DLLPickleRuntimeIdentity {
     [CmdletBinding()]
     param(
@@ -196,7 +239,8 @@ if (-not $SkipDownload.IsPresent) {
         $GalleryModules = @(Find-Module -Name $Name -Repository $Repository -AllVersions -ErrorAction Stop)
         $GalleryModule = $GalleryModules |
             Where-Object {
-                -not $_.PowerShellVersion -or [version]$_.PowerShellVersion -le [version]$RuntimeIdentity.powerShellVersion
+                $RequiredPowerShellVersion = Get-DLLPickleGalleryPowerShellVersion -GalleryModule $_
+                $null -eq $RequiredPowerShellVersion -or $RequiredPowerShellVersion -le [version]$RuntimeIdentity.powerShellVersion
             } |
             Sort-Object -Property { [version]([string]$_.Version) } -Descending |
             Select-Object -First 1

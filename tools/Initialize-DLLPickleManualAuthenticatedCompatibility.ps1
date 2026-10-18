@@ -50,6 +50,7 @@ $PreparedProfiles = @(
             Platform = 'windows'
             Architecture = 'x64'
             InstallRoot = $RuntimeInstallRoot
+            MatrixPath = $TestMatrixPath
             PassThru = $true
         }
         $Identity = & (Join-Path $RepositoryRoot 'tools/Install-DLLPickleTestPowerShell.ps1') @InstallParameters
