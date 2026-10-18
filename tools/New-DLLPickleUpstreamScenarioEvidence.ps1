@@ -219,26 +219,7 @@ foreach ($ObservedAssembly in $ObservedAssemblies) {
     }
 }
 
-$CanonicalRows = @(
-    "profile=$($Inventory.ProfileKey)"
-    foreach ($Scenario in @($ScenarioResults | Sort-Object OrderIndex,DllPicklePreloaded)) {
-        'scenario={0}|order={1}|preload={2}|expectedLimitation={3}|expectedSuccess={4}|outcomePolicy={5}|success={6}|outcomeMatches={7}|error={10}|modules={8}|assemblies={9}' -f (
-            $Scenario.ScenarioId,
-            $Scenario.OrderIndex,
-            $Scenario.DllPicklePreloaded,
-            $Scenario.ExpectedLimitation,
-            $Scenario.ExpectedSuccess,
-            $Scenario.OutcomePolicy,
-            $Scenario.Success,
-            $Scenario.OutcomeMatchesExpectation,
-            (@($Scenario.ImportOrder) -join ','),
-            (@($Scenario.Assemblies | Sort-Object Name,Path | ForEach-Object { '{0},{1},{2},{3},{4}' -f $_.Name, $_.Version, $_.Sha256, $_.Path, $_.Alc }) -join ';'),
-            (([string]$Scenario.Error) -replace '(?i)dpp-snap-[0-9a-f]{32}\.(ps1|json)', 'dpp-snap-<id>.$1' -replace '\s+', ' ').Trim()
-        )
-    }
-)
-$FingerprintBytes = [System.Text.Encoding]::UTF8.GetBytes(($CanonicalRows -join [char]10))
-$ScenarioFingerprint = [System.BitConverter]::ToString([System.Security.Cryptography.SHA256]::HashData($FingerprintBytes)).Replace('-', '').ToLowerInvariant()
+$ScenarioFingerprint = Get-DLLPickleScenarioFingerprint -ProfileKey ([string]$Inventory.ProfileKey) -Scenario @($ScenarioResults)
 $Report = [PSCustomObject]@{
     SchemaVersion = 1
     GeneratedAtUtc = [System.DateTimeOffset]::UtcNow.ToString('o')

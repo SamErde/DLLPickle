@@ -92,7 +92,8 @@ foreach ($RequiredPath in @($EvidencePath, $TestMatrixPath, $DependencyPolicyPat
         throw "Required authenticated-evidence input was not found: $RequiredPath"
     }
 }
-$Evidence = Get-Content -LiteralPath $EvidencePath -Raw | ConvertFrom-Json -ErrorAction Stop
+$EvidenceJson = Get-Content -LiteralPath $EvidencePath -Raw
+$Evidence = $EvidenceJson | ConvertFrom-Json -ErrorAction Stop
 $TestMatrix = Get-Content -LiteralPath $TestMatrixPath -Raw | ConvertFrom-Json -ErrorAction Stop
 $Policy = Get-Content -LiteralPath $DependencyPolicyPath -Raw | ConvertFrom-Json -ErrorAction Stop
 
@@ -106,6 +107,19 @@ if ([int]$Evidence.schemaVersion -ne 1 -or
     [string]$Evidence.evidenceType -ne 'manual-interactive-transition' -or
     -not $Evidence.content) {
     throw 'Manual authenticated evidence has an unsupported schema, type, or missing content.'
+}
+$EvidenceDocument = [System.Text.Json.JsonDocument]::Parse($EvidenceJson)
+try {
+    $ExpiresAtElement = $EvidenceDocument.RootElement.GetProperty('content').GetProperty('bridge').GetProperty('expiresAtUtc')
+    if ($ExpiresAtElement.ValueKind -ne [System.Text.Json.JsonValueKind]::String) {
+        throw 'Manual authenticated evidence bridge expiry must be JSON text.'
+    }
+    # ConvertFrom-Json can turn an offset timestamp into a local DateTime. Restore
+    # the exact signed string before hashing so the JSON round trip cannot change
+    # an otherwise valid fingerprint.
+    $Evidence.content.bridge.expiresAtUtc = $ExpiresAtElement.GetString()
+} finally {
+    $EvidenceDocument.Dispose()
 }
 $RecomputedContentFingerprint = Get-DLLPickleNormalizedEvidenceFingerprint -Evidence $Evidence
 if ([string]$Evidence.contentFingerprint -ne $RecomputedContentFingerprint) {

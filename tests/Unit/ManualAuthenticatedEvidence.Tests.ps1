@@ -4,6 +4,7 @@ BeforeAll {
     $script:FingerprintToolPath = Join-Path $script:RepositoryRoot 'tools\Get-DLLPickleBundleSourceFingerprint.ps1'
     $script:TestMatrixPath = Join-Path $script:RepositoryRoot 'build\powershell-test-matrix.json'
     $script:DependencyPolicyPath = Join-Path $script:RepositoryRoot 'build\dependency-policy.json'
+    . (Join-Path $script:RepositoryRoot 'tools\DLLPickle.ProfileEvidence.ps1')
 
     function Get-ManualEvidenceContentFingerprint {
         param([Parameter(Mandatory)][object]$Evidence)
@@ -174,6 +175,18 @@ BeforeAll {
 }
 
 Describe 'Time-bounded manual authenticated evidence' -Tag 'Unit' {
+    It 'accepts a generated UTC expiry after a local-time JSON round trip' {
+        $EvidencePath = Join-Path $TestDrive 'canonical-expiry.json'
+        $Evidence = Get-ManualAuthenticatedEvidenceFixture -Path $EvidencePath
+        $Evidence.content.bridge.expiresAtUtc = ([System.DateTimeOffset]'2026-08-23T12:00:00+00:00').ToString('o')
+        $Evidence.contentFingerprint = Get-ManualEvidenceContentFingerprint -Evidence $Evidence
+        $Evidence | ConvertTo-Json -Depth 100 | Set-Content -LiteralPath $EvidencePath -Encoding UTF8
+
+        {
+            & $script:ToolPath -EvidencePath $EvidencePath -RepositoryRoot $script:RepositoryRoot -TestMatrixPath $script:TestMatrixPath -DependencyPolicyPath $script:DependencyPolicyPath -NowUtc '2026-08-10T00:00:00Z'
+        } | Should -Not -Throw
+    }
+
     It 'accepts only the complete exact Windows profile transition record' {
         $EvidencePath = Join-Path $TestDrive 'accepted.json'
         $null = Get-ManualAuthenticatedEvidenceFixture -Path $EvidencePath

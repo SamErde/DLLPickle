@@ -251,7 +251,7 @@ $Content = [ordered]@{
     bridge = [ordered]@{
         id = 'initial-powershell-7.4-7.6-multitargeting-major'
         allowedReleaseVersion = '3.0.0'
-        expiresAtUtc = $ExpiresAtUtc.ToString('o')
+        expiresAtUtc = ConvertTo-DLLPickleCanonicalUtcTimestamp -Value $ExpiresAtUtc
     }
     bundleSourceFingerprint = [string]$Bundle.fingerprint
     credentialMode = 'delegated-interactive'

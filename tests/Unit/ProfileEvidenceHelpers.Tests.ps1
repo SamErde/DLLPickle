@@ -31,6 +31,52 @@ Describe 'Profile evidence helpers' -Tag 'Unit' {
     It 'normalizes date/time inputs to UTC with invariant parsing' {
         (ConvertTo-DLLPickleUtcDateTimeOffset -Value '2026-08-09T08:00:00-04:00').ToString('o') |
             Should -BeExactly '2026-08-09T12:00:00.0000000+00:00'
+        ConvertTo-DLLPickleCanonicalUtcTimestamp -Value ([System.DateTimeOffset]'2026-08-09T08:00:00-04:00') |
+            Should -BeExactly '2026-08-09T12:00:00.0000000Z'
+    }
+
+    It 'keeps scenario fingerprints stable across machine-specific paths and error text' {
+        function Get-ScenarioFingerprintFixture {
+            param(
+                [Parameter(Mandatory)][string]$AssemblyPath,
+                [Parameter(Mandatory)][string]$ErrorText,
+                [string]$Sha256 = ('a' * 64)
+            )
+
+            [pscustomobject]@{
+                ScenarioId = 'synthetic-order'
+                OrderIndex = 1
+                ImportOrder = @('Synthetic.One')
+                DllPicklePreloaded = $false
+                ExpectedLimitation = $true
+                ExpectedSuccess = $null
+                OutcomePolicy = 'observe-known-limitation'
+                Success = $false
+                OutcomeMatchesExpectation = $true
+                Error = $ErrorText
+                Assemblies = @(
+                    [pscustomobject]@{
+                        Name = 'Microsoft.Identity.Client'
+                        Version = '4.82.1.0'
+                        Sha256 = $Sha256
+                        Path = $AssemblyPath
+                        Alc = 'Default'
+                        IsCollectible = $false
+                    }
+                )
+            }
+        }
+
+        $First = Get-ScenarioFingerprintFixture -AssemblyPath 'C:\cache-a\Microsoft.Identity.Client.dll' -ErrorText 'Failure under C:\cache-a'
+        $Second = Get-ScenarioFingerprintFixture -AssemblyPath 'D:\cache-b\Microsoft.Identity.Client.dll' -ErrorText 'Failure under D:\cache-b'
+        $ChangedAssembly = Get-ScenarioFingerprintFixture -AssemblyPath 'D:\cache-b\Microsoft.Identity.Client.dll' -ErrorText 'Failure under D:\cache-b' -Sha256 ('b' * 64)
+
+        $FirstFingerprint = Get-DLLPickleScenarioFingerprint -ProfileKey 'ps7.6-net10.0-windows-x64' -Scenario @($First)
+        $SecondFingerprint = Get-DLLPickleScenarioFingerprint -ProfileKey 'ps7.6-net10.0-windows-x64' -Scenario @($Second)
+        $ChangedFingerprint = Get-DLLPickleScenarioFingerprint -ProfileKey 'ps7.6-net10.0-windows-x64' -Scenario @($ChangedAssembly)
+
+        $FirstFingerprint | Should -BeExactly $SecondFingerprint
+        $ChangedFingerprint | Should -Not -BeExactly $FirstFingerprint
     }
 
     It 'accepts only the declared deterministic-probe error outcome' {

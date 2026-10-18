@@ -65,6 +65,38 @@ function ConvertTo-DLLPickleUtcDateTimeOffset {
     ).ToUniversalTime()
 }
 
+function ConvertTo-DLLPickleCanonicalUtcTimestamp {
+    <#
+    .SYNOPSIS
+    Formats a date/time value as one canonical UTC JSON timestamp.
+
+    .DESCRIPTION
+    DateTimeOffset.ToString('o') represents UTC with +00:00, while PowerShell's
+    JSON round trip can deserialize that value into a local DateTime and emit a
+    different offset. Converting through UtcDateTime keeps the same instant and
+    always emits the round-trip Z representation used by the evidence hashes.
+
+    .PARAMETER Value
+    DateTimeOffset, DateTime, or invariant date/time text to normalize.
+
+    .OUTPUTS
+    System.String
+    #>
+
+    [CmdletBinding()]
+    [OutputType([string])]
+    param (
+        [Parameter(Mandatory)]
+        [object]$Value
+    )
+
+    $UtcValue = ConvertTo-DLLPickleUtcDateTimeOffset -Value $Value
+    $UtcValue.UtcDateTime.ToString(
+        'o',
+        [System.Globalization.CultureInfo]::InvariantCulture
+    )
+}
+
 function Get-DLLPickleStrictProbeCommand {
     <#
     .SYNOPSIS
@@ -171,4 +203,79 @@ function Get-DLLPickleOrdinalSequence {
         $PreviousKey = [string]$Entry.PrimaryKey
         $HasPreviousKey = $true
     }
+}
+
+function Get-DLLPickleScenarioFingerprint {
+    <#
+    .SYNOPSIS
+    Computes the location-independent fingerprint for deterministic scenarios.
+
+    .DESCRIPTION
+    Fingerprints behavior and selected assembly identity without incorporating
+    runner-specific absolute paths or provider error text. The full report still
+    retains those diagnostic fields, while normalized evidence separately records
+    stable module-relative selected-asset identities.
+
+    .PARAMETER ProfileKey
+    Exact PowerShell/TFM/platform/architecture profile key.
+
+    .PARAMETER Scenario
+    Deterministic scenario result rows.
+
+    .OUTPUTS
+    System.String
+    #>
+
+    [CmdletBinding()]
+    [OutputType([string])]
+    param (
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
+        [string]$ProfileKey,
+
+        [Parameter(Mandatory)]
+        [AllowEmptyCollection()]
+        [object[]]$Scenario
+    )
+
+    $CanonicalRows = @(
+        'schema=scenario-fingerprint-v2'
+        "profile=$ProfileKey"
+        foreach ($ScenarioResult in @(Get-DLLPickleOrdinalSequence -InputObject @($Scenario) -KeySelector {
+                    param($Item)
+                    '{0}{3}{1:D10}{3}{2}' -f $Item.ScenarioId, [int]$Item.OrderIndex, [bool]$Item.DllPicklePreloaded, [char]0
+                })) {
+            $AssemblyRows = @(
+                foreach ($Assembly in @(Get-DLLPickleOrdinalSequence -InputObject @($ScenarioResult.Assemblies) -KeySelector {
+                            param($Item)
+                            '{0}{5}{1}{5}{2}{5}{3}{5}{4}' -f $Item.Name, $Item.Version, $Item.Sha256, $Item.Alc, [bool]$Item.IsCollectible, [char]0
+                        })) {
+                    '{0},{1},{2},{3},{4}' -f (
+                        [string]$Assembly.Name,
+                        [string]$Assembly.Version,
+                        ([string]$Assembly.Sha256).ToLowerInvariant(),
+                        [string]$Assembly.Alc,
+                        [bool]$Assembly.IsCollectible
+                    )
+                }
+            )
+            'scenario={0}|order={1}|preload={2}|expectedLimitation={3}|expectedSuccess={4}|outcomePolicy={5}|success={6}|outcomeMatches={7}|errorObserved={10}|modules={8}|assemblies={9}' -f (
+                [string]$ScenarioResult.ScenarioId,
+                [int]$ScenarioResult.OrderIndex,
+                [bool]$ScenarioResult.DllPicklePreloaded,
+                [bool]$ScenarioResult.ExpectedLimitation,
+                $ScenarioResult.ExpectedSuccess,
+                [string]$ScenarioResult.OutcomePolicy,
+                [bool]$ScenarioResult.Success,
+                [bool]$ScenarioResult.OutcomeMatchesExpectation,
+                (@($ScenarioResult.ImportOrder | ForEach-Object { [string]$_ }) -join ','),
+                ($AssemblyRows -join ';'),
+                -not [string]::IsNullOrWhiteSpace([string]$ScenarioResult.Error)
+            )
+        }
+    )
+    $FingerprintBytes = [System.Text.Encoding]::UTF8.GetBytes(($CanonicalRows -join [char]10))
+    [System.BitConverter]::ToString(
+        [System.Security.Cryptography.SHA256]::HashData($FingerprintBytes)
+    ).Replace('-', '').ToLowerInvariant()
 }
