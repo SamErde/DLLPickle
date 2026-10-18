@@ -27,6 +27,7 @@ Describe 'Upstream compatibility workflow guardrails' -Tag 'Unit' {
         $UpstreamWorkflow | Should -Match ([regex]::Escape("'^build/build-tool-versions\.json$'"))
         $UpstreamWorkflow | Should -Match ([regex]::Escape("'^global\.json$'"))
         ([regex]::Matches($UpstreamWorkflow, [regex]::Escape("'^global\.json$'"))).Count | Should -Be 2
+        ([regex]::Matches($UpstreamWorkflow, [regex]::Escape("'^\.github/ci-scripts/Actions_Bootstrap\.ps1$'"))).Count | Should -Be 2
         $UpstreamWorkflow | Should -Match ([regex]::Escape('tools/Get-DLLPickleUpstreamInventory.ps1'))
         $UpstreamWorkflow | Should -Match ([regex]::Escape("'^tools/Get-DLLPickleLoadedTrackedAssembly\.ps1$'"))
         $UpstreamWorkflow | Should -Match ([regex]::Escape("'^tools/DLLPickle\.ProfileEvidence\.ps1$'"))
@@ -35,6 +36,12 @@ Describe 'Upstream compatibility workflow guardrails' -Tag 'Unit' {
         $UpstreamWorkflow | Should -Match ([regex]::Escape("'^tools/New-DLLPicklePowerShellTestMatrix\.ps1$'"))
         $UpstreamWorkflow | Should -Match ([regex]::Escape('tools/New-DLLPickleUpstreamScenarioEvidence.ps1'))
         $UpstreamWorkflow | Should -Match ([regex]::Escape("'^src/DLLPickle/'"))
+    }
+
+    It 'fails closed instead of publishing partial dependency pin candidates that require review' {
+        $UpstreamWorkflow | Should -Match ([regex]::Escape('$UpdateReport = ./tools/Update-DLLPickleDependencyPins.ps1 @UpdateParameters'))
+        $UpstreamWorkflow | Should -Match ([regex]::Escape('if ($UpdateReport.ReviewRequired)'))
+        $UpstreamWorkflow | Should -Match ([regex]::Escape('No candidate changes will be published.'))
     }
 
     It 'uploads compact JSON evidence and writes a job summary' {
