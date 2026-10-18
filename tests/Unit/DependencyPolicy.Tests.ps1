@@ -82,22 +82,24 @@ Describe 'Dependency policy baseline' -Tag 'Unit' {
                 Where-Object { $_.assemblyName -eq 'Microsoft.Extensions.DependencyInjection.Abstractions' }
         )
         $DiEntry | Should -HaveCount 1
+        @($DiEntry[0].sourceModules) | Should -Contain 'Az.Accounts'
         @($DiEntry[0].sourceModules) | Should -Contain 'Az.Resources'
         $DiEntry[0].evidence.issue | Should -Be '193'
 
-        # Az.Resources does NOT ship Microsoft.Extensions.Logging.Abstractions; the refreshed
-        # inventory observes it only in MicrosoftTeams, so it must not be recorded there.
+        # The refreshed inventory observes Microsoft.Extensions.Logging.Abstractions in
+        # Az.Accounts and MicrosoftTeams, so both sources must be recorded.
         $LoggingEntry = @(
             $script:Policy.blockedPreloadAssemblies |
                 Where-Object { $_.assemblyName -eq 'Microsoft.Extensions.Logging.Abstractions' }
         )
         $LoggingEntry | Should -HaveCount 1
+        @($LoggingEntry[0].sourceModules) | Should -Contain 'Az.Accounts'
         @($LoggingEntry[0].sourceModules) | Should -Contain 'MicrosoftTeams'
         @($LoggingEntry[0].sourceModules) | Should -Not -Contain 'Az.Resources'
     }
 
     It 'records the complete structured conflict surface' {
-        @($script:Policy.baseline.conflictSurface) | Should -HaveCount 18
+        @($script:Policy.baseline.conflictSurface) | Should -HaveCount 19
 
         foreach ($Row in $script:Policy.baseline.conflictSurface) {
             $Row.name | Should -Not -BeNullOrEmpty
@@ -127,17 +129,21 @@ Describe 'Dependency policy baseline' -Tag 'Unit' {
             @($script:Policy.blockedPreloadAssemblies).assemblyName
         )
 
-        $ConflictNames | Should -HaveCount 18
+        $ConflictNames | Should -HaveCount 19
         foreach ($Name in $ConflictNames) {
             @($ClassifiedNames | Where-Object { $_ -eq $Name }) | Should -HaveCount 1
         }
     }
 
-    It 'records the pull request 264 adjudication evidence' {
-        $script:Policy.baseline.validation.pullRequest | Should -Be 264
+    It 'records the pull request 303 adjudication evidence' {
+        $script:Policy.baseline.validation.pullRequest | Should -Be 303
         $script:Policy.baseline.validation.result | Should -BeExactly 'tracked-conflict-classified-and-excluded'
-        $script:Policy.baseline.validation.validatedOn | Should -BeExactly '2026-06-25'
+        $script:Policy.baseline.validation.validatedOn | Should -BeExactly '2026-10-17'
         @($script:Policy.baseline.validation.evidence) | Should -Not -BeNullOrEmpty
+        $script:Policy.baseline.validation.runtimeDifferential.verdict | Should -Match 'Both configured import orders completed successfully'
+        @($script:Policy.baseline.validation.runtimeDifferential.orders) | Should -HaveCount 2
+        $script:Policy.baseline.validation.runtimeDifferential.withoutDllPickle.allOrdersImported | Should -BeTrue
+        $script:Policy.baseline.validation.runtimeDifferential.withDllPickle.allOrdersImported | Should -BeTrue
     }
 
     It 'records the ProtectedData conflict row and block classification' {

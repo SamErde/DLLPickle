@@ -139,6 +139,87 @@ Enter-Build {
 } #Enter-Build
 
 
+# Pester loads a CLR assembly that cannot be reliably unloaded from the current
+# PowerShell process. Run test phases in a clean process so a preloaded Pester
+# version or a previous test phase cannot collide with the selected version.
+function Invoke-IsolatedPester {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [string]$TestPath,
+
+        [Parameter(Mandatory)]
+        [string]$SummaryPath,
+
+        [Parameter(Mandatory)]
+        [string]$TestResultPath,
+
+        [string[]]$CoverageSourcePath = @(),
+
+        [string]$CodeCoverageOutputPath,
+
+        [string]$CodeCoverageOutputFormat = 'JaCoCo',
+
+        [int]$CoveragePercentTarget = 0,
+
+        [switch]$EnableCodeCoverage,
+
+        [switch]$ExcludeLiveRepro
+    )
+
+    $PowerShellPath = (Get-Command pwsh -CommandType Application -ErrorAction Stop | Select-Object -First 1).Path
+    $RunnerPath = Join-Path -Path $script:ProjectRoot -ChildPath 'build/Invoke-DLLPicklePester.ps1'
+    $Arguments = @(
+        '-NoProfile'
+        '-NonInteractive'
+        '-File'
+        $RunnerPath
+        '-TestPath'
+        $TestPath
+        '-SummaryPath'
+        $SummaryPath
+        '-TestResultPath'
+        $TestResultPath
+        '-RequiredPesterVersion'
+        $script:RequiredPesterVersion.ToString()
+        '-TestResultFormat'
+        $script:TestOutputFormat
+    )
+
+    if ($CoverageSourcePath.Count -gt 0) {
+        $Arguments += @(
+            '-CoverageSourcePathsJson'
+            ($CoverageSourcePath | ConvertTo-Json -Compress)
+        )
+    }
+    if ($EnableCodeCoverage) {
+        $Arguments += @(
+            '-EnableCodeCoverage'
+            '-CodeCoverageOutputPath'
+            $CodeCoverageOutputPath
+            '-CodeCoverageOutputFormat'
+            $CodeCoverageOutputFormat
+            '-CoveragePercentTarget'
+            $CoveragePercentTarget.ToString()
+        )
+    }
+    if ($ExcludeLiveRepro) {
+        $Arguments += '-ExcludeLiveRepro'
+    }
+
+    & $PowerShellPath @Arguments
+    $ExitCode = $LASTEXITCODE
+    if ($ExitCode -ne 0) {
+        throw "Isolated Pester process failed with exit code $ExitCode."
+    }
+    if (-not (Test-Path -LiteralPath $SummaryPath -PathType Leaf)) {
+        throw "Isolated Pester process did not create the summary file: $SummaryPath"
+    }
+
+    Get-Content -LiteralPath $SummaryPath -Raw | ConvertFrom-Json
+}
+
+
 # Define headers as separator, task path, synopsis, and location, e.g. for Ctrl+Click in VSCode.
 # Also change the default color to Green. If you need task start times, use `$Task.Started`.
 Set-BuildHeader {
@@ -322,9 +403,6 @@ Add-BuildTask FormattingCheck {
 
 #Synopsis: Invoke all Pester Unit Tests in the Tests\Unit folder (if it exists)
 Add-BuildTask Test {
-    Write-Build White "      Importing exact Pester version: $script:RequiredPesterVersion"
-    $null = Import-DLLPickleBuildTool -Name 'Pester' -RequiredVersion $script:RequiredPesterVersion
-
     $CodeCovPath = Join-Path -Path $script:ArtifactsPath -ChildPath 'ccReport'
     $TestOutputPath = Join-Path -Path $script:ArtifactsPath -ChildPath 'testOutput'
     if (-not(Test-Path $CodeCovPath)) {
@@ -334,35 +412,29 @@ Add-BuildTask Test {
         New-Item -Path $TestOutputPath -ItemType Directory | Out-Null
     }
     if (Test-Path -Path $script:UnitTestsPath) {
-        $PesterConfiguration = New-PesterConfiguration
-        $PesterConfiguration.run.Path = $script:UnitTestsPath
-        $PesterConfiguration.Run.PassThru = $true
-        $PesterConfiguration.Run.Exit = $false
-        $PesterConfiguration.CodeCoverage.Enabled = $true
         $CoveragePaths = @(Get-ChildItem -Path (Join-Path -Path $ProjectRoot -ChildPath "src/$ModuleName") -Filter '*.ps1' -Recurse -File | Where-Object {
                 $FilePath = $_.FullName
                 -not ($script:CoverageExclusions | Where-Object { $FilePath -like $_ })
             } | Select-Object -ExpandProperty FullName)
-        $PesterConfiguration.CodeCoverage.Path = $CoveragePaths
-        $PesterConfiguration.CodeCoverage.CoveragePercentTarget = $script:CoverageThreshold
-        $PesterConfiguration.CodeCoverage.OutputPath = Join-Path -Path $CodeCovPath -ChildPath 'CodeCoverage.xml'
-        $PesterConfiguration.CodeCoverage.OutputFormat = 'JaCoCo'
-        $PesterConfiguration.TestResult.Enabled = $true
-        $PesterConfiguration.TestResult.OutputPath = Join-Path -Path $TestOutputPath -ChildPath 'PesterTests.xml'
-        $PesterConfiguration.TestResult.OutputFormat = $script:TestOutputFormat
-        $PesterConfiguration.Output.Verbosity = 'Detailed'
+        $TestResultPath = Join-Path -Path $TestOutputPath -ChildPath 'PesterTests.xml'
+        $SummaryPath = Join-Path -Path $TestOutputPath -ChildPath 'PesterTests.summary.json'
 
-        Write-Build White '      Performing Pester Unit Tests...'
-        # Publish Test Results
-        $TestResults = Invoke-Pester -Configuration $PesterConfiguration
+        Write-Build White "      Running Pester $script:MinPesterVersion-$script:MaxPesterVersion in an isolated pwsh process..."
+        $PesterParameters = @{
+            TestPath = $script:UnitTestsPath
+            SummaryPath = $SummaryPath
+            TestResultPath = $TestResultPath
+            CoverageSourcePath = $CoveragePaths
+            EnableCodeCoverage = $true
+            CodeCoverageOutputPath = Join-Path -Path $CodeCovPath -ChildPath 'CodeCoverage.xml'
+            CodeCoverageOutputFormat = 'JaCoCo'
+            CoveragePercentTarget = $script:CoverageThreshold
+        }
+        $TestResults = Invoke-IsolatedPester @PesterParameters
 
         # This will output a nice json for each failed test (if running in CodeBuild)
         if ($env:CODEBUILD_BUILD_ARN) {
-            $TestResults.TestResult | ForEach-Object {
-                if ($_.Result -ne 'Passed') {
-                    ConvertTo-Json -InputObject $_ -Compress
-                }
-            }
+            $TestResults.FailedTests | ConvertTo-Json -Compress -Depth 10
         }
 
         $NumberFails = $TestResults.FailedCount
@@ -371,15 +443,16 @@ Add-BuildTask Test {
         Write-Build Gray ('      ...CODE COVERAGE - CommandsExecutedCount: {0}' -f $TestResults.CodeCoverage.CommandsExecutedCount)
         Write-Build Gray ('      ...CODE COVERAGE - CommandsAnalyzedCount: {0}' -f $TestResults.CodeCoverage.CommandsAnalyzedCount)
 
-        if ($TestResults.CodeCoverage.NumberOfCommandsExecuted -ne 0) {
-            $CoveragePercent = '{0:N2}' -f ($TestResults.CodeCoverage.CommandsExecutedCount / $TestResults.CodeCoverage.CommandsAnalyzedCount * 100)
+        if ($TestResults.CodeCoverage.CommandsAnalyzedCount -gt 0) {
+            $CoveragePercentValue = $TestResults.CodeCoverage.CommandsExecutedCount / $TestResults.CodeCoverage.CommandsAnalyzedCount * 100
+            $CoveragePercent = '{0:N2}' -f $CoveragePercentValue
 
-            if ($TestResults.CodeCoverage.NumberOfCommandsMissed -gt 0) {
-                'Failed to analyze "{0}" commands' -f $TestResults.CodeCoverage.NumberOfCommandsMissed
+            if ($TestResults.CodeCoverage.CommandsMissedCount -gt 0) {
+                'Failed to analyze "{0}" commands' -f $TestResults.CodeCoverage.CommandsMissedCount
             }
             Write-Host "PowerShell Commands not tested:`n$(ConvertTo-Json -InputObject $TestResults.CodeCoverage.MissedCommands)"
 
-            if ([Int]$CoveragePercent -lt $CoverageThreshold) {
+            if ($CoveragePercentValue -lt $CoverageThreshold) {
                 throw ('Failed to meet code coverage threshold of {0}% with only {1}% coverage' -f $CoverageThreshold, $CoveragePercent)
             } else {
                 Write-Build Cyan "      $('Covered {0}% of {1} analyzed commands in {2} files.' -f $CoveragePercent, $TestResults.CodeCoverage.CommandsAnalyzedCount, $TestResults.CodeCoverage.FilesAnalyzedCount)"
@@ -906,37 +979,26 @@ Add-BuildTask Build {
 #Synopsis: Invokes all Pester Integration Tests in the Tests\Integration folder (if it exists)
 Add-BuildTask IntegrationTest {
     if (Test-Path -Path $script:IntegrationTestsPath) {
-        Write-Build White "      Importing exact Pester version: $script:RequiredPesterVersion"
-        $null = Import-DLLPickleBuildTool -Name 'Pester' -RequiredVersion $script:RequiredPesterVersion
-
         Write-Build White "      Performing Pester Integration Tests in $script:IntegrationTestsPath"
-
-        $PesterConfiguration = New-PesterConfiguration
-        $PesterConfiguration.run.Path = $script:IntegrationTestsPath
-        $PesterConfiguration.Run.PassThru = $true
-        $PesterConfiguration.Run.Exit = $false
-        $PesterConfiguration.CodeCoverage.Enabled = $false
         $TestOutputPath = Join-Path -Path $script:ArtifactsPath -ChildPath 'testOutput'
         if (-not (Test-Path -LiteralPath $TestOutputPath -PathType Container)) {
             $null = New-Item -Path $TestOutputPath -ItemType Directory -Force
         }
-        $PesterConfiguration.TestResult.Enabled = $true
-        $PesterConfiguration.TestResult.OutputPath = Join-Path -Path $TestOutputPath -ChildPath 'PesterIntegrationTests.xml'
-        $PesterConfiguration.TestResult.OutputFormat = $script:TestOutputFormat
-        $PesterConfiguration.Output.Verbosity = 'Detailed'
+        $TestResultPath = Join-Path -Path $TestOutputPath -ChildPath 'PesterIntegrationTests.xml'
+        $SummaryPath = Join-Path -Path $TestOutputPath -ChildPath 'PesterIntegrationTests.summary.json'
+        $PesterParameters = @{
+            TestPath = $script:IntegrationTestsPath
+            SummaryPath = $SummaryPath
+            TestResultPath = $TestResultPath
+        }
         if ($env:DLLPICKLE_RUN_LIVE_REPRO -ne '1') {
-            $PesterConfiguration.Filter.ExcludeTag = @('LiveRepro')
-            Write-Build Gray '      Excluding LiveRepro tests. Set DLLPICKLE_RUN_LIVE_REPRO=1 to include them.'
+            $PesterParameters.ExcludeLiveRepro = $true
         }
 
-        $TestResults = Invoke-Pester -Configuration $PesterConfiguration
+        $TestResults = Invoke-IsolatedPester @PesterParameters
         # This will output a nice json for each failed test (if running in CodeBuild)
         if ($env:CODEBUILD_BUILD_ARN) {
-            $TestResults.TestResult | ForEach-Object {
-                if ($_.Result -ne 'Passed') {
-                    ConvertTo-Json -InputObject $_ -Compress
-                }
-            }
+            $TestResults.FailedTests | ConvertTo-Json -Compress -Depth 10
         }
 
         $NumberFails = $TestResults.FailedCount
