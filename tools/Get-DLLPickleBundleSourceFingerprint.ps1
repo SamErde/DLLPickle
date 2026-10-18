@@ -4,11 +4,12 @@ Computes a deterministic fingerprint of every published-bundle source input.
 
 .DESCRIPTION
 Hashes module sources, the locked build project, and every repository input that
-controls PrepareModuleOutput: the build file, settings, tooling bootstrap, pinned
-tool policy, build entry point, and SDK selection. Repository-root paths and
-timestamps are excluded. The result can bind transitional manual authenticated
-evidence to bundle content even though committing that evidence necessarily
-changes the Git commit SHA.
+controls release bundle construction or transformation: the build file, settings,
+tooling bootstrap, pinned tool policy, build entry point, release bootstrap,
+version stamping, and SDK selection. Repository-root paths and timestamps are
+excluded. The result can bind transitional manual authenticated evidence to bundle
+content even though committing that evidence necessarily changes the Git commit
+SHA.
 
 .PARAMETER RepositoryRoot
 Repository root containing src/DLLPickle and src/DLLPickle.Build.
@@ -39,6 +40,8 @@ if (-not (Test-Path -LiteralPath $ModuleSourceRoot -PathType Container)) {
     throw "Published module source directory was not found: $ModuleSourceRoot"
 }
 $RequiredRelativePaths = @(
+    '.github/ci-scripts/Actions_Bootstrap.ps1'
+    '.github/ci-scripts/Update-ModuleVersion.ps1'
     'build/DLLPickle.Build.ps1'
     'build/DLLPickle.Settings.ps1'
     'build/DLLPickle.Tooling.ps1'

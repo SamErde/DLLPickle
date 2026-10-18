@@ -9,10 +9,14 @@ BeforeAll {
         $BuildRoot = Join-Path $Root 'src\DLLPickle.Build'
         $BuildScriptRoot = Join-Path $Root 'build'
         $ToolsRoot = Join-Path $Root 'tools'
+        $CiScriptsRoot = Join-Path $Root '.github\ci-scripts'
         $null = New-Item -Path $ModuleRoot -ItemType Directory -Force
         $null = New-Item -Path $BuildRoot -ItemType Directory -Force
         $null = New-Item -Path $BuildScriptRoot -ItemType Directory -Force
         $null = New-Item -Path $ToolsRoot -ItemType Directory -Force
+        $null = New-Item -Path $CiScriptsRoot -ItemType Directory -Force
+        Set-Content -LiteralPath (Join-Path $CiScriptsRoot 'Actions_Bootstrap.ps1') -Value 'Import-Module GitHubActions' -Encoding UTF8
+        Set-Content -LiteralPath (Join-Path $CiScriptsRoot 'Update-ModuleVersion.ps1') -Value 'param([version]$Version)' -Encoding UTF8
         Set-Content -LiteralPath (Join-Path $Root 'src\DLLPickle\DLLPickle.psd1') -Value '@{ ModuleVersion = ''0.0.0'' }' -Encoding UTF8
         Set-Content -LiteralPath (Join-Path $ModuleRoot 'Get-Thing.ps1') -Value 'function Get-Thing { ''thing'' }' -Encoding UTF8
         Set-Content -LiteralPath (Join-Path $BuildRoot 'DLLPickle.csproj') -Value '<Project />' -Encoding UTF8
@@ -39,6 +43,8 @@ Describe 'Published bundle source fingerprint' -Tag 'Unit' {
 
         $First.fingerprint | Should -BeExactly $Second.fingerprint
         @($First.files.path) | Should -Be @(
+            '.github/ci-scripts/Actions_Bootstrap.ps1'
+            '.github/ci-scripts/Update-ModuleVersion.ps1'
             'build/DLLPickle.Build.ps1'
             'build/DLLPickle.Settings.ps1'
             'build/DLLPickle.Tooling.ps1'
@@ -72,6 +78,21 @@ Describe 'Published bundle source fingerprint' -Tag 'Unit' {
         $After.fingerprint | Should -Not -Be $Before.fingerprint
     }
 
+    It 'changes when a release transformation script changes' -ForEach @(
+        @{ RelativePath = '.github\ci-scripts\Actions_Bootstrap.ps1' }
+        @{ RelativePath = '.github\ci-scripts\Update-ModuleVersion.ps1' }
+    ) {
+        param($RelativePath)
+
+        $Root = Get-BundleFingerprintFixture -Root (Join-Path $TestDrive ([System.IO.Path]::GetFileNameWithoutExtension($RelativePath)))
+        $Before = & $script:ToolPath -RepositoryRoot $Root
+        Add-Content -LiteralPath (Join-Path $Root $RelativePath) -Value '# changed release behavior' -Encoding UTF8
+
+        $After = & $script:ToolPath -RepositoryRoot $Root
+
+        $After.fingerprint | Should -Not -Be $Before.fingerprint
+    }
+
     It 'uses ordinal path order under English and Turkish cultures' {
         $Root = Get-BundleFingerprintFixture -Root (Join-Path $TestDrive 'culture')
         $OriginalCulture = [System.Globalization.CultureInfo]::CurrentCulture
@@ -96,7 +117,7 @@ Describe 'Published bundle source fingerprint' -Tag 'Unit' {
         $Actual = Get-Content -LiteralPath $OutputPath -Raw | ConvertFrom-Json
 
         $Actual.fingerprint | Should -BeExactly $Expected.fingerprint
-        @($Actual.files).Count | Should -Be 10
+        @($Actual.files).Count | Should -Be 12
         Get-Content -LiteralPath $OutputPath -Raw | Should -Not -Match ([regex]::Escape($Root))
     }
 }
