@@ -54,8 +54,11 @@ BeforeAll {
             '<tr><td>PowerShell 7.4 (LTS)</td><td><local-time datetime="11/16/2023 8:00:00 AM"></local-time></td><td><local-time datetime="11/11/2026 6:59:59 AM"></local-time></td></tr>'
             '<tr><td>PowerShell 7.5</td><td><local-time datetime="1/23/2025 8:00:00 AM"></local-time></td><td><local-time datetime="11/11/2026 6:59:59 AM"></local-time></td></tr>'
             '<tr><td>PowerShell 7.6 (LTS)</td><td><local-time datetime="3/18/2026 8:00:00 AM"></local-time></td><td><local-time datetime="11/15/2028 6:59:59 AM"></local-time></td></tr>'
-            if (@($ReleaseVersions | Where-Object { [version]$_ -ge [version]'7.7.0' }).Count -gt 0) {
+            if (@($ReleaseVersions | Where-Object { ([version]$_).Major -eq 7 -and ([version]$_).Minor -eq 7 }).Count -gt 0) {
                 "<tr><td>PowerShell 7.7</td><td><local-time datetime=`"$NewLineStartDate`"></local-time></td><td><local-time datetime=`"5/12/2028 6:59:59 AM`"></local-time></td></tr>"
+            }
+            if (@($ReleaseVersions | Where-Object { ([version]$_).Major -ge 8 }).Count -gt 0) {
+                '<tr><td>PowerShell 8.0 (LTS)</td><td><local-time datetime="7/20/2026 8:00:00 AM"></local-time></td><td><local-time datetime="11/14/2029 6:59:59 AM"></local-time></td></tr>'
             }
         )
         "<table>$($LifecycleRows -join '')</table>" | Set-Content -LiteralPath $LifecyclePath -Encoding UTF8
@@ -171,6 +174,70 @@ Describe 'PowerShell support update discovery' -Tag 'Unit' {
         $Report.SupportContractReviewRequired | Should -BeTrue
         $Report.NewLines[0].RequiredDecision | Should -Match 'CLR/TFM'
         $Report.SupportContractMarker | Should -Be "<!-- dllpickle-finding-fingerprint:$($Report.SupportContractFingerprint) -->"
+    }
+
+    It 'routes a hypothetical next-major GA line to support-contract review' {
+        $Fixture = Get-SupportUpdateFixture -Root $TestDrive -ReleaseVersions @('7.4.18', '7.5.9', '7.6.4', '8.0.0')
+        $Parameters = @{
+            TestMatrixPath = $Fixture.MatrixPath
+            ReleaseDataPath = $Fixture.ReleasePath
+            LifecycleDataPath = $Fixture.LifecyclePath
+            OutputPath = Join-Path $TestDrive 'next-major-line.json'
+            AsOfUtc = '2026-08-08T00:00:00Z'
+            RequireCurrent = $true
+        }
+
+        { & $script:DiscoveryPath @Parameters } | Should -Throw '*new GA PowerShell lines: 8.0*'
+        $Report = Get-Content -LiteralPath $Parameters.OutputPath -Raw | ConvertFrom-Json
+        @($Report.NewLines).ReleaseLine | Should -Be @('8.0')
+        $Report.SupportContractReviewRequired | Should -BeTrue
+    }
+
+    It 'authenticates GitHub discovery and retries transient release and lifecycle failures' {
+        $Fixture = Get-SupportUpdateFixture -Root $TestDrive -ReleaseVersions @('7.4.18', '7.5.9', '7.6.4')
+        $StateKey = 'DLLPickle.PowerShellSupportUpdate.HttpTestState'
+        $State = [pscustomobject]@{
+            ReleaseAttempts = 0
+            LifecycleAttempts = 0
+            Authorization = $null
+            ReleaseData = @(Get-Content -LiteralPath $Fixture.ReleasePath -Raw | ConvertFrom-Json)
+            LifecycleContent = Get-Content -LiteralPath $Fixture.LifecyclePath -Raw
+        }
+        [System.AppDomain]::CurrentDomain.SetData($StateKey, $State)
+        Mock Invoke-RestMethod {
+            $Current = [System.AppDomain]::CurrentDomain.GetData('DLLPickle.PowerShellSupportUpdate.HttpTestState')
+            $Current.ReleaseAttempts++
+            $Current.Authorization = [string]$Headers.Authorization
+            if ($Current.ReleaseAttempts -eq 1) {
+                throw 'transient GitHub failure'
+            }
+            $Current.ReleaseData
+        }
+        Mock Invoke-WebRequest {
+            $Current = [System.AppDomain]::CurrentDomain.GetData('DLLPickle.PowerShellSupportUpdate.HttpTestState')
+            $Current.LifecycleAttempts++
+            if ($Current.LifecycleAttempts -eq 1) {
+                throw 'transient lifecycle failure'
+            }
+            [pscustomobject]@{ Content = $Current.LifecycleContent }
+        }
+        Mock Start-Sleep {}
+
+        $OriginalToken = $env:GH_TOKEN
+        try {
+            $env:GH_TOKEN = 'test-token'
+            $Report = & $script:DiscoveryPath -TestMatrixPath $Fixture.MatrixPath -OutputPath (Join-Path $TestDrive 'retried-live.json') -AsOfUtc '2026-08-08T00:00:00Z'
+        } finally {
+            $env:GH_TOKEN = $OriginalToken
+            $CapturedState = [System.AppDomain]::CurrentDomain.GetData($StateKey)
+            [System.AppDomain]::CurrentDomain.SetData($StateKey, $null)
+        }
+
+        $CapturedState.ReleaseAttempts | Should -Be 2
+        $CapturedState.LifecycleAttempts | Should -Be 2
+        $CapturedState.Authorization | Should -BeExactly 'Bearer test-token'
+        @($Report.PatchUpdates) | Should -HaveCount 0
+        Should -Invoke Start-Sleep -Times 2 -Exactly
     }
 
     It 'does not treat a published preview with a future lifecycle start as a supported GA line' {

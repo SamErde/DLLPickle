@@ -63,6 +63,47 @@ function Get-DLLPickleStableFingerprint {
     return [System.BitConverter]::ToString([System.Security.Cryptography.SHA256]::HashData($Bytes)).Replace('-', '').ToLowerInvariant()
 }
 
+function Invoke-DLLPickleHttpOperation {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [scriptblock]$Operation,
+
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
+        [string]$Description,
+
+        [Parameter()]
+        [ValidateRange(1, 10)]
+        [int]$MaximumAttempts = 3
+    )
+
+    for ($Attempt = 1; $Attempt -le $MaximumAttempts; $Attempt++) {
+        try {
+            & $Operation
+            return
+        } catch {
+            $ResponseProperty = $_.Exception.PSObject.Properties['Response']
+            $StatusCode = if ($null -ne $ResponseProperty -and $null -ne $ResponseProperty.Value) {
+                $StatusProperty = $ResponseProperty.Value.PSObject.Properties['StatusCode']
+                if ($null -ne $StatusProperty) { [int]$StatusProperty.Value } else { $null }
+            } else {
+                $null
+            }
+            $Transient = $null -eq $StatusCode -or
+                $StatusCode -in @(403, 408, 425, 429) -or
+                $StatusCode -ge 500
+            if (-not $Transient -or $Attempt -eq $MaximumAttempts) {
+                throw
+            }
+
+            $DelaySeconds = [Math]::Min([Math]::Pow(2, $Attempt), 8)
+            Write-Warning "$Description failed on attempt $Attempt of $MaximumAttempts; retrying in $DelaySeconds seconds."
+            Start-Sleep -Seconds $DelaySeconds
+        }
+    }
+}
+
 if (-not (Test-Path -LiteralPath $TestMatrixPath -PathType Leaf)) {
     throw "PowerShell test matrix was not found: $TestMatrixPath"
 }
@@ -79,14 +120,22 @@ $ReleaseData = if (-not [string]::IsNullOrWhiteSpace($ReleaseDataPath)) {
         'X-GitHub-Api-Version' = '2022-11-28'
         'User-Agent'         = 'DLLPickle-support-policy'
     }
-    @(Invoke-RestMethod -Uri 'https://api.github.com/repos/PowerShell/PowerShell/releases?per_page=100' -Headers $Headers -ErrorAction Stop)
+    if (-not [string]::IsNullOrWhiteSpace($env:GH_TOKEN)) {
+        $Headers['Authorization'] = "Bearer $env:GH_TOKEN"
+    }
+    @(Invoke-DLLPickleHttpOperation -Description 'PowerShell release discovery' -Operation {
+            Invoke-RestMethod -Uri 'https://api.github.com/repos/PowerShell/PowerShell/releases?per_page=100' -Headers $Headers -ErrorAction Stop
+        })
 }
 
 $StableReleases = @(
     foreach ($Release in $ReleaseData) {
-        $TagMatch = [regex]::Match([string]$Release.tag_name, '^v(?<version>7\.\d+\.\d+)$')
+        $TagMatch = [regex]::Match([string]$Release.tag_name, '^v(?<version>\d+\.\d+\.\d+)$')
         if (-not $Release.draft -and -not $Release.prerelease -and $TagMatch.Success) {
             $ReleaseVersion = [version]$TagMatch.Groups['version'].Value
+            if ($ReleaseVersion.Major -lt 7) {
+                continue
+            }
             $PublishedAt = if ($Release.published_at) { [datetime]$Release.published_at } else { [datetime]::MinValue }
             if ($PublishedAt -le $AsOfUtc.ToUniversalTime()) {
                 [PSCustomObject]@{
@@ -101,7 +150,7 @@ $StableReleases = @(
     }
 )
 if ($StableReleases.Count -eq 0) {
-    throw 'No stable PowerShell 7 release records were found in the official release data.'
+    throw 'No stable PowerShell release records at version 7 or later were found in the official release data.'
 }
 
 $LifecycleContent = if (-not [string]::IsNullOrWhiteSpace($LifecycleDataPath)) {
@@ -110,7 +159,9 @@ $LifecycleContent = if (-not [string]::IsNullOrWhiteSpace($LifecycleDataPath)) {
     }
     Get-Content -LiteralPath $LifecycleDataPath -Raw
 } else {
-    (Invoke-WebRequest -Uri ([string]$TestMatrix.lifecycleSourceUrl) -UseBasicParsing -ErrorAction Stop).Content
+    (Invoke-DLLPickleHttpOperation -Description 'Microsoft PowerShell lifecycle discovery' -Operation {
+            Invoke-WebRequest -Uri ([string]$TestMatrix.lifecycleSourceUrl) -UseBasicParsing -ErrorAction Stop
+        }).Content
 }
 $PacificTimeZone = try {
     [System.TimeZoneInfo]::FindSystemTimeZoneById('America/Los_Angeles')
@@ -119,9 +170,12 @@ $PacificTimeZone = try {
 }
 $LiveLifecycleRows = @(
     foreach ($TableRow in [regex]::Matches($LifecycleContent, '(?is)<tr[^>]*>(?<content>.*?)</tr>')) {
-        $VersionMatch = [regex]::Match($TableRow.Groups['content'].Value, '(?is)<td[^>]*>\s*PowerShell\s+(?<line>7\.\d+)(?:\s*\(LTS\))?\s*</td>')
+        $VersionMatch = [regex]::Match($TableRow.Groups['content'].Value, '(?is)<td[^>]*>\s*PowerShell\s+(?<line>\d+\.\d+)(?:\s*\(LTS\))?\s*</td>')
         $DateMatches = [regex]::Matches($TableRow.Groups['content'].Value, '(?is)<local-time[^>]*\sdatetime="(?<date>[^"]+)"')
         if (-not $VersionMatch.Success -or $DateMatches.Count -ne 2) {
+            continue
+        }
+        if ([version]$VersionMatch.Groups['line'].Value -lt [version]'7.0') {
             continue
         }
         $StartUtc = [datetime]::SpecifyKind([datetime]::Parse($DateMatches[0].Groups['date'].Value, [System.Globalization.CultureInfo]::InvariantCulture), [System.DateTimeKind]::Utc)
@@ -134,7 +188,7 @@ $LiveLifecycleRows = @(
     }
 )
 if ($LiveLifecycleRows.Count -eq 0) {
-    throw 'No PowerShell 7 release rows were parsed from the official Microsoft lifecycle data.'
+    throw 'No PowerShell release rows at version 7 or later were parsed from the official Microsoft lifecycle data.'
 }
 $DuplicateLifecycleLines = @($LiveLifecycleRows | Group-Object ReleaseLine | Where-Object Count -NE 1)
 if ($DuplicateLifecycleLines.Count -gt 0) {
@@ -194,10 +248,10 @@ $PatchUpdates = @(
     }
 )
 
-$MaximumDeclaredMinor = @($TestMatrix.profiles.powerShellMinor | Measure-Object -Maximum)[0].Maximum
+$MaximumDeclaredLine = @($DeclaredLines | ForEach-Object { [version]$_ } | Sort-Object -Descending | Select-Object -First 1)[0]
 $NewLines = @(
     $StableReleases |
-        Where-Object { $_.Version.Minor -gt $MaximumDeclaredMinor -and $_.ReleaseLine -notin $DeclaredLines -and $_.ReleaseLine -in $SupportedLifecycleLines } |
+        Where-Object { [version]$_.ReleaseLine -gt $MaximumDeclaredLine -and $_.ReleaseLine -notin $DeclaredLines -and $_.ReleaseLine -in $SupportedLifecycleLines } |
         Group-Object ReleaseLine |
         ForEach-Object { $_.Group | Sort-Object Version -Descending | Select-Object -First 1 } |
         Sort-Object Version |

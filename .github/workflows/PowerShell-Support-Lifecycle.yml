@@ -38,6 +38,8 @@ jobs:
 
       - name: Discover servicing and support-contract updates
         shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: ./tools/Get-DLLPicklePowerShellSupportUpdate.ps1 -OutputPath ./artifacts/lifecycle/powershell-support-update.json
 
       - name: Prepare a checksum-pinned candidate matrix
@@ -270,12 +272,14 @@ jobs:
               '- Exact runtime identity verified in all proposed matrix cells.'
               '- Generated support documentation refreshed from the validated matrix.'
               '- Support-line additions and retirements are intentionally excluded.'
+              '- Exact runtime and .NET servicing versions remain fingerprinted compatibility evidence.'
+              '- This draft intentionally requires maintainer adjudication and acceptance of the nine regenerated profile-evidence artifacts before it can pass the upstream baseline gate.'
               ''
               "Validation run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
               ''
               [string]$Report.PatchProposalMarker
           ) -join [System.Environment]::NewLine
-          $Arguments = @('pr', 'create', '--title', $Title, '--body', $Body, '--base', 'main', '--head', $BranchName)
+          $Arguments = @('pr', 'create', '--draft', '--title', $Title, '--body', $Body, '--base', 'main', '--head', $BranchName)
           & gh @Arguments
           if ($LASTEXITCODE -ne 0) {
               throw 'Failed to open the validated PowerShell servicing pull request.'

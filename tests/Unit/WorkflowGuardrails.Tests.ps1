@@ -171,6 +171,7 @@ Describe 'Release publish gating guardrails' -Tag 'Unit' {
         $ReleaseWorkflow | Should -Match ([regex]::Escape('-Mode Release'))
         $ReleaseWorkflow | Should -Match ([regex]::Escape('tools/Get-DLLPicklePowerShellSupportUpdate.ps1'))
         $ReleaseWorkflow | Should -Match ([regex]::Escape('-RequireCurrent'))
+        $ReleaseWorkflow | Should -Match '(?ms)Refresh official PowerShell servicing state.*?GH_TOKEN: \$\{\{ github\.token \}\}'
         $ReleaseWorkflow | Should -Match ([regex]::Escape('-LifecycleEvidencePath ./artifacts/lifecycle/powershell-support-update.json'))
         $ReleaseWorkflow | Should -Match '(?ms)Refresh official PowerShell servicing state.*Validate supported PowerShell lifecycle policy'
     }
@@ -266,6 +267,7 @@ Describe 'PowerShell support lifecycle workflow guardrails' -Tag 'Unit' {
         $lifecycleWorkflow | Should -Match ([regex]::Escape('fromJson(needs.discover.outputs.runtime_matrix)'))
         $lifecycleWorkflow | Should -Match ([regex]::Escape('PatchProposalFingerprint'))
         $lifecycleWorkflow | Should -Match ([regex]::Escape('SupportContractFingerprint'))
+        $lifecycleWorkflow | Should -Match '(?ms)Discover servicing and support-contract updates.*?GH_TOKEN: \$\{\{ github\.token \}\}'
     }
 
     It 'keeps discovery read-only and scopes repository writes to fingerprinted publication jobs' {
@@ -278,6 +280,8 @@ Describe 'PowerShell support lifecycle workflow guardrails' -Tag 'Unit' {
         $lifecycleWorkflow | Should -Match ([regex]::Escape('automation/powershell-patch-$($Fingerprint.Substring(0, 16))'))
         $lifecycleWorkflow | Should -Match ([regex]::Escape('tools/Test-DLLPickleFindingFingerprintReported.ps1'))
         $lifecycleWorkflow | Should -Match 'gh\s+pr\s+create|@\(''pr'', ''create'''
+        $lifecycleWorkflow | Should -Match ([regex]::Escape("'--draft'"))
+        $lifecycleWorkflow | Should -Match 'requires maintainer adjudication and acceptance of the nine regenerated profile-evidence artifacts'
         $lifecycleWorkflow | Should -Match ([regex]::Escape("github.event_name == 'schedule' || inputs.publish"))
         $lifecycleWorkflow | Should -Match 'Validation-only servicing proposal'
         $lifecycleWorkflow | Should -Match 'gh\s+issue\s+(create|comment)'

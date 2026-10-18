@@ -340,7 +340,7 @@ If the newest upstream release does not support a still-supported PowerShell lin
 
 ### 6.1 PowerShell runtime patch updates
 
-A scheduled job discovers the newest GA patch within each declared supported line and opens a PR updating only test-matrix/evidence pins. That PR may merge automatically after all supported profiles pass. The workflow must pin the discovered exact version in the PR; required CI must not use a floating `7.4`, `7.5`, or `7.6` selector whose result can change between reruns.
+A scheduled job discovers the newest GA patch within each declared supported line and opens a draft PR updating the exact test matrix and generated documentation. The PR's live nine-cell jobs regenerate profile-aware artifacts, but exact PowerShell and .NET servicing versions remain part of the accepted evidence fingerprint. A maintainer must therefore adjudicate and commit the refreshed evidence and policy fingerprints before the baseline gate can pass and the PR can leave draft. The workflow must pin the discovered exact version in the PR; required CI must not use a floating `7.4`, `7.5`, or `7.6` selector whose result can change between reruns.
 
 ### 6.2 New or retired PowerShell lines
 

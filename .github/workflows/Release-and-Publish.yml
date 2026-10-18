@@ -57,7 +57,7 @@ jobs:
     timeout-minutes: 10
     # Prefer exact-commit evidence from the future protected credentialed workflow. Until that
     # environment exists, one reviewed manual transition record may authorize only the initial
-    # 3.0.0 bundle fingerprint and expires within 30 days. Neither route permits writes.
+    # 3.0.0 bundle fingerprint and expires exactly 14 days after capture starts. Neither route permits writes.
     if: |
       github.repository_owner == 'SamErde' &&
       (
@@ -283,6 +283,8 @@ jobs:
 
       - name: Refresh official PowerShell servicing state
         shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: ./tools/Get-DLLPicklePowerShellSupportUpdate.ps1 -OutputPath ./artifacts/lifecycle/powershell-support-update.json -RequireCurrent
 
       - name: Validate supported PowerShell lifecycle policy
