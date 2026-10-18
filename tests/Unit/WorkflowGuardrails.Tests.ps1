@@ -249,6 +249,7 @@ Describe 'PowerShell support lifecycle workflow guardrails' -Tag 'Unit' {
 
         $lifecycleWorkflow | Should -Match '(?m)^\s+schedule:'
         $lifecycleWorkflow | Should -Match '(?m)^\s+workflow_dispatch:'
+        $lifecycleWorkflow | Should -Match '(?ms)workflow_dispatch:.*?publish:.*?type: boolean.*?default: false'
         $lifecycleWorkflow | Should -Match ([regex]::Escape('tools/Test-DLLPickleRuntimeProfilePolicy.ps1'))
         $lifecycleWorkflow | Should -Match ([regex]::Escape('-Mode Scheduled'))
         $lifecycleWorkflow | Should -Match ([regex]::Escape('tools/Get-DLLPicklePowerShellSupportUpdate.ps1'))
@@ -269,6 +270,8 @@ Describe 'PowerShell support lifecycle workflow guardrails' -Tag 'Unit' {
         $lifecycleWorkflow | Should -Match ([regex]::Escape('automation/powershell-patch-$($Fingerprint.Substring(0, 16))'))
         $lifecycleWorkflow | Should -Match ([regex]::Escape('tools/Test-DLLPickleFindingFingerprintReported.ps1'))
         $lifecycleWorkflow | Should -Match 'gh\s+pr\s+create|@\(''pr'', ''create'''
+        $lifecycleWorkflow | Should -Match ([regex]::Escape("github.event_name == 'schedule' || inputs.publish"))
+        $lifecycleWorkflow | Should -Match 'Validation-only servicing proposal'
         $lifecycleWorkflow | Should -Match 'gh\s+issue\s+(create|comment)'
         $lifecycleWorkflow | Should -Not -Match 'gh\s+pr\s+merge|git\s+push\s+--force'
     }
