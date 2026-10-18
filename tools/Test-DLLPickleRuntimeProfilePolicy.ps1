@@ -145,7 +145,10 @@ $VerifiedUtc = [datetime]::Parse(
     [System.Globalization.DateTimeStyles]::AssumeUniversal -bor [System.Globalization.DateTimeStyles]::AdjustToUniversal
 )
 $EvaluationUtc = $AsOfUtc.ToUniversalTime()
-$EvidenceAgeDays = [math]::Max(0, ($EvaluationUtc - $VerifiedUtc).TotalDays)
+if ($VerifiedUtc -gt $EvaluationUtc) {
+    throw "PowerShell lifecycle evidence cannot be verified in the future: $VerifiedTimestamp."
+}
+$EvidenceAgeDays = ($EvaluationUtc - $VerifiedUtc).TotalDays
 $EvidenceIsStale = $EvidenceAgeDays -gt [double]$TestMatrix.evidenceFreshnessDays
 
 $Results = [System.Collections.Generic.List[object]]::new()

@@ -69,7 +69,10 @@ function Get-DLLPicklePowerShellSupportState {
                 [System.Globalization.CultureInfo]::InvariantCulture,
                 [System.Globalization.DateTimeStyles]::AssumeUniversal -bor [System.Globalization.DateTimeStyles]::AdjustToUniversal
             )
-            $HoldoverEvidenceAgeDays = [math]::Max(0, ($EvaluationUtc - $EvidenceVerifiedUtc).TotalDays)
+            if ($EvidenceVerifiedUtc -gt $EvaluationUtc) {
+                throw "PowerShell $ReleaseLine hosted-service holdover evidence cannot be verified in the future."
+            }
+            $HoldoverEvidenceAgeDays = ($EvaluationUtc - $EvidenceVerifiedUtc).TotalDays
             $EvidenceIsFresh = $HoldoverEvidenceAgeDays -le [double]$Policy.evidenceFreshnessDays
             $DecisionRecorded = $EvidenceIsFresh
             if ($IsExpired) {

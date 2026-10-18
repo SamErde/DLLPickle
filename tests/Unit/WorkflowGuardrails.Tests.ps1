@@ -267,6 +267,7 @@ Describe 'PowerShell support lifecycle workflow guardrails' -Tag 'Unit' {
         $lifecycleWorkflow | Should -Match '(?ms)^permissions:\s+contents: read\s*$'
         $lifecycleWorkflow | Should -Match '(?ms)^  finalize-patch-proposal:.*?permissions:\s+contents: write\s+pull-requests: write'
         $lifecycleWorkflow | Should -Match '(?ms)^  support-contract-warning:.*?permissions:\s+contents: read\s+issues: write'
+        $lifecycleWorkflow | Should -Match "(?m)^    if: .*needs\.discover\.outputs\.support_review == 'true'.*github\.event_name == 'schedule' \|\| inputs\.publish"
         $lifecycleWorkflow | Should -Match ([regex]::Escape('automation/powershell-patch-$($Fingerprint.Substring(0, 16))'))
         $lifecycleWorkflow | Should -Match ([regex]::Escape('tools/Test-DLLPickleFindingFingerprintReported.ps1'))
         $lifecycleWorkflow | Should -Match 'gh\s+pr\s+create|@\(''pr'', ''create'''

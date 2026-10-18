@@ -5,6 +5,27 @@ BeforeAll {
     $script:BuildProjectPath = Join-Path -Path $script:RepositoryRoot -ChildPath 'src/DLLPickle.Build/DLLPickle.csproj'
     $script:PackageLockPath = Join-Path -Path $script:RepositoryRoot -ChildPath 'src/DLLPickle.Build/packages.lock.json'
     $script:PolicyTestScriptPath = Join-Path -Path $script:RepositoryRoot -ChildPath 'tools/Test-DLLPickleRuntimeProfilePolicy.ps1'
+
+    function Get-TestMatrixFixturePath {
+        param(
+            [Parameter(Mandatory)]
+            [string]$Name,
+
+            [Parameter(Mandatory)]
+            [string]$EvidenceVerifiedUtc,
+
+            [Parameter(Mandatory)]
+            [string]$LastVerifiedUtc
+        )
+
+        $Matrix = Get-Content -LiteralPath $script:TestMatrixPath -Raw | ConvertFrom-Json
+        $HoldoverProfile = $Matrix.profiles | Where-Object powerShellMinor -EQ 4
+        $HoldoverProfile.supportPolicy.evidenceVerifiedUtc = $EvidenceVerifiedUtc
+        $Matrix.lastVerifiedUtc = $LastVerifiedUtc
+        $FixturePath = Join-Path $TestDrive "$Name.json"
+        $Matrix | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $FixturePath -Encoding UTF8
+        $FixturePath
+    }
 }
 
 Describe 'Runtime profile policy data' -Tag 'Unit' {
@@ -120,8 +141,9 @@ Describe 'Runtime profile policy data' -Tag 'Unit' {
 Describe 'Runtime profile lifecycle enforcement' -Tag 'Unit' {
     It 'passes a release check while policy evidence is fresh and every line is supported' {
         $script:PolicyTestScriptPath | Should -Exist
+        $MatrixFixture = Get-TestMatrixFixturePath -Name 'matrix-supported' -EvidenceVerifiedUtc '2026-08-09T01:10:00Z' -LastVerifiedUtc '2026-08-09T01:10:00Z'
 
-        $result = @(& $script:PolicyTestScriptPath -Mode Release -AsOfUtc ([datetime]'2026-08-09T01:11:47Z') -PassThru)
+        $result = @(& $script:PolicyTestScriptPath -TestMatrixPath $MatrixFixture -Mode Release -AsOfUtc ([datetime]'2026-08-09T01:11:47Z') -PassThru)
 
         $result | Should -HaveCount 3
         @($result.Status | Sort-Object -Unique) | Should -Be @('Supported')
@@ -165,6 +187,22 @@ Describe 'Runtime profile lifecycle enforcement' -Tag 'Unit' {
             Should -Throw '*holdover review due*7.4*'
     }
 
+    It 'rejects hosted-service holdover evidence dated after the evaluation time' {
+        $RuntimePolicy = Get-Content -LiteralPath $script:RuntimePolicyPath -Raw | ConvertFrom-Json
+        $Matrix = Get-Content -LiteralPath $script:TestMatrixPath -Raw | ConvertFrom-Json
+        $RuntimePolicy.profiles = @($RuntimePolicy.profiles | Where-Object powerShellMinor -EQ 4)
+        $Matrix.profiles = @($Matrix.profiles | Where-Object powerShellMinor -EQ 4)
+        $Matrix.profiles[0].supportPolicy.evidenceVerifiedUtc = '2026-11-11T08:02:00Z'
+        $Matrix.lastVerifiedUtc = '2026-11-11T08:00:00Z'
+        $RuntimePolicyFixture = Join-Path $TestDrive 'runtime-policy-74-future-evidence.json'
+        $MatrixFixture = Join-Path $TestDrive 'matrix-74-future-evidence.json'
+        $RuntimePolicy | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $RuntimePolicyFixture -Encoding UTF8
+        $Matrix | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $MatrixFixture -Encoding UTF8
+
+        { & $script:PolicyTestScriptPath -RuntimePolicyPath $RuntimePolicyFixture -TestMatrixPath $MatrixFixture -Mode Release -AsOfUtc ([datetime]'2026-11-11T08:01:00Z') } |
+            Should -Throw '*holdover evidence cannot be verified in the future*'
+    }
+
     It 'keeps a line supported through the end of its Pacific lifecycle day' {
         $result = @(& $script:PolicyTestScriptPath -Mode Scheduled -AsOfUtc ([datetime]'2026-11-11T07:59:59Z') -PassThru -WarningAction SilentlyContinue)
 
@@ -173,8 +211,9 @@ Describe 'Runtime profile lifecycle enforcement' -Tag 'Unit' {
 
     It 'warns on schedule before an impending retirement' {
         $warnings = @()
+        $MatrixFixture = Get-TestMatrixFixturePath -Name 'matrix-retiring-warning' -EvidenceVerifiedUtc '2026-08-14T00:00:00Z' -LastVerifiedUtc '2026-08-14T00:00:00Z'
 
-        $result = @(& $script:PolicyTestScriptPath -Mode Scheduled -AsOfUtc ([datetime]'2026-08-15T00:00:00Z') -PassThru -WarningVariable warnings)
+        $result = @(& $script:PolicyTestScriptPath -TestMatrixPath $MatrixFixture -Mode Scheduled -AsOfUtc ([datetime]'2026-08-15T00:00:00Z') -PassThru -WarningVariable warnings)
 
         $warnings | Should -Not -BeNullOrEmpty
         @($result | Where-Object Status -eq 'RetiringSoon') | Should -HaveCount 2
@@ -183,6 +222,7 @@ Describe 'Runtime profile lifecycle enforcement' -Tag 'Unit' {
     It 'fails a release check when lifecycle verification is stale' {
         $Matrix = Get-Content -LiteralPath $script:TestMatrixPath -Raw | ConvertFrom-Json
         $Matrix.lastVerifiedUtc = '2026-07-01T00:00:00Z'
+        ($Matrix.profiles | Where-Object powerShellMinor -EQ 4).supportPolicy.evidenceVerifiedUtc = '2026-07-01T00:00:00Z'
         $MatrixFixture = Join-Path $TestDrive 'matrix-stale.json'
         $Matrix | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $MatrixFixture -Encoding UTF8
 
@@ -194,6 +234,7 @@ Describe 'Runtime profile lifecycle enforcement' -Tag 'Unit' {
     It 'allows scheduled patch validation when only generic matrix verification is stale' {
         $Matrix = Get-Content -LiteralPath $script:TestMatrixPath -Raw | ConvertFrom-Json
         $Matrix.lastVerifiedUtc = '2026-07-01T00:00:00Z'
+        ($Matrix.profiles | Where-Object powerShellMinor -EQ 4).supportPolicy.evidenceVerifiedUtc = '2026-07-01T00:00:00Z'
         $MatrixFixture = Join-Path $TestDrive 'matrix-scheduled-stale.json'
         $Matrix | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $MatrixFixture -Encoding UTF8
         $Warnings = @()
@@ -206,6 +247,7 @@ Describe 'Runtime profile lifecycle enforcement' -Tag 'Unit' {
     }
 
     It 'uses a release-current live discovery report as fresh lifecycle evidence' {
+        $MatrixFixture = Get-TestMatrixFixturePath -Name 'matrix-live-evidence' -EvidenceVerifiedUtc '2026-09-15T00:00:00Z' -LastVerifiedUtc '2026-09-15T00:00:00Z'
         $EvidencePath = Join-Path $TestDrive 'live-lifecycle-evidence.json'
         @{
             schemaVersion = 1
@@ -223,9 +265,16 @@ Describe 'Runtime profile lifecycle enforcement' -Tag 'Unit' {
             supportContractReviewRequired = $false
         } | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $EvidencePath -Encoding utf8
 
-        $result = @(& $script:PolicyTestScriptPath -Mode Release -AsOfUtc ([datetime]'2026-09-15T00:01:00Z') -LifecycleEvidencePath $EvidencePath -PassThru)
+        $result = @(& $script:PolicyTestScriptPath -TestMatrixPath $MatrixFixture -Mode Release -AsOfUtc ([datetime]'2026-09-15T00:01:00Z') -LifecycleEvidencePath $EvidencePath -PassThru)
 
         $result | Should -HaveCount 3
+    }
+
+    It 'rejects general lifecycle evidence dated after the evaluation time' {
+        $MatrixFixture = Get-TestMatrixFixturePath -Name 'matrix-future-lifecycle-evidence' -EvidenceVerifiedUtc '2026-09-15T00:00:00Z' -LastVerifiedUtc '2026-09-15T00:02:00Z'
+
+        { & $script:PolicyTestScriptPath -TestMatrixPath $MatrixFixture -Mode Release -AsOfUtc ([datetime]'2026-09-15T00:01:00Z') } |
+            Should -Throw '*lifecycle evidence cannot be verified in the future*'
     }
 
     It 'rejects live discovery evidence with an outstanding support update' {

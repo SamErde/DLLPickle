@@ -295,7 +295,7 @@ jobs:
   support-contract-warning:
     name: Require review for new or retiring support lines
     needs: discover
-    if: ${{ needs.discover.outputs.support_review == 'true' }}
+    if: ${{ needs.discover.outputs.support_review == 'true' && (github.event_name == 'schedule' || inputs.publish) }}
     runs-on: ubuntu-24.04
     permissions:
       contents: read
