@@ -2,6 +2,7 @@ BeforeAll {
     $script:RepositoryRoot = Split-Path -Path (Split-Path -Path $PSScriptRoot -Parent) -Parent
     $script:ToolPolicyPath = Join-Path -Path $script:RepositoryRoot -ChildPath 'build/build-tool-versions.json'
     $script:ToolingScriptPath = Join-Path -Path $script:RepositoryRoot -ChildPath 'build/DLLPickle.Tooling.ps1'
+    $script:BuildScriptPath = Join-Path -Path $script:RepositoryRoot -ChildPath 'build/DLLPickle.Build.ps1'
     $script:BuildWrapperPath = Join-Path -Path $script:RepositoryRoot -ChildPath 'tools/Invoke-DLLPickleBuild.ps1'
     $script:BootstrapPath = Join-Path -Path $script:RepositoryRoot -ChildPath '.github/ci-scripts/Actions_Bootstrap.ps1'
 
@@ -54,6 +55,14 @@ Describe 'Deterministic build tooling' -Tag 'Unit' {
         $bootstrap | Should -Match 'Save-Module'
         $wrapper | Should -Match 'Import-DLLPickleBuildTool'
         $wrapper | Should -Not -Match 'MinimumVersion|MaximumVersion'
+    }
+
+    It 'keeps isolated Pester execution on the selected PowerShell and CLR pair' {
+        $build = Get-Content -LiteralPath $script:BuildScriptPath -Raw
+
+        $build | Should -Match ([regex]::Escape('$PowerShellPath = [Environment]::ProcessPath'))
+        $build | Should -Match ([regex]::Escape('& $PowerShellPath @Arguments'))
+        $build | Should -Not -Match 'Get-Command\s+pwsh'
     }
 
     It 'detects whether the active module command supports SkipPublisherCheck' {

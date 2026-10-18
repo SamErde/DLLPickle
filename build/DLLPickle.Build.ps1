@@ -167,7 +167,12 @@ function Invoke-IsolatedPester {
         [switch]$ExcludeLiveRepro
     )
 
-    $PowerShellPath = (Get-Command pwsh -CommandType Application -ErrorAction Stop | Select-Object -First 1).Path
+    # Preserve the exact PowerShell/CLR pair selected by the matrix job. Resolving
+    # pwsh from PATH here can silently fall back to the hosted runner version.
+    $PowerShellPath = [Environment]::ProcessPath
+    if ([string]::IsNullOrWhiteSpace($PowerShellPath) -or -not (Test-Path -LiteralPath $PowerShellPath -PathType Leaf)) {
+        throw 'The current PowerShell process executable could not be resolved for isolated Pester execution.'
+    }
     $RunnerPath = Join-Path -Path $script:ProjectRoot -ChildPath 'build/Invoke-DLLPicklePester.ps1'
     $Arguments = @(
         '-NoProfile'
