@@ -231,7 +231,7 @@ $LifecycleRows = @(
         $EndDate = [datetime]::ParseExact([string]$LiveLifecycle[0].EndDate, 'yyyy-MM-dd', [System.Globalization.CultureInfo]::InvariantCulture)
         $EndExclusivePacific = [datetime]::SpecifyKind($EndDate.Date.AddDays(1), [System.DateTimeKind]::Unspecified)
         $EndExclusiveUtc = [System.TimeZoneInfo]::ConvertTimeToUtc($EndExclusivePacific, $PacificTimeZone)
-        $SupportState = Get-DLLPicklePowerShellSupportState -Profile $MatrixProfile -LifecycleEndExclusiveUtc $EndExclusiveUtc -AsOfUtc $AsOfUtc -RetirementWarningDays ([int]$TestMatrix.retirementWarningDays)
+        $SupportState = Get-DLLPicklePowerShellSupportState -RuntimeProfile $MatrixProfile -LifecycleEndExclusiveUtc $EndExclusiveUtc -AsOfUtc $AsOfUtc -RetirementWarningDays ([int]$TestMatrix.retirementWarningDays)
         [PSCustomObject]@{
             ReleaseLine   = $ReleaseLine
             LifecycleEnd  = [string]$LiveLifecycle[0].EndDate

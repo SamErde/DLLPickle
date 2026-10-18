@@ -11,7 +11,7 @@ function Get-DLLPicklePowerShellSupportState {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)]
-        [psobject]$Profile,
+        [psobject]$RuntimeProfile,
 
         [Parameter(Mandatory)]
         [datetime]$LifecycleEndExclusiveUtc,
@@ -26,7 +26,7 @@ function Get-DLLPicklePowerShellSupportState {
 
     $EvaluationUtc = $AsOfUtc.ToUniversalTime()
     $EndExclusiveUtc = $LifecycleEndExclusiveUtc.ToUniversalTime()
-    $ReleaseLine = '{0}.{1}' -f $Profile.powerShellMajor, $Profile.powerShellMinor
+    $ReleaseLine = '{0}.{1}' -f $RuntimeProfile.powerShellMajor, $RuntimeProfile.powerShellMinor
     $DaysRemaining = [math]::Floor(($EndExclusiveUtc - $EvaluationUtc).TotalDays)
     $IsExpired = $EvaluationUtc -ge $EndExclusiveUtc
     $Status = if ($IsExpired) { 'Expired' } elseif ($DaysRemaining -le $RetirementWarningDays) { 'RetiringSoon' } else { 'Supported' }
@@ -34,8 +34,8 @@ function Get-DLLPicklePowerShellSupportState {
     $RetirementAction = 'review-at-warning'
     $HoldoverEvidenceAgeDays = $null
 
-    if ($Profile.PSObject.Properties.Name -contains 'supportPolicy' -and $null -ne $Profile.supportPolicy) {
-        $Policy = $Profile.supportPolicy
+    if ($RuntimeProfile.PSObject.Properties.Name -contains 'supportPolicy' -and $null -ne $RuntimeProfile.supportPolicy) {
+        $Policy = $RuntimeProfile.supportPolicy
         $RetirementAction = [string]$Policy.retirementAction
         if ($RetirementAction -notin @('retire-at-lifecycle-end', 'retain-for-hosted-service-compatibility')) {
             throw "PowerShell $ReleaseLine has unsupported retirement action '$RetirementAction'."

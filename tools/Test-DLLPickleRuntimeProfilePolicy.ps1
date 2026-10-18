@@ -173,7 +173,7 @@ foreach ($TestProfile in $TestProfiles) {
     $EndExclusivePacific = [datetime]::SpecifyKind($EndDate.AddDays(1), [System.DateTimeKind]::Unspecified)
     $EndExclusiveUtc = [System.TimeZoneInfo]::ConvertTimeToUtc($EndExclusivePacific, $PacificTimeZone)
     $ReleaseLine = '{0}.{1}' -f $TestProfile.powerShellMajor, $TestProfile.powerShellMinor
-    $SupportState = Get-DLLPicklePowerShellSupportState -Profile $TestProfile -LifecycleEndExclusiveUtc $EndExclusiveUtc -AsOfUtc $EvaluationUtc -RetirementWarningDays ([int]$TestMatrix.retirementWarningDays)
+    $SupportState = Get-DLLPicklePowerShellSupportState -RuntimeProfile $TestProfile -LifecycleEndExclusiveUtc $EndExclusiveUtc -AsOfUtc $EvaluationUtc -RetirementWarningDays ([int]$TestMatrix.retirementWarningDays)
     $Status = $SupportState.Status
     if ($Status -eq 'Expired') {
         $ExpiredLines.Add($ReleaseLine)
