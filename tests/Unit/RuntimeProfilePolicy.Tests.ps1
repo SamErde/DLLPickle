@@ -2,6 +2,8 @@ BeforeAll {
     $script:RepositoryRoot = Split-Path -Path (Split-Path -Path $PSScriptRoot -Parent) -Parent
     $script:RuntimePolicyPath = Join-Path -Path $script:RepositoryRoot -ChildPath 'src/DLLPickle/SupportedRuntimeProfiles.json'
     $script:TestMatrixPath = Join-Path -Path $script:RepositoryRoot -ChildPath 'build/powershell-test-matrix.json'
+    $script:BuildProjectPath = Join-Path -Path $script:RepositoryRoot -ChildPath 'src/DLLPickle.Build/DLLPickle.csproj'
+    $script:PackageLockPath = Join-Path -Path $script:RepositoryRoot -ChildPath 'src/DLLPickle.Build/packages.lock.json'
     $script:PolicyTestScriptPath = Join-Path -Path $script:RepositoryRoot -ChildPath 'tools/Test-DLLPickleRuntimeProfilePolicy.ps1'
 }
 
@@ -37,6 +39,23 @@ Describe 'Runtime profile policy data' -Tag 'Unit' {
             @($RuntimeProfileRow.hostProvidedAssemblyNames.windows) | Should -Be @('System.Security.Cryptography.ProtectedData')
             @($RuntimeProfileRow.hostProvidedAssemblyNames.linux) | Should -BeNullOrEmpty
             @($RuntimeProfileRow.hostProvidedAssemblyNames.macos) | Should -BeNullOrEmpty
+        }
+    }
+
+    It 'locks the unconditional ProtectedData reference consistently for every shipped TFM' {
+        [xml]$project = Get-Content -LiteralPath $script:BuildProjectPath -Raw
+        $lock = Get-Content -LiteralPath $script:PackageLockPath -Raw | ConvertFrom-Json
+        $policy = Get-Content -LiteralPath $script:RuntimePolicyPath -Raw | ConvertFrom-Json
+        $references = @($project.Project.ItemGroup.PackageReference | Where-Object Include -EQ 'System.Security.Cryptography.ProtectedData')
+
+        $references | Should -HaveCount 1
+        [string]$references[0].Condition | Should -BeNullOrEmpty
+        $version = [string]$references[0].Version
+        foreach ($targetFramework in @($policy.profiles.targetFramework)) {
+            $entry = $lock.dependencies.$targetFramework.'System.Security.Cryptography.ProtectedData'
+            $entry.type | Should -BeExactly 'Direct'
+            $entry.requested | Should -BeExactly "[$version, )"
+            $entry.resolved | Should -BeExactly $version
         }
     }
 
