@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
-  "contentFingerprint": "dd0b2f89376a062a8b9ae9bf1a77764a837c7e7fa4ba09b0fd78586b048f468a",
+  "contentFingerprint": "15b2ac370bd606faa5e8a2f4706e463224fe2dde2cf86097792169ecf468d0d0",
   "provenance": {
-    "sourceRunId": "39093670313",
-    "sourceRunUrl": "https://github.com/SamErde/DLLPickle/actions/runs/39093670313",
-    "sourceCommitSha": "953f939beac0e826316e9eb14281c746aaf56862",
-    "capturedAtUtc": "2026-10-18T03:30:17.0000000+00:00",
+    "sourceRunId": "39173418247",
+    "sourceRunUrl": "https://github.com/SamErde/DLLPickle/actions/runs/39173418247",
+    "sourceCommitSha": "2565f4f2dd6574a7318a04baf1a0300b9b153861",
+    "capturedAtUtc": "2026-10-18T22:44:30.0000000+00:00",
     "observedOperatingSystems": [
       "Ubuntu 24.04.5 LTS"
     ]
@@ -26,7 +26,7 @@
         "status": "passed",
         "writesPerformed": false,
         "conflictSurfaceFingerprint": "235867008c801db3c2d59dcef90ee0d247829fa9863f5b829bf59b0721bc241d",
-        "scenarioFingerprint": "a8a03336b69064c6d74e206e1faacd9f54d592e09b817ea2068b8c7ea70ab3c1"
+        "scenarioFingerprint": "12a5cbba41b336aea8e1e0b73e08dd387b07850dd0f4795918a41cdd6e66ffcd"
       },
       "authenticatedReadOnly": {
         "status": "not-run-no-approved-credentials",

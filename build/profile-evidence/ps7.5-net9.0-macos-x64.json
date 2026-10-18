@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
-  "contentFingerprint": "82495fcedb5dfe1d399d787291feef89d897c3c0a90e9214e064b0b85c0e5014",
+  "contentFingerprint": "51ac55ed186c8acabffda60c9ee745f4aea5100ad8191b3f8cb4c0e3e83f8929",
   "provenance": {
-    "sourceRunId": "39093670313",
-    "sourceRunUrl": "https://github.com/SamErde/DLLPickle/actions/runs/39093670313",
-    "sourceCommitSha": "953f939beac0e826316e9eb14281c746aaf56862",
-    "capturedAtUtc": "2026-10-18T03:30:42.0000000+00:00",
+    "sourceRunId": "39173418247",
+    "sourceRunUrl": "https://github.com/SamErde/DLLPickle/actions/runs/39173418247",
+    "sourceCommitSha": "2565f4f2dd6574a7318a04baf1a0300b9b153861",
+    "capturedAtUtc": "2026-10-18T22:45:25.0000000+00:00",
     "observedOperatingSystems": [
       "macOS 15.7.9"
     ]
@@ -26,7 +26,7 @@
         "status": "passed",
         "writesPerformed": false,
         "conflictSurfaceFingerprint": "490cfa15313c451f4097f3a2e533df20ae38e533a07f6ee9b952628e69a1574d",
-        "scenarioFingerprint": "e42ad5a2f6702a97ad2b082372f0a3653a9f4c133f261eb78974b4d0656e3ee4"
+        "scenarioFingerprint": "32c8df4d890a24748dafa6be3d965e15ebfaf89509081aa43db70b4fdd46196c"
       },
       "authenticatedReadOnly": {
         "status": "not-run-no-approved-credentials",
