@@ -326,6 +326,7 @@ if ($RequireCurrent.IsPresent) {
     $HoldoverReviewDueLines = @($LifecycleRows | Where-Object Status -EQ 'HoldoverReviewDue')
     if ($HoldoverReviewDueLines.Count -gt 0) { $Violations.Add("hosted-service holdover review due: $($HoldoverReviewDueLines.ReleaseLine -join ', ')") }
     if ($IncompletePatchUpdates.Count -gt 0) { $Violations.Add('candidate patch assets lack a complete official checksum set') }
+    if ($SupportContractReviewRequired) { $Violations.Add('support-contract review required') }
     if ($Violations.Count -gt 0) {
         throw "PowerShell support matrix is not release-current: $($Violations -join '; ')."
     }

@@ -191,6 +191,20 @@ Describe 'Runtime profile lifecycle enforcement' -Tag 'Unit' {
         } | Should -Throw '*stale*last verified*'
     }
 
+    It 'allows scheduled patch validation when only generic matrix verification is stale' {
+        $Matrix = Get-Content -LiteralPath $script:TestMatrixPath -Raw | ConvertFrom-Json
+        $Matrix.lastVerifiedUtc = '2026-07-01T00:00:00Z'
+        $MatrixFixture = Join-Path $TestDrive 'matrix-scheduled-stale.json'
+        $Matrix | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $MatrixFixture -Encoding UTF8
+        $Warnings = @()
+
+        $Result = @(& $script:PolicyTestScriptPath -TestMatrixPath $MatrixFixture -Mode Scheduled -AsOfUtc ([datetime]'2026-09-15T00:00:00Z') -PassThru -WarningVariable Warnings)
+
+        $Result | Should -HaveCount 3
+        @($Result | Where-Object Status -In @('Expired', 'HoldoverReviewDue')) | Should -BeNullOrEmpty
+        ($Warnings -join [Environment]::NewLine) | Should -Match 'lifecycle evidence is stale'
+    }
+
     It 'uses a release-current live discovery report as fresh lifecycle evidence' {
         $EvidencePath = Join-Path $TestDrive 'live-lifecycle-evidence.json'
         @{
@@ -234,5 +248,27 @@ Describe 'Runtime profile lifecycle enforcement' -Tag 'Unit' {
 
         { & $script:PolicyTestScriptPath -Mode Release -AsOfUtc ([datetime]'2026-09-15T00:01:00Z') -LifecycleEvidencePath $EvidencePath } |
             Should -Throw '*not release-current*newer servicing patches*'
+    }
+
+    It 'rejects live discovery evidence with unresolved support-contract review' {
+        $EvidencePath = Join-Path $TestDrive 'support-contract-review-evidence.json'
+        @{
+            schemaVersion = 1
+            generatedAtUtc = '2026-09-15T00:00:00Z'
+            patchUpdates = @()
+            newLines = @()
+            lifecycle = @(
+                @{ releaseLine = '7.4'; status = 'RetiringSoon' }
+                @{ releaseLine = '7.5'; status = 'RetiringSoon' }
+                @{ releaseLine = '7.6'; status = 'Supported' }
+            )
+            lifecycleDateChanges = @()
+            lifecycleMissingLines = @()
+            undeclaredSupportedLines = @()
+            supportContractReviewRequired = $true
+        } | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $EvidencePath -Encoding utf8
+
+        { & $script:PolicyTestScriptPath -Mode Release -AsOfUtc ([datetime]'2026-09-15T00:01:00Z') -LifecycleEvidencePath $EvidencePath } |
+            Should -Throw '*not release-current*support-contract review required*'
     }
 }

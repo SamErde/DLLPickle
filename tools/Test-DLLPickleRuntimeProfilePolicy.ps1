@@ -127,6 +127,7 @@ if ($LifecycleEvidence) {
     if (@($LifecycleEvidence.lifecycleDateChanges).Count -gt 0) { $LiveEvidenceViolations.Add('lifecycle date changes') }
     if (@($LifecycleEvidence.lifecycleMissingLines).Count -gt 0) { $LiveEvidenceViolations.Add('declared lifecycle lines missing from live evidence') }
     if (@($LifecycleEvidence.undeclaredSupportedLines).Count -gt 0) { $LiveEvidenceViolations.Add('undeclared Microsoft-supported lines') }
+    if ($LifecycleEvidence.supportContractReviewRequired -eq $true) { $LiveEvidenceViolations.Add('support-contract review required') }
     if (@($LifecycleEvidence.lifecycle | Where-Object Status -EQ 'Expired').Count -gt 0) { $LiveEvidenceViolations.Add('expired PowerShell lines') }
     if (@($LifecycleEvidence.lifecycle | Where-Object Status -EQ 'HoldoverReviewDue').Count -gt 0) { $LiveEvidenceViolations.Add('hosted-service holdover review due') }
     $DeclaredReleaseLines = @($TestProfiles | ForEach-Object { '{0}.{1}' -f $_.powerShellMajor, $_.powerShellMinor } | Sort-Object -Unique)

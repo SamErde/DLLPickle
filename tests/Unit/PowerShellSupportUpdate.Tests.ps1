@@ -192,6 +192,22 @@ Describe 'PowerShell support update discovery' -Tag 'Unit' {
         $First.SupportContractFingerprint | Should -BeExactly $Second.SupportContractFingerprint
     }
 
+    It 'fails release-current validation while a retiring line awaits support-contract review' {
+        $Fixture = Get-SupportUpdateFixture -Root $TestDrive -ReleaseVersions @('7.4.18', '7.5.9', '7.6.4')
+        $Parameters = @{
+            TestMatrixPath = $Fixture.MatrixPath
+            ReleaseDataPath = $Fixture.ReleasePath
+            LifecycleDataPath = $Fixture.LifecyclePath
+            OutputPath = Join-Path $TestDrive 'retirement-review-required.json'
+            AsOfUtc = '2026-08-15T00:00:00Z'
+            RequireCurrent = $true
+        }
+
+        { & $script:DiscoveryPath @Parameters } | Should -Throw '*support-contract review required*'
+        $Report = Get-Content -LiteralPath $Parameters.OutputPath -Raw | ConvertFrom-Json
+        $Report.SupportContractReviewRequired | Should -BeTrue
+    }
+
     It 'allows servicing proposals after reviewed retirement decisions are recorded' {
         $Fixture = Get-SupportUpdateFixture -Root $TestDrive -ReleaseVersions @('7.4.19', '7.5.10', '7.6.5')
         Add-ReviewedRetirementPolicyFixture -MatrixPath $Fixture.MatrixPath
