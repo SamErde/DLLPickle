@@ -330,22 +330,24 @@ if ($PSCmdlet.ParameterSetName -eq 'Executable') {
         $ExpectedPayloadRoot = Join-Path -Path $MultiPwshInstallRoot -ChildPath (Join-Path 'multi' $ExactVersion)
         $ExpectedExecutable = Join-Path -Path $ExpectedPayloadRoot -ChildPath $ExecutableName
 
-        if (-not (Test-Path -LiteralPath $ExpectedExecutable -PathType Leaf)) {
-            if (-not (Test-Path -LiteralPath $MultiPwshExecutable -PathType Leaf)) {
-                Get-VerifiedDownload -Uri $ProviderAsset[0].downloadUrl -DestinationPath $ToolCachePath -Sha256 $ProviderAsset[0].sha256
-                Expand-TestRuntimeArchive -ArchivePath $ToolCachePath -DestinationPath $ToolPayloadRoot
-                if ($Platform -ne 'windows') {
-                    $ChmodOutput = @(& chmod u+x $MultiPwshExecutable 2>&1)
-                    if ($LASTEXITCODE -ne 0) {
-                        throw "Failed to mark multi-pwsh as executable: $($ChmodOutput -join [Environment]::NewLine)"
-                    }
-                }
-            }
-
-            $InstallOutput = @(& $MultiPwshExecutable install $ExactVersion --scope user --root $MultiPwshInstallRoot --arch $Architecture --no-add-path 2>&1)
+        # Revalidate the pinned provider archive and recreate both the tool and
+        # runtime payload on every use. Version-only identity probing cannot
+        # detect modified cached assemblies that preserve their reported versions.
+        Get-VerifiedDownload -Uri $ProviderAsset[0].downloadUrl -DestinationPath $ToolCachePath -Sha256 $ProviderAsset[0].sha256
+        Expand-TestRuntimeArchive -ArchivePath $ToolCachePath -DestinationPath $ToolPayloadRoot
+        if ($Platform -ne 'windows') {
+            $ChmodOutput = @(& chmod u+x $MultiPwshExecutable 2>&1)
             if ($LASTEXITCODE -ne 0) {
-                throw "MultiPwsh failed to install PowerShell ${ExactVersion}: $($InstallOutput -join [Environment]::NewLine)"
+                throw "Failed to mark multi-pwsh as executable: $($ChmodOutput -join [Environment]::NewLine)"
             }
+        }
+
+        if (Test-Path -LiteralPath $MultiPwshInstallRoot) {
+            Remove-Item -LiteralPath $MultiPwshInstallRoot -Recurse -Force
+        }
+        $InstallOutput = @(& $MultiPwshExecutable install $ExactVersion --scope user --root $MultiPwshInstallRoot --arch $Architecture --no-add-path 2>&1)
+        if ($LASTEXITCODE -ne 0) {
+            throw "MultiPwsh failed to install PowerShell ${ExactVersion}: $($InstallOutput -join [Environment]::NewLine)"
         }
     }
 

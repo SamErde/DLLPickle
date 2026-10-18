@@ -134,4 +134,19 @@ Describe 'Exact PowerShell runtime provisioning' -Tag 'Unit' {
         @($matrix.provisioning.optionalProvider.assets) | Should -HaveCount 3
         @($matrix.archiveAssets.sha256 + $matrix.provisioning.optionalProvider.assets.sha256 | Where-Object { $_ -notmatch '^[a-f0-9]{64}$' }) | Should -BeNullOrEmpty
     }
+
+    It 'revalidates the optional provider and recreates its runtime on every use' {
+        $source = Get-Content -LiteralPath $script:ProvisionerPath -Raw
+        $multiPwshBlock = [regex]::Match(
+            $source,
+            '(?ms)\$ProviderRoot = Join-Path -Path \$InstallRoot -ChildPath \(\[System\.IO\.Path\]::Combine\(''MultiPwsh''.*?(?=\r?\n    }\r?\n\r?\n    if \(-not \(Test-Path -LiteralPath \$ExpectedExecutable)'
+        ).Value
+
+        $multiPwshBlock | Should -Not -BeNullOrEmpty
+        $multiPwshBlock | Should -Match ([regex]::Escape('Get-VerifiedDownload -Uri $ProviderAsset[0].downloadUrl'))
+        $multiPwshBlock | Should -Match ([regex]::Escape('Expand-TestRuntimeArchive -ArchivePath $ToolCachePath -DestinationPath $ToolPayloadRoot'))
+        $multiPwshBlock | Should -Match ([regex]::Escape('Remove-Item -LiteralPath $MultiPwshInstallRoot -Recurse -Force'))
+        $multiPwshBlock | Should -Not -Match '(?ms)if \(-not \(Test-Path -LiteralPath \$ExpectedExecutable -PathType Leaf\)\).*Get-VerifiedDownload'
+        $multiPwshBlock | Should -Not -Match '(?ms)if \(-not \(Test-Path -LiteralPath \$MultiPwshExecutable -PathType Leaf\)\).*Get-VerifiedDownload'
+    }
 }
