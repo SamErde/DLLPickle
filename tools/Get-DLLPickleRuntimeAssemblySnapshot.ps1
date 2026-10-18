@@ -101,7 +101,7 @@ $ModuleManifestPaths = if ($ModuleManifestPathsEncoded) {
 }
 $ModuleManifestPaths = @($ModuleManifestPaths)
 $env:PSModulePath = if ($IsolatedModulePath) { $IsolatedModulePath } else { $env:PSModulePath }
-$ErrorActionPreference = 'Continue'
+$ErrorActionPreference = if ($StrictMode) { 'Stop' } else { 'Continue' }
 $ActualTargetFramework = 'net{0}.0' -f [Environment]::Version.Major
 if ($ExpectedPowerShellVersion -and $PSVersionTable.PSVersion.ToString() -ne $ExpectedPowerShellVersion) {
     throw "PowerShell version mismatch. Expected $ExpectedPowerShellVersion but detected $($PSVersionTable.PSVersion)."

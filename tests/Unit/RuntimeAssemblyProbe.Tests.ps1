@@ -86,6 +86,13 @@ Describe 'Get-DLLPickleRuntimeAssemblySnapshot' -Tag 'Unit' {
             Should -Throw '*runtime assembly snapshot failed*'
     }
 
+    It 'throws in strict mode when the probe command writes a non-terminating error' {
+        $Policy = Get-TempPolicyPath -TrackedAssemblies @('System.Management.Automation')
+
+        { & $SnapshotScript -ModuleName 'Microsoft.PowerShell.Management' -PolicyPath $Policy -PowerShellExecutable ([Environment]::ProcessPath) -ProbeCommand "Write-Error 'probe failed'" -Strict } |
+            Should -Throw '*runtime assembly snapshot failed*'
+    }
+
     It 'throws in strict mode when DLLPickle reports a failed preload row' {
         $Policy = Get-TempPolicyPath -TrackedAssemblies @('System.Management.Automation')
         $DllPickleRoot = Join-Path $TestDrive 'failing-dllpickle'
