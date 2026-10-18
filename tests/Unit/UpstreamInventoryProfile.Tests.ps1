@@ -52,7 +52,8 @@ BeforeAll {
                     umbrellaModule = 'Contoso.Umbrella'
                     repository = 'PSGallery'
                     purpose = 'Fixture'
-                    deterministicProbeCommand = 'Get-Command Get-Item | Out-Null'
+                    deterministicProbeCommand = 'Write-Error "expected inventory authentication gate"'
+                    deterministicProbeExpectedErrorSubstring = 'expected inventory authentication gate'
                 }
             )
             trackedAssemblies = @('System.Management.Automation')

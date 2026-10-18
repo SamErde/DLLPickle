@@ -40,6 +40,7 @@
       "purpose": "Teams identity stack compatibility source.",
       "umbrellaModule": "MicrosoftTeams",
       "deterministicProbeCommand": "Get-Team -ErrorAction SilentlyContinue | Select-Object -First 1 | Out-Null",
+      "deterministicProbeExpectedErrorSubstring": "must call the Connect-MicrosoftTeams cmdlet before calling any other cmdlets",
       "authenticatedReadOnlyProbeCommand": "Connect-MicrosoftTeams -AccessTokens @($env:DLLPICKLE_GRAPH_ACCESS_TOKEN, $env:DLLPICKLE_TEAMS_ACCESS_TOKEN) | Out-Null; try { Get-CsTenant | Out-Null } finally { Disconnect-MicrosoftTeams | Out-Null }"
     },
     {

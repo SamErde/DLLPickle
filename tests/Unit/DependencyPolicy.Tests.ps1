@@ -65,6 +65,9 @@ Describe 'Dependency policy baseline' -Tag 'Unit' {
         $TeamsPolicy = $script:Policy.monitoredModules | Where-Object name -eq 'MicrosoftTeams'
         $TeamsPolicy.deterministicProbeCommand | Should -Match '^Get-Team\b'
         $TeamsPolicy.deterministicProbeCommand | Should -Not -Match 'Get-Command'
+        $TeamsPolicy.deterministicProbeExpectedErrorSubstring | Should -BeExactly 'must call the Connect-MicrosoftTeams cmdlet before calling any other cmdlets'
+        @($script:Policy.monitoredModules | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_.deterministicProbeExpectedErrorSubstring) }).name |
+            Should -Be @('MicrosoftTeams')
         $TeamsPolicy.authenticatedReadOnlyProbeCommand | Should -Match 'Connect-MicrosoftTeams'
         $TeamsPolicy.authenticatedReadOnlyProbeCommand | Should -Match 'Get-CsTenant'
         $TeamsPolicy.authenticatedReadOnlyProbeCommand | Should -Match 'Disconnect-MicrosoftTeams'

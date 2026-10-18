@@ -43,6 +43,7 @@ param (
 )
 
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'DLLPickle.ProfileEvidence.ps1')
 foreach ($Path in @($PolicyPath, $InventoryPath, $PowerShellExecutable, $DLLPickleManifestPath)) {
     if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
         throw "Required upstream scenario input was not found: $Path"
@@ -145,7 +146,19 @@ foreach ($ScenarioDefinition in $ScenarioDefinitions) {
             [string]$ModulePolicyByName[$ModuleName].deterministicProbeCommand
         }
     )
-    $CombinedProbeCommand = @($ProbeCommands | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }) -join '; '
+    $ExecutableProbeCommands = @(
+        foreach ($ModuleName in $ImportOrder) {
+            $ModulePolicy = $ModulePolicyByName[$ModuleName]
+            if (-not [string]::IsNullOrWhiteSpace([string]$ModulePolicy.deterministicProbeCommand)) {
+                $ProbeCommandParameters = @{
+                    Command = [string]$ModulePolicy.deterministicProbeCommand
+                    ExpectedErrorSubstring = [string]$ModulePolicy.deterministicProbeExpectedErrorSubstring
+                }
+                Get-DLLPickleStrictProbeCommand @ProbeCommandParameters
+            }
+        }
+    )
+    $CombinedProbeCommand = $ExecutableProbeCommands -join '; '
 
     foreach ($PreloadDllPickle in @($false, $true)) {
         $Scenario = [ordered]@{

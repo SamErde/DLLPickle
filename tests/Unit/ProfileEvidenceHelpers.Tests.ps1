@@ -33,6 +33,26 @@ Describe 'Profile evidence helpers' -Tag 'Unit' {
             Should -BeExactly '2026-08-09T12:00:00.0000000+00:00'
     }
 
+    It 'accepts only the declared deterministic-probe error outcome' {
+        $ExpectedCommand = Get-DLLPickleStrictProbeCommand -Command "Write-Error 'expected authentication gate'" -ExpectedErrorSubstring 'expected authentication gate'
+        $UnexpectedCommand = Get-DLLPickleStrictProbeCommand -Command "Write-Error 'unexpected probe failure'" -ExpectedErrorSubstring 'expected authentication gate'
+        $ExpectedScript = [scriptblock]::Create($ExpectedCommand)
+        $UnexpectedScript = [scriptblock]::Create($UnexpectedCommand)
+        $OriginalErrorActionPreference = $ErrorActionPreference
+        try {
+            $ErrorActionPreference = 'Stop'
+            { & $ExpectedScript } | Should -Not -Throw
+            { & $UnexpectedScript } | Should -Throw '*unexpected probe failure*'
+        } finally {
+            $ErrorActionPreference = $OriginalErrorActionPreference
+        }
+    }
+
+    It 'does not wrap probes without an expected error outcome' {
+        Get-DLLPickleStrictProbeCommand -Command 'Get-Date | Out-Null' |
+            Should -BeExactly 'Get-Date | Out-Null'
+    }
+
     It 'uses ordinal ordering and uniqueness regardless of process culture' {
         $OriginalCulture = [System.Globalization.CultureInfo]::CurrentCulture
         try {

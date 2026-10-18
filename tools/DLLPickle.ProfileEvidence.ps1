@@ -65,6 +65,47 @@ function ConvertTo-DLLPickleUtcDateTimeOffset {
     ).ToUniversalTime()
 }
 
+function Get-DLLPickleStrictProbeCommand {
+    <#
+    .SYNOPSIS
+    Wraps a deterministic probe with one narrowly accepted error outcome.
+
+    .DESCRIPTION
+    Returns the command unchanged when no expected error substring is declared.
+    Otherwise, it catches only an error containing that exact substring with an
+    ordinal, case-insensitive comparison and rethrows every other error. This lets
+    a no-authentication probe validate a documented authentication gate without
+    weakening strict failure behavior for unexpected probe errors.
+
+    .PARAMETER Command
+    Deterministic probe command to execute.
+
+    .PARAMETER ExpectedErrorSubstring
+    Exact, non-empty error-message substring that is an accepted probe outcome.
+
+    .OUTPUTS
+    System.String
+    #>
+
+    [CmdletBinding()]
+    [OutputType([string])]
+    param (
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
+        [string]$Command,
+
+        [Parameter()]
+        [string]$ExpectedErrorSubstring
+    )
+
+    if ([string]::IsNullOrWhiteSpace($ExpectedErrorSubstring)) {
+        return $Command
+    }
+
+    $SubstringLiteral = "'{0}'" -f $ExpectedErrorSubstring.Replace("'", "''")
+    'try {{ {0} }} catch {{ if ($_.Exception.Message.IndexOf({1}, [System.StringComparison]::OrdinalIgnoreCase) -lt 0) {{ throw }} }}' -f $Command, $SubstringLiteral
+}
+
 function Get-DLLPickleOrdinalSequence {
     <#
     .SYNOPSIS

@@ -38,7 +38,11 @@ Describe 'Deterministic upstream import-order evidence' -Tag 'Unit' {
             trackedAssemblies = @('System.Management.Automation')
             monitoredModules = @(
                 @{ name = 'Synthetic.One'; deterministicProbeCommand = 'Get-Command Get-SyntheticOne | Out-Null' }
-                @{ name = 'Synthetic.Two'; deterministicProbeCommand = 'Get-Command Get-SyntheticTwo | Out-Null' }
+                @{
+                    name = 'Synthetic.Two'
+                    deterministicProbeCommand = 'Write-Error "expected scenario authentication gate"'
+                    deterministicProbeExpectedErrorSubstring = 'expected scenario authentication gate'
+                }
                 @{ name = 'Synthetic.Failure'; deterministicProbeCommand = 'throw "expected synthetic failure"' }
             )
             runtimeProfiles = @(

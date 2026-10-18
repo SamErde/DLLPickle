@@ -76,6 +76,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
+. (Join-Path $PSScriptRoot 'DLLPickle.ProfileEvidence.ps1')
 
 function ConvertTo-DLLPicklePackageVersion {
     [CmdletBinding()]
@@ -281,7 +282,11 @@ $ModuleResults = foreach ($PolicyModule in $PolicyModules) {
             Strict                  = $true
         }
         if (-not [string]::IsNullOrWhiteSpace([string]$PolicyModule.deterministicProbeCommand)) {
-            $SnapshotParameters['ProbeCommand'] = [string]$PolicyModule.deterministicProbeCommand
+            $ProbeCommandParameters = @{
+                Command = [string]$PolicyModule.deterministicProbeCommand
+                ExpectedErrorSubstring = [string]$PolicyModule.deterministicProbeExpectedErrorSubstring
+            }
+            $SnapshotParameters['ProbeCommand'] = Get-DLLPickleStrictProbeCommand @ProbeCommandParameters
         }
         $RuntimeAssemblies = @(& $SnapshotScriptPath @SnapshotParameters)
     } finally {
