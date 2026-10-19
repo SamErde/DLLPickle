@@ -1,0 +1,827 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A PowerShell module that helps you get un-stuck from version conflicts (aka DLL pickle) that occur when using modules that depend on multiple versions of the same dependencies such as the Microsoft Authentication Library (MSAL).">
+      
+      
+        <meta name="author" content="Sam Erde">
+      
+      
+        <link rel="canonical" href="https://day3bits.com/DLLPickle/plans/2026-08-09-credentialed-authentication-test-environment/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Draft plan: credentialed read-only authentication test environment - DLLPickle PowerShell Module</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#draft-plan-credentialed-read-only-authentication-test-environment" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="DLLPickle PowerShell Module" class="md-header__button md-logo" aria-label="DLLPickle PowerShell Module" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            DLLPickle PowerShell Module
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Draft plan: credentialed read-only authentication test environment
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m14.3 16-.7-2h-3.2l-.7 2H7.8L11 7h2l3.2 9zM20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12zm-9.15 3.96h2.3L12 9z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_2" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to system preference"  type="radio" name="__palette" id="__palette_2">
+    
+      <label class="md-header__button md-icon" title="Switch to system preference" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/SamErde/DLLPickle" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    SamErde/DLLPickle
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="DLLPickle PowerShell Module" class="md-nav__button md-logo" aria-label="DLLPickle PowerShell Module" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    DLLPickle PowerShell Module
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/SamErde/DLLPickle" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    SamErde/DLLPickle
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../Architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../Deep-Dive/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deep Dive
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DEPENDENCIES/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dependencies
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../Troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+  
+
+
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="draft-plan-credentialed-read-only-authentication-test-environment">Draft plan: credentialed read-only authentication test environment<a class="headerlink" href="#draft-plan-credentialed-read-only-authentication-test-environment" title="Permanent link">&para;</a></h1>
+<p><strong>Status:</strong> Draft for security, tenant, and repository-owner review</p>
+<p><strong>Date:</strong> 2026-08-09</p>
+<p><strong>Scope:</strong> Microsoft Graph, Exchange Online, Azure PowerShell, and Microsoft Teams authentication gates for DLLPickle</p>
+<p><strong>External changes performed by this document:</strong> None</p>
+<h2 id="1-objective">1. Objective<a class="headerlink" href="#1-objective" title="Permanent link">&para;</a></h2>
+<p>Create an approval-gated environment that can run DLLPickle&rsquo;s authenticated compatibility tier without interactive sign-in, tenant writes, long-lived client secrets, or misleading pass results when credentials are absent.</p>
+<p>The environment must prove that the supported DLLPickle runtime profiles can authenticate and execute the exact read-only probes declared in <code>build/dependency-policy.json</code> after the relevant modules and DLLPickle are loaded in both monitored import orders.</p>
+<p>This is separate from the deterministic, zero-credential import tier. A missing credential, missing role, conditional-access block, unsupported authentication mode, or unexecuted probe remains a failed or outstanding release gate.</p>
+<h2 id="2-current-authenticated-gates">2. Current authenticated gates<a class="headerlink" href="#2-current-authenticated-gates" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Module family</th>
+<th>Current authenticated read-only probe</th>
+<th>What it proves</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Microsoft.Graph.Authentication</td>
+<td><code>Get-MgContext \| Out-Null</code></td>
+<td>A Graph authentication context was established in the current process.</td>
+</tr>
+<tr>
+<td>ExchangeOnlineManagement</td>
+<td><code>Get-EXOMailbox -ResultSize 1 \| Out-Null</code></td>
+<td>EXO app-only authentication and a limited mailbox read succeed.</td>
+</tr>
+<tr>
+<td>Az.Storage</td>
+<td><code>Get-AzStorageAccount \| Select-Object -First 1 \| Out-Null</code></td>
+<td>Azure Resource Manager authentication can enumerate storage-account control-plane metadata.</td>
+</tr>
+<tr>
+<td>Az.Accounts</td>
+<td><code>Get-AzContext \| Out-Null</code></td>
+<td>An Azure PowerShell process-scoped context was established.</td>
+</tr>
+<tr>
+<td>MicrosoftTeams</td>
+<td><code>Get-CsTenant \| Out-Null</code></td>
+<td>Teams application authentication and a tenant read succeed.</td>
+</tr>
+<tr>
+<td>Az.Resources</td>
+<td><code>Get-AzResource \| Select-Object -First 1 \| Out-Null</code></td>
+<td>Azure Resource Manager authentication can enumerate resource metadata.</td>
+</tr>
+</tbody>
+</table>
+<p>The Graph probe currently proves context establishment, not an API read. Before calling the Graph gate complete, decide whether to retain that narrow contract or add a separately reviewed read probe such as an organization read. Do not silently broaden it in the workflow.</p>
+<h2 id="3-non-goals-and-safety-invariants">3. Non-goals and safety invariants<a class="headerlink" href="#3-non-goals-and-safety-invariants" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Do not create, update, delete, assign, invite, send, publish, or consent to tenant data during a test run.</li>
+<li>Do not run the credentialed job for pull requests from forks or for unreviewed code.</li>
+<li>Do not expose access tokens, certificates, assertion tokens, tenant identifiers that are classified as secrets, or command output containing customer data.</li>
+<li>Do not store a client secret in the repository. Prefer short-lived OpenID Connect tokens. A certificate fallback requires explicit approval and a rotation plan.</li>
+<li>Do not use Global Administrator, Owner, Contributor, Exchange Administrator, or another broad role merely to make the probes pass.</li>
+<li>Do not enable a schedule until the manual workflow has been reviewed, exercised, and accepted.</li>
+<li>Do not represent skipped probes as passing compatibility evidence.</li>
+</ul>
+<h2 id="4-recommended-architecture">4. Recommended architecture<a class="headerlink" href="#4-recommended-architecture" title="Permanent link">&para;</a></h2>
+<h3 id="41-github-control-plane">4.1 GitHub control plane<a class="headerlink" href="#41-github-control-plane" title="Permanent link">&para;</a></h3>
+<p>Create a GitHub environment named <code>authenticated-readonly</code> with:</p>
+<ul>
+<li>required reviewer approval;</li>
+<li>self-review prevention where the repository plan supports it;</li>
+<li>deployment branches restricted to <code>main</code> and explicitly approved test branches;</li>
+<li>environment-scoped variables and secrets only;</li>
+<li>no automatic execution for forked pull requests;</li>
+<li>a workflow with <code>contents: read</code> and <code>id-token: write</code>, and no repository-writing permissions.</li>
+</ul>
+<p>GitHub environments can withhold environment secrets until required reviewers approve a job. See <a href="https://docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments">Deployments and environments</a>.</p>
+<p>Start with <code>workflow_dispatch</code> only. A release workflow may call the credentialed workflow later, but only after the environment approval and evidence-redaction controls are accepted.</p>
+<h3 id="42-identity-separation">4.2 Identity separation<a class="headerlink" href="#42-identity-separation" title="Permanent link">&para;</a></h3>
+<p>Prefer two dedicated workload identities to keep Azure and Microsoft 365 authorization independently revocable:</p>
+<ol>
+<li><code>dllpickle-azure-readonly</code></li>
+<li>Federated to this repository and the <code>authenticated-readonly</code> GitHub environment.</li>
+<li>Azure <code>Reader</code> role at a dedicated test resource group, not the subscription root.</li>
+<li>
+<p>The resource group contains at least one storage account and one harmless ARM resource so enumeration probes exercise real code paths.</p>
+</li>
+<li>
+<p><code>dllpickle-m365-auth-probe</code></p>
+</li>
+<li>Federated to the same protected GitHub environment if Graph, EXO, and Teams token exchange is proven to work for the pinned module versions.</li>
+<li>Assigned only the application permissions and service-specific RBAC needed for the approved probes.</li>
+<li>No delegated user credentials.</li>
+</ol>
+<p>Microsoft documents GitHub-to-Azure workload identity federation through OIDC in <a href="https://learn.microsoft.com/en-us/azure/developer/github/connect-from-azure-openid-connect">Authenticate to Azure from GitHub Actions by OpenID Connect</a>. Azure&rsquo;s built-in <code>Reader</code> role permits control-plane reads without changes; scope it to the dedicated resource group. See <a href="https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles/general">Azure built-in roles for General</a>.</p>
+<h3 id="43-authentication-mechanism-decision">4.3 Authentication mechanism decision<a class="headerlink" href="#43-authentication-mechanism-decision" title="Permanent link">&para;</a></h3>
+<p>Preferred path:</p>
+<ul>
+<li>Use GitHub OIDC to obtain short-lived workload tokens.</li>
+<li>Use <code>azure/login</code> with Azure PowerShell session support for Az.Accounts/Az.Resources/Az.Storage.</li>
+<li>Exchange the workload identity for service-specific access tokens for Graph, Exchange Online, and Teams, then pass tokens directly to the modules in process scope.</li>
+</ul>
+<p>The feasibility spike must prove all of the following before this becomes the accepted design:</p>
+<ul>
+<li><code>Connect-MgGraph -AccessToken ... -ContextScope Process</code> accepts the acquired Graph token under every pinned PowerShell profile.</li>
+<li><code>Connect-ExchangeOnline -AccessToken ... -Organization &lt;primary-onmicrosoft-domain&gt;</code> accepts the app-only Exchange token.</li>
+<li><code>Connect-MicrosoftTeams -AccessTokens @(&lt;graph-token&gt;, &lt;teams-token&gt;)</code> accepts the required token pair.</li>
+<li>The token audience, cloud endpoints, and module versions are recorded without logging token values.</li>
+</ul>
+<p>First-party references:</p>
+<ul>
+<li><a href="https://learn.microsoft.com/en-us/powershell/microsoftgraph/authentication-commands?view=graph-powershell-1.0">Microsoft Graph PowerShell authentication commands</a></li>
+<li><a href="https://learn.microsoft.com/en-us/powershell/exchange/app-only-auth-powershell-v2?view=exchange-ps">Exchange Online app-only authentication</a></li>
+<li><a href="https://learn.microsoft.com/en-us/microsoftteams/teams-powershell-application-authentication">Teams PowerShell application-based authentication</a></li>
+</ul>
+<p>Fallback path, requiring a separate approval:</p>
+<ul>
+<li>Use one short-lived X.509 certificate per Microsoft 365 test identity.</li>
+<li>Store the encrypted PFX and its password only as protected environment secrets, import it into an ephemeral certificate store, and remove it in an <code>always()</code> cleanup step.</li>
+<li>Record owner, expiry, rotation date, and emergency revocation instructions before first use.</li>
+</ul>
+<p>Graph, Exchange Online, and Teams all document certificate-based application authentication. The fallback is operationally simpler but introduces a long-lived credential and therefore is not the default.</p>
+<h2 id="5-least-privilege-authorization-work">5. Least-privilege authorization work<a class="headerlink" href="#5-least-privilege-authorization-work" title="Permanent link">&para;</a></h2>
+<p>The tenant administrator must review and execute all consent and role assignments. Repository automation must not grant its own permissions.</p>
+<h3 id="51-microsoft-graph">5.1 Microsoft Graph<a class="headerlink" href="#51-microsoft-graph" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Start with only the application permission needed by the approved Graph read probe.</li>
+<li>If the probe remains <code>Get-MgContext</code>, document that it validates authentication context only.</li>
+<li>If an organization read is approved, evaluate <code>Organization.Read.All</code> application permission and grant admin consent only after review.</li>
+<li>Use <code>-ContextScope Process</code> and call <code>Disconnect-MgGraph</code> during cleanup.</li>
+</ul>
+<h3 id="52-exchange-online">5.2 Exchange Online<a class="headerlink" href="#52-exchange-online" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Configure app-only Exchange authentication using the tenant&rsquo;s primary <code>.onmicrosoft.com</code> organization name.</li>
+<li>Review the <code>Exchange.ManageAsApp</code> application permission requirement from Microsoft&rsquo;s app-only guidance.</li>
+<li>Use Exchange Online application RBAC or a custom least-privilege management role that permits the specific <code>Get-EXOMailbox -ResultSize 1</code> read. Do not assign Exchange Administrator solely for this test.</li>
+<li>Prove that the service principal can read one mailbox object and cannot execute a selected write negative-control command.</li>
+<li>Call <code>Disconnect-ExchangeOnline -Confirm:$false</code> during cleanup.</li>
+</ul>
+<h3 id="53-azure-powershell">5.3 Azure PowerShell<a class="headerlink" href="#53-azure-powershell" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Assign Azure <code>Reader</code> at the dedicated test resource-group scope.</li>
+<li>Confirm the role exposes storage-account and resource control-plane metadata but no data-plane content.</li>
+<li>Include at least one storage account so <code>Get-AzStorageAccount</code> cannot pass vacuously because the environment is empty.</li>
+<li>Use a process-scoped context and clear it during cleanup.</li>
+</ul>
+<h3 id="54-microsoft-teams">5.4 Microsoft Teams<a class="headerlink" href="#54-microsoft-teams" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Review the Teams application-authentication permission table for the pinned MicrosoftTeams module.</li>
+<li><code>Get-CsTenant</code> requires a tenant read. Evaluate <code>Organization.Read.All</code> and the narrowest supported Microsoft Entra/Teams RBAC role for this cmdlet.</li>
+<li>Do not copy the broad permission set documented for all non-<code>*-Cs</code> cmdlets when only <code>Get-CsTenant</code> is in scope.</li>
+<li>Prove both the positive read and a denied write negative control.</li>
+<li>Call <code>Disconnect-MicrosoftTeams</code> during cleanup.</li>
+</ul>
+<h2 id="6-environment-configuration-contract">6. Environment configuration contract<a class="headerlink" href="#6-environment-configuration-contract" title="Permanent link">&para;</a></h2>
+<p>Use environment variables for non-secret identifiers and environment secrets only where a provider cannot use OIDC directly.</p>
+<p>Candidate environment variables:</p>
+<ul>
+<li><code>DLLPICKLE_AUTH_TENANT_ID</code></li>
+<li><code>DLLPICKLE_AUTH_AZURE_CLIENT_ID</code></li>
+<li><code>DLLPICKLE_AUTH_M365_CLIENT_ID</code></li>
+<li><code>DLLPICKLE_AUTH_SUBSCRIPTION_ID</code></li>
+<li><code>DLLPICKLE_AUTH_RESOURCE_GROUP</code></li>
+<li><code>DLLPICKLE_AUTH_EXO_ORGANIZATION</code></li>
+<li><code>DLLPICKLE_AUTH_CLOUD</code> with an allow-listed default such as <code>AzureCloud</code></li>
+</ul>
+<p>Certificate fallback secrets, if explicitly approved:</p>
+<ul>
+<li><code>DLLPICKLE_AUTH_M365_PFX_BASE64</code></li>
+<li><code>DLLPICKLE_AUTH_M365_PFX_PASSWORD</code></li>
+</ul>
+<p>Never accept arbitrary connection commands, scopes, resource URLs, or probe script text from workflow inputs. Workflow inputs may select a reviewed profile or scenario identifier only.</p>
+<h2 id="7-workflow-and-test-harness-implementation">7. Workflow and test-harness implementation<a class="headerlink" href="#7-workflow-and-test-harness-implementation" title="Permanent link">&para;</a></h2>
+<h3 id="phase-a-offline-contract-tests">Phase A: offline contract tests<a class="headerlink" href="#phase-a-offline-contract-tests" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Add a schema for the credentialed environment variables and approved command allow-list.</li>
+<li>Add zero-network unit tests for missing values, malformed GUIDs, unsupported clouds, and forbidden commands.</li>
+<li>Add a dry-run mode that prints probe identifiers and expected permissions but never token values or connection arguments containing credentials.</li>
+<li>Verify the ordinary unit and integration suites remain zero-credential and zero-network.</li>
+</ol>
+<h3 id="phase-b-manual-identity-feasibility-spike">Phase B: manual identity feasibility spike<a class="headerlink" href="#phase-b-manual-identity-feasibility-spike" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Configure the protected GitHub environment and federated identity manually.</li>
+<li>Run one exact Windows profile with no DLLPickle import to prove each provider&rsquo;s authentication mode independently.</li>
+<li>Run the approved read probes and negative write controls.</li>
+<li>Capture only sanitized identity metadata: tenant hash or approved tenant label, client ID if non-secret, token audience, expiry time, authentication mode, module version, command name, success/error type, and workflow run ID.</li>
+<li>Revoke the federated credential or certificate after the spike if the design is rejected.</li>
+</ol>
+<h3 id="phase-c-dllpickle-compatibility-matrix">Phase C: DLLPickle compatibility matrix<a class="headerlink" href="#phase-c-dllpickle-compatibility-matrix" title="Permanent link">&para;</a></h3>
+<p>For each supported PowerShell release line, use the exact patch from <code>build/powershell-test-matrix.json</code> and a fresh process for every scenario:</p>
+<ol>
+<li>Module authentication without DLLPickle.</li>
+<li>DLLPickle first, then module connection and read probe.</li>
+<li>Module connection first, then DLLPickle and read probe where the module supports that order.</li>
+<li>Both monitored cross-module import orders from <code>build/dependency-policy.json</code>.</li>
+<li>Assembly/ALC snapshot before authentication, after connection, and after the read probe.</li>
+</ol>
+<p>Begin with the three Windows profiles. Expanding credentialed execution to Linux and macOS requires a separate support and risk review because it increases the number of environments receiving tenant tokens.</p>
+<h3 id="phase-d-release-integration">Phase D: release integration<a class="headerlink" href="#phase-d-release-integration" title="Permanent link">&para;</a></h3>
+<p>Only after the manual matrix is accepted:</p>
+<ul>
+<li>add the credentialed tier as the reusable, environment-gated <code>.github/workflows/Authenticated-Compatibility.yml</code> workflow;</li>
+<li>upload exactly one sanitized <code>authenticated-compatibility-evidence</code> artifact after all required probes and redaction checks pass;</li>
+<li>keep <code>workflow_dispatch</code> available for focused reruns;</li>
+<li>preserve the existing release gate that requires the successful workflow and unexpired evidence artifact for the exact reviewed candidate commit;</li>
+<li>do not allow the job to auto-approve, merge, publish, or mutate issues;</li>
+<li>set a documented evidence freshness window.</li>
+</ul>
+<h3 id="temporary-300-transition-bridge">Temporary 3.0.0 transition bridge<a class="headerlink" href="#temporary-300-transition-bridge" title="Permanent link">&para;</a></h3>
+<p>Before the protected environment is available, the initial multi-target major
+release may use sanitized evidence collected by the interactive harness. This is
+not an authenticated-gate waiver. The release validator requires:</p>
+<ul>
+<li>the exact published-bundle source fingerprint, including packaging logic and
+  pinned build tooling, recorded at capture time;</li>
+<li>one byte-level prepared module-inventory fingerprint per exact runtime profile;</li>
+<li>release version <code>3.0.0</code> and no other version;</li>
+<li>all fixed module-only, DLLPickle-first, module-first, and cross-import-order
+  read scenarios under PowerShell 7.4, 7.5, and 7.6 on Windows x64;</li>
+<li>a real delegated Graph <code>/me</code> read in addition to the policy&rsquo;s context probe;</li>
+<li>passing EXO mailbox, Azure context/resource/storage-account, and Teams tenant
+  reads;</li>
+<li>normalized before-authentication, after-connection, and after-probe ALC
+  snapshots;</li>
+<li>zero writes and no credential material or raw provider output;</li>
+<li>explicit maintainer acceptance with a confidence level; and</li>
+<li>expiry exactly 14 days after the capture session starts, without renewal when
+  a partial session resumes.</li>
+</ul>
+<p>The record explicitly states that delegated interactive authentication is not
+least-privilege workload-identity proof. Any bundle change, skipped or failed
+probe, missing profile, different release version, expiry, or missing acceptance
+closes the bridge. The future protected workflow remains the preferred route and
+supersedes this transition mechanism.</p>
+<h3 id="interactive-transition-runbook">Interactive transition runbook<a class="headerlink" href="#interactive-transition-runbook" title="Permanent link">&para;</a></h3>
+<p>Run these commands in a normal interactive PowerShell terminal from a clean,
+synced checkout of the reviewed PR branch. Do not paste tokens or passwords into
+the command line.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">pwsh</span> <span class="n">-NoLogo</span> <span class="n">-NoProfile</span> <span class="o">-File</span> <span class="p">.\</span><span class="n">tools</span><span class="p">\</span><span class="nb">Initialize-DLLPickleManualAuthenticatedCompatibility</span><span class="p">.</span><span class="n">ps1</span>
+</code></pre></div>
+<p>The initialization step performs no provider authentication. It builds
+DLLPickle, installs the checksum-pinned Windows x64 PowerShell executables, and
+downloads the latest compatible monitored modules into the gitignored
+<code>artifacts/manual-authenticated</code> directory.</p>
+<p>If the interactive Azure account exposes more than one subscription, set the
+intended test subscription for the current terminal without committing it:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nv">$env:DLLPICKLE_MANUAL_AZURE_SUBSCRIPTION_ID</span> <span class="p">=</span> <span class="s1">'&lt;test-subscription-guid&gt;'</span>
+</code></pre></div>
+<p>Then start or resume the authenticated capture:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="n">pwsh</span> <span class="n">-NoLogo</span> <span class="n">-NoProfile</span> <span class="o">-File</span> <span class="p">.\</span><span class="n">tools</span><span class="p">\</span><span class="nb">Invoke-DLLPickleManualAuthenticatedCompatibility</span><span class="p">.</span><span class="n">ps1</span>
+</code></pre></div>
+<p>The harness opens only the provider sign-in experiences. Each of the 14 fixed
+scenarios runs in a fresh process for each of the three exact profiles. Passing
+scenario checkpoints are reused on rerun only while their complete prepared
+module-inventory fingerprint still matches, so an authorization failure or an
+interrupted session does not require repeating unchanged completed scenarios.
+The fixed Az scenarios use delegated device-code authentication so the capture
+does not depend on the terminal host&rsquo;s WAM integration or change persisted Az
+configuration. Follow the displayed device-login instructions in a browser.
+To diagnose one cell first, use the optional <code>-ProfileKey</code> and <code>-ScenarioId</code>
+filters; the candidate remains incomplete until all 42 checkpoints exist.</p>
+<p>After the candidate is complete, review
+<code>artifacts/manual-authenticated/manual-authenticated-evidence.candidate.json</code>.
+It must contain no account, tenant, subscription, mailbox, resource, token, or
+raw error/service output. Acceptance is a separate, confirmation-gated action:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nv">$AcceptanceParameters</span> <span class="p">=</span> <span class="p">@{</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    <span class="n">CandidateEvidencePath</span> <span class="p">=</span> <span class="s1">'.\artifacts\manual-authenticated\manual-authenticated-evidence.candidate.json'</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    <span class="n">AcceptedBy</span> <span class="p">=</span> <span class="s1">'SamErde'</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    <span class="n">Confidence</span> <span class="p">=</span> <span class="s1">'high'</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="p">}</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="p">&amp;</span> <span class="p">.\</span><span class="n">tools</span><span class="p">\</span><span class="nb">Set-DLLPickleManualAuthenticatedEvidenceAcceptance</span><span class="p">.</span><span class="n">ps1</span> <span class="nv">@AcceptanceParameters</span>
+</code></pre></div>
+<p>This writes <code>build/authenticated-evidence/initial-multitarget-major.json</code> only
+after the pending candidate validates. Commit that one sanitized file only after
+review. Never commit the gitignored work directory or provider caches.</p>
+<h2 id="8-evidence-schema-and-redaction">8. Evidence schema and redaction<a class="headerlink" href="#8-evidence-schema-and-redaction" title="Permanent link">&para;</a></h2>
+<p>Each probe record should include:</p>
+<ul>
+<li>PowerShell exact version, CLR version, TFM, OS, architecture, <code>$PSHOME</code>, and executable path;</li>
+<li>DLLPickle version/commit and selected bundle;</li>
+<li>module name/version and import order;</li>
+<li>connection method identifier, token audience identifier, and token expiry timestamp;</li>
+<li>probe command identifier, result, duration, and normalized error type;</li>
+<li>tracked assembly name/version/hash/path/ALC before and after authentication;</li>
+<li><code>WritesPerformed: false</code>;</li>
+<li>workflow run URL and environment name;</li>
+<li>explicit <code>Executed</code>, <code>Skipped</code>, or <code>Blocked</code> status.</li>
+</ul>
+<p>Redact access tokens, authorization headers, certificate bytes/passwords, mailbox identities, tenant domains where required, subscription/resource names where required, and raw command output. Upload JSON evidence only after a redaction test passes.</p>
+<h2 id="9-negative-controls">9. Negative controls<a class="headerlink" href="#9-negative-controls" title="Permanent link">&para;</a></h2>
+<p>The feasibility run is not accepted without evidence that the identity is constrained:</p>
+<ul>
+<li>Azure: inspect effective roles and actions at the assigned scope and use any available non-mutating authorization query. <code>-WhatIf</code> may remain a local no-mutation safeguard, but it is not authorization evidence and does not prove that the identity lacks write permission. Do not perform a real write merely to prove denial.</li>
+<li>Graph: inspect granted application permissions and verify no write permission is consented.</li>
+<li>Exchange: inspect the assigned application RBAC role and confirm it contains only required read cmdlets/parameters.</li>
+<li>Teams: inspect API permissions and assigned role; do not execute a state-changing Teams cmdlet.</li>
+<li>Workflow: confirm forked PRs cannot obtain the environment or OIDC subject, and confirm environment approval is required before token issuance.</li>
+</ul>
+<h2 id="10-cleanup-rotation-and-incident-response">10. Cleanup, rotation, and incident response<a class="headerlink" href="#10-cleanup-rotation-and-incident-response" title="Permanent link">&para;</a></h2>
+<p>Every job uses an <code>always()</code> cleanup step to disconnect providers, clear process-scoped contexts, remove temporary certificate material, and delete temporary module/token caches. Evidence upload occurs after redaction and before runner teardown.</p>
+<p>Before enabling the environment, document:</p>
+<ul>
+<li>identity owners and backup owners;</li>
+<li>federated credential subject and audiences;</li>
+<li>role/permission inventory;</li>
+<li>certificate expiry and rotation if the fallback is used;</li>
+<li>normal revocation procedure;</li>
+<li>emergency disable procedure for the GitHub environment and Entra service principals;</li>
+<li>audit-log locations and review cadence.</li>
+</ul>
+<h2 id="11-decisions-requiring-explicit-approval">11. Decisions requiring explicit approval<a class="headerlink" href="#11-decisions-requiring-explicit-approval" title="Permanent link">&para;</a></h2>
+<ol>
+<li>Which tenant and dedicated Azure resource group may be used?</li>
+<li>Is GitHub OIDC the required design, or may the certificate fallback be prototyped if a module cannot consume federated access tokens?</li>
+<li>Should Graph remain a context-only gate or add a real organization read?</li>
+<li>What exact Exchange application RBAC role is acceptable for <code>Get-EXOMailbox -ResultSize 1</code>?</li>
+<li>What exact Teams role is the least privilege supported for <code>Get-CsTenant</code>?</li>
+<li>Who reviews the <code>authenticated-readonly</code> GitHub environment?</li>
+<li>What evidence fields require hashing or redaction for the selected tenant?</li>
+<li>What freshness window is required before release?</li>
+<li>Is credentialed coverage initially Windows-only across three PowerShell profiles, or is cross-platform token exposure approved?</li>
+</ol>
+<h2 id="12-definition-of-done">12. Definition of done<a class="headerlink" href="#12-definition-of-done" title="Permanent link">&para;</a></h2>
+<ul>
+<li>The GitHub environment is protected and cannot be used by forked or unreviewed code.</li>
+<li>No long-lived client secret is used.</li>
+<li>Every permission and role is documented with scope and owner.</li>
+<li>All six configured authenticated read probes execute under each approved profile, or the exact blocked probe is recorded as a release gate.</li>
+<li>Both monitored import orders and with/without-DLLPickle scenarios produce sanitized ALC evidence.</li>
+<li>No test performs a tenant or Azure resource write.</li>
+<li>Missing credentials and denied permissions fail closed.</li>
+<li>Tokens and tenant data are absent from logs and artifacts.</li>
+<li>Revocation and cleanup are demonstrated.</li>
+<li>Maintainers explicitly accept the evidence before changing <code>not-run-no-approved-credentials</code> status in <code>build/dependency-policy.json</code>.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      (c) 2026 Sam Erde
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.path", "navigation.instant", "navigation.instant.prefetch", "navigation.tracking", "navigation.sections", "navigation.expand", "navigation.top", "toc.follow", "toc.integrate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>
