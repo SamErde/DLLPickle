@@ -734,6 +734,24 @@
       ]
     },
     {
+      "packageName": "System.Diagnostics.DiagnosticSource",
+      "assemblyName": "System.Diagnostics.DiagnosticSource",
+      "classification": "block",
+      "sourceModules": [],
+      "updateMode": "reportOnly",
+      "reason": "Logging.Abstractions 10.x introduces DiagnosticSource 10.x even when the logging runtime asset is excluded. PowerShell provides DiagnosticSource for the identity stack; bundling the 10.x assembly causes preload failures on the supported .NET 8 and .NET 9 hosts.",
+      "evidence": {
+        "alcOwner": "PowerShell host / Default",
+        "basis": "PR #301 runs 39182858353 and 39182858388 failed while preloading System.Diagnostics.DiagnosticSource 10.x on PowerShell 7.4 and 7.5. Exclude the incidental runtime asset alongside the logging abstractions and retain the validated identity package graph.",
+        "decidedOn": "2026-10-18"
+      },
+      "targetFrameworks": [
+        "net8.0",
+        "net9.0",
+        "net10.0"
+      ]
+    },
+    {
       "packageName": "System.Security.Cryptography.ProtectedData",
       "assemblyName": "System.Security.Cryptography.ProtectedData",
       "classification": "block",
@@ -867,6 +885,7 @@
         "System.ClientModel",
         "Microsoft.Extensions.DependencyInjection.Abstractions",
         "Microsoft.Extensions.Logging.Abstractions",
+        "System.Diagnostics.DiagnosticSource",
         "System.Security.Cryptography.ProtectedData",
         "Microsoft.OData.Core",
         "Microsoft.OData.Edm",
@@ -966,6 +985,7 @@
         "System.ClientModel",
         "Microsoft.Extensions.DependencyInjection.Abstractions",
         "Microsoft.Extensions.Logging.Abstractions",
+        "System.Diagnostics.DiagnosticSource",
         "System.Security.Cryptography.ProtectedData",
         "Microsoft.OData.Core",
         "Microsoft.OData.Edm",
@@ -1061,6 +1081,7 @@
         "System.ClientModel",
         "Microsoft.Extensions.DependencyInjection.Abstractions",
         "Microsoft.Extensions.Logging.Abstractions",
+        "System.Diagnostics.DiagnosticSource",
         "System.Security.Cryptography.ProtectedData",
         "Microsoft.OData.Core",
         "Microsoft.OData.Edm",

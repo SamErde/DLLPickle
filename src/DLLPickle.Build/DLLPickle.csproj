@@ -51,6 +51,10 @@
          excluded together. -->
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.*" ExcludeAssets="runtime" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.*" ExcludeAssets="runtime" />
+    <!-- Logging 10.x introduces DiagnosticSource 10.x. The logging runtime is excluded,
+         and the supported PowerShell hosts supply DiagnosticSource for the identity stack.
+         Do not copy the 10.x asset into older .NET hosts where it cannot be preloaded. -->
+    <PackageReference Include="System.Diagnostics.DiagnosticSource" Version="10.*" ExcludeAssets="runtime" />
   </ItemGroup>
 
 </Project>
