@@ -1,0 +1,194 @@
+{
+  "schemaVersion": 1,
+  "lastVerifiedUtc": "2026-10-18T03:10:45Z",
+  "lifecycleSourceUrl": "https://learn.microsoft.com/en-us/lifecycle/products/powershell",
+  "evidenceFreshnessDays": 30,
+  "retirementWarningDays": 90,
+  "profiles": [
+    {
+      "powerShellVersion": "7.4.21",
+      "powerShellMajor": 7,
+      "powerShellMinor": 4,
+      "dotnetMajor": 8,
+      "dotnetRuntimeVersion": "8.0.32",
+      "targetFramework": "net8.0",
+      "lifecycleState": "Supported",
+      "lifecycleEndDate": "2026-11-10",
+      "releaseNotesUrl": "https://learn.microsoft.com/en-us/powershell/scripting/whats-new/what-s-new-in-powershell-74",
+      "supportPolicy": {
+        "retirementAction": "retain-for-hosted-service-compatibility",
+        "decisionDate": "2026-10-17",
+        "evidenceVerifiedUtc": "2026-10-18T03:03:34Z",
+        "evidenceFreshnessDays": 90,
+        "reviewTrigger": "Revalidate when the evidence expires or when Azure Functions Linux Consumption supports PowerShell 7.6 or later without requiring a hosting-plan migration.",
+        "hostedServices": [
+          {
+            "name": "Azure Functions Linux Consumption",
+            "documentationUrl": "https://learn.microsoft.com/en-us/azure/azure-functions/functions-versions",
+            "finding": "PowerShell 7.4 is the last supported PowerShell version on Linux Consumption; moving to PowerShell 7.6 requires migration to Flex Consumption."
+          },
+          {
+            "name": "Azure Automation",
+            "documentationUrl": "https://learn.microsoft.com/en-us/azure/automation/automation-runbook-types",
+            "finding": "PowerShell 7.4 and PowerShell 7.6 are supported for cloud and hybrid jobs, so existing 7.4 automation remains a compatibility population during migration."
+          }
+        ]
+      }
+    },
+    {
+      "powerShellVersion": "7.5.12",
+      "powerShellMajor": 7,
+      "powerShellMinor": 5,
+      "dotnetMajor": 9,
+      "dotnetRuntimeVersion": "9.0.21",
+      "targetFramework": "net9.0",
+      "lifecycleState": "Supported",
+      "lifecycleEndDate": "2026-11-10",
+      "releaseNotesUrl": "https://learn.microsoft.com/en-us/powershell/scripting/whats-new/what-s-new-in-powershell-75",
+      "supportPolicy": {
+        "retirementAction": "retire-at-lifecycle-end",
+        "decisionDate": "2026-10-17",
+        "reviewTrigger": "Remove the 7.5 profile after the Microsoft lifecycle boundary unless new official hosted-service evidence justifies a separately reviewed holdover."
+      }
+    },
+    {
+      "powerShellVersion": "7.6.7",
+      "powerShellMajor": 7,
+      "powerShellMinor": 6,
+      "dotnetMajor": 10,
+      "dotnetRuntimeVersion": "10.0.13",
+      "targetFramework": "net10.0",
+      "lifecycleState": "Supported",
+      "lifecycleEndDate": "2028-11-14",
+      "releaseNotesUrl": "https://learn.microsoft.com/en-us/powershell/scripting/whats-new/what-s-new-in-powershell-76"
+    }
+  ],
+  "lanes": [
+    {
+      "platform": "windows",
+      "runner": "windows-2025",
+      "architecture": "x64",
+      "executableName": "pwsh.exe"
+    },
+    {
+      "platform": "linux",
+      "runner": "ubuntu-24.04",
+      "architecture": "x64",
+      "executableName": "pwsh"
+    },
+    {
+      "platform": "macos",
+      "runner": "macos-15-intel",
+      "architecture": "x64",
+      "executableName": "pwsh"
+    }
+  ],
+  "archiveAssets": [
+    {
+      "powerShellVersion": "7.4.21",
+      "platform": "windows",
+      "architecture": "x64",
+      "fileName": "PowerShell-7.4.21-win-x64.zip",
+      "sha256": "b47ee814b9fe5fe6b713a26667998cadd6bbb74cb3889fadea56c775f11953a2",
+      "downloadUrl": "https://github.com/PowerShell/PowerShell/releases/download/v7.4.21/PowerShell-7.4.21-win-x64.zip"
+    },
+    {
+      "powerShellVersion": "7.4.21",
+      "platform": "linux",
+      "architecture": "x64",
+      "fileName": "powershell-7.4.21-linux-x64.tar.gz",
+      "sha256": "3fc5e1567c450bd7bd5ae69ebb0a9a4a4e0418bbc36b0232cf6dd547f0bfc0eb",
+      "downloadUrl": "https://github.com/PowerShell/PowerShell/releases/download/v7.4.21/powershell-7.4.21-linux-x64.tar.gz"
+    },
+    {
+      "powerShellVersion": "7.4.21",
+      "platform": "macos",
+      "architecture": "x64",
+      "fileName": "powershell-7.4.21-osx-x64.tar.gz",
+      "sha256": "9b51a3171cf270d444283330673adfab0f4f5551904ea8d70bcd68250bd315da",
+      "downloadUrl": "https://github.com/PowerShell/PowerShell/releases/download/v7.4.21/powershell-7.4.21-osx-x64.tar.gz"
+    },
+    {
+      "powerShellVersion": "7.5.12",
+      "platform": "windows",
+      "architecture": "x64",
+      "fileName": "PowerShell-7.5.12-win-x64.zip",
+      "sha256": "d7717e274d9bcbbf60334b8a560e3ea20f9da887e9475a9b0e28036ede69b123",
+      "downloadUrl": "https://github.com/PowerShell/PowerShell/releases/download/v7.5.12/PowerShell-7.5.12-win-x64.zip"
+    },
+    {
+      "powerShellVersion": "7.5.12",
+      "platform": "linux",
+      "architecture": "x64",
+      "fileName": "powershell-7.5.12-linux-x64.tar.gz",
+      "sha256": "db85ae1f45005ffd20e456890585167257151fa99406ccd7ab344f7cf3a766fd",
+      "downloadUrl": "https://github.com/PowerShell/PowerShell/releases/download/v7.5.12/powershell-7.5.12-linux-x64.tar.gz"
+    },
+    {
+      "powerShellVersion": "7.5.12",
+      "platform": "macos",
+      "architecture": "x64",
+      "fileName": "powershell-7.5.12-osx-x64.tar.gz",
+      "sha256": "1643c7edbb046d6693f8383311bdbd83c6e04bde804ce6fc4c5fed089ee3bb08",
+      "downloadUrl": "https://github.com/PowerShell/PowerShell/releases/download/v7.5.12/powershell-7.5.12-osx-x64.tar.gz"
+    },
+    {
+      "powerShellVersion": "7.6.7",
+      "platform": "windows",
+      "architecture": "x64",
+      "fileName": "PowerShell-7.6.7-win-x64.zip",
+      "sha256": "d2f952ebdbf24386cb8923553aa58e41a846db35a6155ea04c58142a4b16dbb7",
+      "downloadUrl": "https://github.com/PowerShell/PowerShell/releases/download/v7.6.7/PowerShell-7.6.7-win-x64.zip"
+    },
+    {
+      "powerShellVersion": "7.6.7",
+      "platform": "linux",
+      "architecture": "x64",
+      "fileName": "powershell-7.6.7-linux-x64.tar.gz",
+      "sha256": "6896f9e3a6b0a354bf470835a96da76d2f801cd50dcf047ad7c4563bf93bf431",
+      "downloadUrl": "https://github.com/PowerShell/PowerShell/releases/download/v7.6.7/powershell-7.6.7-linux-x64.tar.gz"
+    },
+    {
+      "powerShellVersion": "7.6.7",
+      "platform": "macos",
+      "architecture": "x64",
+      "fileName": "powershell-7.6.7-osx-x64.tar.gz",
+      "sha256": "c354ca845cb81f9239bc0c6fbfd14256056400e4b269bd7a6373d113ad94c1e3",
+      "downloadUrl": "https://github.com/PowerShell/PowerShell/releases/download/v7.6.7/powershell-7.6.7-osx-x64.tar.gz"
+    }
+  ],
+  "provisioning": {
+    "defaultProvider": "DirectArchive",
+    "optionalProvider": {
+      "name": "MultiPwsh",
+      "version": "0.18.0",
+      "publishedUtc": "2026-08-07T01:40:45Z",
+      "repositoryUrl": "https://github.com/Devolutions/multi-pwsh",
+      "releaseUrl": "https://github.com/Devolutions/multi-pwsh/releases/tag/v0.18.0",
+      "ciOnly": true,
+      "assets": [
+        {
+          "platform": "windows",
+          "architecture": "x64",
+          "fileName": "multi-pwsh-windows-x64.zip",
+          "sha256": "6998a9fce8ed77307b7802c9763f27762ea5b20dc6c73042f5bf9ac46b2f0ecb",
+          "downloadUrl": "https://github.com/Devolutions/multi-pwsh/releases/download/v0.18.0/multi-pwsh-windows-x64.zip"
+        },
+        {
+          "platform": "linux",
+          "architecture": "x64",
+          "fileName": "multi-pwsh-linux-x64.zip",
+          "sha256": "5570ab938790b869782f6b192954f0038de8e4bec57e1ec50d0bd72d69b52a53",
+          "downloadUrl": "https://github.com/Devolutions/multi-pwsh/releases/download/v0.18.0/multi-pwsh-linux-x64.zip"
+        },
+        {
+          "platform": "macos",
+          "architecture": "x64",
+          "fileName": "multi-pwsh-macos-x64.zip",
+          "sha256": "c207ddb69404bf42e1bd055f1d35d2480b0d128019b32c156304185f873e1971",
+          "downloadUrl": "https://github.com/Devolutions/multi-pwsh/releases/download/v0.18.0/multi-pwsh-macos-x64.zip"
+        }
+      ]
+    }
+  }
+}

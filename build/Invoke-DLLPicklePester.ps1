@@ -20,9 +20,8 @@ param(
 
     [string]$TestResultFormat = 'NUnitXML',
 
-    [version]$MinimumPesterVersion = '5.2.2',
-
-    [version]$MaximumPesterVersion = '5.99.99',
+    [Parameter(Mandatory)]
+    [version]$RequiredPesterVersion,
 
     [switch]$EnableCodeCoverage,
 
@@ -33,14 +32,11 @@ $ErrorActionPreference = 'Stop'
 
 try {
     $PesterModule = Get-Module Pester -ListAvailable |
-        Where-Object {
-            $_.Version -ge $MinimumPesterVersion -and $_.Version -le $MaximumPesterVersion
-        } |
-        Sort-Object Version -Descending |
+        Where-Object Version -EQ $RequiredPesterVersion |
         Select-Object -First 1
 
     if (-not $PesterModule) {
-        throw "No Pester module was found between versions $MinimumPesterVersion and $MaximumPesterVersion."
+        throw "Required Pester version $RequiredPesterVersion was not found."
     }
 
     # This script is intentionally executed by a fresh pwsh process. Importing the

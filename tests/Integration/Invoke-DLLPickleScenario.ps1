@@ -50,7 +50,7 @@ function Invoke-DLLPickleScenario {
 
         [Parameter()]
         [ValidateNotNullOrEmpty()]
-        [string]$PowerShellExecutable = 'pwsh',
+        [string]$PowerShellExecutable = [Environment]::ProcessPath,
 
         [Parameter()]
         [AllowNull()]
@@ -146,6 +146,7 @@ function Get-DLLPickleScenarioAssemblySnapshot {
     [System.AppDomain]::CurrentDomain.GetAssemblies() |
         ForEach-Object {
             $AssemblyName = $_.GetName()
+            $LoadContext = [System.Runtime.Loader.AssemblyLoadContext]::GetLoadContext($_)
             $Location = $null
             $GlobalAssemblyCache = $false
             try {
@@ -165,6 +166,13 @@ function Get-DLLPickleScenarioAssemblySnapshot {
                 Location            = $Location
                 GlobalAssemblyCache = $GlobalAssemblyCache
                 FullName            = $_.FullName
+                LoadContext         = if ($LoadContext -and $LoadContext.Name) { $LoadContext.Name } else { 'Default' }
+                IsCollectible       = if ($LoadContext) { $LoadContext.IsCollectible } else { $false }
+                Sha256              = if (-not [string]::IsNullOrWhiteSpace($Location) -and (Test-Path -LiteralPath $Location -PathType Leaf)) {
+                    (Get-FileHash -LiteralPath $Location -Algorithm SHA256).Hash.ToLowerInvariant()
+                } else {
+                    $null
+                }
             }
         } | Sort-Object -Property Name, Version, Location
 }
@@ -222,6 +230,19 @@ function ConvertTo-DLLPickleScenarioError {
 
 $ScenarioModuleManifestPath = [string]$Payload.ModuleManifestPath
 $ScenarioOutputPath = [string]$Payload.OutputPath
+$RuntimeProfile = $null
+if (-not [string]::IsNullOrWhiteSpace($ScenarioModuleManifestPath)) {
+    $ScenarioModuleRoot = Split-Path -Path $ScenarioModuleManifestPath -Parent
+    $RuntimePolicyPath = Join-Path -Path $ScenarioModuleRoot -ChildPath 'SupportedRuntimeProfiles.json'
+    $RuntimeProfileResolverPath = Join-Path -Path $ScenarioModuleRoot -ChildPath 'Private/Get-DPRuntimeProfile.ps1'
+    foreach ($RequiredRuntimeProfilePath in @($RuntimePolicyPath, $RuntimeProfileResolverPath)) {
+        if (-not (Test-Path -LiteralPath $RequiredRuntimeProfilePath -PathType Leaf)) {
+            throw "Scenario runtime-profile input was not found: $RequiredRuntimeProfilePath"
+        }
+    }
+    . $RuntimeProfileResolverPath
+    $RuntimeProfile = Get-DPRuntimeProfile -PolicyPath $RuntimePolicyPath -PowerShellVersion $PSVersionTable.PSVersion -DotNetMajor ([Environment]::Version.Major)
+}
 $Scenario = [ordered]@{
     ScenarioName       = [string]$Payload.Name
     StartedAt          = [System.DateTimeOffset]::UtcNow.ToString('o')
@@ -234,6 +255,15 @@ $Scenario = [ordered]@{
         OS               = if ($PSVersionTable.ContainsKey('OS')) { $PSVersionTable.OS } else { [System.Environment]::OSVersion.VersionString }
         CLRVersion       = if ($PSVersionTable.ContainsKey('CLRVersion')) { $PSVersionTable.CLRVersion.ToString() } else { $null }
         RuntimeVersion   = [System.Environment]::Version.ToString()
+        TargetFramework  = if ($RuntimeProfile) { [string]$RuntimeProfile.targetFramework } else { $null }
+        SelectedBundlePath = if ($RuntimeProfile) {
+            Join-Path -Path (Split-Path -Path $ScenarioModuleManifestPath -Parent) -ChildPath (Join-Path 'bin' $RuntimeProfile.targetFramework)
+        } else {
+            $null
+        }
+        PSHome           = $PSHOME
+        Platform         = if ([Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([Runtime.InteropServices.OSPlatform]::Windows)) { 'windows' } elseif ([Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([Runtime.InteropServices.OSPlatform]::OSX)) { 'macos' } else { 'linux' }
+        Architecture     = [Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString().ToLowerInvariant()
         PSModulePath     = $env:PSModulePath
         AppDataRoot      = $ScenarioAppDataRoot
     }

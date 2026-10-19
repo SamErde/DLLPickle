@@ -9,6 +9,10 @@
 .EXAMPLE
     ./.github/scripts/Actions_Bootstrap.ps1
 
+.PARAMETER ModuleInstallPath
+    Optional isolated module root. Exact tool versions are saved here and the path is
+    prepended only to this process's PSModulePath. No user-scope module path is mutated.
+
 .NOTES
     Run this script at the beginning of CI/CD workflows to ensure all dependencies are available.
 #>
@@ -16,12 +20,30 @@
 [CmdletBinding()]
 [System.Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingWriteHost', '')]
 
-param()
+param(
+    [Parameter()]
+    [string]$ModuleInstallPath
+)
 
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 
 Write-Host '🔨 Bootstrapping CI/CD Environment...'
+
+$RepositoryRoot = Split-Path -Path (Split-Path -Path $PSScriptRoot -Parent) -Parent
+$ToolingScriptPath = Join-Path -Path $RepositoryRoot -ChildPath 'build/DLLPickle.Tooling.ps1'
+$ToolPolicyPath = Join-Path -Path $RepositoryRoot -ChildPath 'build/build-tool-versions.json'
+. $ToolingScriptPath
+$ToolPolicy = Get-DLLPickleBuildToolPolicy -Path $ToolPolicyPath
+
+if (-not [string]::IsNullOrWhiteSpace($ModuleInstallPath)) {
+    $ModuleInstallPath = [System.IO.Path]::GetFullPath($ModuleInstallPath)
+    if (-not (Test-Path -LiteralPath $ModuleInstallPath -PathType Container)) {
+        $null = New-Item -Path $ModuleInstallPath -ItemType Directory -Force
+    }
+    $ExistingModulePathEntries = @($env:PSModulePath -split [System.IO.Path]::PathSeparator | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    $env:PSModulePath = @($ModuleInstallPath) + $ExistingModulePathEntries -join [System.IO.Path]::PathSeparator
+}
 
 # https://docs.microsoft.com/powershell/module/packagemanagement/get-packageprovider
 Get-PackageProvider -Name Nuget -ForceBootstrap | Out-Null
@@ -29,63 +51,51 @@ Get-PackageProvider -Name Nuget -ForceBootstrap | Out-Null
 # https://docs.microsoft.com/powershell/module/powershellget/set-psrepository
 Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
 
-# List of PowerShell Modules required for the build.
-$ModulesToInstall = New-Object System.Collections.Generic.List[object]
+Write-Host '📦 Installing exact PowerShell build-tool versions'
+$ModuleInstallCommandName = if ([string]::IsNullOrWhiteSpace($ModuleInstallPath)) {
+    'Install-Module'
+} else {
+    'Save-Module'
+}
+$ModuleInstallCommand = Get-Command -Name $ModuleInstallCommandName -ErrorAction Stop
 
-# https://github.com/pester/Pester
-$ModulesToInstall.Add(([PSCustomObject]@{
-            ModuleName         = 'Pester'
-            SkipPublisherCheck = $true # Skip publisher check for older Pester versions due to certificate mismatch.
-            #ModuleVersion = '5.7.1'
-        })) | Out-Null
+foreach ($Module in @($ToolPolicy.modules)) {
+    $RequiredVersion = [version]$Module.version
+    $InstalledModule = Get-Module -ListAvailable -Name $Module.name |
+        Where-Object { Test-DLLPickleToolVersionMatch -ActualVersion $_.Version -RequiredVersion $RequiredVersion } |
+        Select-Object -First 1
 
-# https://github.com/nightroman/Invoke-Build
-$ModulesToInstall.Add(([PSCustomObject]@{
-            ModuleName = 'InvokeBuild'
-            #ModuleVersion = '5.12.1'
-        })) | Out-Null
+    if (-not $InstalledModule) {
+        $ModuleCommandSplat = @{
+            Name            = $Module.name
+            RequiredVersion = $Module.version
+            Repository      = 'PSGallery'
+            Force           = $true
+            ErrorAction     = 'Stop'
+        }
+        if (
+            $Module.skipPublisherCheck -and
+            (Test-DLLPickleCommandParameter -Command $ModuleInstallCommand -ParameterName 'SkipPublisherCheck')
+        ) {
+            $ModuleCommandSplat['SkipPublisherCheck'] = $true
+        }
 
-# https://github.com/PowerShell/PSScriptAnalyzer
-$ModulesToInstall.Add(([PSCustomObject]@{
-            ModuleName = 'PSScriptAnalyzer'
-            #ModuleVersion = '1.23.0'
-        })) | Out-Null
-
-# https://github.com/PowerShell/Microsoft.PowerShell.PlatyPS
-$ModulesToInstall.Add(([PSCustomObject]@{
-            ModuleName = 'Microsoft.PowerShell.PlatyPS'
-        })) | Out-Null
-# https://github.com/PowerShell/platyPS
-# Older version used due to: https://github.com/PowerShell/platyPS/issues/457
-#$ModulesToInstall.Add(([PSCustomObject]@{
-#    ModuleName    = 'platyPS'
-#    #ModuleVersion = '0.12.0'
-#})) | Out-Null
-
-Write-Host '📦 Installing PowerShell Modules'
-foreach ($Module in $ModulesToInstall) {
-    $InstallSplat = @{
-        Name        = $Module.ModuleName
-        Repository  = 'PSGallery'
-        Force       = $true
-        ErrorAction = 'Stop'
-    }
-    if ($Module.ModuleVersion) {
-        $InstallSplat['RequiredVersion'] = $Module.ModuleVersion
-    }
-    if ($Module.SkipPublisherCheck) {
-        $InstallSplat['SkipPublisherCheck'] = $true
+        try {
+            if ([string]::IsNullOrWhiteSpace($ModuleInstallPath)) {
+                $ModuleCommandSplat['Scope'] = 'CurrentUser'
+                & $ModuleInstallCommand @ModuleCommandSplat
+            } else {
+                $ModuleCommandSplat['Path'] = $ModuleInstallPath
+                & $ModuleInstallCommand @ModuleCommandSplat
+            }
+        } catch {
+            Write-Host "  - Failed to install $($Module.name) $RequiredVersion"
+            throw
+        }
     }
 
-    try {
-        Install-Module @InstallSplat
-        Import-Module -Name $Module.ModuleName -ErrorAction Stop
-        Write-Host "  - Successfully installed $($Module.ModuleName)"
-    } catch {
-        $message = 'Failed to install {0}' -f $Module.ModuleName
-        Write-Host "  - $message"
-        throw
-    }
+    $ImportedModule = Import-DLLPickleBuildTool -Name $Module.name -RequiredVersion $RequiredVersion
+    Write-Host "  - $($ImportedModule.Name) $($ImportedModule.Version) ready"
 }
 
 # Ensure .NET tools are available

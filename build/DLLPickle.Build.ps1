@@ -43,6 +43,14 @@
 ### QUESTION: Is the $BuildFile variable created by Invoke-Build automatically?
 $script:ModuleName = [regex]::Match((Get-Item $BuildFile).Name, '^(.*)\.Build\.ps1$').Groups[1].Value
 . "$(Join-Path -Path $PSScriptRoot -ChildPath "${ModuleName}.Settings.ps1")"
+$script:BuildToolPolicyPath = Join-Path -Path $PSScriptRoot -ChildPath 'build-tool-versions.json'
+. (Join-Path -Path $PSScriptRoot -ChildPath 'DLLPickle.Tooling.ps1')
+$script:BuildToolPolicy = Get-DLLPickleBuildToolPolicy -Path $script:BuildToolPolicyPath
+$script:RequiredInvokeBuildVersion = Get-DLLPickleBuildToolVersion -Policy $script:BuildToolPolicy -Name 'InvokeBuild'
+$script:RequiredPesterVersion = Get-DLLPickleBuildToolVersion -Policy $script:BuildToolPolicy -Name 'Pester'
+$script:RequiredPSScriptAnalyzerVersion = Get-DLLPickleBuildToolVersion -Policy $script:BuildToolPolicy -Name 'PSScriptAnalyzer'
+$script:RequiredPlatyPSVersion = Get-DLLPickleBuildToolVersion -Policy $script:BuildToolPolicy -Name 'Microsoft.PowerShell.PlatyPS'
+$null = Import-DLLPickleBuildTool -Name 'InvokeBuild' -RequiredVersion $script:RequiredInvokeBuildVersion
 
 function Test-ManifestBool ($Path) {
     # Validate the module manifest file
@@ -127,8 +135,6 @@ Enter-Build {
         '*[\\/]Private[\\/]Show-DLLPickleLogo.ps1'
     )
 
-    [version]$script:MinPesterVersion = '5.2.2'
-    [version]$script:MaxPesterVersion = '5.99.99'
     $script:TestOutputFormat = 'NUnitXML'
 } #Enter-Build
 
@@ -161,7 +167,12 @@ function Invoke-IsolatedPester {
         [switch]$ExcludeLiveRepro
     )
 
-    $PowerShellPath = (Get-Command pwsh -CommandType Application -ErrorAction Stop | Select-Object -First 1).Path
+    # Preserve the exact PowerShell/CLR pair selected by the matrix job. Resolving
+    # pwsh from PATH here can silently fall back to the hosted runner version.
+    $PowerShellPath = [Environment]::ProcessPath
+    if ([string]::IsNullOrWhiteSpace($PowerShellPath) -or -not (Test-Path -LiteralPath $PowerShellPath -PathType Leaf)) {
+        throw 'The current PowerShell process executable could not be resolved for isolated Pester execution.'
+    }
     $RunnerPath = Join-Path -Path $script:ProjectRoot -ChildPath 'build/Invoke-DLLPicklePester.ps1'
     $Arguments = @(
         '-NoProfile'
@@ -174,10 +185,8 @@ function Invoke-IsolatedPester {
         $SummaryPath
         '-TestResultPath'
         $TestResultPath
-        '-MinimumPesterVersion'
-        $script:MinPesterVersion.ToString()
-        '-MaximumPesterVersion'
-        $script:MaxPesterVersion.ToString()
+        '-RequiredPesterVersion'
+        $script:RequiredPesterVersion.ToString()
         '-TestResultFormat'
         $script:TestOutputFormat
     )
@@ -314,6 +323,7 @@ Add-BuildTask Clean {
 
 #Synopsis: Invoke PSScriptAnalyzer against the Module source path
 Add-BuildTask Analyze {
+    $null = Import-DLLPickleBuildTool -Name 'PSScriptAnalyzer' -RequiredVersion $script:RequiredPSScriptAnalyzerVersion
     $ScriptAnalyzerParams = @{
         Path    = $script:ModuleSourcePath
         Setting = 'PSScriptAnalyzerSettings.psd1'
@@ -334,6 +344,7 @@ Add-BuildTask Analyze {
 #Synopsis: Invoke Script Analyzer against the Tests path if it exists
 Add-BuildTask AnalyzeTests -After Analyze {
     if (Test-Path -Path $script:TestsPath) {
+        $null = Import-DLLPickleBuildTool -Name 'PSScriptAnalyzer' -RequiredVersion $script:RequiredPSScriptAnalyzerVersion
         $ScriptAnalyzerParams = @{
             Path        = $script:TestsPath
             Setting     = 'PSScriptAnalyzerSettings.psd1'
@@ -356,6 +367,7 @@ Add-BuildTask AnalyzeTests -After Analyze {
 #Synopsis: Invoke Script Analyzer against repository maintenance tools if they exist
 Add-BuildTask AnalyzeTools -After AnalyzeTests {
     if (Test-Path -Path $script:ToolsPath) {
+        $null = Import-DLLPickleBuildTool -Name 'PSScriptAnalyzer' -RequiredVersion $script:RequiredPSScriptAnalyzerVersion
         $ScriptAnalyzerParams = @{
             Path    = $script:ToolsPath
             Setting = 'PSScriptAnalyzerSettings.psd1'
@@ -376,6 +388,7 @@ Add-BuildTask AnalyzeTools -After AnalyzeTests {
 
 #Synopsis: Analyze scripts to verify if they adhere to desired coding format (Stroustrup / OTBS / Allman)
 Add-BuildTask FormattingCheck {
+    $null = Import-DLLPickleBuildTool -Name 'PSScriptAnalyzer' -RequiredVersion $script:RequiredPSScriptAnalyzerVersion
     $ScriptAnalyzerParams = @{
         Setting     = 'CodeFormattingOTBS'
         ExcludeRule = 'PSUseConsistentWhitespace'
@@ -462,13 +475,8 @@ Add-BuildTask Test {
 #Synopsis: Used primarily during active development to generate XML file to graphically display code coverage in VSCode using Coverage Gutters
 Add-BuildTask DevCC {
     Write-Build White '      Generating code coverage report at root...'
-    Write-Build White "      Importing desired Pester version. Min: $script:MinPesterVersion Max: $script:MaxPesterVersion"
-    $LoadedPester = Get-Module Pester | Where-Object {
-        $_.Version -ge $script:MinPesterVersion -and $_.Version -le $script:MaxPesterVersion
-    } | Select-Object -First 1
-    if (-not $LoadedPester) {
-        Import-Module -Name Pester -MinimumVersion $script:MinPesterVersion -MaximumVersion $script:MaxPesterVersion -ErrorAction 'Stop'
-    }
+    Write-Build White "      Importing exact Pester version: $script:RequiredPesterVersion"
+    $null = Import-DLLPickleBuildTool -Name 'Pester' -RequiredVersion $script:RequiredPesterVersion
     $PesterConfiguration = New-PesterConfiguration
     $PesterConfiguration.run.Path = $script:UnitTestsPath
     $PesterConfiguration.CodeCoverage.Enabled = $true
@@ -490,8 +498,8 @@ Add-BuildTask DevCC {
 Add-BuildTask CreateHelpStart {
     Write-Build White '      Performing all help related actions.'
 
-    Write-Build Gray '           Importing Microsoft.PowerShell.PlatyPS ...'
-    Import-Module Microsoft.PowerShell.PlatyPS -ErrorAction Stop
+    Write-Build Gray "           Importing Microsoft.PowerShell.PlatyPS $script:RequiredPlatyPSVersion ..."
+    $null = Import-DLLPickleBuildTool -Name 'Microsoft.PowerShell.PlatyPS' -RequiredVersion $script:RequiredPlatyPSVersion
     Write-Build Gray '           ...Microsoft.PowerShell.PlatyPS imported successfully.'
 } #CreateHelpStart
 
