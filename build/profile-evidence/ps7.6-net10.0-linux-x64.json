@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
-  "contentFingerprint": "2fac425c1f7b443857e97116ca525246b2e26cd71bc39f30ed3aceb37345c93c",
+  "contentFingerprint": "95d1cf707af01a8dcece9f41868acec9ef897388594a8dda7d51bab4e55e2e25",
   "provenance": {
-    "sourceRunId": "39173418247",
-    "sourceRunUrl": "https://github.com/SamErde/DLLPickle/actions/runs/39173418247",
-    "sourceCommitSha": "2565f4f2dd6574a7318a04baf1a0300b9b153861",
-    "capturedAtUtc": "2026-10-18T22:44:21.0000000+00:00",
+    "sourceRunId": "39236885938",
+    "sourceRunUrl": "https://github.com/SamErde/DLLPickle/actions/runs/39236885938",
+    "sourceCommitSha": "8884bd904f2849b8a2ae7c9495ffe282c8e2afcc",
+    "capturedAtUtc": "2026-10-19T10:23:08.0000000+00:00",
     "observedOperatingSystems": [
       "Ubuntu 24.04.5 LTS"
     ]
@@ -25,8 +25,8 @@
       "deterministicImportNoAuth": {
         "status": "passed",
         "writesPerformed": false,
-        "conflictSurfaceFingerprint": "dab7fbe60b5506166e3a70d17e497b87950fdc27655face89e7dc284c4893d8a",
-        "scenarioFingerprint": "52fac557b53c4dc4815b34e1fcc5fed25e7858d6c8b13523a413592ca0741223"
+        "conflictSurfaceFingerprint": "552e9c6711bbced7ea0a623d37e2999ab7e597edddadf40b024e7a3ea92d7add",
+        "scenarioFingerprint": "2a2f0a41b894104b1a4718e0acf61777c2c02e4a046de4063dbc71c368cc12e7"
       },
       "authenticatedReadOnly": {
         "status": "not-run-no-approved-credentials",
@@ -77,6 +77,17 @@
             "isCollectible": false,
             "contributor": "Az.Accounts",
             "selectedAsset": "upstream:Az.Accounts/5.5.3/lib/netstandard2.0/Microsoft.Identity.Client.Extensions.Msal.dll"
+          },
+          {
+            "assemblyName": "System.Diagnostics.DiagnosticSource",
+            "assemblyVersion": "10.0.0.0",
+            "packageVersionCandidate": "10.0.0",
+            "fullName": "System.Diagnostics.DiagnosticSource, Version=10.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51",
+            "sha256": "c63ac07bf8bee78d330bcfdf9ac2833464d32082cb1398dcd80a54f623665c02",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "contributor": "Az.Accounts",
+            "selectedAsset": "runtime:System.Diagnostics.DiagnosticSource.dll"
           }
         ]
       },
@@ -126,6 +137,17 @@
             "isCollectible": false,
             "contributor": "Az.Accounts",
             "selectedAsset": "upstream:Az.Accounts/5.5.3/lib/netstandard2.0/Microsoft.Identity.Client.Extensions.Msal.dll"
+          },
+          {
+            "assemblyName": "System.Diagnostics.DiagnosticSource",
+            "assemblyVersion": "10.0.0.0",
+            "packageVersionCandidate": "10.0.0",
+            "fullName": "System.Diagnostics.DiagnosticSource, Version=10.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51",
+            "sha256": "c63ac07bf8bee78d330bcfdf9ac2833464d32082cb1398dcd80a54f623665c02",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "contributor": "Az.Resources",
+            "selectedAsset": "runtime:System.Diagnostics.DiagnosticSource.dll"
           }
         ]
       },
@@ -208,6 +230,17 @@
             "isCollectible": false,
             "contributor": "Az.Accounts",
             "selectedAsset": "upstream:Az.Accounts/5.5.3/lib/netstandard2.0/System.ClientModel.dll"
+          },
+          {
+            "assemblyName": "System.Diagnostics.DiagnosticSource",
+            "assemblyVersion": "10.0.0.0",
+            "packageVersionCandidate": "10.0.0",
+            "fullName": "System.Diagnostics.DiagnosticSource, Version=10.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51",
+            "sha256": "c63ac07bf8bee78d330bcfdf9ac2833464d32082cb1398dcd80a54f623665c02",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "contributor": "Az.Storage",
+            "selectedAsset": "runtime:System.Diagnostics.DiagnosticSource.dll"
           }
         ]
       },
@@ -221,7 +254,19 @@
         "manifestPowerShellVersion": "3.0",
         "compatiblePSEditions": [],
         "deterministicProbeCommand": "Get-ConnectionInformation -ErrorAction SilentlyContinue | Out-Null",
-        "selectedAssets": []
+        "selectedAssets": [
+          {
+            "assemblyName": "System.Diagnostics.DiagnosticSource",
+            "assemblyVersion": "10.0.0.0",
+            "packageVersionCandidate": "10.0.0",
+            "fullName": "System.Diagnostics.DiagnosticSource, Version=10.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51",
+            "sha256": "c63ac07bf8bee78d330bcfdf9ac2833464d32082cb1398dcd80a54f623665c02",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "contributor": "ExchangeOnlineManagement",
+            "selectedAsset": "runtime:System.Diagnostics.DiagnosticSource.dll"
+          }
+        ]
       },
       {
         "name": "Microsoft.Graph.Authentication",
@@ -236,7 +281,19 @@
           "Desktop"
         ],
         "deterministicProbeCommand": "Get-Command Connect-MgGraph | Out-Null",
-        "selectedAssets": []
+        "selectedAssets": [
+          {
+            "assemblyName": "System.Diagnostics.DiagnosticSource",
+            "assemblyVersion": "10.0.0.0",
+            "packageVersionCandidate": "10.0.0",
+            "fullName": "System.Diagnostics.DiagnosticSource, Version=10.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51",
+            "sha256": "c63ac07bf8bee78d330bcfdf9ac2833464d32082cb1398dcd80a54f623665c02",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "contributor": "Microsoft.Graph.Authentication",
+            "selectedAsset": "runtime:System.Diagnostics.DiagnosticSource.dll"
+          }
+        ]
       },
       {
         "name": "MicrosoftTeams",
@@ -262,6 +319,17 @@
             "isCollectible": false,
             "contributor": "MicrosoftTeams",
             "selectedAsset": "upstream:MicrosoftTeams/8.0.0/netcoreapp3.1/Microsoft.Identity.Client.dll"
+          },
+          {
+            "assemblyName": "System.Diagnostics.DiagnosticSource",
+            "assemblyVersion": "10.0.0.0",
+            "packageVersionCandidate": "10.0.0",
+            "fullName": "System.Diagnostics.DiagnosticSource, Version=10.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51",
+            "sha256": "c63ac07bf8bee78d330bcfdf9ac2833464d32082cb1398dcd80a54f623665c02",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "contributor": "MicrosoftTeams",
+            "selectedAsset": "runtime:System.Diagnostics.DiagnosticSource.dll"
           }
         ]
       }
@@ -488,6 +556,65 @@
               "assemblyLoadContext": "AzSharedAssemblyLoadContext"
             }
           ]
+        },
+        {
+          "name": "System.Diagnostics.DiagnosticSource",
+          "shippedBy": [
+            "Az.Accounts",
+            "Az.Resources",
+            "Az.Storage",
+            "ExchangeOnlineManagement",
+            "Microsoft.Graph.Authentication",
+            "MicrosoftTeams"
+          ],
+          "versions": [
+            "10.0.0.0"
+          ],
+          "hashes": [
+            "c63ac07bf8bee78d330bcfdf9ac2833464d32082cb1398dcd80a54f623665c02"
+          ],
+          "assemblyLoadContexts": [
+            "Default"
+          ],
+          "diverges": false,
+          "selections": [
+            {
+              "contributor": "Az.Accounts",
+              "version": "10.0.0.0",
+              "sha256": "c63ac07bf8bee78d330bcfdf9ac2833464d32082cb1398dcd80a54f623665c02",
+              "assemblyLoadContext": "Default"
+            },
+            {
+              "contributor": "Az.Resources",
+              "version": "10.0.0.0",
+              "sha256": "c63ac07bf8bee78d330bcfdf9ac2833464d32082cb1398dcd80a54f623665c02",
+              "assemblyLoadContext": "Default"
+            },
+            {
+              "contributor": "Az.Storage",
+              "version": "10.0.0.0",
+              "sha256": "c63ac07bf8bee78d330bcfdf9ac2833464d32082cb1398dcd80a54f623665c02",
+              "assemblyLoadContext": "Default"
+            },
+            {
+              "contributor": "ExchangeOnlineManagement",
+              "version": "10.0.0.0",
+              "sha256": "c63ac07bf8bee78d330bcfdf9ac2833464d32082cb1398dcd80a54f623665c02",
+              "assemblyLoadContext": "Default"
+            },
+            {
+              "contributor": "Microsoft.Graph.Authentication",
+              "version": "10.0.0.0",
+              "sha256": "c63ac07bf8bee78d330bcfdf9ac2833464d32082cb1398dcd80a54f623665c02",
+              "assemblyLoadContext": "Default"
+            },
+            {
+              "contributor": "MicrosoftTeams",
+              "version": "10.0.0.0",
+              "sha256": "c63ac07bf8bee78d330bcfdf9ac2833464d32082cb1398dcd80a54f623665c02",
+              "assemblyLoadContext": "Default"
+            }
+          ]
         }
       ]
     },
@@ -568,6 +695,15 @@
             "assemblyLoadContext": "AzSharedAssemblyLoadContext",
             "isCollectible": false,
             "selectedAsset": "upstream:Az.Accounts/5.5.3/lib/netstandard2.0/System.ClientModel.dll"
+          },
+          {
+            "name": "System.Diagnostics.DiagnosticSource",
+            "version": "10.0.0.0",
+            "fullName": "System.Diagnostics.DiagnosticSource, Version=10.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51",
+            "sha256": "c63ac07bf8bee78d330bcfdf9ac2833464d32082cb1398dcd80a54f623665c02",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "selectedAsset": "runtime:System.Diagnostics.DiagnosticSource.dll"
           }
         ]
       },
@@ -712,6 +848,15 @@
             "selectedAsset": "upstream:Az.Accounts/5.5.3/lib/netstandard2.0/System.ClientModel.dll"
           },
           {
+            "name": "System.Diagnostics.DiagnosticSource",
+            "version": "10.0.0.0",
+            "fullName": "System.Diagnostics.DiagnosticSource, Version=10.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51",
+            "sha256": "c63ac07bf8bee78d330bcfdf9ac2833464d32082cb1398dcd80a54f623665c02",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "selectedAsset": "runtime:System.Diagnostics.DiagnosticSource.dll"
+          },
+          {
             "name": "System.IdentityModel.Tokens.Jwt",
             "version": "8.18.0.0",
             "fullName": "System.IdentityModel.Tokens.Jwt, Version=8.18.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35",
@@ -798,6 +943,15 @@
             "assemblyLoadContext": "AzSharedAssemblyLoadContext",
             "isCollectible": false,
             "selectedAsset": "upstream:Az.Accounts/5.5.3/lib/netstandard2.0/System.ClientModel.dll"
+          },
+          {
+            "name": "System.Diagnostics.DiagnosticSource",
+            "version": "10.0.0.0",
+            "fullName": "System.Diagnostics.DiagnosticSource, Version=10.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51",
+            "sha256": "c63ac07bf8bee78d330bcfdf9ac2833464d32082cb1398dcd80a54f623665c02",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "selectedAsset": "runtime:System.Diagnostics.DiagnosticSource.dll"
           }
         ]
       },
@@ -940,6 +1094,15 @@
             "assemblyLoadContext": "AzSharedAssemblyLoadContext",
             "isCollectible": false,
             "selectedAsset": "upstream:Az.Accounts/5.5.3/lib/netstandard2.0/System.ClientModel.dll"
+          },
+          {
+            "name": "System.Diagnostics.DiagnosticSource",
+            "version": "10.0.0.0",
+            "fullName": "System.Diagnostics.DiagnosticSource, Version=10.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51",
+            "sha256": "c63ac07bf8bee78d330bcfdf9ac2833464d32082cb1398dcd80a54f623665c02",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "selectedAsset": "runtime:System.Diagnostics.DiagnosticSource.dll"
           },
           {
             "name": "System.IdentityModel.Tokens.Jwt",
@@ -1007,6 +1170,15 @@
             "assemblyLoadContext": "AzSharedAssemblyLoadContext",
             "isCollectible": false,
             "selectedAsset": "upstream:Az.Accounts/5.5.3/lib/netstandard2.0/Microsoft.Identity.Client.Extensions.Msal.dll"
+          },
+          {
+            "name": "System.Diagnostics.DiagnosticSource",
+            "version": "10.0.0.0",
+            "fullName": "System.Diagnostics.DiagnosticSource, Version=10.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51",
+            "sha256": "c63ac07bf8bee78d330bcfdf9ac2833464d32082cb1398dcd80a54f623665c02",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "selectedAsset": "runtime:System.Diagnostics.DiagnosticSource.dll"
           }
         ]
       },
@@ -1121,6 +1293,15 @@
             "selectedAsset": "dllpickle:bin/net10.0/Microsoft.IdentityModel.Tokens.dll"
           },
           {
+            "name": "System.Diagnostics.DiagnosticSource",
+            "version": "10.0.0.0",
+            "fullName": "System.Diagnostics.DiagnosticSource, Version=10.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51",
+            "sha256": "c63ac07bf8bee78d330bcfdf9ac2833464d32082cb1398dcd80a54f623665c02",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "selectedAsset": "runtime:System.Diagnostics.DiagnosticSource.dll"
+          },
+          {
             "name": "System.IdentityModel.Tokens.Jwt",
             "version": "8.18.0.0",
             "fullName": "System.IdentityModel.Tokens.Jwt, Version=8.18.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35",
@@ -1186,6 +1367,15 @@
             "assemblyLoadContext": "AzSharedAssemblyLoadContext",
             "isCollectible": false,
             "selectedAsset": "upstream:Az.Accounts/5.5.3/lib/netstandard2.0/Microsoft.Identity.Client.Extensions.Msal.dll"
+          },
+          {
+            "name": "System.Diagnostics.DiagnosticSource",
+            "version": "10.0.0.0",
+            "fullName": "System.Diagnostics.DiagnosticSource, Version=10.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51",
+            "sha256": "c63ac07bf8bee78d330bcfdf9ac2833464d32082cb1398dcd80a54f623665c02",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "selectedAsset": "runtime:System.Diagnostics.DiagnosticSource.dll"
           }
         ]
       },
@@ -1298,6 +1488,15 @@
             "assemblyLoadContext": "Default",
             "isCollectible": false,
             "selectedAsset": "dllpickle:bin/net10.0/Microsoft.IdentityModel.Tokens.dll"
+          },
+          {
+            "name": "System.Diagnostics.DiagnosticSource",
+            "version": "10.0.0.0",
+            "fullName": "System.Diagnostics.DiagnosticSource, Version=10.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51",
+            "sha256": "c63ac07bf8bee78d330bcfdf9ac2833464d32082cb1398dcd80a54f623665c02",
+            "assemblyLoadContext": "Default",
+            "isCollectible": false,
+            "selectedAsset": "runtime:System.Diagnostics.DiagnosticSource.dll"
           },
           {
             "name": "System.IdentityModel.Tokens.Jwt",
