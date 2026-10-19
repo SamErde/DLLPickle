@@ -67,6 +67,7 @@
     "Microsoft.IdentityModel.Tokens",
     "System.IdentityModel.Tokens.Jwt",
     "System.Security.Cryptography.ProtectedData",
+    "System.Diagnostics.DiagnosticSource",
     "Microsoft.Extensions.DependencyInjection.Abstractions",
     "Microsoft.Extensions.Logging.Abstractions",
     "Microsoft.OData.Core",
