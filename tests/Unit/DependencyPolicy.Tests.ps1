@@ -4,6 +4,16 @@ BeforeAll {
 }
 
 Describe 'Dependency policy baseline' -Tag 'Unit' {
+    It 'tracks every classified assembly in runtime and upstream evidence' {
+        $UntrackedClassifications = @(
+            @($script:Policy.preload + $script:Policy.blockedPreloadAssemblies).assemblyName |
+                Where-Object { $_ -notin $script:Policy.trackedAssemblies } |
+                Sort-Object -Unique
+        )
+
+        $UntrackedClassifications | Should -BeNullOrEmpty
+    }
+
     It 'keys classifications and validation gates by every supported PowerShell/TFM profile' {
         @($script:Policy.runtimeProfiles) | Should -HaveCount 3
         @($script:Policy.runtimeProfiles.powerShellLine) | Should -Be @('7.4', '7.5', '7.6')
