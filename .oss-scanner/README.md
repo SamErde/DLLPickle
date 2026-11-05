@@ -15,8 +15,9 @@ docker run --rm --network none --cpus 2 --memory 8g \
 ```
 
 The build downloads framework dependencies and warms test-project restores.
-The second command rebuilds and tests in a new container with no networking and no
-host files mounted. A successful image build alone is not offline test evidence.
+The second command rebuilds and tests in a new container with no networking
+and no host files mounted. A successful image build alone is not offline
+test evidence.
 
 The image uses `global.json`, `build/build-tool-versions.json`, and
 `build/powershell-test-matrix.json`. Update the SDK image tag and digest
@@ -39,7 +40,9 @@ vulnerability data.
 The project image defaults to the unprivileged `scanner` user. Anthropic's
 tooling layer switches to root; both users have the same offline NuGet policy.
 The analysis source and NuGet cache are writable, while installed runtimes and
-build tools remain root-owned. Shared tools are on the default module path.
+build tools remain root-owned. Root trusts only `/src` as a Git worktree owned
+by another user, so the scanner can inspect patches after restoring `.git`.
+Shared tools are on the default module path.
 
 `test.ps1` runs the existing cross-platform build, then unit tests, synthetic
 integration tests, strict package composition and TFM checks for every declared

@@ -336,7 +336,7 @@ Describe 'Exact PowerShell runtime matrix workflow guardrails' -Tag 'Unit' {
         $BuildWorkflow | Should -Match 'uses: \./\.github/workflows/OSS-Scanner\.yml'
         $ScannerWorkflow | Should -Match 'persist-credentials: false'
         $ScannerWorkflow | Should -Match 'docker create --name dllpickle-offline --network none --cpus 2 --memory 8g'
-        $ScannerWorkflow | Should -Not -Match 'secrets:|secrets\.|--privileged|--mount|--volume'
+        $ScannerWorkflow | Should -Not -Match 'secrets:|secrets\.|--privileged|--mount|--volume|(?:^|\s)-v(?:\s|\\|$)'
         $ScannerWorkflow | Should -Match ([regex]::Escape('test "$status" -eq 0'))
         $ScannerWorkflow | Should -Match ([regex]::Escape('.status == "passed"'))
     }

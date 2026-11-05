@@ -52,6 +52,7 @@ RUN useradd --create-home --uid 10001 scanner \
       /root/.nuget/NuGet /home/scanner/.nuget/NuGet \
     && cp .oss-scanner/NuGet.Config /root/.nuget/NuGet/NuGet.Config \
     && cp .oss-scanner/NuGet.Config /home/scanner/.nuget/NuGet/NuGet.Config \
+    && git config --file /root/.gitconfig --add safe.directory /src \
     && chown -R scanner:scanner /src /opt/nuget /home/scanner \
     && chmod -R a+rX /opt/dllpickle
 

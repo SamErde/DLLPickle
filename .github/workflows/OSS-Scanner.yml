@@ -35,6 +35,21 @@ jobs:
           docker image inspect dllpickle-oss-scanner:test \
             > "$RUNNER_TEMP/oss-scanner-evidence/image.json"
 
+      - name: Verify root tooling can inspect the source worktree
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm --network none --user 0 --env HOME=/root \
+            dllpickle-oss-scanner:test bash -c '
+              set -euo pipefail
+              test "$(git config --global --get-all safe.directory)" = /src
+              git init -q /src
+              git -C /src status --porcelain > /dev/null
+              git -C /src diff --exit-code
+              git -C /src diff --cached --exit-code
+              echo "Root Git inspection passed with trust limited to /src."
+            ' 2>&1 | tee "$RUNNER_TEMP/oss-scanner-evidence/root-git.log"
+
       - name: Rebuild and test with networking disabled
         shell: bash
         run: |
