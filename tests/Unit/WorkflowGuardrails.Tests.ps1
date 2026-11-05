@@ -320,12 +320,25 @@ Describe 'Exact PowerShell runtime matrix workflow guardrails' -Tag 'Unit' {
 
     It 'keeps Build gate stable and aggregates both hosted and exact-runtime jobs' {
         $BuildWorkflow | Should -Match '(?m)^\s+name: Build gate\s*$'
-        $BuildWorkflow | Should -Match 'needs: \[changes, runtime-matrix, build, runtime-tests, dependency-change-report\]'
-        $BuildWorkflow | Should -Match ([regex]::Escape("foreach (`$RequiredJob in @('runtimeMatrix', 'build', 'runtimeTests'))"))
+        $BuildWorkflow | Should -Match 'needs: \[changes, runtime-matrix, build, runtime-tests, dependency-change-report, oss-scanner\]'
+        $BuildWorkflow | Should -Match ([regex]::Escape("foreach (`$RequiredJob in @('runtimeMatrix', 'build', 'runtimeTests', 'ossScanner'))"))
         $BuildWorkflow | Should -Match ([regex]::Escape('needs.runtime-matrix.result'))
         $BuildWorkflow | Should -Match ([regex]::Escape('runtimeTests ='))
         $BuildWorkflow | Should -Match ([regex]::Escape('needs.runtime-tests.result'))
         $BuildWorkflow | Should -Match ([regex]::Escape('needs.dependency-change-report.result'))
+        $BuildWorkflow | Should -Match ([regex]::Escape('needs.oss-scanner.result'))
+    }
+
+    It 'requires offline scanner tests without credentials or host-mounted source' {
+        $ScannerWorkflow = Get-Content -LiteralPath (Join-Path $ProjectRoot '.github/workflows/OSS-Scanner.yml') -Raw
+        $BuildWorkflow | Should -Match ([regex]::Escape("'^\.oss-scanner/'"))
+        $BuildWorkflow | Should -Match ([regex]::Escape("'^\.github/workflows/OSS-Scanner\.yml$'"))
+        $BuildWorkflow | Should -Match 'uses: \./\.github/workflows/OSS-Scanner\.yml'
+        $ScannerWorkflow | Should -Match 'persist-credentials: false'
+        $ScannerWorkflow | Should -Match 'docker create --name dllpickle-offline --network none --cpus 2 --memory 8g'
+        $ScannerWorkflow | Should -Not -Match 'secrets:|secrets\.|--privileged|--mount|--volume'
+        $ScannerWorkflow | Should -Match ([regex]::Escape('test "$status" -eq 0'))
+        $ScannerWorkflow | Should -Match ([regex]::Escape('.status == "passed"'))
     }
 
     It 'requires successful profile-matrix generation whenever live upstream evidence is required' {

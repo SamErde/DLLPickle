@@ -1,0 +1,13 @@
+.git
+.claude
+.vscode
+.env
+.env.*
+artifacts
+archive
+module
+**/bin
+**/obj
+.nuget
+packages
+*.nupkg

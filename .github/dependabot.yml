@@ -19,6 +19,12 @@ updates:
       interval: "weekly"
       day: "sunday"
 
+  - package-ecosystem: "docker"
+    directory: "/.oss-scanner"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
