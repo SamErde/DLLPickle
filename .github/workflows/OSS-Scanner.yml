@@ -1,0 +1,89 @@
+name: OSS Scanner environment
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: Exact source reference supplied by the calling build workflow
+        required: true
+        type: string
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-tests:
+    name: Build and test without network
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Check out source without persisted credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+          persist-credentials: false
+
+      - name: Build scanner image
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/oss-scanner-evidence"
+          git rev-parse HEAD > "$RUNNER_TEMP/oss-scanner-evidence/source-commit.txt"
+          timeout 45m docker build --progress=plain -f .oss-scanner/Dockerfile \
+            -t dllpickle-oss-scanner:test . 2>&1 | tee "$RUNNER_TEMP/oss-scanner-evidence/build.log"
+          docker image inspect dllpickle-oss-scanner:test \
+            > "$RUNNER_TEMP/oss-scanner-evidence/image.json"
+
+      - name: Verify root tooling can inspect the source worktree
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm --network none --user 0 --env HOME=/root \
+            dllpickle-oss-scanner:test bash -c '
+              set -euo pipefail
+              test "$(git config --global --get-all safe.directory)" = /src
+              git init -q /src
+              git -C /src status --porcelain > /dev/null
+              git -C /src diff --exit-code
+              git -C /src diff --cached --exit-code
+              echo "Root Git inspection passed with trust limited to /src."
+            ' 2>&1 | tee "$RUNNER_TEMP/oss-scanner-evidence/root-git.log"
+
+      - name: Rebuild and test with networking disabled
+        shell: bash
+        run: |
+          set -euo pipefail
+          evidence="$RUNNER_TEMP/oss-scanner-evidence"
+          docker create --name dllpickle-offline --network none --cpus 2 --memory 8g \
+            dllpickle-oss-scanner:test pwsh -NoLogo -NoProfile -NonInteractive \
+            -File .oss-scanner/test.ps1
+          docker inspect --format '{{.HostConfig.NetworkMode}}' dllpickle-offline > "$evidence/network-mode.txt"
+          test "$(cat "$evidence/network-mode.txt")" = none
+          status=0
+          docker start --attach dllpickle-offline 2>&1 | tee "$evidence/offline-tests.log" || status=$?
+          mkdir -p "$evidence/results"
+          docker cp dllpickle-offline:/src/artifacts/oss-scanner/. "$evidence/results" || status=1
+          test "$status" -eq 0
+          jq -e '.status == "passed" and (.profiles | length > 0)' "$evidence/results/summary.json"
+          {
+            echo '### OSS Scanner environment'
+            echo 'Rebuilt and tested in a container with network mode `none`, 2 CPUs and 8 GiB RAM.'
+            echo 'Unit, synthetic integration, package composition and TFM checks passed for:'
+            jq -r '.profiles[] | "- PowerShell \(.PowerShellVersion), .NET \(.DotNetVersion), \(.TargetFramework)"' "$evidence/results/summary.json"
+            echo 'Tenant authentication and Windows/macOS execution are outside this check.'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload build and offline evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: oss-scanner-evidence
+          path: ${{ runner.temp }}/oss-scanner-evidence/
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Remove test container
+        if: always()
+        shell: bash
+        run: docker rm --force dllpickle-offline 2>/dev/null || true

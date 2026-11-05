@@ -81,9 +81,11 @@ jobs:
                   '^build/'
                   '^tests/'
                   '^tools/'
+                  '^\.oss-scanner/'
                   '^docs/gaps/'
                   '^\.github/ci-scripts/'
                   '^\.github/workflows/Build Module\.yml$'
+                  '^\.github/workflows/OSS-Scanner\.yml$'
                   '^global\.json$'
                   '^build/powershell-test-matrix\.json$'
               )
@@ -517,6 +519,16 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
+  oss-scanner:
+    name: Validate offline scanner environment
+    needs: changes
+    if: ${{ always() && (inputs.ref != '' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.relevant != 'false') }}
+    uses: ./.github/workflows/OSS-Scanner.yml
+    permissions:
+      contents: read
+    with:
+      ref: ${{ inputs.ref || github.ref }}
+
   build-gate:
     name: Build gate
     # Aggregate required-check target. GitHub evaluates a matrix job's `if` BEFORE expanding the
@@ -525,7 +537,7 @@ jobs:
     # for status". This single, always-running job is the stable check to require instead: it passes
     # when the matrix build succeeded OR was skipped (no build-relevant changes) and fails when the
     # build failed or was cancelled.
-    needs: [changes, runtime-matrix, build, runtime-tests, dependency-change-report]
+    needs: [changes, runtime-matrix, build, runtime-tests, dependency-change-report, oss-scanner]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
@@ -542,6 +554,7 @@ jobs:
               build = '${{ needs.build.result }}'
               runtimeTests = '${{ needs.runtime-tests.result }}'
               dependencyChangeReport = '${{ needs.dependency-change-report.result }}'
+              ossScanner = '${{ needs.oss-scanner.result }}'
           }
           $Results.GetEnumerator() | Sort-Object Name | ForEach-Object {
               Write-Host "$($_.Name) job result: $($_.Value)"
@@ -558,7 +571,7 @@ jobs:
               }
           }
           if ($BuildRequired) {
-              foreach ($RequiredJob in @('runtimeMatrix', 'build', 'runtimeTests')) {
+              foreach ($RequiredJob in @('runtimeMatrix', 'build', 'runtimeTests', 'ossScanner')) {
                   if ($Results[$RequiredJob] -ne 'success' -and -not $Failures.Contains($RequiredJob)) {
                       $Failures.Add($RequiredJob)
                   }
