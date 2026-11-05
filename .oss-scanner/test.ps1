@@ -2,8 +2,8 @@
 .SYNOPSIS
 Rebuilds DLL Pickle and tests every declared Linux runtime in fresh processes.
 .DESCRIPTION
-Run inside the scanner image. During image construction this warms all test
-dependencies. For acceptance, run the same command with docker --network none.
+Run inside the scanner image after its network-enabled build has cached the
+dependencies. For acceptance, run this command with docker --network none.
 The image retains exact tools, runtime archives, reference packs and NuGet caches.
 Results are written under artifacts/oss-scanner, separately for each runtime.
 #>

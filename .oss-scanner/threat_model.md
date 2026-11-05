@@ -24,7 +24,7 @@ crossing before treating such control as a vulnerability in the loader.
   selection, assembly discovery/order, load-context interactions, native runtime
   paths, host-provided assembly exclusions and failure handling.
 - Module discovery and import helpers: module roots, filenames, versions and
-  assembly metadata. Determine who controls each input and which process trusts it.
+  assembly metadata. Identify each input's owner and the process trusting it.
 - Configuration and runtime-policy parsing: malformed values, unsafe path
   resolution, unintended loading and information exposed through diagnostics.
 - Build scripts, NuGet lock enforcement, artifact composition and GitHub release
@@ -51,14 +51,14 @@ This rebuilds the module and runs each runtime declared in
 `build/powershell-test-matrix.json` in a fresh process. Exact executable paths
 are in `/opt/dllpickle/runtimes.json`. The built module is
 `/src/module/DLLPickle`; per-runtime results are in
-`/src/artifacts/oss-scanner`. Runtime archives, tools and dependency caches remain
-available offline. Preserve locked dependency resolution when validating patches.
+`/src/artifacts/oss-scanner`. Runtime archives, tools and caches remain
+available offline. Preserve locked dependency resolution when testing patches.
 
 Use synthetic modules, assemblies and tokens in reproducers. The image contains
 no tenant credentials. A mock authentication success is evidence about that mock
 only. Linux execution cannot establish Windows broker/WAM, Windows permissions,
-macOS behavior or successful real tenant authentication. Label findings requiring
-those platforms as unverified on that platform and describe the missing test.
+macOS behavior or real tenant authentication. Label findings requiring those
+platforms as unverified on that platform and describe the missing test.
 
 ## Severity and report expectations
 

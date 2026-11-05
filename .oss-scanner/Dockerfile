@@ -8,7 +8,13 @@ ENV DOTNET_CLI_TELEMETRY_OPTOUT=1 \
     NUGET_PACKAGES=/opt/nuget/packages
 
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-      ca-certificates curl git jq python3 procps libunwind8 \
+      ca-certificates=20260816ubuntu0.24.04.2 \
+      curl=8.5.0-2ubuntu10.16 \
+      git=1:2.43.0-1ubuntu7.4 \
+      jq=1.7.1-3ubuntu0.24.04.2 \
+      python3=3.12.3-0ubuntu2.1 \
+      procps=2:4.0.4-4ubuntu3.3 \
+      libunwind8=1.6.2-3build1.1 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /src
@@ -34,13 +40,24 @@ RUN set -eu; \
 
 # The scanner uses the repository as its build context and expects source at /src.
 COPY . /src
-# Warm the build AND temporary test-project dependencies for every declared runtime.
-RUN pwsh -NoLogo -NoProfile -NonInteractive -File .oss-scanner/test.ps1
+# Restore every TFM's packages/reference packs and warm temporary test projects.
+# The complete runtime matrix is exercised by the offline acceptance run.
+RUN pwsh -NoLogo -NoProfile -NonInteractive -Command \
+    '$env:PSModulePath = "/opt/dllpickle/modules" + [IO.Path]::PathSeparator + (Join-Path $PSHOME "Modules"); & ./tools/Invoke-DLLPickleBuild.ps1 -Task BuildCrossPlatform'
 
 # Subsequent restores (including test fixtures) use only the retained package cache.
 # This is image-local; normal repository builds still use their configured feeds.
-RUN mkdir -p /root/.nuget/NuGet \
-    && cp .oss-scanner/NuGet.Config /root/.nuget/NuGet/NuGet.Config
+RUN useradd --create-home --uid 10001 scanner \
+    && mkdir -p /root/.config /home/scanner/.config \
+      /root/.nuget/NuGet /home/scanner/.nuget/NuGet \
+    && cp .oss-scanner/NuGet.Config /root/.nuget/NuGet/NuGet.Config \
+    && cp .oss-scanner/NuGet.Config /home/scanner/.nuget/NuGet/NuGet.Config \
+    && chown -R scanner:scanner /src /opt/nuget /home/scanner \
+    && chmod -R a+rX /opt/dllpickle
 
+ENV HOME=/home/scanner \
+    PSModulePath=/opt/dllpickle/modules
+# Anthropic's tooling layer switches to root; its offline NuGet config is ready too.
+USER scanner
 ENTRYPOINT []
 CMD ["bash"]

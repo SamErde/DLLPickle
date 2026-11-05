@@ -1,6 +1,6 @@
 ---
 title: OSS Scanner environment
-summary: Build, verify and enroll DLL Pickle's offline security analysis environment.
+summary: Prepare DLL Pickle for offline security analysis.
 ---
 
 ## Build and verify
@@ -14,15 +14,20 @@ docker run --rm --network none --cpus 2 --memory 8g \
   -File .oss-scanner/test.ps1
 ```
 
-The build downloads dependencies and warms temporary test-project restores. The
-second command rebuilds and tests in a new container with no networking and no
+The build downloads framework dependencies and warms test-project restores.
+The second command rebuilds and tests in a new container with no networking and no
 host files mounted. A successful image build alone is not offline test evidence.
 
 The image uses `global.json`, `build/build-tool-versions.json`, and
-`build/powershell-test-matrix.json`. Update the SDK image tag and digest together
+`build/powershell-test-matrix.json`. Update the SDK image tag and digest
 when `global.json` changes; setup rejects a mismatch. Runtime archives use the
 matrix checksums and the existing stock-PowerShell provisioner. Each runtime has
 its own fresh processes and explicit module path.
+
+The Dockerfile also pins its direct OS package versions. Review those pins with
+base-image updates; expired package versions fail the build rather than silently
+selecting replacements. Dependency feeds and transitive OS packages remain
+external inputs, so these pins are not a claim of bit-for-bit reproducibility.
 
 Source is at `/src`; the built module is at `/src/module/DLLPickle`. Tools and
 runtimes live under `/opt/dllpickle`; the NuGet cache is `/opt/nuget/packages`.
@@ -30,6 +35,11 @@ The final image's user-level NuGet configuration permits only that local cache.
 This does not change normal builds outside the image. Online dependency audits
 remain in the existing dependency workflows; offline restores cannot refresh
 vulnerability data.
+
+The project image defaults to the unprivileged `scanner` user. Anthropic's
+tooling layer switches to root; both users have the same offline NuGet policy.
+The analysis source and NuGet cache are writable, while installed runtimes and
+build tools remain root-owned. Shared tools are on the default module path.
 
 `test.ps1` runs the existing cross-platform build, then unit tests, synthetic
 integration tests, strict package composition and TFM checks for every declared
@@ -44,14 +54,15 @@ docker run --rm -it --network none dllpickle-oss-scanner bash
 ```
 
 The reusable `OSS-Scanner.yml` workflow saves the source commit, image metadata,
-network mode, build/test logs and per-runtime results for 30 days. `Build Module`
-calls it for build-relevant changes and requires success in the existing Build
-gate. Documentation-only changes can still skip the expensive build jobs.
+network mode, build/test logs and per-runtime results for 30 days.
+`Build Module` calls it for build-relevant changes and includes its result in
+the existing Build gate. Documentation-only changes can skip expensive jobs.
 Dependabot tracks the scanner image separately from the development container.
 
 ## Enrollment after merge
 
-Track preparation in [issue #318](https://github.com/SamErde/DLLPickle/issues/318).
+Track preparation in
+[issue #318](https://github.com/SamErde/DLLPickle/issues/318).
 After the implementation PR is merged, create an upstream tracking issue and a
 dedicated fork branch in `anthropics/oss-scanner`. Add only
 `projects/dllpickle/project.yaml`, pointing to this Dockerfile and threat model.
@@ -68,7 +79,7 @@ pwsh -NoLogo -NoProfile -NonInteractive -File .oss-scanner/test.ps1
 
 The helper clones the configured remote ref; it does not test unpublished local
 files. Record the actual source revision and results in the enrollment PR.
-Anthropic's build-only CI does not replace the offline test run. Its scanner also
+Anthropic's build-only CI does not replace the offline test run. Its scanner
 adds a tooling layer, so the project image's digest pin does not pin that layer.
 
 Use the current upstream PR template and provide a factual security-criticality
