@@ -1,5 +1,5 @@
 # Keep the SDK image aligned with global.json; setup.ps1 checks the exact version.
-FROM mcr.microsoft.com/dotnet/sdk:10.0.302-noble@sha256:72dd743782f2ae7e5476fd64f6a460045e3998dc862218b80e6944cba79a01b0
+FROM mcr.microsoft.com/dotnet/sdk:10.0.403-noble@sha256:212fe4cb74627d5adf9817a4088906ae3edff1bd853bb27565d4b46731efe61e
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ENV DOTNET_CLI_TELEMETRY_OPTOUT=1 \
