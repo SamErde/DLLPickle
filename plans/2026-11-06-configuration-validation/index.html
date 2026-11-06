@@ -1,0 +1,769 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A PowerShell module that helps you get un-stuck from version conflicts (aka DLL pickle) that occur when using modules that depend on multiple versions of the same dependencies such as the Microsoft Authentication Library (MSAL).">
+      
+      
+        <meta name="author" content="Sam Erde">
+      
+      
+        <link rel="canonical" href="https://day3bits.com/DLLPickle/plans/2026-11-06-configuration-validation/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
+    
+    
+      
+        <title>Configuration validation and generated-input pilot - DLLPickle PowerShell Module</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.57a0d79d.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.fb2fffe2.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#baseline-and-decision" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="DLLPickle PowerShell Module" class="md-header__button md-logo" aria-label="DLLPickle PowerShell Module" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            DLLPickle PowerShell Module
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Configuration validation and generated-input pilot
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m14.3 16-.7-2h-3.2l-.7 2H7.8L11 7h2l3.2 9zM20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12zm-9.15 3.96h2.3L12 9z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_2" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to system preference"  type="radio" name="__palette" id="__palette_2">
+    
+      <label class="md-header__button md-icon" title="Switch to system preference" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/SamErde/DLLPickle" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    SamErde/DLLPickle
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="DLLPickle PowerShell Module" class="md-nav__button md-logo" aria-label="DLLPickle PowerShell Module" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    DLLPickle PowerShell Module
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/SamErde/DLLPickle" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    SamErde/DLLPickle
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../Architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../Deep-Dive/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deep Dive
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DEPENDENCIES/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dependencies
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../Troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+  
+
+
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+  <h1>Configuration validation and generated-input pilot</h1>
+
+<p>Issue: <a href="https://github.com/SamErde/DLLPickle/issues/322">#322</a>.
+Baseline: <code>9e79bac6371e1fa498dd4fb23715863026c3d091</code> (current main at investigation).</p>
+<h2 id="baseline-and-decision">Baseline and decision<a class="headerlink" href="#baseline-and-decision" title="Permanent link">&para;</a></h2>
+<p>On 2026-11-06 the <a href="https://www.bestpractices.dev/en/projects/11450.json">public assessment JSON</a>
+reported Passing <strong>100%</strong>, Silver <strong>45%</strong>, Gold <strong>13%</strong>. An unanswered criterion
+does not demonstrate an absent control. Existing architecture documentation,
+Pester CI and the scanner threat model already supply evidence not reflected in
+some answers. This investigation does not attest to maintainer training, governance,
+access continuity, review percentages, or repository-wide coverage.</p>
+<p>Current source and policy, rather than historical implementation tasks in the
+<a href="../2026-08-08-supported-powershell-multitargeting/">multi-targeting plan</a>, establish
+three runtime bundles: PowerShell 7.4.21/.NET 8.0.32/net8.0,
+7.5.12/9.0.21/net9.0 and 7.6.7/10.0.13/net10.0. The shipped profile policy checks
+PowerShell and CLR identity; the CI matrix covers Windows, Linux and macOS x64.
+The SDK is pinned to 10.0.302; Pester to 5.7.1. Existing locked dependencies,
+profile-aware dependency policy, package-composition checks, lifecycle checks and
+authenticated release-evidence gates remain unchanged. Release jobs bind tagging,
+build and publishing to an immutable source revision. No release was performed.</p>
+<table>
+<thead>
+<tr>
+<th>Candidate</th>
+<th>Risk/gap and existing controls</th>
+<th>Exact assessment relationship</th>
+<th>Benefit, effort, maintenance</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Configuration validation (selected)</strong></td>
+<td>Syntax/read checks exist; wrong types and root arrays are coerced. Four tests omit schema failures.</td>
+<td>Silver <code>input_validation</code>: scoped evidence only. Passing <code>dynamic_analysis</code> already Met; no Scorecard <code>Fuzzing</code> credit.</td>
+<td>Prevent unintended preferences; small implementation using existing Pester; maintain a compact corpus.</td>
+</tr>
+<tr>
+<td>Dependency-order tests</td>
+<td>Real-assembly and metadata-only tests exist; cycles, duplicate names and permutations lack coverage.</td>
+<td>Silver <code>input_validation</code> and regression evidence; no automatic <code>Fuzzing</code> credit.</td>
+<td>Useful reliability evidence; moderate fixture cost because graph mocks omit metadata behavior.</td>
+</tr>
+<tr>
+<td>Release verification</td>
+<td>Immutable SHA, locked restore and package checks exist; no signing step or user verification procedure found.</td>
+<td>Silver <code>signed_releases</code>, <code>version_tags_signed</code>; Scorecard <code>Signed-Releases</code>.</td>
+<td>High value, but needs signing identity, key custody and deliverable scope decisions; greater release maintenance. Checksums alone are insufficient.</td>
+</tr>
+<tr>
+<td>Security expectations documentation</td>
+<td>SECURITY.md documents reporting; the existing threat model already describes ownership and trust boundaries. User-facing expectations are less direct.</td>
+<td>Silver <code>documentation_security</code> unanswered: primarily documentation/evidence gap.</td>
+<td>Low maintenance; included only to explain the selected validation guarantee and limits. No new threat model.</td>
+</tr>
+<tr>
+<td>Measured coverage improvement</td>
+<td>Pester coverage and CI exist, with a 30% build threshold; no verified 80% statement-coverage evidence.</td>
+<td>Silver <code>test_statement_coverage80</code>; Gold <code>test_statement_coverage90</code> / <code>test_branch_coverage80</code> require separate measurements.</td>
+<td>Broader evidence work; raising a threshold without measurements is not protection. Deferred beyond this bounded change.</td>
+</tr>
+</tbody>
+</table>
+<p>Configuration validation wins because there is a directly reproducible behavior
+gap in project-owned code and inexpensive, independent contract assertions.
+<code>{"ShowLogo":"false"}</code> previously becomes true; <code>[{"ShowLogo":false}]</code> is
+accepted as an object. These are minimized regressions from contract inspection,
+not vulnerabilities discovered by coverage-guided fuzzing. No privilege escalation
+is claimed: the configuration is controlled by the user running the module.
+Review also identified automatic date-string conversion in PowerShell&rsquo;s JSON
+parser. The implementation uses the supported runtimes&rsquo; built-in System.Text.Json
+document API to validate JSON kinds and retain exact strings without adding a
+dependency. The document is disposed even when validation fails.</p>
+<h2 id="contract-and-testing-strategy">Contract and testing strategy<a class="headerlink" href="#contract-and-testing-strategy" title="Permanent link">&para;</a></h2>
+<p>Only an object root is accepted. Non-null booleans must be JSON booleans; a
+non-null skip list must be an array of strings. Missing/null settings retain
+defaults and unknown keys remain ignored for compatibility. String contents are
+literal filename comparisons in Import-DPLibrary, not executable code, wildcard
+patterns or paths to load. The entire invalid configuration is discarded through
+the existing DPConfigReadFailed/defaults behavior; ErrorAction Stop terminates.
+Set-DPConfig&rsquo;s existing write behavior is outside this change; hand-edited invalid
+values must not be relied upon to survive its existing normalization either.
+Recognized setting names remain case-insensitive; duplicates are now rejected
+instead of allowing ambiguous preferences. Comments and trailing commas remain
+accepted. The document parser limits nesting to 64 levels, including unknown
+settings; there is no new file-size bound.</p>
+<p>The pilot uses Pester&rsquo;s TestDrive and redirects file reads to one fixture. It
+never reads or writes the real configuration, imports installed service modules,
+loads generated assemblies, or uses credentials/tenants. Production JSON parsing
+and validation are not mocked. The existing missing-file and read-error tests
+remain. Independent properties are preservation of known typed values (including
+order, case and duplicates), complete default fallback and one stable error on
+a deliberately invalid type, and terminating-error semantics. The oracle does
+not reimplement normalization.</p>
+<p>Default seeds: <strong>11450, 322, 20261106</strong>, <strong>32 cases per seed</strong>, each testing a valid
+object and one wrong-type mutation (192 generated inputs). Inputs contain at most
+eight short names and bounded nesting. Explicit fixtures cover roots, scalar
+lists, nested/mixed lists, null members, syntax errors and missing/null fields.
+Each seed has a 60-second elapsed-budget assertion; run the process with an outer
+180-second timeout to interrupt a stuck call. Diagnostics include seed, case and
+complete synthetic JSON. Keep any newly discovered defect as a small explicit
+fixture before changing the generator. Fixed seeds are a reproducible pilot,
+not exhaustive exploration; .NET Random streams may differ across runtimes, so
+record the runtime and emitted failing JSON as well as the seed.</p>
+<h3 id="replay">Replay<a class="headerlink" href="#replay" title="Permanent link">&para;</a></h3>
+<p>Use the exact executable provisioned by <code>tools/Install-DLLPickleTestPowerShell.ps1</code>
+from <code>build/powershell-test-matrix.json</code>, and Pester from <code>build/build-tool-versions.json</code>.
+First provision the selected runtime and pinned tools while networking is allowed.
+For example, save the provisioner&rsquo;s returned executable path:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nv">$Matrix</span> <span class="p">=</span> <span class="nb">Get-Content</span> <span class="p">./</span><span class="n">build</span><span class="p">/</span><span class="n">powershell-test-matrix</span><span class="p">.</span><span class="n">json</span> <span class="n">-Raw</span> <span class="p">|</span> <span class="nb">ConvertFrom-Json</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nv">$Provision</span> <span class="p">=</span> <span class="p">@{</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="n">Provider</span> <span class="p">=</span> <span class="s1">'DirectArchive'</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">PowerShellVersion</span> <span class="p">=</span> <span class="nv">$Matrix</span><span class="p">.</span><span class="n">profiles</span><span class="p">[</span><span class="n">0</span><span class="p">].</span><span class="n">powerShellVersion</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="p">}</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="nv">$Executable</span> <span class="p">=</span> <span class="p">./</span><span class="n">tools</span><span class="p">/</span><span class="nb">Install-DLLPickleTestPowerShell</span><span class="p">.</span><span class="n">ps1</span> <span class="nv">@Provision</span>
+</code></pre></div>
+<p>After disabling networking, invoke the helper in a fresh process (from the
+repository root). The argument array also makes the process timeout explicit:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nv">$ReplayArguments</span> <span class="p">=</span> <span class="p">@(</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    <span class="s1">'-NoProfile'</span><span class="p">,</span> <span class="s1">'-NonInteractive'</span><span class="p">,</span> <span class="s1">'-File'</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    <span class="s1">'./build/Invoke-DLLPicklePester.ps1'</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    <span class="s1">'-TestPath'</span><span class="p">,</span> <span class="s1">'./tests/Unit/Get-DPConfig.Property.Tests.ps1'</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    <span class="s1">'-SummaryPath'</span><span class="p">,</span> <span class="s1">'./summary.json'</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>    <span class="s1">'-TestResultPath'</span><span class="p">,</span> <span class="s1">'./results.xml'</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    <span class="s1">'-RequiredPesterVersion'</span><span class="p">,</span> <span class="s1">'5.7.1'</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="p">)</span>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="c"># Linux: external timeout interrupts a stuck call.</span>
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="n">timeout</span> <span class="n">180</span> <span class="nv">$Executable</span> <span class="nv">@ReplayArguments</span>
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="k">if</span> <span class="p">(</span><span class="nv">$LASTEXITCODE</span> <span class="o">-ne</span> <span class="n">0</span> <span class="o">-or</span>
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>    <span class="p">(</span><span class="nb">Get-Content</span> <span class="p">./</span><span class="n">summary</span><span class="p">.</span><span class="n">json</span> <span class="n">-Raw</span> <span class="p">|</span> <span class="nb">ConvertFrom-Json</span><span class="p">).</span><span class="n">FailedCount</span> <span class="o">-ne</span> <span class="n">0</span><span class="p">)</span> <span class="p">{</span>
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>    <span class="k">throw</span> <span class="s1">'Configuration pilot failed; inspect results.xml.'</span>
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="p">}</span>
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="c"># Other hosts: launch with &amp; $Executable @ReplayArguments and enforce</span>
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a><span class="c"># a 180-second timeout in the parent process supervisor.</span>
+</code></pre></div>
+<p>To replay one seed, run this in a fresh process using the same executable (and
+the same external process timeout):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="p">&amp;</span> <span class="nv">$Executable</span> <span class="n">-NoProfile</span> <span class="n">-NonInteractive</span> <span class="n">-Command</span> <span class="p">{</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>    <span class="nb">Import-Module</span> <span class="n">Pester</span> <span class="n">-RequiredVersion</span> <span class="n">5</span><span class="p">.</span><span class="n">7</span><span class="p">.</span><span class="n">1</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    <span class="nv">$Container</span> <span class="p">=</span> <span class="nb">New-PesterContainer</span> <span class="n">-Path</span> <span class="p">(</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>        <span class="s1">'./tests/Unit/Get-DPConfig.Property.Tests.ps1'</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    <span class="p">)</span> <span class="n">-Data</span> <span class="p">@{</span> <span class="n">Seeds</span> <span class="p">=</span> <span class="p">@(</span><span class="n">322</span><span class="p">);</span> <span class="n">CasesPerSeed</span> <span class="p">=</span> <span class="n">32</span> <span class="p">}</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    <span class="nv">$Result</span> <span class="p">=</span> <span class="nb">Invoke-Pester</span> <span class="n">-Container</span> <span class="nv">$Container</span> <span class="n">-Output</span> <span class="n">Detailed</span> <span class="n">-PassThru</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>    <span class="k">if</span> <span class="p">(</span><span class="nv">$Result</span><span class="p">.</span><span class="n">FailedCount</span> <span class="o">-gt</span> <span class="n">0</span><span class="p">)</span> <span class="p">{</span> <span class="n">exit</span> <span class="n">1</span> <span class="p">}</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="p">}</span>
+</code></pre></div>
+<p>Do not use execution timeouts as an assertion that large arbitrary configuration
+files are resource-bounded: this patch sets no production file-size limit.</p>
+<h2 id="fuzzing-and-assessment-boundaries">Fuzzing and assessment boundaries<a class="headerlink" href="#fuzzing-and-assessment-boundaries" title="Permanent link">&para;</a></h2>
+<p>These are <strong>seeded generated-input/property tests</strong>, not coverage-guided fuzzing.
+<a href="https://github.com/Metalnem/sharpfuzz">SharpFuzz</a> instruments .NET assemblies and
+supports AFL/libFuzzer; the selected behavior is PowerShell script, while JSON
+parsing is provided by PowerShell. Instrumenting the engine would primarily test
+dependencies and require a substantially different harness. The dependency bundle
+project is not a project-owned parser target. No concrete supported target here
+justifies OSS-Fuzz enrollment or an architectural rewrite. The
+<a href="https://google.github.io/oss-fuzz/getting-started/new-project-guide/">OSS-Fuzz guide</a>
+requires integrated fuzz targets and a build/runner environment.</p>
+<p><a href="https://github.com/ossf/scorecard/blob/main/docs/checks.md#fuzzing">Scorecard Fuzzing</a>
+detects OSS-Fuzz, ClusterFuzzLite and specified language/library integrations;
+Pester is not among them. Best Practices has different criteria: its
+<a href="https://www.bestpractices.dev/en/criteria/1?details=true">Silver criteria</a>
+require all relevant untrusted inputs to be validated, and its
+<code>dynamic_analysis_unsafe</code> concerns memory-unsafe project code with memory-safety
+detection. This pilot provides neither whole-project validation nor memory-safety
+instrumentation. No Gold criterion becomes satisfied from this patch.</p>
+<p><a href="https://github.com/SamErde/DLLPickle/pull/319">Scanner environment PR #319</a> is
+separate from <a href="https://github.com/anthropics/oss-scanner/pull/1417">enrollment PR #1417</a>,
+which was still open/unmerged when rechecked on 2026-11-06. Local offline tests
+are not evidence of active Anthropic scanning.</p>
+<h2 id="validation-record">Validation record<a class="headerlink" href="#validation-record" title="Permanent link">&para;</a></h2>
+<p>Implementation revision: <code>410d7267b594e97f091cbcfe953fb1b6058d77b8</code>.
+The later review follow-up changes documentation and renames the hand-written
+test to <code>.Property.Tests.ps1</code> so automated reviewers do not exclude it as
+generated source; its test logic and the product source are unchanged.</p>
+<p>The final 29-test corpus against baseline <code>9e79bac</code> passed 5 and failed 24.
+Against the patch it passed all 29 in 9.55 seconds on Linux PowerShell 7.6.7.
+The complete offline acceptance command was:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>docker<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>dllpickle-config-322<span class="w"> </span>timeout<span class="w"> </span><span class="m">1200</span><span class="w"> </span>pwsh<span class="w"> </span>-NoProfile<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span>-NonInteractive<span class="w"> </span>-File<span class="w"> </span>/src/.oss-scanner/test.ps1
+</code></pre></div>
+<p>The container used the existing provisioned scanner image
+<code>sha256:cf150f6118d12598e24e6902b1b770815204556d821f709b3d26757a96f8056b</code>,
+with current-main source overlaid from <code>git archive</code> and the changed files copied
+in before testing. Inspection confirmed network mode <code>none</code>, zero host mounts,
+2 CPUs and 8 GiB RAM. Tests ran as the unprivileged <code>scanner</code> user on Ubuntu 24.04
+under WSL2 x64. An empty container-only Application Data directory was created
+before execution. No user configuration or host credentials were mounted.</p>
+<table>
+<thead>
+<tr>
+<th>PowerShell</th>
+<th>.NET</th>
+<th>Unit passed</th>
+<th>Synthetic integration passed</th>
+<th>Failed/skipped</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>7.4.21</td>
+<td>8.0.32</td>
+<td>489</td>
+<td>22</td>
+<td>0 / 0</td>
+</tr>
+<tr>
+<td>7.5.12</td>
+<td>9.0.21</td>
+<td>489</td>
+<td>22</td>
+<td>0 / 0</td>
+</tr>
+<tr>
+<td>7.6.7</td>
+<td>10.0.13</td>
+<td>489</td>
+<td>22</td>
+<td>0 / 0</td>
+</tr>
+</tbody>
+</table>
+<p>BuildCrossPlatform (17 tasks), pinned analyzer/formatting checks, cached locked
+restore, package composition and framework alignment passed. The acceptance
+summary reports <code>passed</code> for all three profiles. Per-profile XML/JSON reports,
+runtime identities, container inspection and focused/baseline logs were retained
+locally under <code>artifacts/config-validation</code>. The host-side full-build console log
+was lost when WSL shut down; per-profile result files were recovered from the
+container. The <a href="https://github.com/SamErde/DLLPickle/actions/runs/42187368716">hosted build run</a>
+also passed its offline scanner job and retains independent logs/artifacts.</p>
+<p>At this revision, hosted standard Windows/Linux/macOS builds and eight of nine
+exact-runtime cells passed. macOS 7.6 failed while downloading Pester, before
+tests; it requires a successful new-head run. Hosted jobs are not claimed to be
+network-disabled except for the explicit offline scanner job. No Windows broker,
+tenant authentication or live-credential claims follow from these results.</p>
+<p>The <a href="https://github.com/SamErde/DLLPickle/actions/runs/42187368633">upstream-evidence run</a>
+is a separate merge limitation: the inspected Linux 7.6 conflict and scenario
+fingerprints are unchanged, but normalized evidence changed with Az.Accounts
+5.5.3 → 5.5.4 and Az.Resources 10.2.1 → 10.2.2. Linux 7.4 also encountered a
+damaged Az.Storage package download. The existing
+<a href="https://github.com/SamErde/DLLPickle/issues/273">drift issue #273</a> remains open.
+This change does not accept refreshed dependency baselines or weaken their gate.
+Use the PR&rsquo;s latest checks for final-head status, not this earlier-run snapshot.</p>
+<p>Engineering review checked correctness, test isolation and maintenance cost.
+A bounded security-diff review reused the existing threat model and found no
+reportable vulnerability in <code>9e79bac..58f0bb8</code>; the subsequent singleton-array
+correction in <code>410d726</code> received a separate engineering review. This is not a
+repository-wide security attestation. Hosted Codex and automatically triggered
+Copilot reviews found no code issues. Copilot review was not requested by this
+task. CodeRabbit&rsquo;s replay and document-metadata findings were addressed in one
+follow-up; unavailable author alias/image/category metadata remains empty.</p>
+<h2 id="proposed-assessment-answers-maintainer-review-only">Proposed assessment answers (maintainer review only)<a class="headerlink" href="#proposed-assessment-answers-maintainer-review-only" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Silver <code>documentation_security</code>: <code>?</code> → <code>Met</code> after merge.</strong> Proposed
+  justification: &ldquo;SECURITY.md documents DLL Pickle&rsquo;s assembly-selection,
+  configuration and distribution responsibilities, dependency-owned authentication
+  and token handling, and limits on isolation and configuration trust. The linked
+  existing threat model identifies trust boundaries and attacker prerequisites.&rdquo;
+  Evidence: <a href="../../SECURITY.md">SECURITY.md</a>, <a href="../../.oss-scanner/threat_model.md">threat model</a>.</li>
+<li><strong>Silver <code>input_validation</code>: retain <code>?</code>.</strong> Add scoped evidence, not a Met answer:
+  &ldquo;Get-DPConfig validates object roots and recognized JSON field types before
+  applying preferences; seeded and fixed Pester tests exercise rejection and
+  normalization. Other input surfaces require separate assessment.&rdquo;
+  Evidence: <a href="../../src/DLLPickle/Public/Get-DPConfig.ps1">implementation</a>,
+  <a href="../../tests/Unit/Get-DPConfig.Property.Tests.ps1">tests</a>.</li>
+<li><strong>Already satisfied / unchanged:</strong> Passing <code>dynamic_analysis</code> and Silver
+  <code>coding_standards_enforced</code>, <code>external_dependencies</code>, <code>dependency_monitoring</code>
+  were already Met. This patch does not newly earn them. No change proposed for
+  <code>dynamic_analysis_unsafe</code>, signing, coverage, governance or training attestations.</li>
+</ul>
+<p>No assessment answers were edited. After merge use permanent commit URLs for the
+proposed evidence; PR-only code is not an already-deployed control.</p>
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      (c) 2026 Sam Erde
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.path", "navigation.instant", "navigation.instant.prefetch", "navigation.tracking", "navigation.sections", "navigation.expand", "navigation.top", "toc.follow", "toc.integrate"], "search": "../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.c21346df.min.js"></script>
+      
+    
+  </body>
+</html>
