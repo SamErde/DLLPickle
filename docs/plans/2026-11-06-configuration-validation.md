@@ -1,4 +1,16 @@
-# Configuration validation and generated-input pilot
+---
+title: Configuration validation and generated-input pilot
+post_title: Configuration validation and generated-input pilot
+author1: OpenAI Codex
+post_slug: configuration-validation-generated-input-pilot
+microsoft_alias: null
+featured_image: null
+categories: []
+tags: [PowerShell, testing, security]
+ai_note: Prepared with OpenAI Codex for maintainer review.
+summary: Bounded configuration validation, reproducible tests, and badge evidence.
+post_date: 2026-11-06
+---
 
 Issue: [#322](https://github.com/SamErde/DLLPickle/issues/322).
 Baseline: `9e79bac6371e1fa498dd4fb23715863026c3d091` (current main at investigation).
@@ -24,9 +36,9 @@ build and publishing to an immutable source revision. No release was performed.
 
 | Candidate | Risk/gap and existing controls | Exact assessment relationship | Benefit, effort, maintenance |
 | --- | --- | --- | --- |
-| **Validate configuration types plus seeded tests (selected)** | Get-DPConfig catches JSON syntax/read failures, but coerces wrong types and unwraps root arrays. Four existing tests do not exercise real schema failures. | Silver `input_validation` is unanswered; this supplies scoped implementation/evidence, not proof for all inputs. Passing `dynamic_analysis` is already Met. No Scorecard `Fuzzing` credit claimed. | Prevent unintended preference interpretation; small implementation and existing Pester only; maintain a compact contract corpus. |
-| Generated dependency-order tests | Existing synthetic transitive-assembly and metadata-only inspection tests exercise real assemblies in child processes. Sparse graph-shape coverage remains (cycles, duplicate names, permutations). | Evidence toward Silver `input_validation` and regression testing; no automatic `Fuzzing` credit. | Useful reliability evidence, but pure graph mocks omit assembly metadata behavior; moderate fixture maintenance. |
-| Signed release verification | Immutable release SHA, locked restore and package checks exist; inspected release workflow has no release-signing/attestation step or user verification procedure. | Silver `signed_releases`, `version_tags_signed`; separate Scorecard `Signed-Releases`. | High user-verification value, but needs signing identity/key custody, deliverable scope and verification design; greater ongoing release cost. Checksums alone do not satisfy signing. |
+| **Configuration validation (selected)** | Syntax/read checks exist; wrong types and root arrays are coerced. Four tests omit schema failures. | Silver `input_validation`: scoped evidence only. Passing `dynamic_analysis` already Met; no Scorecard `Fuzzing` credit. | Prevent unintended preferences; small implementation using existing Pester; maintain a compact corpus. |
+| Dependency-order tests | Real-assembly and metadata-only tests exist; cycles, duplicate names and permutations lack coverage. | Silver `input_validation` and regression evidence; no automatic `Fuzzing` credit. | Useful reliability evidence; moderate fixture cost because graph mocks omit metadata behavior. |
+| Release verification | Immutable SHA, locked restore and package checks exist; no signing step or user verification procedure found. | Silver `signed_releases`, `version_tags_signed`; Scorecard `Signed-Releases`. | High value, but needs signing identity, key custody and deliverable scope decisions; greater release maintenance. Checksums alone are insufficient. |
 | Security expectations documentation | SECURITY.md documents reporting; the existing threat model already describes ownership and trust boundaries. User-facing expectations are less direct. | Silver `documentation_security` unanswered: primarily documentation/evidence gap. | Low maintenance; included only to explain the selected validation guarantee and limits. No new threat model. |
 | Measured coverage improvement | Pester coverage and CI exist, with a 30% build threshold; no verified 80% statement-coverage evidence. | Silver `test_statement_coverage80`; Gold `test_statement_coverage90` / `test_branch_coverage80` require separate measurements. | Broader evidence work; raising a threshold without measurements is not protection. Deferred beyond this bounded change. |
 
@@ -80,19 +92,52 @@ record the runtime and emitted failing JSON as well as the seed.
 
 Use the exact executable provisioned by `tools/Install-DLLPickleTestPowerShell.ps1`
 from `build/powershell-test-matrix.json`, and Pester from `build/build-tool-versions.json`.
-In a provisioned offline environment, invoke the existing helper in a fresh process:
+First provision the selected runtime and pinned tools while networking is allowed.
+For example, save the provisioner's returned executable path:
 
 ```powershell
-./build/Invoke-DLLPicklePester.ps1 -TestPath ./tests/Unit/Get-DPConfig.Generated.Tests.ps1 -SummaryPath ./summary.json -TestResultPath ./results.xml -RequiredPesterVersion 5.7.1
+$Matrix = Get-Content ./build/powershell-test-matrix.json -Raw | ConvertFrom-Json
+$Provision = @{
+    Provider = 'DirectArchive'
+    PowerShellVersion = $Matrix.profiles[0].powerShellVersion
+}
+$Executable = ./tools/Install-DLLPickleTestPowerShell.ps1 @Provision
 ```
 
-On Linux prefix the fresh `pwsh -NoProfile -NonInteractive -File ...` process with
-`timeout 180`. To replay one seed in a fresh process using Pester 5.7.1:
+After disabling networking, invoke the helper in a fresh process (from the
+repository root). The argument array also makes the process timeout explicit:
 
 ```powershell
-Import-Module Pester -RequiredVersion 5.7.1
-$container = New-PesterContainer -Path ./tests/Unit/Get-DPConfig.Generated.Tests.ps1 -Data @{ Seeds = @(322); CasesPerSeed = 32 }
-Invoke-Pester -Container $container -Output Detailed
+$ReplayArguments = @(
+    '-NoProfile', '-NonInteractive', '-File'
+    './build/Invoke-DLLPicklePester.ps1'
+    '-TestPath', './tests/Unit/Get-DPConfig.Property.Tests.ps1'
+    '-SummaryPath', './summary.json'
+    '-TestResultPath', './results.xml'
+    '-RequiredPesterVersion', '5.7.1'
+)
+# Linux: external timeout interrupts a stuck call.
+timeout 180 $Executable @ReplayArguments
+if ($LASTEXITCODE -ne 0 -or
+    (Get-Content ./summary.json -Raw | ConvertFrom-Json).FailedCount -ne 0) {
+    throw 'Configuration pilot failed; inspect results.xml.'
+}
+# Other hosts: launch with & $Executable @ReplayArguments and enforce
+# a 180-second timeout in the parent process supervisor.
+```
+
+To replay one seed, run this in a fresh process using the same executable (and
+the same external process timeout):
+
+```powershell
+& $Executable -NoProfile -NonInteractive -Command {
+    Import-Module Pester -RequiredVersion 5.7.1
+    $Container = New-PesterContainer -Path (
+        './tests/Unit/Get-DPConfig.Property.Tests.ps1'
+    ) -Data @{ Seeds = @(322); CasesPerSeed = 32 }
+    $Result = Invoke-Pester -Container $Container -Output Detailed -PassThru
+    if ($Result.FailedCount -gt 0) { exit 1 }
+}
 ```
 
 Do not use execution timeouts as an assertion that large arbitrary configuration
@@ -124,6 +169,69 @@ separate from [enrollment PR #1417](https://github.com/anthropics/oss-scanner/pu
 which was still open/unmerged when rechecked on 2026-11-06. Local offline tests
 are not evidence of active Anthropic scanning.
 
+## Validation record
+
+Implementation revision: `410d7267b594e97f091cbcfe953fb1b6058d77b8`.
+The later review follow-up changes documentation and renames the hand-written
+test to `.Property.Tests.ps1` so automated reviewers do not exclude it as
+generated source; its test logic and the product source are unchanged.
+
+The final 29-test corpus against baseline `9e79bac` passed 5 and failed 24.
+Against the patch it passed all 29 in 9.55 seconds on Linux PowerShell 7.6.7.
+The complete offline acceptance command was:
+
+```sh
+docker exec dllpickle-config-322 timeout 1200 pwsh -NoProfile \
+  -NonInteractive -File /src/.oss-scanner/test.ps1
+```
+
+The container used the existing provisioned scanner image
+`sha256:cf150f6118d12598e24e6902b1b770815204556d821f709b3d26757a96f8056b`,
+with current-main source overlaid from `git archive` and the changed files copied
+in before testing. Inspection confirmed network mode `none`, zero host mounts,
+2 CPUs and 8 GiB RAM. Tests ran as the unprivileged `scanner` user on Ubuntu 24.04
+under WSL2 x64. An empty container-only Application Data directory was created
+before execution. No user configuration or host credentials were mounted.
+
+| PowerShell | .NET | Unit passed | Synthetic integration passed | Failed/skipped |
+| --- | --- | --- | --- | --- |
+| 7.4.21 | 8.0.32 | 489 | 22 | 0 / 0 |
+| 7.5.12 | 9.0.21 | 489 | 22 | 0 / 0 |
+| 7.6.7 | 10.0.13 | 489 | 22 | 0 / 0 |
+
+BuildCrossPlatform (17 tasks), pinned analyzer/formatting checks, cached locked
+restore, package composition and framework alignment passed. The acceptance
+summary reports `passed` for all three profiles. Per-profile XML/JSON reports,
+runtime identities, container inspection and focused/baseline logs were retained
+locally under `artifacts/config-validation`. The host-side full-build console log
+was lost when WSL shut down; per-profile result files were recovered from the
+container. The [hosted build run](https://github.com/SamErde/DLLPickle/actions/runs/42187368716)
+also passed its offline scanner job and retains independent logs/artifacts.
+
+At this revision, hosted standard Windows/Linux/macOS builds and eight of nine
+exact-runtime cells passed. macOS 7.6 failed while downloading Pester, before
+tests; it requires a successful new-head run. Hosted jobs are not claimed to be
+network-disabled except for the explicit offline scanner job. No Windows broker,
+tenant authentication or live-credential claims follow from these results.
+
+The [upstream-evidence run](https://github.com/SamErde/DLLPickle/actions/runs/42187368633)
+is a separate merge limitation: the inspected Linux 7.6 conflict and scenario
+fingerprints are unchanged, but normalized evidence changed with Az.Accounts
+5.5.3 → 5.5.4 and Az.Resources 10.2.1 → 10.2.2. Linux 7.4 also encountered a
+damaged Az.Storage package download. The existing
+[drift issue #273](https://github.com/SamErde/DLLPickle/issues/273) remains open.
+This change does not accept refreshed dependency baselines or weaken their gate.
+Use the PR's latest checks for final-head status, not this earlier-run snapshot.
+
+Engineering review checked correctness, test isolation and maintenance cost.
+A bounded security-diff review reused the existing threat model and found no
+reportable vulnerability in `9e79bac..58f0bb8`; the subsequent singleton-array
+correction in `410d726` received a separate engineering review. This is not a
+repository-wide security attestation. Hosted Codex and automatically triggered
+Copilot reviews found no code issues. Copilot review was not requested by this
+task. CodeRabbit's replay and document-metadata findings were addressed in one
+follow-up; unavailable author alias/image/category metadata remains empty.
+
 ## Proposed assessment answers (maintainer review only)
 
 - **Silver `documentation_security`: `?` → `Met` after merge.** Proposed
@@ -137,7 +245,7 @@ are not evidence of active Anthropic scanning.
   applying preferences; seeded and fixed Pester tests exercise rejection and
   normalization. Other input surfaces require separate assessment."
   Evidence: [implementation](../../src/DLLPickle/Public/Get-DPConfig.ps1),
-  [tests](../../tests/Unit/Get-DPConfig.Generated.Tests.ps1).
+  [tests](../../tests/Unit/Get-DPConfig.Property.Tests.ps1).
 - **Already satisfied / unchanged:** Passing `dynamic_analysis` and Silver
   `coding_standards_enforced`, `external_dependencies`, `dependency_monitoring`
   were already Met. This patch does not newly earn them. No change proposed for
