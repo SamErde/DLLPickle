@@ -83,9 +83,10 @@ foreach ($Module in @($ToolPolicy.modules)) {
         try {
             if ([string]::IsNullOrWhiteSpace($ModuleInstallPath)) {
                 $ModuleCommandSplat['Scope'] = 'CurrentUser'
-                & $ModuleInstallCommand @ModuleCommandSplat
             } else {
                 $ModuleCommandSplat['Path'] = $ModuleInstallPath
+            }
+            Invoke-DLLPickleGalleryOperation -Description "Install $($Module.name) $RequiredVersion" -Operation {
                 & $ModuleInstallCommand @ModuleCommandSplat
             }
         } catch {

@@ -26,7 +26,19 @@ Get-DPConfig [<CommonParameters>]
 ## DESCRIPTION
 
 Reads DLLPickle configuration from the current user's application data path.
-If configuration cannot be read, default values are returned.
+If configuration cannot be read or fails validation, the command reports
+`DPConfigReadFailed` and returns all default values. With `-ErrorAction Stop`,
+the error terminates the command instead.
+
+The JSON root must be an object. `CheckForUpdates` and `ShowLogo` accept JSON
+booleans (`true` or `false`), and `SkipLibraries` accepts an array containing only
+strings. Missing or null settings use defaults; unknown settings are ignored.
+Setting names are case-insensitive; repeated recognized settings are rejected.
+Comments and trailing commas are accepted. JSON nesting is limited to 64 levels.
+Strings such as `"false"`, numeric booleans, scalar library names, and non-string
+array entries are rejected rather than coerced. Use `Set-DPConfig` to write the
+expected types. Library names are literal names, not paths to load or wildcard
+patterns. A missing file returns defaults without an error.
 
 ## EXAMPLES
 

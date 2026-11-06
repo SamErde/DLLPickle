@@ -77,6 +77,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 . (Join-Path $PSScriptRoot 'DLLPickle.ProfileEvidence.ps1')
+. (Join-Path (Split-Path $PSScriptRoot -Parent) 'build/DLLPickle.Tooling.ps1')
 
 function ConvertTo-DLLPicklePackageVersion {
     [CmdletBinding()]
@@ -236,7 +237,9 @@ if (-not $SkipDownload.IsPresent) {
     foreach ($PolicyModule in $PolicyModules) {
         $Name = [string]$PolicyModule.name
         $Repository = if ($PolicyModule.repository) { [string]$PolicyModule.repository } else { 'PSGallery' }
-        $GalleryModules = @(Find-Module -Name $Name -Repository $Repository -AllVersions -ErrorAction Stop)
+        $GalleryModules = @(Invoke-DLLPickleGalleryOperation -Description "Find $Name in $Repository" -Operation {
+                Find-Module -Name $Name -Repository $Repository -AllVersions -ErrorAction Stop
+            })
         $GalleryModule = $GalleryModules |
             Where-Object {
                 $RequiredPowerShellVersion = Get-DLLPickleGalleryPowerShellVersion -GalleryModule $_
@@ -277,7 +280,9 @@ if (-not $SkipDownload.IsPresent) {
         if ((Get-Command -Name Save-Module).Parameters.ContainsKey('AcceptLicense')) {
             $SaveModuleParameters['AcceptLicense'] = $true
         }
-        Save-Module @SaveModuleParameters
+        Invoke-DLLPickleGalleryOperation -Description "Save $Name $($ResolvedModuleVersions[$Name])" -Operation {
+            Save-Module @SaveModuleParameters
+        }
     }
 }
 

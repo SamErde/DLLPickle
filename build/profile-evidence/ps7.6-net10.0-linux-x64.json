@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
-  "contentFingerprint": "95d1cf707af01a8dcece9f41868acec9ef897388594a8dda7d51bab4e55e2e25",
+  "contentFingerprint": "c7ea34cb69165efe4738e2fa88296dc592a5492ff237f0d1a6d293f05508a804",
   "provenance": {
-    "sourceRunId": "39236885938",
-    "sourceRunUrl": "https://github.com/SamErde/DLLPickle/actions/runs/39236885938",
-    "sourceCommitSha": "8884bd904f2849b8a2ae7c9495ffe282c8e2afcc",
-    "capturedAtUtc": "2026-10-19T10:23:08.0000000+00:00",
+    "sourceRunId": "42188864218",
+    "sourceRunUrl": "https://github.com/SamErde/DLLPickle/actions/runs/42188864218",
+    "sourceCommitSha": "6003e7c879ed0ac3d0728b31a67db2010a814f4e",
+    "capturedAtUtc": "2026-11-06T08:38:00.0000000+00:00",
     "observedOperatingSystems": [
       "Ubuntu 24.04.5 LTS"
     ]
@@ -46,8 +46,8 @@
         "name": "Az.Accounts",
         "umbrellaModule": "Az",
         "constituentModule": "Az.Accounts",
-        "version": "5.5.3",
-        "latestCompatibleVersion": "5.5.3",
+        "version": "5.5.4",
+        "latestCompatibleVersion": "5.5.4",
         "repository": "PSGallery",
         "manifestPowerShellVersion": "5.1",
         "compatiblePSEditions": [
@@ -65,7 +65,7 @@
             "assemblyLoadContext": "AzSharedAssemblyLoadContext",
             "isCollectible": false,
             "contributor": "Az.Accounts",
-            "selectedAsset": "upstream:Az.Accounts/5.5.3/lib/netstandard2.0/Azure.Core.dll"
+            "selectedAsset": "upstream:Az.Accounts/5.5.4/lib/netstandard2.0/Azure.Core.dll"
           },
           {
             "assemblyName": "Microsoft.Identity.Client.Extensions.Msal",
@@ -76,7 +76,7 @@
             "assemblyLoadContext": "AzSharedAssemblyLoadContext",
             "isCollectible": false,
             "contributor": "Az.Accounts",
-            "selectedAsset": "upstream:Az.Accounts/5.5.3/lib/netstandard2.0/Microsoft.Identity.Client.Extensions.Msal.dll"
+            "selectedAsset": "upstream:Az.Accounts/5.5.4/lib/netstandard2.0/Microsoft.Identity.Client.Extensions.Msal.dll"
           },
           {
             "assemblyName": "System.Diagnostics.DiagnosticSource",
@@ -95,8 +95,8 @@
         "name": "Az.Resources",
         "umbrellaModule": "Az",
         "constituentModule": "Az.Resources",
-        "version": "10.2.1",
-        "latestCompatibleVersion": "10.2.1",
+        "version": "10.2.2",
+        "latestCompatibleVersion": "10.2.2",
         "repository": "PSGallery",
         "manifestPowerShellVersion": "5.1",
         "compatiblePSEditions": [
@@ -114,7 +114,7 @@
             "assemblyLoadContext": "AzSharedAssemblyLoadContext",
             "isCollectible": false,
             "contributor": "Az.Accounts",
-            "selectedAsset": "upstream:Az.Accounts/5.5.3/lib/netstandard2.0/Azure.Core.dll"
+            "selectedAsset": "upstream:Az.Accounts/5.5.4/lib/netstandard2.0/Azure.Core.dll"
           },
           {
             "assemblyName": "Microsoft.Extensions.DependencyInjection.Abstractions",
@@ -125,7 +125,7 @@
             "assemblyLoadContext": "Default",
             "isCollectible": false,
             "contributor": "Az.Resources",
-            "selectedAsset": "upstream:Az.Resources/10.2.1/Microsoft.Extensions.DependencyInjection.Abstractions.dll"
+            "selectedAsset": "upstream:Az.Resources/10.2.2/Microsoft.Extensions.DependencyInjection.Abstractions.dll"
           },
           {
             "assemblyName": "Microsoft.Identity.Client.Extensions.Msal",
@@ -136,7 +136,7 @@
             "assemblyLoadContext": "AzSharedAssemblyLoadContext",
             "isCollectible": false,
             "contributor": "Az.Accounts",
-            "selectedAsset": "upstream:Az.Accounts/5.5.3/lib/netstandard2.0/Microsoft.Identity.Client.Extensions.Msal.dll"
+            "selectedAsset": "upstream:Az.Accounts/5.5.4/lib/netstandard2.0/Microsoft.Identity.Client.Extensions.Msal.dll"
           },
           {
             "assemblyName": "System.Diagnostics.DiagnosticSource",
@@ -174,7 +174,7 @@
             "assemblyLoadContext": "AzSharedAssemblyLoadContext",
             "isCollectible": false,
             "contributor": "Az.Accounts",
-            "selectedAsset": "upstream:Az.Accounts/5.5.3/lib/netstandard2.0/Azure.Core.dll"
+            "selectedAsset": "upstream:Az.Accounts/5.5.4/lib/netstandard2.0/Azure.Core.dll"
           },
           {
             "assemblyName": "Microsoft.Identity.Client.Extensions.Msal",
@@ -185,7 +185,7 @@
             "assemblyLoadContext": "AzSharedAssemblyLoadContext",
             "isCollectible": false,
             "contributor": "Az.Accounts",
-            "selectedAsset": "upstream:Az.Accounts/5.5.3/lib/netstandard2.0/Microsoft.Identity.Client.Extensions.Msal.dll"
+            "selectedAsset": "upstream:Az.Accounts/5.5.4/lib/netstandard2.0/Microsoft.Identity.Client.Extensions.Msal.dll"
           },
           {
             "assemblyName": "Microsoft.OData.Core",
@@ -229,7 +229,7 @@
             "assemblyLoadContext": "AzSharedAssemblyLoadContext",
             "isCollectible": false,
             "contributor": "Az.Accounts",
-            "selectedAsset": "upstream:Az.Accounts/5.5.3/lib/netstandard2.0/System.ClientModel.dll"
+            "selectedAsset": "upstream:Az.Accounts/5.5.4/lib/netstandard2.0/System.ClientModel.dll"
           },
           {
             "assemblyName": "System.Diagnostics.DiagnosticSource",
@@ -649,7 +649,7 @@
             "sha256": "7ec9feb7738364d2d3a7a598f7c0cff090fdff971086d45cfb35a67858c6f5c7",
             "assemblyLoadContext": "AzSharedAssemblyLoadContext",
             "isCollectible": false,
-            "selectedAsset": "upstream:Az.Accounts/5.5.3/lib/netstandard2.0/Azure.Core.dll"
+            "selectedAsset": "upstream:Az.Accounts/5.5.4/lib/netstandard2.0/Azure.Core.dll"
           },
           {
             "name": "Microsoft.Identity.Client.Extensions.Msal",
@@ -658,7 +658,7 @@
             "sha256": "10f799a3ff80ccffc2b0a9dc9534465ef68deb5de79340b63bf20c5a58e6bbda",
             "assemblyLoadContext": "AzSharedAssemblyLoadContext",
             "isCollectible": false,
-            "selectedAsset": "upstream:Az.Accounts/5.5.3/lib/netstandard2.0/Microsoft.Identity.Client.Extensions.Msal.dll"
+            "selectedAsset": "upstream:Az.Accounts/5.5.4/lib/netstandard2.0/Microsoft.Identity.Client.Extensions.Msal.dll"
           },
           {
             "name": "Microsoft.OData.Core",
@@ -694,7 +694,7 @@
             "sha256": "113a90cac8ff3cee04e52960f52897d5c0d2c40a1f05f3ae04289498c7bb7065",
             "assemblyLoadContext": "AzSharedAssemblyLoadContext",
             "isCollectible": false,
-            "selectedAsset": "upstream:Az.Accounts/5.5.3/lib/netstandard2.0/System.ClientModel.dll"
+            "selectedAsset": "upstream:Az.Accounts/5.5.4/lib/netstandard2.0/System.ClientModel.dll"
           },
           {
             "name": "System.Diagnostics.DiagnosticSource",
@@ -737,7 +737,7 @@
             "sha256": "7ec9feb7738364d2d3a7a598f7c0cff090fdff971086d45cfb35a67858c6f5c7",
             "assemblyLoadContext": "AzSharedAssemblyLoadContext",
             "isCollectible": false,
-            "selectedAsset": "upstream:Az.Accounts/5.5.3/lib/netstandard2.0/Azure.Core.dll"
+            "selectedAsset": "upstream:Az.Accounts/5.5.4/lib/netstandard2.0/Azure.Core.dll"
           },
           {
             "name": "Microsoft.Identity.Client",
@@ -845,7 +845,7 @@
             "sha256": "113a90cac8ff3cee04e52960f52897d5c0d2c40a1f05f3ae04289498c7bb7065",
             "assemblyLoadContext": "AzSharedAssemblyLoadContext",
             "isCollectible": false,
-            "selectedAsset": "upstream:Az.Accounts/5.5.3/lib/netstandard2.0/System.ClientModel.dll"
+            "selectedAsset": "upstream:Az.Accounts/5.5.4/lib/netstandard2.0/System.ClientModel.dll"
           },
           {
             "name": "System.Diagnostics.DiagnosticSource",
@@ -897,7 +897,7 @@
             "sha256": "7ec9feb7738364d2d3a7a598f7c0cff090fdff971086d45cfb35a67858c6f5c7",
             "assemblyLoadContext": "AzSharedAssemblyLoadContext",
             "isCollectible": false,
-            "selectedAsset": "upstream:Az.Accounts/5.5.3/lib/netstandard2.0/Azure.Core.dll"
+            "selectedAsset": "upstream:Az.Accounts/5.5.4/lib/netstandard2.0/Azure.Core.dll"
           },
           {
             "name": "Microsoft.Identity.Client.Extensions.Msal",
@@ -906,7 +906,7 @@
             "sha256": "10f799a3ff80ccffc2b0a9dc9534465ef68deb5de79340b63bf20c5a58e6bbda",
             "assemblyLoadContext": "AzSharedAssemblyLoadContext",
             "isCollectible": false,
-            "selectedAsset": "upstream:Az.Accounts/5.5.3/lib/netstandard2.0/Microsoft.Identity.Client.Extensions.Msal.dll"
+            "selectedAsset": "upstream:Az.Accounts/5.5.4/lib/netstandard2.0/Microsoft.Identity.Client.Extensions.Msal.dll"
           },
           {
             "name": "Microsoft.OData.Core",
@@ -942,7 +942,7 @@
             "sha256": "113a90cac8ff3cee04e52960f52897d5c0d2c40a1f05f3ae04289498c7bb7065",
             "assemblyLoadContext": "AzSharedAssemblyLoadContext",
             "isCollectible": false,
-            "selectedAsset": "upstream:Az.Accounts/5.5.3/lib/netstandard2.0/System.ClientModel.dll"
+            "selectedAsset": "upstream:Az.Accounts/5.5.4/lib/netstandard2.0/System.ClientModel.dll"
           },
           {
             "name": "System.Diagnostics.DiagnosticSource",
@@ -985,7 +985,7 @@
             "sha256": "7ec9feb7738364d2d3a7a598f7c0cff090fdff971086d45cfb35a67858c6f5c7",
             "assemblyLoadContext": "AzSharedAssemblyLoadContext",
             "isCollectible": false,
-            "selectedAsset": "upstream:Az.Accounts/5.5.3/lib/netstandard2.0/Azure.Core.dll"
+            "selectedAsset": "upstream:Az.Accounts/5.5.4/lib/netstandard2.0/Azure.Core.dll"
           },
           {
             "name": "Microsoft.Identity.Client",
@@ -1093,7 +1093,7 @@
             "sha256": "113a90cac8ff3cee04e52960f52897d5c0d2c40a1f05f3ae04289498c7bb7065",
             "assemblyLoadContext": "AzSharedAssemblyLoadContext",
             "isCollectible": false,
-            "selectedAsset": "upstream:Az.Accounts/5.5.3/lib/netstandard2.0/System.ClientModel.dll"
+            "selectedAsset": "upstream:Az.Accounts/5.5.4/lib/netstandard2.0/System.ClientModel.dll"
           },
           {
             "name": "System.Diagnostics.DiagnosticSource",
@@ -1128,7 +1128,7 @@
           "upstream:ExchangeOnlineManagement/3.10.1/ExchangeOnlineManagement.psd1",
           "upstream:MicrosoftTeams/8.0.0/MicrosoftTeams.psd1",
           "upstream:Microsoft.Graph.Authentication/2.41.2/Microsoft.Graph.Authentication.psd1",
-          "upstream:Az.Accounts/5.5.3/Az.Accounts.psd1"
+          "upstream:Az.Accounts/5.5.4/Az.Accounts.psd1"
         ],
         "dllPicklePreloaded": false,
         "expectedLimitation": false,
@@ -1151,7 +1151,7 @@
             "sha256": "7ec9feb7738364d2d3a7a598f7c0cff090fdff971086d45cfb35a67858c6f5c7",
             "assemblyLoadContext": "AzSharedAssemblyLoadContext",
             "isCollectible": false,
-            "selectedAsset": "upstream:Az.Accounts/5.5.3/lib/netstandard2.0/Azure.Core.dll"
+            "selectedAsset": "upstream:Az.Accounts/5.5.4/lib/netstandard2.0/Azure.Core.dll"
           },
           {
             "name": "Microsoft.Identity.Client",
@@ -1169,7 +1169,7 @@
             "sha256": "10f799a3ff80ccffc2b0a9dc9534465ef68deb5de79340b63bf20c5a58e6bbda",
             "assemblyLoadContext": "AzSharedAssemblyLoadContext",
             "isCollectible": false,
-            "selectedAsset": "upstream:Az.Accounts/5.5.3/lib/netstandard2.0/Microsoft.Identity.Client.Extensions.Msal.dll"
+            "selectedAsset": "upstream:Az.Accounts/5.5.4/lib/netstandard2.0/Microsoft.Identity.Client.Extensions.Msal.dll"
           },
           {
             "name": "System.Diagnostics.DiagnosticSource",
@@ -1195,7 +1195,7 @@
           "upstream:ExchangeOnlineManagement/3.10.1/ExchangeOnlineManagement.psd1",
           "upstream:MicrosoftTeams/8.0.0/MicrosoftTeams.psd1",
           "upstream:Microsoft.Graph.Authentication/2.41.2/Microsoft.Graph.Authentication.psd1",
-          "upstream:Az.Accounts/5.5.3/Az.Accounts.psd1"
+          "upstream:Az.Accounts/5.5.4/Az.Accounts.psd1"
         ],
         "dllPicklePreloaded": true,
         "expectedLimitation": false,
@@ -1218,7 +1218,7 @@
             "sha256": "7ec9feb7738364d2d3a7a598f7c0cff090fdff971086d45cfb35a67858c6f5c7",
             "assemblyLoadContext": "AzSharedAssemblyLoadContext",
             "isCollectible": false,
-            "selectedAsset": "upstream:Az.Accounts/5.5.3/lib/netstandard2.0/Azure.Core.dll"
+            "selectedAsset": "upstream:Az.Accounts/5.5.4/lib/netstandard2.0/Azure.Core.dll"
           },
           {
             "name": "Microsoft.Identity.Client",
@@ -1322,7 +1322,7 @@
           "MicrosoftTeams"
         ],
         "importedModuleAssets": [
-          "upstream:Az.Accounts/5.5.3/Az.Accounts.psd1",
+          "upstream:Az.Accounts/5.5.4/Az.Accounts.psd1",
           "upstream:Microsoft.Graph.Authentication/2.41.2/Microsoft.Graph.Authentication.psd1",
           "upstream:ExchangeOnlineManagement/3.10.1/ExchangeOnlineManagement.psd1",
           "upstream:MicrosoftTeams/8.0.0/MicrosoftTeams.psd1"
@@ -1348,7 +1348,7 @@
             "sha256": "7ec9feb7738364d2d3a7a598f7c0cff090fdff971086d45cfb35a67858c6f5c7",
             "assemblyLoadContext": "AzSharedAssemblyLoadContext",
             "isCollectible": false,
-            "selectedAsset": "upstream:Az.Accounts/5.5.3/lib/netstandard2.0/Azure.Core.dll"
+            "selectedAsset": "upstream:Az.Accounts/5.5.4/lib/netstandard2.0/Azure.Core.dll"
           },
           {
             "name": "Microsoft.Identity.Client",
@@ -1357,7 +1357,7 @@
             "sha256": "d18da88bce62a54fa71b3cdf9dfa4b4dfc9759521e872721535d5d5ff63a7651",
             "assemblyLoadContext": "AzSharedAssemblyLoadContext",
             "isCollectible": false,
-            "selectedAsset": "upstream:Az.Accounts/5.5.3/lib/netstandard2.0/Microsoft.Identity.Client.dll"
+            "selectedAsset": "upstream:Az.Accounts/5.5.4/lib/netstandard2.0/Microsoft.Identity.Client.dll"
           },
           {
             "name": "Microsoft.Identity.Client.Extensions.Msal",
@@ -1366,7 +1366,7 @@
             "sha256": "10f799a3ff80ccffc2b0a9dc9534465ef68deb5de79340b63bf20c5a58e6bbda",
             "assemblyLoadContext": "AzSharedAssemblyLoadContext",
             "isCollectible": false,
-            "selectedAsset": "upstream:Az.Accounts/5.5.3/lib/netstandard2.0/Microsoft.Identity.Client.Extensions.Msal.dll"
+            "selectedAsset": "upstream:Az.Accounts/5.5.4/lib/netstandard2.0/Microsoft.Identity.Client.Extensions.Msal.dll"
           },
           {
             "name": "System.Diagnostics.DiagnosticSource",
@@ -1389,7 +1389,7 @@
           "MicrosoftTeams"
         ],
         "importedModuleAssets": [
-          "upstream:Az.Accounts/5.5.3/Az.Accounts.psd1",
+          "upstream:Az.Accounts/5.5.4/Az.Accounts.psd1",
           "upstream:Microsoft.Graph.Authentication/2.41.2/Microsoft.Graph.Authentication.psd1",
           "upstream:ExchangeOnlineManagement/3.10.1/ExchangeOnlineManagement.psd1",
           "upstream:MicrosoftTeams/8.0.0/MicrosoftTeams.psd1"
@@ -1415,7 +1415,7 @@
             "sha256": "7ec9feb7738364d2d3a7a598f7c0cff090fdff971086d45cfb35a67858c6f5c7",
             "assemblyLoadContext": "AzSharedAssemblyLoadContext",
             "isCollectible": false,
-            "selectedAsset": "upstream:Az.Accounts/5.5.3/lib/netstandard2.0/Azure.Core.dll"
+            "selectedAsset": "upstream:Az.Accounts/5.5.4/lib/netstandard2.0/Azure.Core.dll"
           },
           {
             "name": "Microsoft.Identity.Client",
