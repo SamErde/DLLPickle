@@ -106,6 +106,7 @@ Describe 'Seeded configuration properties' -Tag 'Unit', 'GeneratedInput' {
             $Result.ShowLogo | Should -Be $ExpectedLogo -Because $Diagnostic
             $Result.CheckForUpdates | Should -BeOfType [bool] -Because $Diagnostic
             $Result.ShowLogo | Should -BeOfType [bool] -Because $Diagnostic
+            $Result.SkipLibraries.GetType() | Should -Be ([string[]]) -Because $Diagnostic
             # Compare serialized lists to preserve case, order, empty strings and duplicates.
             (ConvertTo-Json -InputObject @($Result.SkipLibraries) -Compress) |
                 Should -BeExactly (ConvertTo-Json -InputObject $ExpectedNames -Compress) -Because $Diagnostic

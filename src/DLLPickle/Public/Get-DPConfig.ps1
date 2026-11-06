@@ -99,10 +99,14 @@
             return [PSCustomObject]$Defaults
         }
 
+        [string[]]$SkipLibraries = @()
+        if ($null -ne $ParsedConfig.SkipLibraries) {
+            $SkipLibraries = [string[]]$ParsedConfig.SkipLibraries
+        }
         $NormalizedConfig = [PSCustomObject]@{
             CheckForUpdates = if ($null -ne $ParsedConfig.CheckForUpdates) { [bool]$ParsedConfig.CheckForUpdates } else { [bool]$Defaults.CheckForUpdates }
             ShowLogo        = if ($null -ne $ParsedConfig.ShowLogo) { [bool]$ParsedConfig.ShowLogo } else { [bool]$Defaults.ShowLogo }
-            SkipLibraries   = if ($null -ne $ParsedConfig.SkipLibraries) { @([string[]]$ParsedConfig.SkipLibraries) } else { @([string[]]$Defaults.SkipLibraries) }
+            SkipLibraries   = $SkipLibraries
         }
 
         Write-Verbose "Configuration loaded from '$ConfigFile'."
