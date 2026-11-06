@@ -114,6 +114,35 @@ function Assert-DLLPicklePesterAssemblyVersion {
     }
 }
 
+function Invoke-DLLPickleGalleryOperation {
+    <#
+    .SYNOPSIS
+    Retry a Gallery operation at most three times without emitting failed-attempt results.
+    #>
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory)]
+        [scriptblock]$Operation,
+
+        [Parameter(Mandatory)]
+        [string]$Description
+    )
+
+    for ($Attempt = 1; $Attempt -le 3; $Attempt++) {
+        try {
+            $Result = @(& $Operation)
+            return $Result
+        } catch {
+            if ($Attempt -eq 3) {
+                throw
+            }
+
+            Write-Warning "$Description failed on attempt $Attempt of 3; retrying: $_"
+            Start-Sleep -Seconds (2 * $Attempt)
+        }
+    }
+}
+
 function Import-DLLPickleBuildTool {
     [CmdletBinding()]
     [OutputType([System.Management.Automation.PSModuleInfo])]
