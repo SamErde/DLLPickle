@@ -29,7 +29,7 @@ Current source and policy, rather than historical implementation tasks in the
 three runtime bundles: PowerShell 7.4.21/.NET 8.0.32/net8.0,
 7.5.12/9.0.21/net9.0 and 7.6.7/10.0.13/net10.0. The shipped profile policy checks
 PowerShell and CLR identity; the CI matrix covers Windows, Linux and macOS x64.
-The SDK is pinned to 10.0.302; Pester to 5.7.1. Existing locked dependencies,
+The SDK is pinned to 10.0.404; Pester to 5.7.1. Existing locked dependencies,
 profile-aware dependency policy, package-composition checks, lifecycle checks and
 authenticated release-evidence gates remain unchanged. Release jobs bind tagging,
 build and publishing to an immutable source revision. No release was performed.
